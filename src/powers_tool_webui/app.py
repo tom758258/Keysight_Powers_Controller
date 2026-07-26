@@ -298,8 +298,10 @@ async def create_job(request: Request):
             job.warnings.append(
                 {"code": "long_running_workflow", "message": warning}
             )
-            job.events[0]["data"]["message"] = warning
-    if job is not None and not job.requires_hardware_lock:
+            job.update_event_data(1, {"message": warning})
+    if command in {"ramp", "ramp-list", "sequence"}:
+        asyncio.create_task(_execute_job_background(job_id))
+    elif job is not None and not job.requires_hardware_lock:
         await _execute_job_background(job_id)
     else:
         asyncio.create_task(_execute_job_background(job_id))

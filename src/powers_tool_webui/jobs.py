@@ -62,6 +62,7 @@ class Job:
         self.created_at = time.time()
         self.updated_at = time.time()
         self._event_counter = 0
+        self._event_lock = threading.Lock()
 
     @property
     def requires_hardware_lock(self) -> bool:
@@ -70,17 +71,31 @@ class Job:
         return self.command != "live-data"
 
     def add_event(self, event_type: str, data: Dict[str, Any]) -> None:
-        self._event_counter += 1
-        event = {
-            "id": self._event_counter,
-            "type": event_type,
-            "data": data,
-            "timestamp": time.time(),
-        }
-        self.events.append(event)
-        if len(self.events) > MAX_JOB_EVENTS:
-            del self.events[:-MAX_JOB_EVENTS]
-        self.updated_at = time.time()
+        with self._event_lock:
+            self._event_counter += 1
+            event = {
+                "id": self._event_counter,
+                "type": event_type,
+                "data": data,
+                "timestamp": time.time(),
+            }
+            self.events.append(event)
+            if len(self.events) > MAX_JOB_EVENTS:
+                del self.events[:-MAX_JOB_EVENTS]
+            self.updated_at = time.time()
+
+    def update_event_data(self, event_id: int, data: Dict[str, Any]) -> bool:
+        with self._event_lock:
+            for event in self.events:
+                if event["id"] == event_id:
+                    event["data"].update(data)
+                    self.updated_at = time.time()
+                    return True
+            return False
+
+    def events_after(self, last_event_id: int) -> List[Dict[str, Any]]:
+        with self._event_lock:
+            return [event for event in self.events if event["id"] > last_event_id]
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -232,7 +247,7 @@ class JobManager:
             job = self.jobs.get(job_id)
             if not job:
                 return []
-            return [e for e in job.events if e["id"] > last_event_id]
+            return job.events_after(last_event_id)
 
     def is_hardware_locked(self) -> bool:
         return self.active_job_id is not None

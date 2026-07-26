@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 from fastapi.testclient import TestClient
 
+from _webui_api_helpers import wait_for_job
 from _webui_shared import WEBUI_HIDDEN_UNSUPPORTED_COMMANDS
-from powers_tool_webui.jobs import Job, MAX_JOB_EVENTS
+from powers_tool_webui.jobs import Job, JobStatus, MAX_JOB_EVENTS
 
 
 def test_job_event_history_is_bounded() -> None:
@@ -20,6 +23,95 @@ def test_job_event_history_is_bounded() -> None:
     assert len(job.events) == MAX_JOB_EVENTS
     assert job.events[0]["id"] == 45
     assert job.events[-1]["id"] == MAX_JOB_EVENTS + 44
+
+
+def test_job_event_buffer_is_thread_safe() -> None:
+    job = Job("job-id", "sequence", {}, {})
+
+    def add_events(worker: int) -> None:
+        for index in range(100):
+            job.add_event("progress", {"worker": worker, "index": index})
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        list(executor.map(add_events, range(4)))
+
+    events = job.events_after(0)
+    event_ids = [event["id"] for event in events]
+    assert len(events) == MAX_JOB_EVENTS
+    assert len(event_ids) == len(set(event_ids))
+    assert all(left < right for left, right in zip(event_ids, event_ids[1:]))
+
+    last_event_id = event_ids[len(event_ids) // 2]
+    newer_events = job.events_after(last_event_id)
+    assert newer_events
+    assert all(event["id"] > last_event_id for event in newer_events)
+
+
+def test_simulated_sequence_post_returns_before_execution_finishes(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from powers_tool_webui import app as webui_app
+    from powers_tool_webui.jobs import job_manager
+
+    execution_started = threading.Event()
+    release_execution = threading.Event()
+
+    def paused_execution(job: Job) -> dict[str, str]:
+        job.add_event(
+            "progress",
+            {
+                "completed_units": 1,
+                "total_units": 2,
+                "percent": 50,
+                "message": "50% (1/2 execution units)",
+            },
+        )
+        execution_started.set()
+        assert release_execution.wait(timeout=2)
+        return {"status": "completed"}
+
+    monkeypatch.setattr(webui_app, "execute_job_command", paused_execution)
+    payload = {
+        "command": "sequence",
+        "runtime": {
+            "simulate": True,
+            "planning_model_id": "keysight-e36312a",
+        },
+        "parameters": {
+            "document": {
+                "version": 2,
+                "loop_count": 1,
+                "steps": [
+                    {"action": "wait", "seconds": 0},
+                    {"action": "wait", "seconds": 0},
+                ],
+            }
+        },
+    }
+
+    with client, ThreadPoolExecutor(max_workers=1) as executor:
+        response_future = executor.submit(client.post, "/api/jobs", json=payload)
+        response_data = None
+        try:
+            response = response_future.result(timeout=1)
+            assert response.status_code == 200
+            response_data = response.json()
+            assert response_data["job_id"]
+            assert response_data["status_url"]
+            assert response_data["events_url"]
+            assert response_data["execution_summary"]["execution_units"] == 2
+            assert execution_started.wait(timeout=1)
+
+            job = job_manager.jobs[response_data["job_id"]]
+            assert job.status in {JobStatus.STARTED, JobStatus.PROGRESS}
+            assert any(event["type"] == "progress" for event in job.events_after(0))
+        finally:
+            release_execution.set()
+
+        assert response_data is not None
+        job_data = wait_for_job(client, response_data["job_id"])
+        assert job_data["status"] == "finished"
 
 
 def test_sequence_job_response_includes_long_execution_warning(client: TestClient) -> None:
