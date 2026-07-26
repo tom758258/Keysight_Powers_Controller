@@ -624,11 +624,13 @@ Start the worker in simulation mode on a dynamic port:
 uv run powers-tool worker --id power_1 --mode simulate --control-port 0
 ```
 
-Worker requests use only `arguments.planning_model_id`,
-`arguments.expected_model_id`, and `arguments.planning_profile_id`. Their
-valid combinations follow the resolved Worker mode, and identity fields are
-rejected in settings. A deterministic SIM resource may infer a physical model;
-Worker provides no identity default.
+Worker requests require top-level `context`. Mode and identity use
+`context.mode`, `context.planning_model_id`, `context.expected_model_id`, and
+`context.planning_profile_id`; these fields are rejected in `arguments`.
+Their valid combinations follow the resolved Worker mode, and identity fields
+are rejected in settings. A deterministic SIM resource must match the explicit
+physical planning model; Worker provides no identity default. The
+`send-command` client requires `--context-json` with the same context object.
 
 `POST /stop` is cooperative: the handler only sets stop state and wakes the
 runner. The Worker emits structured `power_cleanup` JSONL events and does not

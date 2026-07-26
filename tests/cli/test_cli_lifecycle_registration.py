@@ -154,6 +154,7 @@ EXPECTED_ACTIONS = {
         *URL_ACTIONS["/command"],
         _action(("--command",), "worker_command", required=True, help="Power Worker command name."),
         _action(("--arguments-json",), "arguments_json", default="{}", help="JSON object for command arguments."),
+        _action(("--context-json",), "context_json", required=True, help="JSON object for Worker execution context."),
         _action(("--job-id",), "job_id", help="Optional orchestrator job ID."),
         DRY_RUN_ACTION,
         TIMEOUT_ACTION,
@@ -227,8 +228,8 @@ options:
 usage: powers-tool send-command [-h] [--url URL] [--host HOST] [--port PORT]
                                 --command WORKER_COMMAND
                                 [--arguments-json ARGUMENTS_JSON]
-                                [--job-id JOB_ID] [--dry-run]
-                                [--timeout-ms TIMEOUT_MS]
+                                --context-json CONTEXT_JSON [--job-id JOB_ID]
+                                [--dry-run] [--timeout-ms TIMEOUT_MS]
                                 [--format {text,json}] [--json]
 
 options:
@@ -241,6 +242,8 @@ options:
                         Power Worker command name.
   --arguments-json ARGUMENTS_JSON
                         JSON object for command arguments.
+  --context-json CONTEXT_JSON
+                        JSON object for Worker execution context.
   --job-id JOB_ID       Optional orchestrator job ID.
   --dry-run             Validate and print request without HTTP.
   --timeout-ms TIMEOUT_MS
@@ -360,7 +363,13 @@ def test_lifecycle_registration_preserves_actions_order_and_runner_identity() ->
             cli._run_worker,
         ),
         (
-            ["send-command", "--command", "read-status"],
+            [
+                "send-command",
+                "--command",
+                "read-status",
+                "--context-json",
+                '{"mode":"dry_run","planning_profile_id":"generic-scpi"}',
+            ],
             {
                 "command": "send-command",
                 "url": None,
@@ -368,6 +377,7 @@ def test_lifecycle_registration_preserves_actions_order_and_runner_identity() ->
                 "port": 0,
                 "worker_command": "read-status",
                 "arguments_json": "{}",
+                "context_json": '{"mode":"dry_run","planning_profile_id":"generic-scpi"}',
                 "job_id": None,
                 "dry_run": False,
                 "timeout_ms": 3000,
@@ -467,9 +477,13 @@ def test_lifecycle_parser_errors_preserve_json_envelope_and_do_not_dispatch(monk
     assert payload["error"] == {
         "type": "validation",
         "code": "argument_error",
-        "message": "the following arguments are required: --command",
+        "message": "the following arguments are required: --command, --context-json",
         "retryable": False,
     }
+
+    assert cli.main(["send-command", "--command", "read-status", "--json"]) == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error"]["message"] == "the following arguments are required: --context-json"
 
     assert cli.main(["status", "--unknown-option", "--json"]) == 2
     payload = json.loads(capsys.readouterr().out)

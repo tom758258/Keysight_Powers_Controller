@@ -23,6 +23,16 @@ from powers_tool_cli.cli import build_parser
 from powers_tool_core.command_runner import run_core_command
 from powers_tool_core.core import OperationRequest, RuntimeOptions
 
+SIMULATE_CONTEXT = {
+    "mode": "simulate",
+    "planning_model_id": "keysight-e36312a",
+}
+DRY_RUN_CONTEXT = {
+    "mode": "dry_run",
+    "planning_model_id": "keysight-e36312a",
+}
+LIVE_CONTEXT = {"mode": "live"}
+
 
 def _worker_validation_state(tmp_path: Path, *, mode: str = "simulate") -> WorkerState:
     return WorkerState(
@@ -69,20 +79,98 @@ def test_worker_command_requires_exact_integer_schema_2(tmp_path: Path, schema_v
     assert not (tmp_path / "jobs").exists()
 
 
-def test_worker_missing_planning_identity_fails_before_admission(tmp_path: Path) -> None:
-    state = _worker_validation_state(tmp_path)
+@pytest.mark.parametrize(
+    ("startup_mode", "context", "simulate", "dry_run"),
+    [
+        ("live", {"mode": "live", "expected_model_id": "keysight-e36312a"}, False, False),
+        ("simulate", SIMULATE_CONTEXT, True, False),
+        ("live", DRY_RUN_CONTEXT, False, True),
+        (
+            "simulate",
+            {"mode": "dry_run", "planning_profile_id": "generic-scpi"},
+            False,
+            True,
+        ),
+    ],
+    ids=("live", "simulate", "dry-run-physical", "dry-run-generic"),
+)
+def test_worker_context_matrix(
+    tmp_path: Path,
+    startup_mode: str,
+    context: dict[str, str],
+    simulate: bool,
+    dry_run: bool,
+) -> None:
+    state = _worker_validation_state(tmp_path, mode=startup_mode)
 
     status, payload = worker_mod._validate_command_body(
         {
             "schema_version": 2,
-            "command": "set",
-            "arguments": {"channel": 1, "voltage": 1.0, "dry_run": True},
+            "command": "read-status",
+            "arguments": {},
+            "context": context,
         },
         state,
     )
 
+    assert status == 202
+    admitted = payload["_admitted_request"]
+    assert admitted.runtime.simulate is simulate
+    assert admitted.runtime.dry_run is dry_run
+    assert admitted.runtime.planning_model_id == context.get("planning_model_id")
+    assert admitted.runtime.expected_model_id == context.get("expected_model_id")
+    assert admitted.runtime.planning_profile_id == context.get("planning_profile_id")
+
+
+@pytest.mark.parametrize(
+    ("startup_mode", "context"),
+    [
+        ("simulate", None),
+        ("simulate", []),
+        ("simulate", {"mode": "simulate"}),
+        (
+            "simulate",
+            {
+                "mode": "dry_run",
+                "planning_model_id": "keysight-e36312a",
+                "planning_profile_id": "generic-scpi",
+            },
+        ),
+        ("live", {"mode": "live", "planning_model_id": "keysight-e36312a"}),
+        (
+            "simulate",
+            {"mode": "dry_run", "planning_profile_id": "unsupported"},
+        ),
+        ("live", SIMULATE_CONTEXT),
+    ],
+    ids=(
+        "missing",
+        "non-object",
+        "simulate-missing-model",
+        "dry-run-two-identities",
+        "live-planning-identity",
+        "unsupported-profile",
+        "startup-conflict",
+    ),
+)
+def test_worker_rejects_invalid_context_before_admission(
+    tmp_path: Path,
+    startup_mode: str,
+    context: object,
+) -> None:
+    state = _worker_validation_state(tmp_path, mode=startup_mode)
+    body = {
+        "schema_version": 2,
+        "command": "read-status",
+        "arguments": {},
+    }
+    if context is not None:
+        body["context"] = context
+
+    status, payload = worker_mod._validate_command_body(body, state)
+
     assert status == 400
-    assert "require planning_model_id" in payload["error"]["message"]
+    assert payload["error"]["code"] == "argument_error"
     assert state.next_job is None
     assert not (tmp_path / "jobs").exists()
 
@@ -98,6 +186,7 @@ def test_worker_rejects_malformed_restore_boolean_before_artifacts(
         {
             "schema_version": 2,
             "command": "restore-from-snapshot",
+            "context": SIMULATE_CONTEXT,
             "arguments": {
                 "document": _worker_snapshot_document(),
                 "channel": 1,
@@ -124,6 +213,7 @@ def test_worker_rejects_malformed_snapshot_boolean_before_artifacts(tmp_path: Pa
         {
             "schema_version": 2,
             "command": "restore-from-snapshot",
+            "context": SIMULATE_CONTEXT,
             "arguments": {"document": snapshot, "channel": 1},
         },
         state,
@@ -147,6 +237,7 @@ def test_worker_rejects_coercible_channel_before_artifacts(
         {
             "schema_version": 2,
             "command": "set",
+            "context": SIMULATE_CONTEXT,
             "arguments": {"channel": channel, "voltage": 1.0},
         },
         state,
@@ -176,7 +267,12 @@ def test_worker_rejects_false_protection_all_before_artifacts(
     state = _worker_validation_state(tmp_path)
 
     status, payload = worker_mod._validate_command_body(
-        {"schema_version": 2, "command": command, "arguments": arguments},
+        {
+            "schema_version": 2,
+            "command": command,
+            "arguments": arguments,
+            "context": SIMULATE_CONTEXT,
+        },
         state,
     )
 
@@ -193,6 +289,7 @@ def test_worker_restore_requires_channel_before_artifacts(tmp_path: Path) -> Non
         {
             "schema_version": 2,
             "command": "restore-from-snapshot",
+            "context": SIMULATE_CONTEXT,
             "arguments": {"document": _worker_snapshot_document()},
         },
         state,
@@ -211,6 +308,7 @@ def test_worker_queues_restore_admitted_runtime(tmp_path: Path) -> None:
         {
             "schema_version": 2,
             "command": "restore-from-snapshot",
+            "context": SIMULATE_CONTEXT,
             "arguments": {"document": _worker_snapshot_document(), "channel": "all"},
         },
         state,
@@ -233,9 +331,8 @@ def test_worker_rejects_invalid_completion_pulse_channel_before_artifacts(
         {
             "schema_version": 2,
             "command": "ramp",
+            "context": DRY_RUN_CONTEXT,
             "arguments": {
-                "dry_run": True,
-                "planning_model_id": "keysight-e36312a",
                 "channel": 1,
                 "start_voltage": 0,
                 "stop_voltage": 1,
@@ -262,6 +359,7 @@ def test_worker_uses_core_contract_for_inapplicable_parameter(tmp_path: Path) ->
         {
             "schema_version": 2,
             "command": "set",
+            "context": SIMULATE_CONTEXT,
             "arguments": {"channel": 1, "voltage": 1.0, "duration_ms": 1},
         },
         state,
@@ -281,9 +379,8 @@ def test_worker_rejects_completion_pulse_channel_without_pins_before_artifacts(t
         {
             "schema_version": 2,
             "command": "ramp",
+            "context": DRY_RUN_CONTEXT,
             "arguments": {
-                "dry_run": True,
-                "planning_model_id": "keysight-e36312a",
                 "channel": 1,
                 "start_voltage": 0,
                 "stop_voltage": 1,
@@ -312,9 +409,8 @@ def test_worker_accepts_valid_completion_pulse_channel(
         {
             "schema_version": 2,
             "command": "ramp",
+            "context": DRY_RUN_CONTEXT,
             "arguments": {
-                "dry_run": True,
-                "planning_model_id": "keysight-e36312a",
                 "channel": 1,
                 "start_voltage": 0,
                 "stop_voltage": 1,
@@ -342,6 +438,7 @@ def test_worker_rejects_incomplete_protection_inventory_before_artifacts(tmp_pat
         {
             "schema_version": 2,
             "command": "restore-from-snapshot",
+            "context": SIMULATE_CONTEXT,
             "arguments": {"document": snapshot, "channel": "all"},
         },
         state,
@@ -371,7 +468,12 @@ def test_worker_rejects_validation_mode_request_arguments(field: str) -> None:
         0,
     )
     status, payload = worker_mod._validate_command_body(
-        {"schema_version": 2, "command": "measure", "arguments": {"channel": 1, field: "validation"}},
+        {
+            "schema_version": 2,
+            "command": "measure",
+            "arguments": {"channel": 1, field: "validation"},
+            "context": LIVE_CONTEXT,
+        },
         state,
     )
     assert status == 400
@@ -415,8 +517,24 @@ def test_worker_rejects_identity_settings(field: str) -> None:
         worker_mod._validate_worker_config(config)
 
 
-@pytest.mark.parametrize("field", ["model_profile", "model"])
-def test_worker_rejects_legacy_identity_arguments_before_queue_mutation(field: str) -> None:
+@pytest.mark.parametrize(
+    "field",
+    [
+        "dry_run",
+        "simulate",
+        "live",
+        "planning_model_id",
+        "expected_model_id",
+        "planning_profile_id",
+        "model",
+        "model_profile",
+        "profile",
+    ],
+)
+def test_worker_rejects_context_arguments_before_queue_mutation(
+    tmp_path: Path,
+    field: str,
+) -> None:
     state = WorkerState(
         {
             "id": "test",
@@ -425,7 +543,7 @@ def test_worker_rejects_legacy_identity_arguments_before_queue_mutation(field: s
             "mode": "live",
             "control_host": "127.0.0.1",
             "control_port": 0,
-            "artifacts_dir": ".tmp_tests/worker",
+            "artifacts_dir": str(tmp_path),
             "events_jsonl": None,
             "settings": {"resource": "USB0::FAKE::E36312A::INSTR"},
         },
@@ -433,7 +551,12 @@ def test_worker_rejects_legacy_identity_arguments_before_queue_mutation(field: s
     )
 
     status, payload = worker_mod._validate_command_body(
-        {"schema_version": 2, "command": "measure", "arguments": {"channel": 1, field: "E36312A"}},
+        {
+            "schema_version": 2,
+            "command": "measure",
+            "arguments": {"channel": 1, field: "E36312A"},
+            "context": LIVE_CONTEXT,
+        },
         state,
     )
 
@@ -441,6 +564,7 @@ def test_worker_rejects_legacy_identity_arguments_before_queue_mutation(field: s
     assert payload["error"]["code"] == "argument_error"
     assert state.next_job is None
     assert state.status == "ready"
+    assert not (tmp_path / "jobs").exists()
 
 
 def _wait_for_json_file(path: Path, timeout: float = 3.0) -> dict:
@@ -463,7 +587,14 @@ def _last_stdout_json(capsys) -> dict:
     return json.loads(lines[-1])
 
 
-def _run_worker_job_for_test(tmp_path: Path, *, command: str, arguments: dict, config: dict | None = None) -> dict:
+def _run_worker_job_for_test(
+    tmp_path: Path,
+    *,
+    command: str,
+    arguments: dict,
+    config: dict | None = None,
+    context: dict[str, str] | None = None,
+) -> dict:
     job_dir = tmp_path / f"job_{command.replace('-', '_')}_{len(list(tmp_path.iterdir()))}"
     job_dir.mkdir()
     state = WorkerState(
@@ -481,6 +612,12 @@ def _run_worker_job_for_test(tmp_path: Path, *, command: str, arguments: dict, c
         },
         0,
     )
+    if context is None:
+        context = (
+            SIMULATE_CONTEXT
+            if state.config["mode"] == "simulate"
+            else LIVE_CONTEXT
+        )
     _run_job_impl(
         state,
         {
@@ -488,6 +625,7 @@ def _run_worker_job_for_test(tmp_path: Path, *, command: str, arguments: dict, c
             "worker_job_id": job_dir.name,
             "command": command,
             "arguments": arguments,
+            "context": context,
             "dir": job_dir,
         },
     )
@@ -641,6 +779,7 @@ def test_worker_serial_settings_pass_through_to_runtime(tmp_path, monkeypatch):
             "worker_job_id": "job_serial",
             "command": "identify",
             "arguments": {},
+            "context": LIVE_CONTEXT,
             "dir": tmp_path,
         },
     )
@@ -738,7 +877,8 @@ def test_worker_command_execution(running_worker):
     payload = {
         "schema_version": 2,
         "command": "read-status",
-        "arguments": {"channel": 1}
+        "arguments": {"channel": 1},
+        "context": SIMULATE_CONTEXT,
     }
     req = urllib.request.Request(
         url,
@@ -762,6 +902,12 @@ def test_worker_command_execution(running_worker):
     request_data = json.loads(request_file.read_text(encoding="utf-8"))
     assert request_data["schema_version"] == 2
     assert "job_id" not in request_data
+    assert request_data["context"] == SIMULATE_CONTEXT
+    assert request_data["arguments"]["channel"] == 1
+    assert not (
+        worker_mod.FORBIDDEN_CONTEXT_ARGUMENTS
+        & set(request_data["arguments"])
+    )
     result_data = _wait_for_json_file(result_file)
     assert result_data["schema_version"] == 2
     assert result_data["ok"] is True
@@ -813,8 +959,8 @@ def test_worker_rejects_removed_ramp_native_fields_before_artifact(running_worke
     payload = {
         "schema_version": 2,
         "command": "ramp",
+        "context": DRY_RUN_CONTEXT,
         "arguments": {
-            "dry_run": True,
             "channel": 1,
             "start_voltage": 0,
             "stop_voltage": 1,
@@ -839,8 +985,8 @@ def test_worker_rejects_invalid_ramp_loop_count_before_artifact(running_worker, 
     payload = {
         "schema_version": 2,
         "command": "ramp",
+        "context": DRY_RUN_CONTEXT,
         "arguments": {
-            "dry_run": True,
             "channel": 1,
             "start_voltage": 0,
             "stop_voltage": 1,
@@ -894,6 +1040,14 @@ def test_worker_general_completion_pulse_execution_uses_core_model_gate(
             "events_jsonl": None,
             "settings": {"resource": resource},
         },
+        context={
+            "mode": "simulate",
+            "planning_model_id": (
+                "keysight-edu36311a"
+                if "EDU36311A" in resource
+                else "keysight-e3646a"
+            ),
+        },
     )
 
     assert payload["ok"] is False
@@ -942,11 +1096,49 @@ def test_worker_general_completion_pulse_e36312a_execution_stays_supported(
 
 
 def test_cli_send_command_dry_run_does_not_send_http(capsys):
-    exit_code = cli.main(["send-command", "--command", "read-status", "--arguments-json", "{\"dry_run\": true}", "--dry-run", "--json"])
+    exit_code = cli.main([
+        "send-command",
+        "--command",
+        "read-status",
+        "--context-json",
+        json.dumps(DRY_RUN_CONTEXT),
+        "--dry-run",
+        "--json",
+    ])
     payload = _last_stdout_json(capsys)
     assert exit_code == 0
     assert payload["request"]["command"] == "read-status"
-    assert payload["request"]["arguments"]["dry_run"] is True
+    assert payload["request"]["arguments"] == {}
+    assert payload["request"]["context"] == DRY_RUN_CONTEXT
+
+
+@pytest.mark.parametrize(
+    ("option", "value"),
+    [
+        ("--context-json", "[]"),
+        ("--context-json", '{"mode":"simulate"}'),
+        ("--arguments-json", '{"planning_model_id":"keysight-e36312a"}'),
+    ],
+)
+def test_cli_send_command_rejects_invalid_local_context(
+    capsys,
+    option: str,
+    value: str,
+) -> None:
+    argv = [
+        "send-command",
+        "--command",
+        "read-status",
+        "--context-json",
+        json.dumps(DRY_RUN_CONTEXT),
+        option,
+        value,
+        "--json",
+    ]
+
+    assert cli.main(argv) == 2
+    payload = _last_stdout_json(capsys)
+    assert payload["error"]["code"] == "argument_error"
 
 
 def test_cli_lifecycle_status_reads_worker(running_worker, capsys):
@@ -968,8 +1160,8 @@ def test_cli_send_command_accepts_and_reports_worker_artifact(running_worker, ca
         port,
         "--command",
         "read-status",
-        "--arguments-json",
-        "{\"dry_run\": true}",
+        "--context-json",
+        json.dumps(DRY_RUN_CONTEXT),
         "--json",
     ])
     payload = _last_stdout_json(capsys)
@@ -1023,7 +1215,12 @@ def test_worker_readonly_dry_run_does_not_open_live_resource(tmp_path, monkeypat
         assert actual_port is not None
         req = urllib.request.Request(
             f"http://127.0.0.1:{actual_port}/command",
-            data=json.dumps({"schema_version": 2, "command": "read-status", "arguments": {"dry_run": True, "planning_model_id": "keysight-e36312a"}}).encode("utf-8"),
+            data=json.dumps({
+                "schema_version": 2,
+                "command": "read-status",
+                "arguments": {},
+                "context": DRY_RUN_CONTEXT,
+            }).encode("utf-8"),
             headers={"Content-Type": "application/json"},
         )
         with urllib.request.urlopen(req) as res:
@@ -1050,7 +1247,12 @@ def test_worker_measure_all_rejects_channel_filter(running_worker):
     artifacts_dir = running_worker["artifacts_dir"]
     req = urllib.request.Request(
         f"http://127.0.0.1:{port}/command",
-        data=json.dumps({"schema_version": 2, "command": "measure-all", "arguments": {"channel": 1}}).encode("utf-8"),
+        data=json.dumps({
+            "schema_version": 2,
+            "command": "measure-all",
+            "arguments": {"channel": 1},
+            "context": SIMULATE_CONTEXT,
+        }).encode("utf-8"),
         headers={"Content-Type": "application/json"},
     )
     with pytest.raises(urllib.error.HTTPError) as exc_info:
@@ -1065,12 +1267,17 @@ def test_worker_measure_all_rejects_channel_filter(running_worker):
 def test_worker_output_commands_accept_all_channel_dry_run(running_worker, command):
     port = running_worker["port"]
     artifacts_dir = running_worker["artifacts_dir"]
-    arguments = {"channel": "all", "dry_run": True, "planning_model_id": "keysight-e36312a"}
+    arguments = {"channel": "all"}
     if command == "cycle-output":
         arguments["duration_ms"] = 250
     req = urllib.request.Request(
         f"http://127.0.0.1:{port}/command",
-        data=json.dumps({"schema_version": 2, "command": command, "arguments": arguments}).encode("utf-8"),
+        data=json.dumps({
+            "schema_version": 2,
+            "command": command,
+            "arguments": arguments,
+            "context": DRY_RUN_CONTEXT,
+        }).encode("utf-8"),
         headers={"Content-Type": "application/json"},
     )
 
@@ -1081,30 +1288,18 @@ def test_worker_output_commands_accept_all_channel_dry_run(running_worker, comma
     result_data = _wait_for_json_file(artifacts_dir / "jobs" / job_id / "result.json")
     assert result_data["ok"] is True
     assert result_data["request"]["arguments"]["channel"] == "all"
-    assert result_data["request"]["arguments"]["planning_model_id"] == "keysight-e36312a"
+    assert "planning_model_id" not in result_data["request"]["arguments"]
     plan = result_data["data"].get("plan", result_data["data"])
     assert plan["target"]["channel"] == "all"
     assert plan["target"]["planning_model_id"] == "keysight-e36312a"
-
-
-def test_worker_dry_run_missing_planning_model_id_does_not_default_to_e36312a(tmp_path):
-    result = _run_worker_job_for_test(
-        tmp_path,
-        command="output-on",
-        arguments={"channel": 1, "dry_run": True},
-    )
-
-    assert result["ok"] is False
-    assert result["error"]["type"] == "validation"
-    assert result["error"]["code"] == "argument_error"
-    assert "dry-run and simulator planning require planning_model_id, planning_profile_id, or a known deterministic SIM resource" in result["error"]["message"]
 
 
 def test_worker_dry_run_explicit_e36312a_planning_model_id_still_works(tmp_path):
     result = _run_worker_job_for_test(
         tmp_path,
         command="output-on",
-        arguments={"channel": 1, "dry_run": True, "planning_model_id": "keysight-e36312a"},
+        arguments={"channel": 1},
+        context=DRY_RUN_CONTEXT,
     )
 
     assert result["ok"] is True
@@ -1116,7 +1311,11 @@ def test_worker_dry_run_explicit_e3646a_uses_e3646a_channel_rules(tmp_path):
     result = _run_worker_job_for_test(
         tmp_path,
         command="output-on",
-        arguments={"channel": 3, "dry_run": True, "planning_model_id": "keysight-e3646a"},
+        arguments={"channel": 3},
+        context={
+            "mode": "dry_run",
+            "planning_model_id": "keysight-e3646a",
+        },
     )
 
     assert result["ok"] is False
@@ -1144,8 +1343,9 @@ def test_worker_simulate_planning_model_id_resource_mismatch_fails(tmp_path):
         {
             "schema_version": 2,
             "command": "output-on",
-            "arguments": {
-                "channel": 1,
+            "arguments": {"channel": 1},
+            "context": {
+                "mode": "simulate",
                 "planning_model_id": "keysight-e3646a",
             },
         },
@@ -1179,7 +1379,8 @@ def test_worker_result_artifact_write_failure_reports_artifact_error_without_fak
         "job_id": None,
         "worker_job_id": "job_artifact_error",
         "command": "read-status",
-        "arguments": {"dry_run": True},
+        "arguments": {},
+        "context": DRY_RUN_CONTEXT,
         "dir": job_dir,
     }
 
@@ -1256,6 +1457,7 @@ def test_worker_live_output_sequence_validation(tmp_path):
         payload = {
             "schema_version": 2,
             "command": "sequence",
+            "context": LIVE_CONTEXT,
             "arguments": {
                 "document": {
                     "version": 1,
@@ -1292,7 +1494,8 @@ def test_worker_simulate_numeric_parity(running_worker):
     url = f"http://127.0.0.1:{port}/command"
     payload = {
         "schema_version": 2,
-        "command": "measure-all"
+        "command": "measure-all",
+        "context": SIMULATE_CONTEXT,
     }
     req = urllib.request.Request(
         url,
@@ -1362,7 +1565,14 @@ def test_worker_model_unsupported_error_mapping(running_worker):
         
     try:
         url = f"http://127.0.0.1:{edu_port}/command"
-        payload = {"schema_version": 2, "command": "measure-all"}
+        payload = {
+            "schema_version": 2,
+            "command": "measure-all",
+            "context": {
+                "mode": "simulate",
+                "planning_model_id": "keysight-edu36311a",
+            },
+        }
         req = urllib.request.Request(
             url,
             data=json.dumps(payload).encode("utf-8"),
@@ -1516,6 +1726,7 @@ def test_sequence_stop_wait_interrupt(running_worker):
     payload = {
         "schema_version": 2,
         "command": "sequence",
+        "context": SIMULATE_CONTEXT,
         "arguments": {
             "document": {
                 "version": 1,
@@ -1560,7 +1771,12 @@ def test_worker_ramp_list_requires_document_or_file():
     state = WorkerState(config, 0)
 
     status, payload = worker_mod._validate_command_body(
-        {"schema_version": 2, "command": "ramp-list", "arguments": {}},
+        {
+            "schema_version": 2,
+            "command": "ramp-list",
+            "arguments": {},
+            "context": SIMULATE_CONTEXT,
+        },
         state,
     )
 
@@ -1573,7 +1789,12 @@ def test_worker_rejects_invalid_static_parameter_before_enqueue():
     state = WorkerState(config, 0)
 
     status, payload = worker_mod._validate_command_body(
-        {"schema_version": 2, "command": "set", "arguments": {"channel": 1, "voltage": -1, "current": 0.1}},
+        {
+            "schema_version": 2,
+            "command": "set",
+            "arguments": {"channel": 1, "voltage": -1, "current": 0.1},
+            "context": SIMULATE_CONTEXT,
+        },
         state,
     )
 
@@ -1587,7 +1808,12 @@ def test_worker_accepts_partial_set_before_enqueue():
     state = WorkerState(config, 0)
 
     status, payload = worker_mod._validate_command_body(
-        {"schema_version": 2, "command": "set", "arguments": {"channel": 1, "voltage": 1.0, "dry_run": True, "planning_model_id": "keysight-e36312a"}},
+        {
+            "schema_version": 2,
+            "command": "set",
+            "arguments": {"channel": 1, "voltage": 1.0},
+            "context": DRY_RUN_CONTEXT,
+        },
         state,
     )
 
@@ -1601,7 +1827,12 @@ def test_worker_rejects_empty_set_before_enqueue():
     state = WorkerState(config, 0)
 
     status, payload = worker_mod._validate_command_body(
-        {"schema_version": 2, "command": "set", "arguments": {"channel": 1, "dry_run": True}},
+        {
+            "schema_version": 2,
+            "command": "set",
+            "arguments": {"channel": 1},
+            "context": DRY_RUN_CONTEXT,
+        },
         state,
     )
 
@@ -1615,7 +1846,12 @@ def test_worker_rejects_arm_only_trigger_list_before_enqueue():
     state = WorkerState(config, 0)
 
     status, payload = worker_mod._validate_command_body(
-        {"schema_version": 2, "command": "trigger-list", "arguments": {"channel": 1, "source": "bus"}},
+        {
+            "schema_version": 2,
+            "command": "trigger-list",
+            "arguments": {"channel": 1, "source": "bus"},
+            "context": SIMULATE_CONTEXT,
+        },
         state,
     )
 
@@ -1641,7 +1877,12 @@ def test_worker_rejects_invalid_trigger_control_before_enqueue(command, argument
     state = WorkerState(config, 0)
 
     status, payload = worker_mod._validate_command_body(
-        {"schema_version": 2, "command": command, "arguments": {"channel": 1, **arguments}},
+        {
+            "schema_version": 2,
+            "command": command,
+            "arguments": {"channel": 1, **arguments},
+            "context": SIMULATE_CONTEXT,
+        },
         state,
     )
 
@@ -1656,7 +1897,12 @@ def test_worker_rejects_trigger_fire_wait_without_abort_target_before_enqueue():
     state = WorkerState(config, 0)
 
     status, payload = worker_mod._validate_command_body(
-        {"schema_version": 2, "command": "trigger-fire", "arguments": {"wait_complete": True}},
+        {
+            "schema_version": 2,
+            "command": "trigger-fire",
+            "arguments": {"wait_complete": True},
+            "context": SIMULATE_CONTEXT,
+        },
         state,
     )
 
@@ -1674,6 +1920,7 @@ def test_worker_rejects_trigger_list_pulse_without_output_pins_before_enqueue():
         {
             "schema_version": 2,
             "command": "trigger-list",
+            "context": SIMULATE_CONTEXT,
             "arguments": {
                 "channel": 1, "source": "immediate", "wait_complete": True,
                 "voltage_list": [0, 1], "current_list": [0.05, 0.05], "dwell_list": [0.01, 0.01],
@@ -1702,6 +1949,7 @@ def test_worker_ramp_list_rejects_invalid_document_before_enqueue():
         {
             "schema_version": 2,
             "command": "ramp-list",
+            "context": SIMULATE_CONTEXT,
             "arguments": {
                 "document": {
                     "kind": "powers-tool-ramp-list",
@@ -1726,6 +1974,7 @@ def test_worker_ramp_list_v1_is_rejected_before_artifact_creation(running_worker
             {
                 "schema_version": 2,
                 "command": "ramp-list",
+                "context": SIMULATE_CONTEXT,
                 "arguments": {
                     "document": {
                         "kind": "powers-tool-ramp-list",
@@ -1768,6 +2017,7 @@ def test_worker_ramp_list_rejects_invalid_version_type_before_enqueue(version):
         {
             "schema_version": 2,
             "command": "ramp-list",
+            "context": SIMULATE_CONTEXT,
             "arguments": {
                 "document": {
                     "kind": "powers-tool-ramp-list",
@@ -1802,6 +2052,7 @@ def test_worker_live_ramp_list_requires_output_confirmation():
         {
             "schema_version": 2,
             "command": "ramp-list",
+            "context": LIVE_CONTEXT,
             "arguments": {
                 "document": {
                     "kind": "powers-tool-ramp-list",
@@ -1837,6 +2088,7 @@ def test_worker_simulate_ramp_list_document(running_worker):
             {
                 "schema_version": 2,
                 "command": "ramp-list",
+                "context": SIMULATE_CONTEXT,
                 "arguments": {
                     "document": {
                         "kind": "powers-tool-ramp-list",

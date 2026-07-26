@@ -18,12 +18,30 @@ def run_send_command(args: argparse.Namespace) -> int:
         return _lifecycle_error(args, 2, "argument_error", f"--arguments-json must be a JSON object: {exc}")
     if not isinstance(arguments, dict):
         return _lifecycle_error(args, 2, "argument_error", "--arguments-json must be a JSON object")
-    from powers_tool_cli.worker import WORKER_SCHEMA_VERSION
+    from powers_tool_cli.worker import (
+        WORKER_SCHEMA_VERSION,
+        validate_worker_argument_context_fields,
+        validate_worker_context,
+    )
+
+    try:
+        validate_worker_argument_context_fields(arguments)
+    except ValueError as exc:
+        return _lifecycle_error(args, 2, "argument_error", str(exc))
+    try:
+        context = json.loads(args.context_json)
+    except json.JSONDecodeError as exc:
+        return _lifecycle_error(args, 2, "argument_error", f"--context-json must be a JSON object: {exc}")
+    try:
+        context = validate_worker_context(context)
+    except ValueError as exc:
+        return _lifecycle_error(args, 2, "argument_error", f"--context-json {exc}")
 
     payload: dict[str, Any] = {
         "schema_version": WORKER_SCHEMA_VERSION,
         "command": args.worker_command,
         "arguments": arguments,
+        "context": context,
     }
     if args.job_id is not None:
         payload["job_id"] = args.job_id

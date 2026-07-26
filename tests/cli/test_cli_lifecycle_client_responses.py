@@ -10,6 +10,11 @@ import pytest
 import powers_tool_cli.cli as cli
 import powers_tool_cli.lifecycle_client as lifecycle_client
 
+CONTEXT_ARGS = [
+    "--context-json",
+    '{"mode":"dry_run","planning_profile_id":"generic-scpi"}',
+]
+
 
 class _FakeResponse:
     def __init__(self, status: int, body: bytes) -> None:
@@ -84,7 +89,14 @@ def test_send_command_accepts_only_documented_response(monkeypatch: pytest.Monke
 
     exit_code, payload, stderr = _run_json(
         capsys,
-        ["send-command", "--url", "http://127.0.0.1:9000/command", "--command", "read-status"],
+        [
+            "send-command",
+            "--url",
+            "http://127.0.0.1:9000/command",
+            "--command",
+            "read-status",
+            *CONTEXT_ARGS,
+        ],
     )
 
     assert exit_code == 0
@@ -118,7 +130,14 @@ def test_send_command_rejects_invalid_success_response(
 
     exit_code, payload, stderr = _run_json(
         capsys,
-        ["send-command", "--url", "http://127.0.0.1:9000/command", "--command", "read-status"],
+        [
+            "send-command",
+            "--url",
+            "http://127.0.0.1:9000/command",
+            "--command",
+            "read-status",
+            *CONTEXT_ARGS,
+        ],
     )
 
     assert exit_code == 3
@@ -196,6 +215,7 @@ def test_send_command_rejects_mismatched_job_identity(monkeypatch: pytest.Monkey
             "--url", "http://127.0.0.1:9000/command",
             "--command", "read-status",
             "--job-id", "client-job-1",
+            *CONTEXT_ARGS,
         ],
     )
 
@@ -350,7 +370,14 @@ def test_send_command_preserves_http_error_exit_mapping(
 
     exit_code, payload, stderr = _run_json(
         capsys,
-        ["send-command", "--url", "http://127.0.0.1:9000/command", "--command", "read-status"],
+        [
+            "send-command",
+            "--url",
+            "http://127.0.0.1:9000/command",
+            "--command",
+            "read-status",
+            *CONTEXT_ARGS,
+        ],
     )
 
     assert exit_code == expected_exit
@@ -365,7 +392,14 @@ def test_send_command_preserves_connection_error_mapping(monkeypatch: pytest.Mon
 
     exit_code, payload, stderr = _run_json(
         capsys,
-        ["send-command", "--url", "http://127.0.0.1:9000/command", "--command", "read-status"],
+        [
+            "send-command",
+            "--url",
+            "http://127.0.0.1:9000/command",
+            "--command",
+            "read-status",
+            *CONTEXT_ARGS,
+        ],
     )
 
     assert exit_code == 3

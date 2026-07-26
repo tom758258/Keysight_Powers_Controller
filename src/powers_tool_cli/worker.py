@@ -69,13 +69,24 @@ TRIGGER_COMMANDS = {
 ALLOWED_COMMANDS = READ_ONLY_COMMANDS | OUTPUT_COMMANDS | PROTECTION_COMMANDS | TRIGGER_COMMANDS
 OUTPUT_AFFECTING_COMMANDS = OUTPUT_COMMANDS | {"protection-set", "clear-protection", "restore-from-snapshot", "sequence"}
 WORKER_SCHEMA_VERSION = 2
-REQUEST_KEYS = {"schema_version", "command", "arguments", "job_id"}
-RUNTIME_ARGUMENT_KEYS = {
-    "dry_run",
-    "confirm_output",
+REQUEST_KEYS = {"schema_version", "command", "arguments", "job_id", "context"}
+CONTEXT_KEYS = {
+    "mode",
     "planning_model_id",
     "expected_model_id",
     "planning_profile_id",
+}
+RUNTIME_ARGUMENT_KEYS = {"confirm_output"}
+FORBIDDEN_CONTEXT_ARGUMENTS = {
+    "dry_run",
+    "simulate",
+    "live",
+    "planning_model_id",
+    "expected_model_id",
+    "planning_profile_id",
+    "model",
+    "model_profile",
+    "profile",
 }
 _LEGACY_IDENTITY_ARGUMENTS = {"model_profile", "model"}
 _IDENTITY_SETTING_FIELDS = {
@@ -159,6 +170,68 @@ def _command_response(status: str, command: Any, job_id: Any, **extra: Any) -> d
     return payload
 
 
+def validate_worker_context(
+    context: Any,
+    *,
+    startup_mode: str | None = None,
+) -> dict[str, Any]:
+    if not isinstance(context, dict):
+        raise ValueError("context must be a JSON object")
+    unknown = sorted(set(context) - CONTEXT_KEYS)
+    if unknown:
+        raise ValueError(f"unknown context field(s): {', '.join(unknown)}")
+
+    mode = context.get("mode")
+    if mode not in {"live", "simulate", "dry_run"}:
+        raise ValueError("context.mode must be 'live', 'simulate', or 'dry_run'")
+    for field in ("planning_model_id", "expected_model_id", "planning_profile_id"):
+        if field in context and (
+            not isinstance(context[field], str) or not context[field].strip()
+        ):
+            raise ValueError(f"context.{field} must be a non-empty string")
+
+    planning_model_id = context.get("planning_model_id")
+    expected_model_id = context.get("expected_model_id")
+    planning_profile_id = context.get("planning_profile_id")
+    if mode == "live":
+        if planning_model_id is not None or planning_profile_id is not None:
+            raise ValueError("live context forbids planning_model_id and planning_profile_id")
+    elif mode == "simulate":
+        if planning_model_id is None:
+            raise ValueError("simulate context requires planning_model_id")
+        if expected_model_id is not None or planning_profile_id is not None:
+            raise ValueError("simulate context forbids expected_model_id and planning_profile_id")
+    else:
+        if expected_model_id is not None:
+            raise ValueError("dry_run context forbids expected_model_id")
+        if (planning_model_id is None) == (planning_profile_id is None):
+            raise ValueError(
+                "dry_run context requires exactly one of planning_model_id or planning_profile_id"
+            )
+        if planning_profile_id is not None and planning_profile_id != "generic-scpi":
+            raise ValueError("context.planning_profile_id must be 'generic-scpi'")
+
+    if startup_mode is not None:
+        compatible_modes = {
+            "live": {"live", "dry_run"},
+            "simulate": {"simulate", "dry_run"},
+        }
+        if mode not in compatible_modes.get(startup_mode, set()):
+            raise ValueError(
+                f"{startup_mode} Worker does not accept context.mode {mode!r}"
+            )
+    return deepcopy(context)
+
+
+def validate_worker_argument_context_fields(arguments: dict[str, Any]) -> None:
+    invalid = sorted(FORBIDDEN_CONTEXT_ARGUMENTS & set(arguments))
+    if invalid:
+        raise ValueError(
+            "mode/model context fields are not accepted in arguments: "
+            f"{', '.join(invalid)}"
+        )
+
+
 def _validate_command_body(body: Any, state: "WorkerState") -> tuple[int, dict[str, Any]]:
     if not isinstance(body, dict):
         return 400, _command_response(
@@ -210,6 +283,15 @@ def _validate_command_body(body: Any, state: "WorkerState") -> tuple[int, dict[s
             job_id if isinstance(job_id, str) else None,
             error={"code": "invalid_arguments", "message": "arguments must be a JSON object"},
         )
+    try:
+        validate_worker_argument_context_fields(arguments)
+    except ValueError as exc:
+        return 400, _command_response(
+            "error",
+            command,
+            job_id if isinstance(job_id, str) else None,
+            error={"code": "argument_error", "message": str(exc)},
+        )
     attempted_runtime_modes = sorted(_FORBIDDEN_VALIDATION_MODE_ARGUMENTS & set(arguments))
     if attempted_runtime_modes:
         return 400, _command_response(
@@ -222,18 +304,6 @@ def _validate_command_body(body: Any, state: "WorkerState") -> tuple[int, dict[s
                 f"{', '.join(attempted_runtime_modes)}",
             },
         )
-    legacy_identity_fields = sorted(_LEGACY_IDENTITY_ARGUMENTS & set(arguments))
-    if legacy_identity_fields:
-        return 400, _command_response(
-            "error",
-            command,
-            job_id if isinstance(job_id, str) else None,
-            error={
-                "code": "argument_error",
-                "message": "legacy identity fields are not accepted: "
-                f"{', '.join(legacy_identity_fields)}",
-            },
-        )
     if job_id is not None and not isinstance(job_id, str):
         return 400, _command_response(
             "error",
@@ -241,39 +311,31 @@ def _validate_command_body(body: Any, state: "WorkerState") -> tuple[int, dict[s
             None,
             error={"code": "invalid_job_id", "message": "job_id must be a string when provided"},
         )
-    if "dry_run" in arguments and not isinstance(arguments["dry_run"], bool):
-        return 400, _command_response("error", command, job_id, error={"code": "argument_error", "message": "arguments.dry_run must be boolean"})
     if "confirm_output" in arguments and not isinstance(arguments["confirm_output"], bool):
         return 400, _command_response("error", command, job_id, error={"code": "argument_error", "message": "arguments.confirm_output must be boolean"})
-    for identity_field in (
-        "planning_model_id",
-        "expected_model_id",
-        "planning_profile_id",
-    ):
-        if identity_field in arguments and (
-            not isinstance(arguments[identity_field], str)
-            or not arguments[identity_field].strip()
-        ):
-            return 400, _command_response(
-                "error",
-                command,
-                job_id,
-                error={
-                    "code": "argument_error",
-                    "message": f"arguments.{identity_field} must be a non-empty string",
-                },
-            )
+    try:
+        context = validate_worker_context(
+            body.get("context"),
+            startup_mode=state.config["mode"],
+        )
+    except ValueError as exc:
+        return 400, _command_response(
+            "error",
+            command,
+            job_id,
+            error={"code": "argument_error", "message": str(exc)},
+        )
     settings = state.config.get("settings", {})
     try:
         validation_runtime = RuntimeOptions(
             resource=settings.get("resource"),
             resource_alias=settings.get("resource_alias"),
             safety_config=settings.get("safety_config"),
-            simulate=state.config["mode"] == "simulate",
-            dry_run=arguments.get("dry_run", False),
-            planning_model_id=arguments.get("planning_model_id"),
-            expected_model_id=arguments.get("expected_model_id"),
-            planning_profile_id=arguments.get("planning_profile_id"),
+            simulate=context["mode"] == "simulate",
+            dry_run=context["mode"] == "dry_run",
+            planning_model_id=context.get("planning_model_id"),
+            expected_model_id=context.get("expected_model_id"),
+            planning_profile_id=context.get("planning_profile_id"),
             backend=settings.get("backend"),
             timeout_ms=settings.get("timeout_ms", 5000),
             confirm=arguments.get("confirm_output", False),
@@ -308,9 +370,8 @@ def _validate_command_body(body: Any, state: "WorkerState") -> tuple[int, dict[s
         key: value for key, value in arguments.items() if key in RUNTIME_ARGUMENT_KEYS
     }
     normalized_arguments.update(admitted_request.parameters)
-    dry_run = normalized_arguments.get("dry_run", False)
     confirm_output = normalized_arguments.get("confirm_output", False)
-    if command in OUTPUT_AFFECTING_COMMANDS and state.config["mode"] == "live" and not dry_run:
+    if command in OUTPUT_AFFECTING_COMMANDS and context["mode"] == "live":
         if not state.config.get("settings", {}).get("allow_output_writes", False):
             return 409, _command_response("rejected", command, job_id, reason="output_changes_not_allowed", error={"code": "output_changes_not_allowed", "message": "live output-affecting commands require settings.allow_output_writes=true"})
         if not confirm_output:
@@ -318,6 +379,7 @@ def _validate_command_body(body: Any, state: "WorkerState") -> tuple[int, dict[s
     return 202, {
         "command": command,
         "arguments": normalized_arguments,
+        "context": context,
         "_admitted_request": admitted_request,
         **({"job_id": job_id} if job_id is not None else {}),
     }
@@ -508,6 +570,7 @@ class WorkerHTTPHandler(BaseHTTPRequestHandler):
             body_data = validation[1]
             cmd = body_data["command"]
             arguments = body_data["arguments"]
+            context = body_data["context"]
             admitted_request = body_data.pop("_admitted_request")
             client_job_id = body_data.get("job_id")
 
@@ -532,6 +595,7 @@ class WorkerHTTPHandler(BaseHTTPRequestHandler):
                         "schema_version": WORKER_SCHEMA_VERSION,
                         "command": cmd,
                         "arguments": arguments,
+                        "context": context,
                     }
                     (job_dir / "request.json").write_text(json.dumps(artifact_request, indent=2, sort_keys=True), encoding="utf-8")
                 except Exception as exc:
@@ -566,6 +630,7 @@ class WorkerHTTPHandler(BaseHTTPRequestHandler):
                     "worker_job_id": worker_job_id,
                     "command": cmd,
                     "arguments": arguments,
+                    "context": context,
                     "request": deepcopy(admitted_request),
                     "dir": job_dir,
                 }
@@ -714,6 +779,10 @@ def _run_job_impl(state: WorkerState, job: dict[str, Any]) -> None:
     client_job_id = job.get("job_id")
     worker_job_id = job.get("worker_job_id", client_job_id)
     arguments = job.get("arguments", {})
+    context = validate_worker_context(
+        job.get("context"),
+        startup_mode=config["mode"],
+    )
     job_dir: Path = job["dir"]
 
     with state.lock:
@@ -733,11 +802,11 @@ def _run_job_impl(state: WorkerState, job: dict[str, Any]) -> None:
             resource=settings.get("resource"),
             resource_alias=settings.get("resource_alias"),
             safety_config=settings.get("safety_config"),
-            simulate=(config["mode"] == "simulate"),
-            dry_run=arguments.get("dry_run", False),
-            planning_model_id=arguments.get("planning_model_id"),
-            expected_model_id=arguments.get("expected_model_id"),
-            planning_profile_id=arguments.get("planning_profile_id"),
+            simulate=context["mode"] == "simulate",
+            dry_run=context["mode"] == "dry_run",
+            planning_model_id=context.get("planning_model_id"),
+            expected_model_id=context.get("expected_model_id"),
+            planning_profile_id=context.get("planning_profile_id"),
             backend=settings.get("backend"),
             timeout_ms=settings.get("timeout_ms", 5000),
             confirm=arguments.get("confirm_output", False),
@@ -790,7 +859,7 @@ def _run_job_impl(state: WorkerState, job: dict[str, Any]) -> None:
                     for step in plan.get("steps", [])
                 )
 
-                if has_writes and config["mode"] == "live" and not runtime.dry_run:
+                if has_writes and context["mode"] == "live":
                     allow_writes = settings.get("allow_output_writes", False)
                     if not allow_writes or not confirm_req:
                         raise ConfirmationRequiredError(

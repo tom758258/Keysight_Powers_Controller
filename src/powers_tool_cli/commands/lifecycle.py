@@ -37,6 +37,7 @@ def register_commands(
     parser_helpers._add_lifecycle_url_argument(send_parser, default_path="/command")
     send_parser.add_argument("--command", dest="worker_command", required=True, help="Power Worker command name.")
     send_parser.add_argument("--arguments-json", default="{}", help="JSON object for command arguments.")
+    send_parser.add_argument("--context-json", required=True, help="JSON object for Worker execution context.")
     send_parser.add_argument("--job-id", help="Optional orchestrator job ID.")
     send_parser.add_argument("--dry-run", action="store_true", help="Validate and print request without HTTP.")
     parser_helpers._add_lifecycle_timeout_argument(send_parser)
