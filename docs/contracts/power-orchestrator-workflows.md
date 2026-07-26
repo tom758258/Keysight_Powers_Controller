@@ -1,5 +1,7 @@
 # Power Orchestrator Workflows
 
+Schema version: `2`
+
 This document extends `common-orchestrator-workflows.md` with Power-specific examples and safety policy.
 
 ## Startup
@@ -12,17 +14,25 @@ Use `GET /status` only for Worker lifecycle state. Use `POST /command` with `com
 
 ```json
 {
+  "schema_version": 2,
   "command": "read-status",
-  "arguments": { "channel": "all", "dry_run": true }
+  "arguments": { "channel": "all" },
+  "context": {
+    "mode": "dry_run",
+    "planning_model_id": "keysight-e36312a"
+  }
 }
 ```
 
 ## Live Output Writes
 
-For live non-dry-run output-affecting commands, configure the Worker with `settings.allow_output_writes: true` and send `arguments.confirm_output: true`.
+For live output-affecting commands, configure the Worker with
+`settings.allow_output_writes: true` and send `arguments.confirm_output: true`.
+The optional expected model remains a live mismatch guard.
 
 ```json
 {
+  "schema_version": 2,
   "command": "apply",
   "arguments": {
     "channel": 1,
@@ -30,11 +40,15 @@ For live non-dry-run output-affecting commands, configure the Worker with `setti
     "current": 0.1,
     "confirm_output": true
   },
-  "job_id": "orchestrator-apply-1"
+  "job_id": "orchestrator-apply-1",
+  "context": {
+    "mode": "live",
+    "expected_model_id": "keysight-e36312a"
+  }
 }
 ```
 
-If either gate is missing, the Worker returns `409` and does not enqueue work or open VISA.
+If either output-write gate is missing, the Worker returns `409` and does not enqueue work or open VISA.
 
 ## Artifacts
 
@@ -138,6 +152,11 @@ try:
         port,
         "--command",
         "read-status",
+        "--context-json",
+        json.dumps({
+            "mode": "simulate",
+            "planning_model_id": "keysight-e36312a",
+        }),
         "--job-id",
         "client-job-1",
         "--json",

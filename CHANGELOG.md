@@ -2,7 +2,18 @@
 
 ## Unreleased
 
-- Simplified internal live validation to use the Product CLI and Core-owned candidate inventory directly; removed the former companion toolchain and artifact-security machinery. Product support remains fail-closed and validation evidence remains non-promoting.
+- Simplified internal live validation to use the Product CLI and Core-owned
+  candidate inventory directly; removed the former companion toolchain and artifact-security machinery. Product support remains fail-closed and validation evidence remains non-promoting.
+- Updates the provisional Common Worker, CLI JSON/JSONL, and orchestrator
+  contracts to schema version 2 only for the shared `POST /command` mode/model
+  context. Common fields are `mode`, live-only `expected_model_id`, and physical
+  `planning_model_id`; project-specific contracts may define an additional
+  planning identity without changing Common field meanings.
+- Moves Powers Worker execution mode and model identity from command arguments
+  to top-level `context`. Powers retains the dry-run-only, project-specific
+  `planning_profile_id: "generic-scpi"`; queue, status, stop, cancellation,
+  cleanup, artifacts, Product support, and hardware-evidence behavior remain
+  unchanged.
 
 ## 2.0.0
 

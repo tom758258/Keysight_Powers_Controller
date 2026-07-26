@@ -1,5 +1,7 @@
 # Power Worker Contract
 
+Schema version: `2`
+
 This contract extends `common-worker-protocol.md` for Powers Tool power-supply operations.
 
 ## Endpoints
@@ -57,26 +59,30 @@ The request body is a strict JSON object:
 {
   "schema_version": 2,
   "command": "read-status",
-  "arguments": { "channel": "all", "dry_run": true },
-  "job_id": "optional-orchestrator-id"
+  "arguments": { "channel": "all" },
+  "job_id": "optional-orchestrator-id",
+  "context": {
+    "mode": "dry_run",
+    "planning_model_id": "keysight-e36312a"
+  }
 }
 ```
 
-Allowed top-level fields are `schema_version`, `command`, `arguments`, and
-`job_id`. `schema_version` is required and must be the exact integer `2`;
+Allowed top-level fields are `schema_version`, `command`, `arguments`, `job_id`,
+and `context`. `schema_version` is required and must be the exact integer `2`;
 booleans, strings, floats, missing versions, and unsupported integers are
-rejected. Unknown fields, malformed JSON, a non-object body, a
-missing/non-string command, non-object `arguments`, non-string `job_id`,
-unknown command names, and invalid Power arguments return `400` before any
-VISA I/O, queue mutation, or artifact creation.
+rejected. `context` is required. Unknown fields, malformed JSON, a non-object
+body, a missing/non-string command, non-object `arguments`, non-string `job_id`,
+unknown command names, invalid context, and invalid Power arguments return `400`
+before any VISA I/O, queue mutation, or artifact creation.
 
 Command parameters are admitted only by the Core command-parameter contract.
 The Worker does not maintain a second command allowlist, alias policy, or type
-coercion rule. The admitted canonical parameters, rather than the raw JSON
-arguments, are retained for queued execution. JSON booleans and integers must
-be exact values; explicit `null`, alias conflicts, unknown fields, and fields
-that belong to a different command are rejected before a hardware lock or VISA
-session is acquired.
+coercion rule. The admitted canonical parameters and context, rather than the
+raw JSON request, are retained for queued execution. JSON booleans and integers
+must be exact values; explicit `null`, alias conflicts, unknown fields, and
+fields that belong to a different command are rejected before a hardware lock
+or VISA session is acquired.
 
 Every `/command` response is a JSON object with integer `schema_version: 2`,
 `status`, `command`, and `job_id`. In the HTTP response, `command` is the
@@ -178,26 +184,55 @@ without an accepted real-hardware scope.
 
 Worker always operates in the product support-policy mode. Validation-policy
 request or settings fields are rejected rather than ignored. Runtime identity
-is selected per request with the three explicit V2 fields and is never a
-support unlock.
+is selected per request through `context` and is never a support unlock.
+
+## Execution Context
+
+Powers requires a top-level `context` for every `POST /command` request.
+Accepted fields are:
+
+- `mode`
+- `planning_model_id`
+- `expected_model_id`
+- `planning_profile_id`
+
+`planning_profile_id` is a Powers-specific nonphysical dry-run planning field.
+The only current value is `generic-scpi`.
+
+| Context mode | Required or allowed | Forbidden |
+| --- | --- | --- |
+| `live` | optional `expected_model_id` | `planning_model_id`, `planning_profile_id` |
+| `simulate` | required `planning_model_id` | `expected_model_id`, `planning_profile_id` |
+| `dry_run` | exactly one of `planning_model_id` or `planning_profile_id` | `expected_model_id`; both planning fields together |
+
+Worker startup mode compatibility is unchanged:
+
+- a live Worker accepts `live` and `dry_run` context;
+- a simulate Worker accepts `simulate` and `dry_run` context;
+- all other combinations are rejected before queue or artifact mutation.
+
+`expected_model_id` is only a live mismatch guard. Detected identity remains
+authoritative and selects the driver. `planning_model_id` is a canonical
+physical model used for simulator or dry-run planning. `planning_profile_id`
+is not a physical model and never selects a live driver.
+
+The following fields are rejected inside `arguments`:
+
+- `dry_run`
+- `simulate`
+- `live`
+- `planning_model_id`
+- `expected_model_id`
+- `planning_profile_id`
+- `model`
+- `model_profile`
+- `profile`
 
 ## Arguments
 
 Common `arguments` keys:
 
-- `dry_run`: optional boolean, default `false`. When true, no VISA I/O is performed.
-- `confirm_output`: optional boolean, default `false`. Required with Worker config `settings.allow_output_writes: true` for live non-dry-run output-affecting commands.
-- `planning_model_id`: canonical physical model for dry-run planning or Worker
-  simulator mode.
-- `expected_model_id`: optional live-only safety guard; IDN resolution remains
-  authoritative and selects the driver.
-- `planning_profile_id`: nonphysical dry-run planning profile, currently only
-  `generic-scpi`.
-
-Worker live dry-run accepts exactly one planning field; live non-dry-run accepts
-only the optional expected field; simulator mode accepts only the physical
-planning field. Worker settings provide no identity default and reject all
-identity fields, including legacy `model_profile` and `model`.
+- `confirm_output`: optional boolean, default `false`. Required with Worker config `settings.allow_output_writes: true` for live output-affecting commands.
 
 Command-specific fields match the CLI/core names, including `channel`,
 `voltage`, `current`, `loop_count`, `max_errors`, `max_reads`, `file`, `document`,
@@ -223,14 +258,13 @@ omitted setpoint is left unchanged on the instrument and must not be replaced
 with zero or readback-derived values. Requests with neither `voltage` nor
 `current` return HTTP 400 before artifact creation or queue mutation.
 
-Worker dry-run/simulate requests that need model-specific planning must pass
-`arguments.planning_model_id`, use dry-run
-`arguments.planning_profile_id`, or use a known deterministic SIM resource in
-Worker settings. Fake or live-looking resource strings do not imply a model.
-If an explicit physical planning ID and SIM resource are present, they must
-match.
-Core-owned command admission validates these requirements and command support
-before HTTP `202`, job-directory creation, `request.json`, or queue mutation.
+Worker dry-run/simulate requests that need model-specific planning use
+`context.planning_model_id`; Powers Generic dry-run uses
+`context.planning_profile_id`. Fake or live-looking resource strings do not
+imply a model. If an explicit physical planning ID and deterministic simulator
+resource are present, they must match. Core-owned command admission validates
+these requirements and command support before HTTP `202`, job-directory
+creation, `request.json`, or queue mutation.
 
 Worker runtime settings may include optional ASRL serial fields under
 `settings.serial_options`: `baud_rate`, `data_bits`, `parity`, `stop_bits`,
@@ -274,10 +308,12 @@ feature gates: EDU36311A trigger/native LIST and snapshot/restore remain
 disabled, and E3646A protection, trigger/native LIST, snapshot/restore,
 completion-pulse, and native LIST remain disabled. Rear pulse pins and output
 channels are separate.
+
 General output/ramp commands reject the removed `completion_pulse_mode`,
 `completion_pulse_dwell_ms`, `wait_timeout_ms`, and `poll_ms` fields before
 artifact creation or queue mutation. Native LIST and trigger wait controls are
 accepted only by the relevant Trigger commands.
+
 Post-action pulses modify and restore trigger/rear-pin settings unless
 explicitly left configured. Their global `*TRG` may trigger other armed BUS
 behavior.
@@ -305,7 +341,7 @@ before artifact creation or queue mutation.
 
 ## Safety
 
-For live non-dry-run output-affecting Worker commands, both conditions are required before enqueueing:
+For live output-affecting Worker commands, both conditions are required before enqueueing:
 
 - Worker config `settings.allow_output_writes: true`.
 - Request `arguments.confirm_output: true`.
@@ -316,14 +352,15 @@ Rejected commands do not open VISA, enqueue work, write artifacts, or issue part
 
 Accepted jobs create:
 
-- `request.json`: integer `schema_version: 2`, `command`, and `arguments`.
-- `result.json`: final-only CLI-style result envelope with
-  integer `schema_version: 2`, `run_id`, `worker_job_id`, `ok`, terminal `status`,
+- `request.json`: integer `schema_version: 2`, `command`, `arguments`, and
+  admitted `context`.
+- `result.json`: final-only CLI-style result envelope with integer
+  `schema_version: 2`, `run_id`, `worker_job_id`, `ok`, terminal `status`,
   `command`, `execution`, `request`, `data`, `warnings`, `error`, and
   `metadata`.
 
 `artifact_path` is the job artifact directory, not the `result.json` path.
-The final `result.json.command` field uses the existing CLI result command
+The final `result.json.command` field keeps the existing CLI result command
 object shape, for example `{"name": "read-status"}`. This differs from the
 HTTP `/command` response, where `command` is the submitted command string.
 `result.json` is written atomically only for terminal states. Pending/running

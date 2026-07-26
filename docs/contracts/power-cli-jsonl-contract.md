@@ -1,5 +1,7 @@
 # Power CLI JSONL Contract
 
+Schema version: `2`
+
 This contract extends `common-cli-jsonl-contract.md` with Power command names and payload shapes.
 
 Numeric command fields follow the shared
@@ -107,7 +109,11 @@ only after runner completion, stop cleanup, and HTTP server shutdown.
 
 ## Lifecycle Clients
 
-`send-command --command` is required. `--arguments-json` defaults to `{}`. `--job-id` is omitted by default. `--timeout-ms` defaults to `3000` and accepts `100..600000`. `--json` aliases `--format json`; conflicting format options exit `2`.
+`send-command --command` is required. `--arguments-json` defaults to `{}`.
+`--context-json` is required and supplies the top-level Worker `context`.
+Mode/model fields are rejected inside `--arguments-json`. `--job-id` is omitted
+by default. `--timeout-ms` defaults to `3000` and accepts `100..600000`.
+`--json` aliases `--format json`; conflicting format options exit `2`.
 
 Exit mapping:
 
@@ -155,31 +161,33 @@ Power command success envelopes follow the common CLI contract. Command names us
 
 Runtime identity fields:
 
-- CLI `--model` maps to `planning_model_id` in dry-run/simulator mode and to
-  `expected_model_id` in live mode. Values are canonical vendor-qualified
-  physical IDs such as `keysight-e36312a`.
-- CLI `--profile generic-scpi` maps to `planning_profile_id` and is dry-run
-  only. It is exposed only where Generic planning is already supported.
-- WebUI and Worker raw payloads use `planning_model_id`, `expected_model_id`,
-  and `planning_profile_id`. No legacy runtime identity aliases are accepted.
+- CLI `--model` maps to `context.planning_model_id` in dry-run/simulator mode
+  and to `context.expected_model_id` in live mode. Values are canonical
+  vendor-qualified physical IDs such as `keysight-e36312a`.
+- CLI `--profile generic-scpi` maps to the Powers-specific
+  `context.planning_profile_id` and is dry-run only. It is exposed only where
+  Generic planning is already supported.
+- Worker and WebUI command requests place mode and identity under top-level
+  `context`. No legacy runtime identity aliases are accepted in `arguments`.
+- Existing one-shot and result payload identity fields remain project-specific;
+  this context migration does not otherwise redesign output envelopes.
 - Physical planning identity is used for dry-run/simulator planning, channel
-  validation, and `channel: "all"` expansion. Fake or live-looking resources such as
-  `USB0::FAKE::E36312A::INSTR` do not imply a model. Deterministic SIM
-  resources such as `USB0::SIM::E36312A::INSTR` may infer the matching model
+  validation, and `channel: "all"` expansion. Fake or live-looking resources
+  do not imply a model. Deterministic SIM resources may infer the matching model
   because they map to known simulator IDN/model data.
 - Live hardware uses the manufacturer-plus-model resolved identity. `--model`
-  becomes an expected-model guard in live mode: after `*IDN?`, Core requires
-  canonical model IDs to match before setup/write SCPI. The guard never overrides
-  the IDN-detected driver.
+  becomes an expected-model guard in live mode. The guard never overrides the
+  IDN-detected driver.
 
 Selected data mappings:
 
 - Dry-run and simulator plan payloads for output-family commands, `ramp-list`,
   `sequence`, `protection-set`, `clear-protection`, and trigger workflows
-  identify `planning_model_id` and `planning_profile_id` separately. Physical
-  planning identity is used for channel validation and `channel: "all"`
-  expansion. Trigger no-hardware plans accept only `keysight-e36312a`; unsupported
-  models do not expose trigger dry-run or simulator behavior.
+  identify `planning_model_id` and the Powers-specific `planning_profile_id`
+  separately. Physical planning identity is used for channel validation and
+  `channel: "all"` expansion. Trigger no-hardware plans accept only
+  `keysight-e36312a`; unsupported models do not expose trigger dry-run or
+  simulator behavior.
 - `read-status`: `resource`, `errors`, `read_count`, and `outputs`.
 - `readback`: `resource`, `idn_raw`, and `channels[].setpoints`.
 - `measure`: selected channel measurements.
