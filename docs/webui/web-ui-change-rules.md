@@ -303,21 +303,13 @@ Run the narrowest relevant checks first:
 If WebUI JavaScript changed, also run:
 
 ```powershell
-node --check src\powers_tool_webui\static\execution-context.js
-node --check src\powers_tool_webui\static\electrical.js
-node --check src\powers_tool_webui\static\command-form.js
-node --check src\powers_tool_webui\static\results.js
-node --check src\powers_tool_webui\static\jobs.js
-node --check src\powers_tool_webui\static\live-data.js
-node --check src\powers_tool_webui\static\json-files.js
-node --check src\powers_tool_webui\static\ramp-list.js
-node --check src\powers_tool_webui\static\trigger-list.js
-node --check src\powers_tool_webui\static\sequence.js
-node --check src\powers_tool_webui\static\snapshot-restore.js
-node --check src\powers_tool_webui\static\basic-controls.js
-node --check src\powers_tool_webui\static\command-support.js
-node --check src\powers_tool_webui\static\workflows.js
-node --check src\powers_tool_webui\static\app.js
+git ls-files 'src/powers_tool_webui/static/*.js' |
+    ForEach-Object {
+        node --check $_
+        if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+        }
+    }
 ```
 
 `execution-context.js` owns only pure execution/workspace context and workspace-result

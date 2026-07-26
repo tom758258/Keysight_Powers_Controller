@@ -29,7 +29,11 @@ jobs:
           node-version: "22"
 
       - name: Check WebUI JavaScript syntax
-        run: node --check src/powers_tool_webui/static/app.js
+        shell: bash
+        run: |
+          while IFS= read -r -d '' file; do
+            node --check "$file"
+          done < <(git ls-files -z 'src/powers_tool_webui/static/*.js')
 
       - name: Check tracked text hygiene
         run: python scripts/check_text_hygiene.py
