@@ -108,7 +108,7 @@ def test_ramp_list_v4_requires_loop_count() -> None:
         run_ramp_list(request(doc, dry_run=True))
 
 
-@pytest.mark.parametrize("loop_count", [0, -1, 256, True, 1.0, "2", None])
+@pytest.mark.parametrize("loop_count", [0, -1, 10_001, True, 1.0, "2", None])
 def test_ramp_list_v4_loop_count_is_strict(loop_count: object) -> None:
     doc = {
         "kind": RAMP_LIST_KIND,
@@ -117,8 +117,25 @@ def test_ramp_list_v4_loop_count_is_strict(loop_count: object) -> None:
         "loop_count": loop_count,
         "segments": [segment()],
     }
-    with pytest.raises(CoreValidationError, match="integer from 1 to 255"):
+    with pytest.raises(CoreValidationError, match="integer from 1 to 10,000"):
         run_ramp_list(request(doc, dry_run=True))
+
+
+def test_ramp_list_execution_units_sum_segment_voltage_steps() -> None:
+    doc = {
+        "kind": RAMP_LIST_KIND,
+        "version": 4,
+        "enable_output": False,
+        "loop_count": 2,
+        "segments": [
+            segment(start_voltage=0, stop_voltage=1, step_voltage=0.5),
+            segment(start_voltage=0, stop_voltage=1, step_voltage=1),
+        ],
+    }
+
+    data = run_ramp_list(request(doc, dry_run=True))
+
+    assert data["plan"]["execution_units"] == 10
 
 
 @pytest.mark.parametrize(("version", "enable_output"), [(2, False), (3, True)])

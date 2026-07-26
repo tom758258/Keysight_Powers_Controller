@@ -577,7 +577,7 @@ channel only on its first segment. Normal completion leaves those outputs ON;
 omitting the option preserves the prior output state.
 
 `ramp`, `ramp-list`, and `sequence` accept `--loop-count N`, where N is the
-total execution count and a strict integer from 1 through 255. An explicit
+total execution count and a strict integer from 1 through 10,000. An explicit
 CLI value overrides a document value; otherwise the document value is used,
 then 1. Ramp List v2/v3 and Sequence v1 imply 1.
 
@@ -587,6 +587,12 @@ Version 4 requires exact `enable_output` and `loop_count` fields and may
 contain a global `completion_pulse` object. Version 1, malformed values,
 unknown fields, and future versions are rejected without fallback. Inline
 segments always build v4 and explicitly store `loop_count`, including 1.
+
+Core limits Ramp, Ramp List, and Sequence to 1,000,000 logical execution
+units. The CLI prints an execution summary before text-mode execution and
+warns above 100,000 units; JSON results use the existing warnings field.
+Long runs may retain only the first 100 and last 100 result details while
+preserving full aggregate counters and truncation metadata.
 `--file` takes `enable_output` only from the document and cannot be combined
 with the CLI flag. Inline usage accepts
 `--completion-pulse-timing`, `--completion-pulse-pins`, and

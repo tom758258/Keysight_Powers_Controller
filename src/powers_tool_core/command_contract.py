@@ -7,6 +7,7 @@ from dataclasses import dataclass, replace
 from typing import Any, Callable, Mapping
 
 from powers_tool_core.core import CoreValidationError, OperationRequest, SequenceRequest, TriggerRequest
+from powers_tool_core.workflow_validation import MAX_LOOP_COUNT
 
 
 _MISSING = object()
@@ -365,8 +366,10 @@ def _normalize_field(name: str, value: Any, field: Field) -> Any:
             raise CoreValidationError(f"{name} must be non-negative")
         if kind == "min50_int" and value < 50:
             raise CoreValidationError(f"{name} must be at least 50")
-        if kind == "range_int" and not 1 <= value <= 255:
-            raise CoreValidationError(f"{name} must be an integer from 1 to 255")
+        if kind == "range_int" and not 1 <= value <= MAX_LOOP_COUNT:
+            raise CoreValidationError(
+                f"{name} must be an integer from 1 to {MAX_LOOP_COUNT:,}"
+            )
         if kind == "range_count" and not 1 <= value <= 256:
             raise CoreValidationError(f"{name} must be an integer from 1 to 256")
         return value

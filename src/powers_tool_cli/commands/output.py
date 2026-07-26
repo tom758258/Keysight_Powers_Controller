@@ -311,7 +311,7 @@ def register_commands(
         "--loop-count",
         type=runtime._loop_count,
         default=1,
-        help="Total ramp iterations (1 to 255).",
+        help="Total ramp iterations (1 to 10,000).",
     )
     ramp_parser.add_argument(
         "--confirm",

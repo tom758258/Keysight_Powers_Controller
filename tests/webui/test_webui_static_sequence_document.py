@@ -33,6 +33,8 @@ const v1 = sequence.normalizeSequenceDocument({ version: 1, steps: [{ wait: { se
 strictAssert.deepEqual(v1, { version: 2, loopCount: 1, steps: [{ action: "wait", seconds: 0 }] });
 const v2 = sequence.normalizeSequenceDocument({ version: 2, loop_count: 2, steps: [{ action: "trigger-pulse", pins: "1,2" }] }, dependencies);
 strictAssert.deepEqual(v2.steps[0], { action: "trigger-pulse", pins: [1, 2] });
+strictAssert.equal(sequence.normalizeSequenceDocument({ version: 2, loop_count: 10000, steps: [{ action: "wait", seconds: 0 }] }, dependencies).loopCount, 10000);
+strictAssert.throws(() => sequence.normalizeSequenceDocument({ version: 2, loop_count: 10001, steps: [{ action: "wait", seconds: 0 }] }, dependencies), /10,000/);
 strictAssert.throws(() => sequence.normalizeSequenceDocument({ version: 2, steps: [{ action: "wait", seconds: 0 }] }, dependencies), /loop_count/);
 strictAssert.throws(() => sequence.normalizeSequenceDocument({ version: 1, loop_count: 2, steps: [{ action: "wait", seconds: 0 }] }, dependencies), /unsupported fields/);
 const state = { sequenceSteps: [{ action: "wait", seconds: 0 }] };

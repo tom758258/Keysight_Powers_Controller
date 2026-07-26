@@ -55,7 +55,7 @@ def register_commands(
         action="store_true",
         help="Enable each channel after its first validated segment setpoint.",
     )
-    parser.add_argument("--loop-count", type=runtime._loop_count, help="Total Ramp List iterations (1 to 255).")
+    parser.add_argument("--loop-count", type=runtime._loop_count, help="Total Ramp List iterations (1 to 10,000).")
     parser.add_argument(
         "--confirm",
         action="store_true",

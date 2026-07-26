@@ -31,7 +31,14 @@ from powers_tool_core.support_features import (
     supported_sequence_actions_for_model_id,
 )
 from powers_tool_core.trigger import run_post_action_completion_pulse, trigger_pulse_scpi
-from powers_tool_core.workflow_validation import normalize_loop_count
+from powers_tool_core.workflow_validation import (
+    BoundedResultDetails,
+    ExecutionProgress,
+    ProgressReporter,
+    execution_warning,
+    normalize_loop_count,
+    validate_execution_units,
+)
 from powers_tool_core.command_contract import validate_and_normalize_request, validate_sequence_action_parameters
 
 IDN_QUERY = "*IDN?"
@@ -47,6 +54,7 @@ def run_sequence(
     scpi_logger: Callable[[str, str, str], None] | None = None,
     stop_requested: Callable[[], bool] | None = None,
     cleanup_reporter: CleanupReporter | None = None,
+    progress_reporter: ProgressReporter | None = None,
 ) -> dict[str, Any]:
     """Lint, plan, or execute a sequence request."""
 
@@ -62,6 +70,7 @@ def run_sequence(
         scpi_logger=scpi_logger,
         stop_requested=stop_requested,
         cleanup_reporter=cleanup_reporter,
+        progress_reporter=progress_reporter,
     )
 
 
@@ -73,6 +82,7 @@ def _run_sequence_admitted(
     scpi_logger: Callable[[str, str, str], None] | None = None,
     stop_requested: Callable[[], bool] | None = None,
     cleanup_reporter: CleanupReporter | None = None,
+    progress_reporter: ProgressReporter | None = None,
 ) -> dict[str, Any]:
     """Execute one admitted Sequence request without source-file fallback."""
 
@@ -131,6 +141,7 @@ def _run_sequence_admitted(
         scpi_logger=scpi_logger,
         stop_requested=stop_requested,
         cleanup_reporter=cleanup_reporter,
+        progress_reporter=progress_reporter,
     )
 
 
@@ -222,9 +233,19 @@ def sequence_plan(request: SequenceRequest, document: dict[str, Any]) -> dict[st
         step = normalize_sequence_step(index, raw_step)
         validate_sequence_step(request, step)
         steps.append(step)
+    execution_units = validate_execution_units(
+        loop_count,
+        len(steps),
+        workflow="Sequence",
+        reduction_hint="Sequence steps",
+    )
     return {
         "version": 2 if version == 2 or override is not None else 1,
         "loop_count": loop_count,
+        "execution_units": execution_units,
+        "execution_warning": execution_warning(
+            execution_units, reduction_hint="Sequence steps"
+        ),
         "operation": {"name": "sequence"},
         "target": {
             "resource": request.runtime.resource,
@@ -376,8 +397,10 @@ def execute_sequence(
     scpi_logger: Callable[[str, str, str], None] | None = None,
     stop_requested: Callable[[], bool] | None = None,
     cleanup_reporter: CleanupReporter | None = None,
+    progress_reporter: ProgressReporter | None = None,
 ) -> dict[str, Any]:
-    results: list[dict[str, Any]] = []
+    results = BoundedResultDetails[dict[str, Any]]()
+    progress = ExecutionProgress(plan["execution_units"], progress_reporter)
     completed_steps = 0
     completed_step_executions = 0
     failed_step: dict[str, Any] | None = None
@@ -416,6 +439,7 @@ def execute_sequence(
                         results.append(result)
                         completed_steps += 1
                         completed_step_executions += 1
+                        progress.complete_unit()
                     except (CommandCancelled, KeyboardInterrupt):
                         cancel_workflow_with_safe_off(
                             power_supply,
@@ -426,7 +450,9 @@ def execute_sequence(
                                 "completed_loops": completed_loops,
                                 "completed_steps": completed_steps,
                                 "completed_step_executions": completed_step_executions,
-                                "results": results,
+                                "results": results.retained(),
+                                **results.metadata("results"),
+                                "progress": progress.snapshot(),
                                 "failed_step": {
                                     "loop_index": loop_index,
                                     "index": step["index"],
@@ -463,7 +489,9 @@ def execute_sequence(
                             "completed_loops": completed_loops,
                             "completed_steps": completed_steps,
                             "completed_step_executions": completed_step_executions,
-                            "results": results,
+                            "results": results.retained(),
+                            **results.metadata("results"),
+                            "progress": progress.snapshot(),
                             "failed_step": {
                                 "loop_index": plan["loop_count"],
                                 "code": "interrupted",
@@ -487,7 +515,10 @@ def execute_sequence(
         "idn": idn_raw,
         "plan": plan,
         "status": status,
-        "results": results,
+        "results": results.retained(),
+        **results.metadata("results"),
+        "execution_units": plan["execution_units"],
+        "progress": progress.snapshot(),
         "step_count": len(plan["steps"]),
         "completed_steps": completed_steps,
         "loop_count": plan["loop_count"],

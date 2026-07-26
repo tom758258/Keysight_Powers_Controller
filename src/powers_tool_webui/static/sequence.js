@@ -8,7 +8,7 @@ export function normalizeSequenceDocument(doc, dependencies) {
   if (!Array.isArray(doc.steps) || doc.steps.length === 0) throw new Error("Sequence document must contain a non-empty 'steps' array.");
   if (doc.steps.length > maxSteps) throw new Error(`Sequence supports at most ${maxSteps} steps in the WebUI.`);
   const loopCount = doc.version === 2 ? doc.loop_count : 1;
-  if (!Number.isInteger(loopCount) || loopCount < 1 || loopCount > 255) throw new Error("Sequence loop_count must be an integer from 1 to 255.");
+  if (!Number.isInteger(loopCount) || loopCount < 1 || loopCount > 10000) throw new Error("Sequence loop_count must be an integer from 1 to 10,000.");
   return { version: 2, loopCount, steps: doc.steps.map(normalizeStep) };
 }
 

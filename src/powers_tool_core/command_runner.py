@@ -30,7 +30,7 @@ from powers_tool_core.sequence import run_sequence
 from powers_tool_core.snapshot import run_snapshot
 from powers_tool_core.trigger import run_trigger
 from powers_tool_core.stop_cleanup import CleanupReporter, stop_aware_opener
-from powers_tool_core.workflow_validation import validate_general_workflow_parameters
+from powers_tool_core.workflow_validation import ProgressReporter, validate_general_workflow_parameters
 
 
 def validate_request_admission(
@@ -47,6 +47,8 @@ def validate_request_admission(
     validate_request_parameters(request)
     if isinstance(request, OperationRequest):
         validate_general_workflow_parameters(request)
+        if request.command == "ramp":
+            _ramp_execution_summary(request)
     if isinstance(request, TriggerRequest) or request.command.startswith("trigger-"):
         from powers_tool_core.trigger import validate_trigger_request
 
@@ -110,6 +112,62 @@ def validate_request_admission(
     return request
 
 
+def workflow_execution_summary(
+    request: OperationRequest | TriggerRequest | SequenceRequest,
+) -> dict[str, Any] | None:
+    """Return Core-owned logical work metadata for an admitted workflow."""
+
+    request = validate_request_admission(request)
+    if request.command == "ramp":
+        return _ramp_execution_summary(request)
+    if request.command == "ramp-list":
+        from powers_tool_core.ramp_list import ramp_list_plan
+
+        plan = ramp_list_plan(request, request.parameters["document"])
+        return {
+            "execution_units": plan["execution_units"],
+            "execution_warning": plan["execution_warning"],
+        }
+    if request.command == "sequence":
+        from powers_tool_core.sequence import sequence_plan
+
+        plan = sequence_plan(request, request.parameters["document"])
+        return {
+            "execution_units": plan["execution_units"],
+            "execution_warning": plan["execution_warning"],
+        }
+    return None
+
+
+def _ramp_execution_summary(request: OperationRequest) -> dict[str, Any]:
+    from powers_tool_core.operations import ramp_voltages
+    from powers_tool_core.workflow_validation import (
+        execution_warning,
+        normalize_loop_count,
+        validate_execution_units,
+    )
+
+    loop_count = normalize_loop_count(request.parameters.get("loop_count", 1))
+    units = validate_execution_units(
+        loop_count,
+        len(
+            ramp_voltages(
+                request.parameters["start_voltage"],
+                request.parameters["stop_voltage"],
+                request.parameters["step_voltage"],
+            )
+        ),
+        workflow="Ramp",
+        reduction_hint="Ramp steps",
+    )
+    return {
+        "execution_units": units,
+        "execution_warning": execution_warning(
+            units, reduction_hint="Ramp steps"
+        ),
+    }
+
+
 def run_core_command(
     request: OperationRequest | TriggerRequest | SequenceRequest,
     *,
@@ -119,6 +177,7 @@ def run_core_command(
     sleep: Callable[[float], None] | None = None,
     scpi_logger: Callable[[str, str, str], None] | None = None,
     cleanup_reporter: CleanupReporter | None = None,
+    progress_reporter: ProgressReporter | None = None,
 ) -> dict[str, Any]:
     """Admit and execute a parser-neutral request for bundled adapters.
 
@@ -141,6 +200,7 @@ def run_core_command(
             "stop_requested": stop_requested,
             "scpi_logger": scpi_logger,
             "cleanup_reporter": cleanup_reporter,
+            "progress_reporter": progress_reporter,
         }
         if opener is not None:
             kwargs["opener"] = opener
@@ -154,6 +214,7 @@ def run_core_command(
             "stop_requested": stop_requested,
             "scpi_logger": scpi_logger,
             "cleanup_reporter": cleanup_reporter,
+            "progress_reporter": progress_reporter,
         }
         if opener is not None:
             kwargs["opener"] = opener
@@ -209,6 +270,7 @@ def run_core_command(
             "scpi_logger": scpi_logger,
             "stop_requested": stop_requested,
             "cleanup_reporter": cleanup_reporter,
+            "progress_reporter": progress_reporter,
         }
         if opener is not None:
             kwargs["opener"] = opener

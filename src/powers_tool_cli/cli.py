@@ -128,7 +128,11 @@ from powers_tool_cli.request_primitives import (
     write_verification_request_fields_from_argv as _write_verification_request_fields_from_argv,
 )
 from powers_tool_core.connection import DEFAULT_TIMEOUT_MS, SerialOptions, list_resources, normalize_serial_termination, open_resource
-from powers_tool_core.command_runner import run_core_command
+from powers_tool_core.command_runner import (
+    run_core_command,
+    validate_request_admission,
+    workflow_execution_summary,
+)
 from powers_tool_core.command_contract import command_parameter_names
 from powers_tool_core.core import (
     CommandCancelled,
@@ -3094,6 +3098,30 @@ def _emit_workflow_interruption(
     return 3
 
 
+def _workflow_start_summary(
+    args: argparse.Namespace,
+    core_request: OperationRequest | SequenceRequest,
+) -> tuple[
+    OperationRequest | SequenceRequest,
+    dict[str, Any],
+    list[dict[str, str]],
+]:
+    admitted_request = validate_request_admission(core_request)
+    summary = workflow_execution_summary(admitted_request) or {}
+    units = summary.get("execution_units")
+    warning = summary.get("execution_warning")
+    if not args.json and isinstance(units, int):
+        print(f"Execution units: {units:,} (maximum 1,000,000).", file=sys.stderr)
+        if isinstance(warning, str):
+            print(f"Warning: {warning}", file=sys.stderr)
+    warnings = (
+        [{"code": "long_running_workflow", "message": warning}]
+        if isinstance(warning, str)
+        else []
+    )
+    return admitted_request, summary, warnings
+
+
 def _run_sequence(args: argparse.Namespace) -> int:
     request = _request_for_args(args)
     execution = _execution_for_args(args, hardware_intent=True)
@@ -3101,6 +3129,9 @@ def _run_sequence(args: argparse.Namespace) -> int:
         _resolve_optional_resource_alias(args)
         request = _request_for_args(args)
         core_request = _sequence_request_for_args(args)
+        core_request, execution_summary, execution_warnings = _workflow_start_summary(
+            args, core_request
+        )
     except (SafetyConfigError, SafetyValidationError, CoreValidationError, ValueError, OSError) as exc:
         return _emit_cli_error(
             args,
@@ -3183,6 +3214,7 @@ def _run_sequence(args: argparse.Namespace) -> int:
             execution=_execution_for_args(args, hardware_intent=not args.lint),
             request=request,
             data=data,
+            warnings=execution_warnings,
         )
     else:
         if args.lint:
@@ -3198,6 +3230,9 @@ def _run_ramp_list(args: argparse.Namespace) -> int:
         _resolve_optional_resource_alias(args)
         request = _request_for_args(args)
         core_request = _ramp_list_request_for_args(args)
+        core_request, execution_summary, execution_warnings = _workflow_start_summary(
+            args, core_request
+        )
         with _cooperative_workflow_interrupt() as stop_event:
             data = run_core_command(
                 core_request,
@@ -3285,6 +3320,7 @@ def _run_ramp_list(args: argparse.Namespace) -> int:
             execution=_execution_for_args(args, hardware_intent=not args.lint),
             request=request,
             data=data,
+            warnings=execution_warnings,
         )
     else:
         _emit_text_lines(cli_rendering.format_ramp_list_summary(data))
@@ -3933,6 +3969,7 @@ def _run_core_output_real(args: argparse.Namespace) -> int:
     request = _request_for_args(args)
     execution = _execution_for_args(args, hardware_intent=True)
     manager = _resource_manager_for_args(args)
+    execution_warnings: list[dict[str, str]] = []
 
     try:
         safety_limits = _safety_limits_for_args(args)
@@ -3970,9 +4007,13 @@ def _run_core_output_real(args: argparse.Namespace) -> int:
 
     try:
         if args.command == "ramp":
+            core_request = _operation_request_for_args(args)
+            core_request, _summary, execution_warnings = _workflow_start_summary(
+                args, core_request
+            )
             with _cooperative_workflow_interrupt() as stop_event:
                 data = run_core_command(
-                    _operation_request_for_args(args),
+                    core_request,
                     opener=opener,
                     stop_requested=stop_event.is_set,
                     sleep=time.sleep,
@@ -4096,6 +4137,7 @@ def _run_core_output_real(args: argparse.Namespace) -> int:
             execution=execution,
             request=request,
             data=resource_data,
+            warnings=execution_warnings,
         )
         return 0
 
@@ -4137,6 +4179,21 @@ def _run_output_plan(args: argparse.Namespace) -> int:
 
     try:
         plan = _output_plan_for_args(args)
+        execution_warnings: list[dict[str, str]] = []
+        if args.command == "ramp":
+            units = plan.get("execution_units")
+            warning = plan.get("execution_warning")
+            if not args.json and isinstance(units, int):
+                print(
+                    f"Execution units: {units:,} (maximum 1,000,000).",
+                    file=sys.stderr,
+                )
+                if isinstance(warning, str):
+                    print(f"Warning: {warning}", file=sys.stderr)
+            if isinstance(warning, str):
+                execution_warnings.append(
+                    {"code": "long_running_workflow", "message": warning}
+                )
         if getattr(args, "completion_pulse_timing", "segment") != "step":
             _append_completion_pulse_plan(args, plan)
     except CoreValidationError as exc:
@@ -4155,6 +4212,7 @@ def _run_output_plan(args: argparse.Namespace) -> int:
             execution=_execution_for_args(args, hardware_intent=args.command != "safe-off"),
             request=request,
             data={"plan": plan},
+            warnings=execution_warnings,
         )
         return 0
 

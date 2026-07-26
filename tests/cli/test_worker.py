@@ -833,7 +833,7 @@ def test_worker_rejects_removed_ramp_native_fields_before_artifact(running_worke
     assert not jobs_dir.exists() or not list(jobs_dir.iterdir())
 
 
-@pytest.mark.parametrize("loop_count", [0, -1, 256, True, 1.5, "2", None])
+@pytest.mark.parametrize("loop_count", [0, -1, 10_001, True, 1.5, "2", None])
 def test_worker_rejects_invalid_ramp_loop_count_before_artifact(running_worker, loop_count):
     url = f"http://127.0.0.1:{running_worker['port']}/command"
     payload = {

@@ -394,7 +394,14 @@ setpoints, and Pulse timing. Ramp List places Enable loop between Auto-enable
 output for each channel and Pulse timing. Sequence places Enable loop between
 its toolbar and Step 1; Create snapshot has no Loop state. Loop count is
 conditionally created inline only when enabled, defaults to 2, and accepts
-integers 2 through 255.
+integers 2 through 10,000.
+
+Ramp, Ramp List, and Sequence admission allows at most 1,000,000 logical
+execution units and shows a long-running warning above 100,000. Workflow jobs
+publish integer-percent execution-unit progress through the existing Job/SSE
+stream. Results retain at most the first 100 and last 100 execution details
+with additive truncation metadata; aggregate counters still describe all
+completed work.
 Turning Loop off removes the field, makes the effective value 1, and resets a
 selected Loop-complete pulse to None. The Loop-complete option is disabled
 while Loop is off. An invalid enabled Loop count remains visible across editor

@@ -86,14 +86,58 @@ def test_sequence_v2_requires_loop_count_and_v1_rejects_it() -> None:
         run_sequence(request({"version": 1, "loop_count": 2, "steps": [{"action": "wait", "seconds": 0}]}, dry_run=True))
 
 
-@pytest.mark.parametrize("loop_count", [0, -1, 256, True, 1.0, "2", None])
+@pytest.mark.parametrize("loop_count", [0, -1, 10_001, True, 1.0, "2", None])
 def test_sequence_v2_loop_count_is_strict(loop_count: object) -> None:
-    with pytest.raises(CoreValidationError, match="integer from 1 to 255"):
+    with pytest.raises(CoreValidationError, match="integer from 1 to 10,000"):
         run_sequence(request({
             "version": 2,
             "loop_count": loop_count,
             "steps": [{"action": "wait", "seconds": 0}],
         }, dry_run=True))
+
+
+def test_sequence_execution_unit_admission_boundaries() -> None:
+    accepted = run_sequence(request({
+        "version": 2,
+        "loop_count": 10_000,
+        "steps": [{"action": "wait", "seconds": 0}] * 100,
+    }, dry_run=True))
+    assert accepted["plan"]["execution_units"] == 1_000_000
+
+    with pytest.raises(CoreValidationError, match="1,000,001 execution units"):
+        run_sequence(request({
+            "version": 2,
+            "loop_count": 9_901,
+            "steps": [{"action": "wait", "seconds": 0}] * 101,
+        }, dry_run=True))
+
+
+def test_sequence_bounds_results_and_reports_monotonic_progress() -> None:
+    progress: list[dict[str, int | float]] = []
+    data = run_sequence(
+        request({
+            "version": 2,
+            "loop_count": 201,
+            "steps": [{"action": "wait", "seconds": 0}],
+        }),
+        opener=lambda *args, **kwargs: FakeSession(),
+        sleep=lambda seconds: None,
+        progress_reporter=progress.append,
+    )
+
+    assert data["results_total"] == 201
+    assert data["results_retained"] == 200
+    assert data["results_truncated"] is True
+    assert [item["loop_index"] for item in data["results"][:100]] == list(range(1, 101))
+    assert [item["loop_index"] for item in data["results"][100:]] == list(range(102, 202))
+    assert [item["percent"] for item in progress] == sorted(
+        {item["percent"] for item in progress}
+    )
+    assert progress[-1] == {
+        "completed_units": 201,
+        "total_units": 201,
+        "percent": 100,
+    }
 
 
 def test_sequence_two_loops_report_current_and_cumulative_counts() -> None:

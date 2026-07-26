@@ -13,6 +13,7 @@ from powers_tool_core.connection import (
     DEFAULT_TIMEOUT_MS,
     normalize_serial_termination,
 )
+from powers_tool_core.workflow_validation import MAX_LOOP_COUNT
 
 
 @dataclass(frozen=True)
@@ -368,10 +369,12 @@ def _loop_count(value: str) -> int:
         parsed = int(value)
     except ValueError as exc:
         raise argparse.ArgumentTypeError(
-            "loop-count must be an integer from 1 to 255"
+            f"loop-count must be an integer from 1 to {MAX_LOOP_COUNT:,}"
         ) from exc
-    if parsed < 1 or parsed > 255:
-        raise argparse.ArgumentTypeError("loop-count must be an integer from 1 to 255")
+    if parsed < 1 or parsed > MAX_LOOP_COUNT:
+        raise argparse.ArgumentTypeError(
+            f"loop-count must be an integer from 1 to {MAX_LOOP_COUNT:,}"
+        )
     return parsed
 
 

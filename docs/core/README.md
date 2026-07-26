@@ -303,11 +303,19 @@ requests; no validation-mode bypass exists.
 ## Output Workflow Pulses
 
 Ramp, Ramp List, and Sequence support a strict `loop_count` total iteration
-count from 1 through 255. Old Ramp List v2/v3 and Sequence v1 documents imply
+count from 1 through 10,000. Old Ramp List v2/v3 and Sequence v1 documents imply
 one iteration; Ramp List v4 and Sequence v2 persist `loop_count`. Result
 `segment_count` and `step_count` remain per iteration. `completed_loops` counts
 only whole successful iterations, while `completed_segment_executions` and
 `completed_step_executions` are cumulative across iterations.
+
+Core admits at most 1,000,000 logical execution units: Ramp counts voltage
+steps, Ramp List sums voltage steps across all Segments, and Sequence counts
+Steps, then multiplies that per-iteration work by `loop_count`. Adapters warn
+above 100,000 units. Runtime detail arrays retain at most the first 100 and
+last 100 entries with additive total/retained/truncated metadata, while
+aggregate counters cover the complete execution. Long-running workflows report
+integer-percent progress using completed and total execution units.
 
 Completion pulses use E36312A rear digital pins; rear pins are separate from
 the selected output channel. Ramp `step` timing pulses after every voltage

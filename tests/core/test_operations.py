@@ -1256,9 +1256,9 @@ def test_ramp_step_completion_pulse_accepts_nonnegative_delay(delay_ms) -> None:
     assert len([step for step in plan["steps"] if step["action"] == "completion_pulse"]) == 2
 
 
-@pytest.mark.parametrize("loop_count", [0, -1, 256, True, 1.0, "2", None])
-def test_ramp_loop_count_requires_strict_integer_1_to_255(loop_count: object) -> None:
-    with pytest.raises(CoreValidationError, match="loop_count must be an integer from 1 to 255"):
+@pytest.mark.parametrize("loop_count", [0, -1, 10_001, True, 1.0, "2", None])
+def test_ramp_loop_count_requires_strict_integer_1_to_10000(loop_count: object) -> None:
+    with pytest.raises(CoreValidationError, match="loop_count must be an integer from 1 to 10,000"):
         output_plan(request(
             "ramp",
             start_voltage=0,
@@ -1266,6 +1266,25 @@ def test_ramp_loop_count_requires_strict_integer_1_to_255(loop_count: object) ->
             step_voltage=1,
             loop_count=loop_count,
         ))
+
+
+def test_ramp_execution_units_accept_contract_boundaries() -> None:
+    plan = output_plan(request(
+        "ramp",
+        start_voltage=0,
+        stop_voltage=999,
+        step_voltage=1,
+        loop_count=1_000,
+    ))
+
+    assert plan["execution_units"] == 1_000_000
+    assert output_plan(request(
+        "ramp",
+        start_voltage=0,
+        stop_voltage=0,
+        step_voltage=1,
+        loop_count=10_000,
+    ))["loop_count"] == 10_000
 
 
 def test_ramp_two_loops_reuse_session_and_repeat_only_voltage_path() -> None:

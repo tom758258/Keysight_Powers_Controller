@@ -30,6 +30,9 @@ export function createJobEventController({ state, fetchJson, closeEventSource, u
       if (event.type === "cancel_requested") { setWorkflowControl("stopping", { jobId, command: state.workflowControl.command }); updateJobResult(jobId, "cancel_requested", { key: "job.summary.waiting_cleanup" }); }
       else if (["started", "progress"].includes(event.type) && state.workflowControl.phase !== "stopping") setWorkflowControl("active", { jobId, command: state.workflowControl.command });
     }
+    if (typeof event.data?.message === "string" && ["accepted", "progress"].includes(event.type)) {
+      updateJobResult(jobId, event.type, event.data.message);
+    }
     if (jobCommand(jobId) === "snapshot" && ["accepted", "started", "progress"].includes(event.type)) refreshSnapshotFormIfVisible(jobId);
     if (!["finished", "failed", "cancelled"].includes(event.type)) return;
     closeEventSource("events");

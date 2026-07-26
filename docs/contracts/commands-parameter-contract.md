@@ -61,10 +61,16 @@ supplied at all. `clear-protection` always requires an explicit `channel` or
   Ramp List version 2 always means `false`; versions 3 and 4 require an exact
   top-level JSON boolean. Adapters must not coerce strings or numbers.
 - Ramp, Ramp List, and Sequence `loop_count` is the total number of complete
-  workflow executions. It must be an exact integer from 1 through 255;
-  booleans, floats, strings, null, zero, negatives, and 256 are rejected.
+  workflow executions. It must be an exact integer from 1 through 10,000;
+  booleans, floats, strings, null, zero, negatives, and 10,001 are rejected.
   `1` is one normal execution, while `2` restarts once. Ramp List v4 and
   Sequence v2 require the field. Older supported document versions imply 1.
+- Core calculates logical execution units before opening hardware: Ramp uses
+  `loop_count * voltage_step_count`, Ramp List uses `loop_count` times the sum
+  of all Segment voltage-step counts, and Sequence uses `loop_count *
+  sequence_step_count`. Values through 1,000,000 are admitted; larger requests
+  are rejected with the calculated and maximum values plus reduction guidance.
+  Adapters warn, without another confirmation mode, above 100,000 units.
 - A general completion pulse may set `completion_pulse_channel` as its output
   trigger anchor. An explicitly supplied value must be an exact integer from 1
   through 3 and requires non-empty `completion_pulse_pins`; booleans, floats,

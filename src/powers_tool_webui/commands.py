@@ -198,6 +198,17 @@ def execute_job_command(job: Job) -> dict[str, Any]:
             job.warnings.append({"code": "cleanup_unsupported", "message": payload["message"]})
 
     kwargs: dict[str, Any] = {"stop_requested": lambda: job.cancel_requested}
+    if "progress_reporter" in inspect.signature(run_core_command).parameters:
+        kwargs["progress_reporter"] = lambda progress: job.add_event(
+            "progress",
+            {
+                **progress,
+                "message": (
+                    f"{progress['percent']}% "
+                    f"({progress['completed_units']:,}/{progress['total_units']:,} execution units)"
+                ),
+            },
+        )
     if "cleanup_reporter" in inspect.signature(run_core_command).parameters:
         kwargs["cleanup_reporter"] = report_cleanup
     result = run_core_command(request, **kwargs)

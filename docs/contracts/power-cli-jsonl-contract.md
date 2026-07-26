@@ -238,6 +238,11 @@ Selected data mappings:
   Legacy `completed_segments`/`completed_steps` describe the current or most
   recently attempted iteration. Failure and cancellation context includes a
   1-based `loop_index`.
+- Workflow results include logical execution-unit totals and progress with
+  `completed_units`, `total_units`, and integer `percent`. Detail streams that
+  exceed 200 entries retain the first 100 and last 100, with additive
+  total/retained/truncated fields. Aggregate counters always describe the full
+  execution rather than only retained details.
 - Ramp dry-run `steps` describe one voltage-path iteration plus any terminal
   workflow action; `voltage_steps_scope: "one_iteration"` and `loop_count`
   make that boundary explicit. Completion-pulse plan actions do not depend on

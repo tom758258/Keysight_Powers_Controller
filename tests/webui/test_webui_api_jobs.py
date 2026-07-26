@@ -8,6 +8,43 @@ import pytest
 from fastapi.testclient import TestClient
 
 from _webui_shared import WEBUI_HIDDEN_UNSUPPORTED_COMMANDS
+from powers_tool_webui.jobs import Job, MAX_JOB_EVENTS
+
+
+def test_job_event_history_is_bounded() -> None:
+    job = Job("job-id", "sequence", {}, {})
+
+    for index in range(MAX_JOB_EVENTS + 44):
+        job.add_event("progress", {"percent": index})
+
+    assert len(job.events) == MAX_JOB_EVENTS
+    assert job.events[0]["id"] == 45
+    assert job.events[-1]["id"] == MAX_JOB_EVENTS + 44
+
+
+def test_sequence_job_response_includes_long_execution_warning(client: TestClient) -> None:
+    response = client.post(
+        "/api/jobs",
+        json={
+            "command": "sequence",
+            "runtime": {
+                "dry_run": True,
+                "planning_model_id": "keysight-e36312a",
+            },
+            "parameters": {
+                "document": {
+                    "version": 2,
+                    "loop_count": 1_000,
+                    "steps": [{"action": "wait", "seconds": 0}] * 101,
+                }
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    summary = response.json()["execution_summary"]
+    assert summary["execution_units"] == 101_000
+    assert "maximum 1,000,000" in summary["execution_warning"]
 
 def test_post_job_real_output_without_confirm_fails(client: TestClient):
     payload = {

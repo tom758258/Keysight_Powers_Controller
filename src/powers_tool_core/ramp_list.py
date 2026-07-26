@@ -39,7 +39,15 @@ from powers_tool_core.safety import SafetyConfigError, SafetyValidationError, re
 from powers_tool_core.setpoint_limits import validate_effective_setpoint
 from powers_tool_core.stop_cleanup import CleanupReporter, cancel_workflow_with_safe_off
 from powers_tool_core.trigger import run_post_action_completion_pulse, trigger_result_payload
-from powers_tool_core.workflow_validation import normalize_loop_count, validate_completion_pulse_planning_model
+from powers_tool_core.workflow_validation import (
+    BoundedResultDetails,
+    ExecutionProgress,
+    ProgressReporter,
+    execution_warning,
+    normalize_loop_count,
+    validate_completion_pulse_planning_model,
+    validate_execution_units,
+)
 from powers_tool_core.command_contract import validate_and_normalize_request
 
 RAMP_LIST_KIND = "powers-tool-ramp-list"
@@ -69,6 +77,7 @@ def run_ramp_list(
     scpi_logger: Callable[[str, str, str], None] | None = None,
     stop_requested: Callable[[], bool] | None = None,
     cleanup_reporter: CleanupReporter | None = None,
+    progress_reporter: ProgressReporter | None = None,
 ) -> dict[str, Any]:
     """Lint, plan, or execute a versioned ramp list."""
 
@@ -81,6 +90,7 @@ def run_ramp_list(
         scpi_logger=scpi_logger,
         stop_requested=stop_requested,
         cleanup_reporter=cleanup_reporter,
+        progress_reporter=progress_reporter,
     )
 
 
@@ -92,6 +102,7 @@ def _run_ramp_list_admitted(
     scpi_logger: Callable[[str, str, str], None] | None = None,
     stop_requested: Callable[[], bool] | None = None,
     cleanup_reporter: CleanupReporter | None = None,
+    progress_reporter: ProgressReporter | None = None,
 ) -> dict[str, Any]:
     """Execute one admitted Ramp List request without reading its source again."""
 
@@ -149,6 +160,7 @@ def _run_ramp_list_admitted(
         scpi_logger=scpi_logger,
         stop_requested=stop_requested,
         cleanup_reporter=cleanup_reporter,
+        progress_reporter=progress_reporter,
     )
 
 
@@ -233,6 +245,12 @@ def ramp_list_plan(request: OperationRequest, document: dict[str, Any]) -> dict[
         requested=completion_pulse is not None,
         context="ramp-list completion_pulse",
     )
+    execution_units = validate_execution_units(
+        loop_count,
+        sum(segment["voltage_count"] for segment in segments),
+        workflow="Ramp List",
+        reduction_hint="Ramp steps or segments",
+    )
     return {
         "kind": RAMP_LIST_KIND,
         "version": plan_version,
@@ -245,6 +263,10 @@ def ramp_list_plan(request: OperationRequest, document: dict[str, Any]) -> dict[
         },
         "segment_count": len(segments),
         "loop_count": loop_count,
+        "execution_units": execution_units,
+        "execution_warning": execution_warning(
+            execution_units, reduction_hint="Ramp steps or segments"
+        ),
         "enable_output": enable_output,
         "completion_pulse": completion_pulse,
         "segments": segments,
@@ -352,11 +374,13 @@ def execute_ramp_list(
     scpi_logger: Callable[[str, str, str], None] | None = None,
     stop_requested: Callable[[], bool] | None = None,
     cleanup_reporter: CleanupReporter | None = None,
+    progress_reporter: ProgressReporter | None = None,
 ) -> dict[str, Any]:
     resource = request.runtime.resource
     if resource is None:
         raise CoreValidationError("resource is required")
-    results: list[dict[str, Any]] = []
+    results = BoundedResultDetails[dict[str, Any]]()
+    progress = ExecutionProgress(plan["execution_units"], progress_reporter)
     failed_segment: dict[str, Any] | None = None
     stopped = False
     idn_raw: str | None = None
@@ -412,6 +436,7 @@ def execute_ramp_list(
                             ),
                             sleep=sleep,
                             stop_requested=stop_requested,
+                            unit_completed=progress.complete_unit,
                         )
                         if plan["loop_count"] > 1:
                             result["loop_index"] = loop_index
@@ -435,7 +460,8 @@ def execute_ramp_list(
                                 "enabled_channels": list(enabled_channels),
                                 "completed_segments": completed_segments,
                                 "completed_segment_executions": completed_segment_executions,
-                                "segments": results,
+                                "segments": results.retained(),
+                                **results.metadata("segments"),
                                 "failed_segment": {
                                     "loop_index": loop_index,
                                     "index": segment["index"],
@@ -444,6 +470,7 @@ def execute_ramp_list(
                                     "message": str(exc),
                                 },
                                 "trigger": pending_trigger,
+                                "progress": progress.snapshot(),
                             },
                             reporter=cleanup_reporter,
                         )
@@ -506,6 +533,9 @@ def execute_ramp_list(
                             "completed_loops": completed_loops,
                             "completed_segments": completed_segments,
                             "completed_segment_executions": completed_segment_executions,
+                            "segments": results.retained(),
+                            **results.metadata("segments"),
+                            "progress": progress.snapshot(),
                             "trigger": pending,
                         },
                     )
@@ -528,6 +558,9 @@ def execute_ramp_list(
                             "completed_loops": completed_loops,
                             "completed_segments": completed_segments,
                             "completed_segment_executions": completed_segment_executions,
+                            "segments": results.retained(),
+                            **results.metadata("segments"),
+                            "progress": progress.snapshot(),
                             "trigger": pending,
                         },
                     )
@@ -551,13 +584,15 @@ def execute_ramp_list(
                         "enabled_channels": list(enabled_channels),
                         "completed_segments": completed_segments,
                         "completed_segment_executions": completed_segment_executions,
-                        "segments": results,
+                        "segments": results.retained(),
+                        **results.metadata("segments"),
                         "failed_segment": {
                             "loop_index": plan["loop_count"],
                             "code": "interrupted",
                             "message": str(exc),
                         },
                         "trigger": pending_trigger,
+                        "progress": progress.snapshot(),
                     },
                     reporter=cleanup_reporter,
                 )
@@ -576,6 +611,9 @@ def execute_ramp_list(
                         "completed_loops": completed_loops,
                         "completed_segments": completed_segments,
                         "completed_segment_executions": completed_segment_executions,
+                        "segments": results.retained(),
+                        **results.metadata("segments"),
+                        "progress": progress.snapshot(),
                         "trigger": exc.trigger,
                     }
                     raise
@@ -604,7 +642,10 @@ def execute_ramp_list(
         "completed_segment_executions": completed_segment_executions,
         "failed_segment": failed_segment,
         "stopped": stopped,
-        "segments": results,
+        "segments": results.retained(),
+        **results.metadata("segments"),
+        "execution_units": plan["execution_units"],
+        "progress": progress.snapshot(),
         "plan": plan,
         "enable_output": plan["enable_output"],
         "output_enable_executed": bool(enabled_channels),
@@ -652,15 +693,18 @@ def execute_ramp_segment(
     on_channel_enabled: Callable[[int], None],
     sleep: Callable[[float], None],
     stop_requested: Callable[[], bool] | None,
+    unit_completed: Callable[[], None] | None = None,
 ) -> dict[str, Any]:
     channel = segment["channel"]
-    triggers: list[dict[str, Any]] = []
+    triggers = BoundedResultDetails[dict[str, Any]]()
     trigger: dict[str, Any] | None = None
     raise_if_cancelled(stop_requested)
     power_supply.set_current_limit(channel=channel, current=segment["current"])
     for voltage_index, voltage in enumerate(segment["voltages"]):
         raise_if_cancelled(stop_requested)
         power_supply.set_voltage(channel=channel, voltage=voltage)
+        if unit_completed is not None:
+            unit_completed()
         if voltage_index == 0 and enable_channel:
             power_supply.output_on(channel=channel)
             if power_supply.output_state(channel=channel) is not True:
@@ -709,8 +753,9 @@ def execute_ramp_segment(
     }
     if trigger is not None:
         result["trigger"] = trigger
-    if triggers:
-        result["triggers"] = triggers
+    if triggers.total:
+        result["triggers"] = triggers.retained()
+        result.update(triggers.metadata("triggers"))
     return result
 
 

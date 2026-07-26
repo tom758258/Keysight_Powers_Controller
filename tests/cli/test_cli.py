@@ -8332,7 +8332,7 @@ def test_ramp_dry_run_json_plans_setpoint_only_steps(capsys) -> None:
     assert payload["data"]["plan"]["loop_count"] == 1
 
 
-@pytest.mark.parametrize("value", ["1", "255"])
+@pytest.mark.parametrize("value", ["1", "10000"])
 @pytest.mark.parametrize(
     "argv",
     [
@@ -8346,7 +8346,7 @@ def test_loop_count_parser_accepts_contract_bounds(argv: list[str], value: str) 
     assert args.loop_count == int(value)
 
 
-@pytest.mark.parametrize("value", ["0", "-1", "256", "1.5", "true"])
+@pytest.mark.parametrize("value", ["0", "-1", "10001", "1.5", "true"])
 @pytest.mark.parametrize(
     "argv",
     [

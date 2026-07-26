@@ -15,7 +15,10 @@ from fastapi.staticfiles import StaticFiles
 from powers_tool_core.core import CommandCancelled, CoreExecutionError, CoreValidationError, OperationRequest, RuntimeOptions, SequenceRequest, StopCleanupError, TriggerRequest
 from powers_tool_core.identity import IdentityResolutionError, resolve_physical_model_identity
 from powers_tool_core.parameter_constraints import parameter_constraints_metadata
-from powers_tool_core.command_runner import validate_request_admission
+from powers_tool_core.command_runner import (
+    validate_request_admission,
+    workflow_execution_summary,
+)
 from powers_tool_core.model_metadata import (
     planning_profile_metadata,
     product_active_model_metadata,
@@ -240,6 +243,7 @@ async def create_job(request: Request):
             raise HTTPException(status_code=400, detail="artifacts has unsupported field(s): " + ", ".join(sorted(artifacts)))
     validation_runtime = _validated_webui_runtime(runtime)
     admitted_request = None
+    execution_summary = None
     try:
         request_type = (
             SequenceRequest
@@ -259,6 +263,7 @@ async def create_job(request: Request):
                 parameters=parameters,
             )
             admitted_request = validate_request_admission(validation_request)
+            execution_summary = workflow_execution_summary(admitted_request)
             if command == "sequence":
                 _validate_webui_sequence_size(admitted_request.parameters)
             admitted_parameters = admitted_request.parameters
@@ -287,6 +292,13 @@ async def create_job(request: Request):
     )
 
     job = job_manager.jobs.get(job_id)
+    if job is not None and execution_summary is not None:
+        warning = execution_summary.get("execution_warning")
+        if isinstance(warning, str):
+            job.warnings.append(
+                {"code": "long_running_workflow", "message": warning}
+            )
+            job.events[0]["data"]["message"] = warning
     if job is not None and not job.requires_hardware_lock:
         await _execute_job_background(job_id)
     else:
@@ -297,6 +309,7 @@ async def create_job(request: Request):
         "job_id": job_id,
         "status_url": f"/api/jobs/{job_id}",
         "events_url": f"/api/events?job_id={job_id}",
+        "execution_summary": execution_summary,
     }
 
 
@@ -376,7 +389,8 @@ async def _execute_job_background(job_id: str):
         return
 
     try:
-        await job_manager.update_progress(job_id, {"message": "Executing command..."})
+        if job.command not in {"ramp", "ramp-list", "sequence"}:
+            await job_manager.update_progress(job_id, {"message": "Executing command..."})
         if job.requires_hardware_lock:
             async with job_manager.hardware_io():
                 result = await asyncio.to_thread(execute_job_command, job)

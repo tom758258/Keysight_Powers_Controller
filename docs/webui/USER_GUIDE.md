@@ -229,7 +229,7 @@ List workspaces. Use these for repeatable workflows, and keep saved files free
 of private lab resource strings unless they are intentionally local-only.
 
 Ramp, Ramp List, and Sequence provide an `Enable loop` checkbox. When enabled,
-an inline Loop count appears with a range of 2 through 255; this is the total
+an inline Loop count appears with a range of 2 through 10,000; this is the total
 number of workflow executions, not additional repeats. Turning Loop off hides
 the field and means one execution. Ramp and Ramp List offer Loop complete in
 Pulse timing only while Loop is enabled. Ramp List saves v4 documents and

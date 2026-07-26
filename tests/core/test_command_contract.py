@@ -109,6 +109,29 @@ def test_ramp_list_null_loop_count_and_numeric_string_segment_are_rejected() -> 
         validate_request_admission(OperationRequest("ramp-list", RuntimeOptions(dry_run=True, planning_model_id="keysight-e36312a"), {"document": document}))
 
 
+@pytest.mark.parametrize(("loop_count", "accepted"), [(10_000, True), (10_001, False)])
+def test_command_contract_enforces_workflow_loop_bound(
+    loop_count: int, accepted: bool
+) -> None:
+    request = OperationRequest(
+        "ramp",
+        RuntimeOptions(dry_run=True, planning_model_id="keysight-e36312a"),
+        {
+            "channel": 1,
+            "start_voltage": 0,
+            "stop_voltage": 0,
+            "step_voltage": 1,
+            "current": 0.1,
+            "loop_count": loop_count,
+        },
+    )
+    if accepted:
+        assert validate_request_admission(request).parameters["loop_count"] == 10_000
+    else:
+        with pytest.raises(CoreValidationError, match="1 to 10,000"):
+            validate_request_admission(request)
+
+
 @pytest.mark.parametrize("field", ["verify_after_write", "no_output", "leave_trigger_configured"])
 @pytest.mark.parametrize("value", ["false", 0, 1])
 def test_workflow_booleans_require_exact_json_boolean(field: str, value: object) -> None:

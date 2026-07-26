@@ -242,9 +242,16 @@ settings `serial_remote` and `serial_local_on_close` request explicit
 `SYST:REM` and best-effort cleanup `SYST:LOC` for ASRL resources only.
 
 Ramp, Ramp List, and Sequence `loop_count` is a strict integer from 1 through
-255 and means total complete workflow executions. Invalid raw values are
+10,000 and means total complete workflow executions. Invalid raw values are
 rejected before queue or artifact mutation. Explicit request overrides take
 precedence over document values.
+
+Core also rejects more than 1,000,000 logical execution units before queue or
+artifact mutation. Ramp counts voltage steps, Ramp List sums Segment voltage
+steps, and Sequence counts Steps, each multiplied by `loop_count`. Adapters
+warn above 100,000 units. Runtime detail arrays retain at most the first 100
+and last 100 entries with additive truncation metadata, and progress is
+reported by completed units, total units, and integer percent.
 
 Ramp List v2 documents imply `enable_output: false` and `loop_count: 1`; v3
 requires exact `enable_output` and implies one iteration; v4 requires exact

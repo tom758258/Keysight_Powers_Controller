@@ -27,7 +27,9 @@ strictAssert.deepEqual(ramp.rampSegmentDefinitions().slice(-2), [
 ]);
 strictAssert.equal(ramp.effectiveEnabledLoopCount(false, "99"), 1);
 strictAssert.equal(ramp.effectiveEnabledLoopCount(true, "2"), 2);
+strictAssert.equal(ramp.effectiveEnabledLoopCount(true, "10000"), 10000);
 strictAssert.ok(Number.isNaN(ramp.effectiveEnabledLoopCount(true, "1")));
+strictAssert.ok(Number.isNaN(ramp.effectiveEnabledLoopCount(true, "10001")));
 const state = { rampListEnableOutput: true, rampListLoopEnabled: true, rampListLoopCountDraft: "2", rampListSegments: [ramp.defaultRampSegment()], rampListCompletionPulse: { timing: "loop", pins: [1], polarity: "positive" } };
 const saved = ramp.rampListDocument(state);
 strictAssert.equal(saved.kind, "powers-tool-ramp-list");

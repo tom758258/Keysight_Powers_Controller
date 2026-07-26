@@ -392,7 +392,7 @@ function renderForm(command) {
     }
     if (param.conditionalLoop) {
       label.hidden = true;
-      input.min = "2"; input.max = "255"; input.step = "1";
+      input.min = "2"; input.max = "10000"; input.step = "1";
     }
     if (param.compactHelp) configureCompactCheckboxHelp(label, input, param);
     if (!TRIGGER_COMMANDS.has(command) && !param.compactHelp) appendFieldDescription(label, param);
@@ -645,8 +645,8 @@ function parameterPayload() {
   if (state.selected === "ramp") {
     if (!payload.loop_enabled) {
       if (payload.completion_pulse_timing === "loop") payload.completion_pulse_timing = "";
-    } else if (!Number.isInteger(payload.loop_count) || payload.loop_count < 2 || payload.loop_count > 255) {
-      throw new Error("Ramp Loop count must be an integer from 2 to 255.");
+    } else if (!Number.isInteger(payload.loop_count) || payload.loop_count < 2 || payload.loop_count > 10000) {
+      throw new Error("Ramp Loop count must be an integer from 2 to 10,000.");
     }
     delete payload.loop_enabled;
     if (!payload.completion_pulse_timing) {

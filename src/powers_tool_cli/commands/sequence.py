@@ -49,7 +49,7 @@ def register_commands(
     )
     runtime._add_output_resource_arguments(sequence_parser)
     sequence_parser.add_argument("--file", required=True, help="YAML or JSON sequence file.")
-    sequence_parser.add_argument("--loop-count", type=runtime._loop_count, help="Total sequence iterations (1 to 255).")
+    sequence_parser.add_argument("--loop-count", type=runtime._loop_count, help="Total sequence iterations (1 to 10,000).")
     runtime._add_json_argument(sequence_parser)
     runtime._add_simulate_argument(sequence_parser)
     runtime._add_dry_run_argument(sequence_parser)

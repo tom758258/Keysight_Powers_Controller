@@ -31,6 +31,7 @@ LIVE_DATA_SIMULATE_COMMANDS = {
     "readback",
     "protection-status",
 }
+MAX_JOB_EVENTS = 256
 
 
 class Job:
@@ -77,6 +78,8 @@ class Job:
             "timestamp": time.time(),
         }
         self.events.append(event)
+        if len(self.events) > MAX_JOB_EVENTS:
+            del self.events[:-MAX_JOB_EVENTS]
         self.updated_at = time.time()
 
     def to_dict(self) -> Dict[str, Any]:

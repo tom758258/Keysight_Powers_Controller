@@ -25,7 +25,7 @@ export function rampSegmentDefinitions() {
 export function effectiveEnabledLoopCount(enabled, draft) {
   if (!enabled) return 1;
   const parsed = draft === "" ? Number.NaN : Number(draft);
-  return Number.isInteger(parsed) && parsed >= 2 && parsed <= 255 ? parsed : Number.NaN;
+  return Number.isInteger(parsed) && parsed >= 2 && parsed <= 10000 ? parsed : Number.NaN;
 }
 
 export function rampListDocument(state) {
@@ -73,8 +73,8 @@ export function validateRampListDocument(document) {
     return Object.fromEntries(fields.map((field) => [field, segment[field]]));
   });
   const loopCount = document.version === 4 ? document.loop_count : 1;
-  if (!Number.isInteger(loopCount) || loopCount < 1 || loopCount > 255) {
-    throw new Error("Ramp List loop_count must be an integer from 1 to 255.");
+  if (!Number.isInteger(loopCount) || loopCount < 1 || loopCount > 10000) {
+    throw new Error("Ramp List loop_count must be an integer from 1 to 10,000.");
   }
   let completionPulse = null;
   if (document.completion_pulse !== undefined) {

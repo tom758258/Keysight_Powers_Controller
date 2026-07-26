@@ -1382,16 +1382,16 @@ function renderLoopControl({
     count.type = "number";
     count.id = countInputId || prefix + "-loop-count";
     count.min = "2";
-    count.max = "255";
+    count.max = "10000";
     count.step = "1";
     count.required = true;
     count.value = hasExplicitState
       ? String(value ?? "")
-      : String(Number.isInteger(value) && value >= 2 && value <= 255 ? value : 2);
+      : String(Number.isInteger(value) && value >= 2 && value <= 10000 ? value : 2);
     const update = () => {
       const parsed = count.value === "" ? Number.NaN : Number(count.value);
       onDraft(count.value);
-      onValue(Number.isInteger(parsed) && parsed >= 2 && parsed <= 255 ? parsed : Number.NaN);
+      onValue(Number.isInteger(parsed) && parsed >= 2 && parsed <= 10000 ? parsed : Number.NaN);
       refreshLoopCompleteOption(prefix);
       if (["ramp-list", "sequence"].includes(prefix)) updateWorkflowDocumentValidity(prefix);
       updateSelectedCommandState();

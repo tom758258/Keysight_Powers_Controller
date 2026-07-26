@@ -45,8 +45,13 @@ from powers_tool_core.setpoint_limits import validate_effective_setpoint
 from powers_tool_core.stop_cleanup import CleanupReporter, cancel_workflow_with_safe_off
 from powers_tool_core.trigger import run_post_action_completion_pulse, trigger_result_payload
 from powers_tool_core.workflow_validation import (
+    BoundedResultDetails,
+    ExecutionProgress,
+    ProgressReporter,
+    execution_warning,
     normalize_completion_pulse_channel,
     normalize_loop_count,
+    validate_execution_units,
     validate_completion_pulse_planning_model,
     validate_general_workflow_parameters,
 )
@@ -89,6 +94,7 @@ def run_operation(
     scpi_logger: Callable[[str, str, str], None] | None = None,
     stop_requested: StopRequested = None,
     cleanup_reporter: CleanupReporter | None = None,
+    progress_reporter: ProgressReporter | None = None,
 ) -> dict[str, Any]:
     """Run an operation command and return parser-neutral data."""
 
@@ -97,6 +103,18 @@ def run_operation(
     if request.runtime.dry_run or request.runtime.simulate:
         _ensure_operation_supported(request)
     validate_general_workflow_parameters(request)
+    if request.command == "ramp":
+        voltages = ramp_voltages(
+            request.parameters["start_voltage"],
+            request.parameters["stop_voltage"],
+            request.parameters["step_voltage"],
+        )
+        validate_execution_units(
+            normalize_loop_count(request.parameters.get("loop_count", 1)),
+            len(voltages),
+            workflow="Ramp",
+            reduction_hint="Ramp steps",
+        )
     if request.runtime.dry_run or request.runtime.simulate:
         return output_plan(request)
 
@@ -118,6 +136,7 @@ def run_operation(
             scpi_logger=scpi_logger,
             stop_requested=stop_requested,
             cleanup_reporter=cleanup_reporter,
+            progress_reporter=progress_reporter,
         )
 
     raise CoreValidationError(f"unsupported operation command {request.command!r}")
@@ -216,6 +235,12 @@ def output_plan(request: OperationRequest) -> dict[str, Any]:
         voltages = ramp_voltages(p["start_voltage"], p["stop_voltage"], p["step_voltage"])
         _validate_ramp_completion_pulse(request)
         loop_count = normalize_loop_count(p.get("loop_count", 1))
+        execution_units = validate_execution_units(
+            loop_count,
+            len(voltages),
+            workflow="Ramp",
+            reduction_hint="Ramp steps",
+        )
         pulse_timing = p.get("completion_pulse_timing", "segment")
         pulse_channel = _completion_pulse_channel(request, channel) if _completion_pulse_requested(request) else channel
         enable_output = p.get("enable_output", False)
@@ -309,6 +334,10 @@ def output_plan(request: OperationRequest) -> dict[str, Any]:
         plan["voltage_steps_scope"] = "one_iteration"
         plan["enable_output"] = enable_output
         plan["loop_count"] = loop_count
+        plan["execution_units"] = execution_units
+        plan["execution_warning"] = execution_warning(
+            execution_units, reduction_hint="Ramp steps"
+        )
         plan["completed_loops"] = 0
         plan["completed_step_executions"] = 0
         plan["output_enable_executed"] = False
@@ -370,6 +399,7 @@ def _run_output_write_operation(
     scpi_logger: Callable[[str, str, str], None] | None,
     stop_requested: StopRequested,
     cleanup_reporter: CleanupReporter | None,
+    progress_reporter: ProgressReporter | None,
 ) -> dict[str, Any]:
     _validate_real_gate(request)
     opened = False
@@ -417,6 +447,7 @@ def _run_output_write_operation(
                 sleep=sleep,
                 stop_requested=stop_requested,
                 cleanup_reporter=cleanup_reporter,
+                progress_reporter=progress_reporter,
             )
     except VisaConnectionError as exc:
         prefix = f"{request.command} failed" if opened else f"Could not open resource for {request.command}"
@@ -435,6 +466,7 @@ def _execute_output_write(
     sleep: Callable[[float], None],
     stop_requested: StopRequested,
     cleanup_reporter: CleanupReporter | None,
+    progress_reporter: ProgressReporter | None,
 ) -> dict[str, Any]:
     command = request.command
     p = request.parameters
@@ -628,6 +660,13 @@ def _execute_output_write(
         voltages = ramp_voltages(p["start_voltage"], p["stop_voltage"], p["step_voltage"])
         _validate_ramp_completion_pulse(request)
         loop_count = normalize_loop_count(p.get("loop_count", 1))
+        execution_units = validate_execution_units(
+            loop_count,
+            len(voltages),
+            workflow="Ramp",
+            reduction_hint="Ramp steps",
+        )
+        progress = ExecutionProgress(execution_units, progress_reporter)
         pulse_timing = p.get("completion_pulse_timing", "segment")
         enable_output = p.get("enable_output", False)
         for voltage in voltages:
@@ -637,10 +676,10 @@ def _execute_output_write(
         trigger: dict[str, Any] | None = None
         verification = {"passed": True, "checks": [], "differences": []}
         _validate_requested_completion_pulse_power_supply(request, power_supply)
-        completed_voltages: list[float] = []
+        completed_voltages = BoundedResultDetails[float]()
         completed_loops = 0
         output_enable_executed = False
-        triggers: list[dict[str, Any]] = []
+        triggers = BoundedResultDetails[dict[str, Any]]()
         active_loop_index = 1
         active_step_index = 0
         active_voltage = voltages[0]
@@ -655,6 +694,7 @@ def _execute_output_write(
                     raise_if_cancelled(stop_requested)
                     power_supply.set_voltage(channel=channel, voltage=voltage)
                     completed_voltages.append(voltage)
+                    progress.complete_unit()
                     if index == 0 and loop_index == 1 and enable_output:
                         power_supply.output_on(channel=channel)
                         output_enable_executed = True
@@ -732,16 +772,19 @@ def _execute_output_write(
                     "enable_output": enable_output,
                     "output_enable_executed": output_enable_executed,
                     "enabled_channels": [channel] if output_enable_executed else [],
-                    "completed_voltages": completed_voltages,
+                    "completed_voltages": completed_voltages.retained(),
+                    **completed_voltages.metadata("completed_voltages"),
                     "completed_loops": completed_loops,
-                    "completed_step_executions": len(completed_voltages),
+                    "completed_step_executions": completed_voltages.total,
                     "failed_step": {
                         "loop_index": active_loop_index,
                         "step_index": active_step_index,
                         "voltage": active_voltage,
                         "code": "interrupted",
                     },
-                    "triggers": triggers,
+                    "triggers": triggers.retained(),
+                    **triggers.metadata("triggers"),
+                    "progress": progress.snapshot(),
                     "trigger": (
                         _pending_completion_pulse_result(request, channel=channel)
                         if _completion_pulse_requested(request)
@@ -758,7 +801,9 @@ def _execute_output_write(
             exc.data = {
                 "loop_count": loop_count,
                 "completed_loops": completed_loops,
-                "completed_step_executions": len(completed_voltages),
+                "completed_step_executions": completed_voltages.total,
+                "completed_voltages": completed_voltages.retained(),
+                **completed_voltages.metadata("completed_voltages"),
                 "failed_step": (
                     {
                         "loop_index": active_loop_index,
@@ -771,21 +816,28 @@ def _execute_output_write(
                 ),
                 "failure_phase": "iteration" if failure_during_iteration else "finalization",
                 "trigger": exc.trigger,
+                "triggers": triggers.retained(),
+                **triggers.metadata("triggers"),
+                "progress": progress.snapshot(),
             }
             raise
         data = _resource_payload(request, idn, channel=channel, voltages=voltages)
         data["steps"] = len(voltages)
         data["loop_count"] = loop_count
         data["completed_loops"] = completed_loops
-        data["completed_step_executions"] = len(completed_voltages)
+        data["completed_step_executions"] = completed_voltages.total
+        data["execution_units"] = execution_units
+        data["progress"] = progress.snapshot()
+        data.update(completed_voltages.metadata("completed_voltages"))
         data["enable_output"] = enable_output
         data["output_enable_executed"] = output_enable_executed
         data["enabled_channels"] = [channel] if output_enable_executed else []
         data["final_output_states"] = final_output_states
         data["cancellation_cleanup"] = None
         _attach_trigger_if_present(data, trigger)
-        if triggers:
-            data["triggers"] = triggers
+        if triggers.total:
+            data["triggers"] = triggers.retained()
+            data.update(triggers.metadata("triggers"))
         _attach_verification_if_requested(request, data, verification)
         return data
 

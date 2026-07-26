@@ -1244,7 +1244,7 @@ def test_static_compact_output_enable_layout_and_accessibility_contracts():
         const rampLoopCount = byId(commandForm, "param-loop_count");
         strictAssert.equal(rampLoopCount.value, "2");
         strictAssert.equal(rampLoopCount.min, "2");
-        strictAssert.equal(rampLoopCount.max, "255");
+        strictAssert.equal(rampLoopCount.max, "10000");
         strictAssert.equal(rampLoopCount.step, "1");
         strictAssert.equal(rampLoopCount.required, true);
         const rampTiming = byId(commandForm, "param-completion_pulse_timing");
@@ -1270,7 +1270,7 @@ def test_static_compact_output_enable_layout_and_accessibility_contracts():
         strictAssert.equal(rampCheckboxIdentity.checked, true);
         strictAssert.equal(rampCountIdentity.value, "2");
         strictAssert.equal(rampCountIdentity.min, "2");
-        strictAssert.equal(rampCountIdentity.max, "255");
+        strictAssert.equal(rampCountIdentity.max, "10000");
         strictAssert.equal(rampCountIdentity.step, "1");
         strictAssert.equal(rampCountIdentity.required, true);
         strictAssert.deepEqual({
@@ -1650,13 +1650,13 @@ def test_static_compact_output_enable_layout_and_accessibility_contracts():
         strictAssert.equal(state.sequenceLoopCountDraft, "2");
         strictAssert.equal(byId(sequenceEditor, "sequence-loop-count").value, "2");
         let sequenceLoopCount = byId(sequenceEditor, "sequence-loop-count");
-        sequenceLoopCount.value = "256";
+        sequenceLoopCount.value = "10001";
         sequenceLoopCount.listeners.input.forEach((listener) => listener());
         renderForm("sequence");
         const rerenderedSequenceEditor = commandForm.children[0];
         strictAssert.equal(byId(rerenderedSequenceEditor, "sequence-loop-enabled").checked, true);
         sequenceLoopCount = byId(rerenderedSequenceEditor, "sequence-loop-count");
-        strictAssert.equal(sequenceLoopCount.value, "256");
+        strictAssert.equal(sequenceLoopCount.value, "10001");
         const invalidSequenceRun = { disabled: false };
         strictAssert.equal(updateWorkflowDocumentValidity("sequence", invalidSequenceRun), false);
         strictAssert.equal(invalidSequenceRun.disabled, true);

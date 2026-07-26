@@ -1834,7 +1834,7 @@ def test_frontend_invalid_enabled_loop_counts_disable_run_and_save_without_seria
         };
 
         (async () => {
-          for (const invalid of ["", "1.5", "1", "0", "-1", "256"]) {
+          for (const invalid of ["", "1.5", "1", "0", "-1", "10001"]) {
             state.rampListLoopEnabled = true;
             state.rampListLoopCountDraft = invalid;
             const rampRun = { disabled: false };
