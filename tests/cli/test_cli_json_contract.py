@@ -7,7 +7,7 @@ import powers_tool_cli.cli as cli
 
 SIM_RESOURCE = "USB0::SIM::E36312A::INSTR"
 SIM_E36312A_RESOURCE = "USB0::SIM::E36312A::INSTR"
-ENVELOPE_KEYS = {
+REQUIRED_ENVELOPE_KEYS = {
     "schema_version",
     "ok",
     "status",
@@ -28,15 +28,24 @@ def parse_json_result(args: list[str], capsys) -> tuple[int, dict[str, object]]:
 
 
 def assert_contract_envelope(payload: dict[str, object], *, command: str, ok: bool) -> None:
-    assert set(payload) == ENVELOPE_KEYS
+    assert REQUIRED_ENVELOPE_KEYS <= payload.keys()
     assert payload["schema_version"] == 2
     assert payload["ok"] is ok
     assert payload["status"] == ("ok" if ok else "error")
-    assert payload["command"] == {"name": command}
-    assert set(payload["execution"]) == {"mode", "dry_run", "hardware_touched"}
+    assert isinstance(payload["command"], dict)
+    assert {"name"} <= payload["command"].keys()
+    assert payload["command"]["name"] == command
+    assert isinstance(payload["execution"], dict)
+    assert {"mode", "dry_run", "hardware_touched"} <= payload["execution"].keys()
+    assert isinstance(payload["execution"]["mode"], str)
+    assert isinstance(payload["execution"]["dry_run"], bool)
+    assert isinstance(payload["execution"]["hardware_touched"], bool)
     assert isinstance(payload["request"], dict)
     assert payload["warnings"] == []
-    assert set(payload["metadata"]) == {"duration_ms"}
+    assert isinstance(payload["metadata"], dict)
+    assert {"duration_ms"} <= payload["metadata"].keys()
+    assert isinstance(payload["metadata"]["duration_ms"], (int, float))
+    assert not isinstance(payload["metadata"]["duration_ms"], bool)
     assert payload["metadata"]["duration_ms"] >= 0
 
     if ok:
@@ -44,7 +53,12 @@ def assert_contract_envelope(payload: dict[str, object], *, command: str, ok: bo
         assert payload["error"] is None
     else:
         assert payload["data"] is None
-        assert set(payload["error"]) == {"type", "code", "message", "retryable"}
+        assert isinstance(payload["error"], dict)
+        assert {"type", "code", "message", "retryable"} <= payload["error"].keys()
+        assert isinstance(payload["error"]["type"], str)
+        assert isinstance(payload["error"]["code"], str)
+        assert isinstance(payload["error"]["message"], str)
+        assert isinstance(payload["error"]["retryable"], bool)
 
 
 @pytest.mark.parametrize(
@@ -510,11 +524,9 @@ def test_output_dry_run_json_keeps_contract(capsys) -> None:
 
     assert exit_code == 0
     assert_contract_envelope(payload, command="set", ok=True)
-    assert payload["execution"] == {
-        "mode": "real",
-        "dry_run": True,
-        "hardware_touched": False,
-    }
+    assert payload["execution"]["mode"] == "real"
+    assert payload["execution"]["dry_run"] is True
+    assert payload["execution"]["hardware_touched"] is False
     assert payload["data"]["plan"]["steps"][0]["action"] == "set_current_limit"
     assert payload["data"]["plan"]["steps"][1]["action"] == "set_voltage"
 

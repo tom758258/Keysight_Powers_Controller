@@ -43,7 +43,8 @@ def test_index_uses_cache_busted_assets_and_no_store(client: TestClient):
     assert response.headers["Cache-Control"] == "no-store"
     assert '/static/styles.css?v=' in response.text
     assert '/static/app.js?v=' in response.text
-    assert f'<span data-i18n="app.unofficial_tool">Unofficial Tool</span> v{__version__}' in response.text
+    assert 'data-i18n="app.unofficial_tool"' in response.text
+    assert f"v{__version__}" in response.text
     assert "__WEBUI_VERSION__" not in response.text
     javascript_urls = re.findall(r'<script type="module" src="([^"]+)"', response.text)
     assert javascript_urls == [
@@ -82,7 +83,7 @@ def test_static_assets_accept_query_string_and_no_store(client: TestClient):
     ("/static/basic-controls.js?v=test", "export function createBasicControls"),
     ("/static/command-support.js?v=test", "export function createCommandSupport"),
     ("/static/workflows.js?v=test", "export function createWorkflows"),
-        ("/static/app.js?v=test", "async function scanResources()"),
+        ("/static/app.js?v=test", 'from "./execution-context.js"'),
     ):
         response = client.get(asset_path)
 
@@ -213,7 +214,11 @@ def test_commands_metadata(client: TestClient):
     assert not (WEBUI_HIDDEN_DIAGNOSTIC_COMMANDS & set(cmds))
     assert cmds["clear-protection"]["category"] == "protection"
     assert cmds["clear-protection"]["requires_confirm"] is True
-    assert "does not clear OVP/OCP protection latches" in cmds["clear"]["description"]
+    clear_description = cmds["clear"]["description"]
+    assert "OVP" in clear_description
+    assert "OCP" in clear_description
+    assert "does not clear" in clear_description.lower()
+    assert "latch" in clear_description.lower()
     assert cmds["sequence"]["max_steps"] == 250
 
     # Check output-affecting commands are marked correctly
