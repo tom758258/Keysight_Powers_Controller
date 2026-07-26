@@ -3110,7 +3110,7 @@ def _workflow_start_summary(
     summary = workflow_execution_summary(admitted_request) or {}
     units = summary.get("execution_units")
     warning = summary.get("execution_warning")
-    if not args.json and isinstance(units, int):
+    if not args.json and not getattr(args, "lint", False) and isinstance(units, int):
         print(f"Execution units: {units:,} (maximum 1,000,000).", file=sys.stderr)
         if isinstance(warning, str):
             print(f"Warning: {warning}", file=sys.stderr)
