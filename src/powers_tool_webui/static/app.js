@@ -1733,11 +1733,20 @@ function refreshSelectedCommandGuardPresentation() {
 
 function updateWorkflowDocumentValidity(command, runButton = null) {
   let valid = true;
+  let validationMessage = "";
   try {
     if (command === "sequence") sequenceDocumentFromEditor();
     else if (command === "ramp-list") validateRampListDocument(rampListDocument());
   } catch (e) {
     valid = false;
+    validationMessage = e.message || String(e);
+  }
+  if (command === "sequence") {
+    const error = document.getElementById("sequence-document-error");
+    if (error) {
+      error.textContent = validationMessage;
+      error.hidden = valid;
+    }
   }
   const saveButton = document.getElementById(command === "sequence" ? "save-sequence" : "save-ramp-list");
   if (saveButton) saveButton.disabled = !valid;

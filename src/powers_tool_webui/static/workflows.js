@@ -971,6 +971,11 @@ function renderSequenceForm(form) {
     enabledTranslationKey: "form.field.loop_enabled",
     countTranslationKey: "form.field.loop_count"
   }));
+  const documentError = document.createElement("div");
+  documentError.id = "sequence-document-error";
+  documentError.className = "sequence-step-error";
+  documentError.hidden = true;
+  editor.appendChild(documentError);
   state.sequenceSteps.forEach((step, index) => editor.appendChild(sequenceStepCard(step, index)));
   form.appendChild(editor);
   updateWorkflowDocumentValidity("sequence");

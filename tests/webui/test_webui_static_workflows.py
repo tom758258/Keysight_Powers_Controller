@@ -1806,13 +1806,52 @@ def test_frontend_loop_document_round_trips_use_external_schemas() -> None:
     run_frontend_javascript_assertions(assertions)
 
 
+def test_frontend_sequence_zero_wait_loop_document_does_not_disable_run_or_save() -> None:
+    assertions = textwrap.dedent(
+        r"""
+        const strictAssert = require("node:assert/strict");
+        const elements = {
+          "save-sequence": { disabled: false },
+          "sequence-document-error": { textContent: "", hidden: false }
+        };
+        document.getElementById = (id) => elements[id] || null;
+        state.commands.sequence = { max_steps: 250 };
+        state.sequenceLoopEnabled = true;
+        state.sequenceLoopCountDraft = "2";
+        state.sequenceSteps = [
+          { action: "output-on", channel: 1 },
+          { action: "wait", seconds: 0 },
+          { action: "output-off", channel: 1 },
+          { action: "wait", seconds: 0 }
+        ];
+
+        const sequenceRun = { disabled: false };
+        strictAssert.equal(updateWorkflowDocumentValidity("sequence", sequenceRun), true);
+        strictAssert.equal(elements["save-sequence"].disabled, false);
+        strictAssert.equal(sequenceRun.disabled, false);
+        strictAssert.equal(elements["sequence-document-error"].textContent, "");
+        strictAssert.equal(elements["sequence-document-error"].hidden, true);
+        const runtimeGuardedRun = { disabled: true };
+        strictAssert.equal(updateWorkflowDocumentValidity("sequence", runtimeGuardedRun), true);
+        strictAssert.equal(runtimeGuardedRun.disabled, true);
+        strictAssert.deepEqual(sequenceDocumentFromEditor(), {
+          version: 2,
+          loop_count: 2,
+          steps: state.sequenceSteps
+        });
+        """
+    )
+    run_frontend_javascript_assertions(assertions)
+
+
 def test_frontend_invalid_enabled_loop_counts_disable_run_and_save_without_serializing() -> None:
     assertions = textwrap.dedent(
         r"""
         const strictAssert = require("node:assert/strict");
         const elements = {
           "save-ramp-list": { disabled: false },
-          "save-sequence": { disabled: false }
+          "save-sequence": { disabled: false },
+          "sequence-document-error": { textContent: "", hidden: true }
         };
         document.getElementById = (id) => elements[id] || null;
         state.rampListEnableOutput = false;
@@ -1849,6 +1888,8 @@ def test_frontend_invalid_enabled_loop_counts_disable_run_and_save_without_seria
             strictAssert.equal(updateWorkflowDocumentValidity("sequence", sequenceRun), false);
             strictAssert.equal(sequenceRun.disabled, true);
             strictAssert.equal(elements["save-sequence"].disabled, true);
+            strictAssert.match(elements["sequence-document-error"].textContent, /loop_count/);
+            strictAssert.equal(elements["sequence-document-error"].hidden, false);
             await saveSequenceFile();
           }
           strictAssert.equal(saveCalls, 0);
