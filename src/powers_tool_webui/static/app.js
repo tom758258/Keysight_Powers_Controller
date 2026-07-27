@@ -485,6 +485,7 @@ const artifactAndSequenceWorkflows = webuiWorkflows.createArtifactAndSequenceWor
   renderClientResult: (...args) => renderClientResult(...args),
   renderForm: (...args) => renderForm(...args),
   updateSelectedCommandState: (...args) => updateSelectedCommandState(...args),
+  effectiveSequenceLoopCount,
   jobCommand: (...args) => jobCommand(...args),
   snapshotJsonExtensions: SNAPSHOT_JSON_EXTENSIONS,
   sequenceJsonExtensions: SEQUENCE_JSON_EXTENSIONS,

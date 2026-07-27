@@ -62,6 +62,7 @@ def test_workflow_factory_wiring_omits_unused_dependencies() -> None:
         "webuiSequenceDocument",
         "applyParameterConstraint",
         "updateWorkflowDocumentValidity",
+        "effectiveSequenceLoopCount",
         "restoreSnapshotParameters",
         "submitJob",
         "subscribeToJob",
@@ -1807,6 +1808,45 @@ def test_frontend_loop_document_round_trips_use_external_schemas() -> None:
 
 
 def test_frontend_sequence_zero_wait_loop_document_does_not_disable_run_or_save() -> None:
+    run_webui_module_assertions(
+        r"""
+const state = {
+  commands: { sequence: { max_steps: 250 } },
+  sequenceLoopEnabled: false,
+  sequenceLoopCountDraft: "2",
+  sequenceSteps: [{ action: "wait", seconds: 0 }]
+};
+const workflows = globalThis.webuiWorkflows.createWorkflows({
+  state,
+  webuiRampListDocument: globalThis.webuiRampListDocument
+});
+const artifact = globalThis.webuiWorkflows.createArtifactAndSequenceWorkflows({
+  state,
+  rearPinOptions: ["1", "2", "3", "1,2", "1,3", "2,3", "1,2,3"],
+  webuiSequenceDocument: globalThis.webuiSequenceDocument,
+  parseRearPins: (value) => Array.isArray(value) ? value : String(value).split(",").map(Number),
+  effectiveSequenceLoopCount: workflows.effectiveSequenceLoopCount
+});
+
+strictAssert.equal(artifact.sequenceDocumentFromEditor().loop_count, 1);
+
+state.sequenceLoopEnabled = true;
+state.sequenceLoopCountDraft = "2";
+state.sequenceSteps = [
+  { action: "output-on", channel: 1 },
+  { action: "wait", seconds: 0 },
+  { action: "output-off", channel: 1 },
+  { action: "wait", seconds: 0 }
+];
+strictAssert.deepEqual(artifact.sequenceDocumentFromEditor(), {
+  version: 2,
+  loop_count: 2,
+  steps: state.sequenceSteps
+});
+""",
+        ("ramp-list.js", "sequence.js", "workflows.js"),
+    )
+
     assertions = textwrap.dedent(
         r"""
         const strictAssert = require("node:assert/strict");

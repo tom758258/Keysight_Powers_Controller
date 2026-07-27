@@ -587,6 +587,7 @@ export function createArtifactAndSequenceWorkflows({
   renderClientResult,
   renderForm,
   updateSelectedCommandState,
+  effectiveSequenceLoopCount,
   jobCommand,
   snapshotJsonExtensions: SNAPSHOT_JSON_EXTENSIONS,
   sequenceJsonExtensions: SEQUENCE_JSON_EXTENSIONS,
