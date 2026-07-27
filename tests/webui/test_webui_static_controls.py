@@ -1152,6 +1152,9 @@ def test_static_compact_output_enable_layout_and_accessibility_contracts():
         const byClass = (root, className) => descendants(root).filter(
           (node) => node.classList.contains(className)
         );
+        const optionByValue = (select, value) => select.children.find(
+          (option) => option.value === value
+        );
         document.getElementById = (id) => {
           if (id === "command-form") return commandForm;
           if (["expected-model-id", "resource"].includes(id)) return { value: "" };
@@ -1490,7 +1493,9 @@ def test_static_compact_output_enable_layout_and_accessibility_contracts():
         renderForm("ramp-list");
         const editor = commandForm.children[0];
         const toolbar = byClass(editor, "ramp-list-toolbar")[0];
-        const loadRampListButton = toolbar.children[0];
+        const loadRampListButton = toolbar.children.find(
+          (button) => button.dataset.workflowI18n === "workflow.action.load_ramp_list"
+        );
         const p4RampListTiming = byId(editor, "ramp-list-pulse-timing");
         const rampListTimingValues = p4RampListTiming.children.map((option) => option.value);
         strictAssert.deepEqual(rampListTimingValues, ["", "step", "segment", "loop"]);
@@ -1509,7 +1514,7 @@ def test_static_compact_output_enable_layout_and_accessibility_contracts():
         webuiWorkflows.refreshWorkflowPresentation(editor);
         refreshParameterConstraintPresentation(editor);
         strictAssert.equal(commandForm.children[0], editor);
-        strictAssert.equal(toolbar.children[0], loadRampListButton);
+        strictAssert.equal(loadRampListButton.parentNode, toolbar);
         strictAssert.equal(loadRampListButton.textContent, "載入多段逐步輸出");
         strictAssert.equal(rampDraftInput, rampDraftIdentity);
         strictAssert.equal(rampDraftInput.value, "invalid draft");
@@ -1545,17 +1550,29 @@ def test_static_compact_output_enable_layout_and_accessibility_contracts():
             && byId(child, "ramp-list-pulse-polarity")
         );
         const segmentCard = byClass(editor, "ramp-segment-card")[0];
-        strictAssert.equal(editor.children.indexOf(toolbar), 0);
-        strictAssert.equal(editor.children.indexOf(rampListParts.label), 1);
-        strictAssert.equal(editor.children.indexOf(byId(editor, "ramp-list-loop-enabled").parentNode.parentNode), 2);
-        strictAssert.equal(editor.children.indexOf(pulseFields), 3);
-        strictAssert.equal(editor.children.indexOf(segmentCard), 4);
+        const rampListLoopControl = byId(editor, "ramp-list-loop-enabled").parentNode.parentNode;
+        const rampListSections = [
+          toolbar,
+          rampListParts.label,
+          rampListLoopControl,
+          pulseFields,
+          segmentCard
+        ];
+        const rampListSectionPositions = rampListSections.map(
+          (element) => editor.children.indexOf(element)
+        );
+        strictAssert.equal(rampListSections.every((element) => element.parentNode === editor), true);
+        strictAssert.equal(rampListSectionPositions.every((position) => position >= 0), true);
+        strictAssert.deepEqual(
+          [...rampListSectionPositions].sort((left, right) => left - right),
+          rampListSectionPositions
+        );
         strictAssert.equal(byId(editor, "ramp-list-loop-count"), undefined);
         const rampListTiming = byId(editor, "ramp-list-pulse-timing");
         strictAssert.deepEqual(rampListTiming.children.map((option) => option.textContent), [
           "None", "Every step", "Segment complete", "Loop complete"
         ]);
-        strictAssert.equal(rampListTiming.children[3].disabled, true);
+        strictAssert.equal(optionByValue(rampListTiming, "loop").disabled, true);
         strictAssert.equal(rampListParts.input.checked, true);
         strictAssert.equal(rampListParts.input.listeners.change.length, 1);
 
@@ -1568,7 +1585,7 @@ def test_static_compact_output_enable_layout_and_accessibility_contracts():
         rampListLoopEnabled.checked = true;
         rampListLoopEnabled.listeners.change.forEach((listener) => listener());
         let rerenderedTiming = byId(rerenderedEditor, "ramp-list-pulse-timing");
-        strictAssert.equal(rerenderedTiming.children[3].disabled, false);
+        strictAssert.equal(optionByValue(rerenderedTiming, "loop").disabled, false);
         rerenderedTiming.value = "loop";
         rerenderedTiming.listeners.change.forEach((listener) => listener());
         rerenderedEditor = commandForm.children[0];
@@ -1578,7 +1595,7 @@ def test_static_compact_output_enable_layout_and_accessibility_contracts():
         rerenderedTiming = byId(rerenderedEditor, "ramp-list-pulse-timing");
         strictAssert.equal(state.rampListCompletionPulse.timing, "loop");
         strictAssert.equal(rerenderedTiming.value, "loop");
-        strictAssert.equal(rerenderedTiming.children[3].disabled, true);
+        strictAssert.equal(optionByValue(rerenderedTiming, "loop").disabled, true);
         renderForm("ramp-list");
         rerenderedEditor = commandForm.children[0];
         rampListLoopEnabled = byId(rerenderedEditor, "ramp-list-loop-enabled");
@@ -1587,7 +1604,7 @@ def test_static_compact_output_enable_layout_and_accessibility_contracts():
         strictAssert.equal(rampListLoopEnabled.checked, true);
         strictAssert.equal(rampListLoopCount.value, "1.5");
         strictAssert.equal(rerenderedTiming.value, "loop");
-        strictAssert.equal(rerenderedTiming.children[3].disabled, true);
+        strictAssert.equal(optionByValue(rerenderedTiming, "loop").disabled, true);
         const invalidRampRun = { disabled: false };
         strictAssert.equal(updateWorkflowDocumentValidity("ramp-list", invalidRampRun), false);
         strictAssert.equal(invalidRampRun.disabled, true);
@@ -1627,7 +1644,7 @@ def test_static_compact_output_enable_layout_and_accessibility_contracts():
         rampListLoopCount.value = "3";
         rampListLoopCount.listeners.input.forEach((listener) => listener());
         strictAssert.equal(rerenderedTiming.value, "loop");
-        strictAssert.equal(rerenderedTiming.children[3].disabled, false);
+        strictAssert.equal(optionByValue(rerenderedTiming, "loop").disabled, false);
         strictAssert.equal(state.rampListCompletionPulse.timing, "loop");
         const validRampRun = { disabled: false };
         strictAssert.equal(updateWorkflowDocumentValidity("ramp-list", validRampRun), true);
@@ -1639,9 +1656,26 @@ def test_static_compact_output_enable_layout_and_accessibility_contracts():
         state.sequenceLoopCountDraft = "2";
         renderForm("sequence");
         const sequenceEditor = commandForm.children[0];
-        strictAssert.equal(byClass(sequenceEditor, "sequence-toolbar")[0], sequenceEditor.children[0]);
-        strictAssert.equal(byId(sequenceEditor, "sequence-loop-enabled").parentNode.parentNode, sequenceEditor.children[1]);
-        strictAssert.equal(byClass(sequenceEditor, "sequence-step-card")[0], sequenceEditor.children[2]);
+        const sequenceToolbar = byClass(sequenceEditor, "sequence-toolbar")[0];
+        const sequenceLoopControl = byId(sequenceEditor, "sequence-loop-enabled").parentNode.parentNode;
+        const sequenceDocumentError = byId(sequenceEditor, "sequence-document-error");
+        const firstSequenceStepCard = byClass(sequenceEditor, "sequence-step-card")[0];
+        const sequenceSections = [
+          sequenceToolbar,
+          sequenceLoopControl,
+          sequenceDocumentError,
+          firstSequenceStepCard
+        ];
+        const sequenceSectionPositions = sequenceSections.map(
+          (element) => sequenceEditor.children.indexOf(element)
+        );
+        strictAssert.equal(sequenceSections.every((element) => element.parentNode === sequenceEditor), true);
+        strictAssert.equal(sequenceSectionPositions.every((position) => position >= 0), true);
+        strictAssert.deepEqual(
+          [...sequenceSectionPositions].sort((left, right) => left - right),
+          sequenceSectionPositions
+        );
+        strictAssert.equal(sequenceDocumentError.hidden, true);
         strictAssert.equal(byId(sequenceEditor, "sequence-loop-count"), undefined);
         const sequenceLoopEnabled = byId(sequenceEditor, "sequence-loop-enabled");
         sequenceLoopEnabled.checked = true;

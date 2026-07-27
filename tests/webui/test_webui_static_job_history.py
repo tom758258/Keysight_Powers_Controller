@@ -74,12 +74,24 @@ const resultNode = { textContent: "" };
 elements.set("job-history", historyNode);
 elements.set("result", resultNode);
 document.getElementById = (id) => elements.get(id) || { value: "" };
-document.createElement = () => ({
+document.createElement = (tagName) => ({
+  tagName: tagName.toUpperCase(),
   className: "",
   textContent: "",
   children: [],
   append(...children) { this.children.push(...children); }
 });
+const latestHistoryItem = () => historyNode.children.find(
+  (node) => node.className.split(/\s+/).includes("history-item")
+);
+const historyPartByClass = (className) => latestHistoryItem().children.find(
+  (node) => node?.className?.split(/\s+/).includes(className)
+);
+const historyCommand = () => latestHistoryItem().children.find(
+  (node) => node?.tagName === "STRONG"
+);
+const historyStatus = () => historyPartByClass("result-status");
+const historySummary = () => historyPartByClass("result-summary");
 
 isNoHardwareMode = () => false;
 runtimePayload = () => ({ simulate: false, dry_run: false });
@@ -93,15 +105,15 @@ webuiApi.fetchJson = async () => ({ job_id: "scan-job" });
   strictAssert.equal(subscribedJobId, "scan-job");
   strictAssert.equal(state.jobs[0].label, "Scan Device");
   strictAssert.equal(state.jobs[0].status, "accepted");
-  strictAssert.match(historyNode.children[0].children[2].className, /running/);
+  strictAssert.match(historyStatus().className, /running/);
 
   updateHistory("scan-job", "started");
   strictAssert.equal(state.jobs[0].status, "started");
-  strictAssert.equal(historyNode.children[0].children[2].textContent, "Started");
+  strictAssert.equal(historyStatus().textContent, "Started");
 
   updateJobResult("scan-job", "finished", "Scan complete");
   strictAssert.equal(state.jobs[0].summary, "Scan complete");
-  strictAssert.equal(historyNode.children[0].children[2].textContent, "Success");
+  strictAssert.equal(historyStatus().textContent, "Success");
 
   addHistory("locale-job", "set", "accepted", "set");
   const rawLocaleJob = state.jobs[0];
@@ -111,19 +123,19 @@ webuiApi.fetchJson = async () => ({ job_id: "scan-job" });
   strictAssert.equal(state.jobs[0], rawLocaleJob);
   strictAssert.equal(state.jobs[0].command, "set");
   strictAssert.equal(state.jobs[0].status, "cancel_requested");
-  strictAssert.equal(historyNode.children[0].children[0].textContent, "設定");
-  strictAssert.equal(historyNode.children[0].children[2].textContent, "已要求取消");
-  strictAssert.equal(historyNode.children[0].children[4].textContent, "正在等待安全關閉輸出與清理");
+  strictAssert.equal(historyCommand().textContent, "設定");
+  strictAssert.equal(historyStatus().textContent, "已要求取消");
+  strictAssert.equal(historySummary().textContent, "正在等待安全關閉輸出與清理");
   setLocale("en");
   renderHistory();
-  strictAssert.equal(historyNode.children[0].children[4].textContent, "Waiting for safe-off and cleanup");
+  strictAssert.equal(historySummary().textContent, "Waiting for safe-off and cleanup");
   updateJobResult("locale-job", "failed", "VISA <raw> detail");
   setLocale("zh-TW");
   renderHistory();
-  strictAssert.equal(historyNode.children[0].children[4].textContent, "VISA <raw> detail");
+  strictAssert.equal(historySummary().textContent, "VISA <raw> detail");
   setLocale("en");
   renderHistory();
-  strictAssert.equal(historyNode.children[0].children[0].textContent, "Set");
+  strictAssert.equal(historyCommand().textContent, "Set");
 
   const unknownCodeJob = {
     status: "failed",
@@ -133,13 +145,13 @@ webuiApi.fetchJson = async () => ({ job_id: "scan-job" });
   };
   updateJobResult("locale-job", "failed", { key: "job.summary.failed" }, unknownCodeJob);
   renderHistory();
-  strictAssert.equal(historyNode.children[0].children[4].textContent, "Command failed - driver_timeout");
+  strictAssert.equal(historySummary().textContent, "Command failed - driver_timeout");
   setLocale("zh-TW");
   renderHistory();
-  strictAssert.equal(historyNode.children[0].children[4].textContent, "指令失敗 - driver_timeout");
+  strictAssert.equal(historySummary().textContent, "指令失敗 - driver_timeout");
   unknownCodeJob.error = "VISA <raw> detail";
   renderHistory();
-  strictAssert.equal(historyNode.children[0].children[4].textContent, "VISA <raw> detail");
+  strictAssert.equal(historySummary().textContent, "VISA <raw> detail");
   strictAssert.equal(webuiResults.jobSummary({ status: "failed" }), "指令失敗");
   setLocale("en");
   const cleanupFailedJob = {
@@ -151,7 +163,7 @@ webuiApi.fetchJson = async () => ({ job_id: "scan-job" });
   const cleanupFailedIdentity = cleanupFailedJob;
   updateJobResult("locale-job", "failed", { key: "job.summary.cleanup_failed" }, cleanupFailedJob);
   renderHistory();
-  strictAssert.equal(historyNode.children[0].children[4].textContent, "Failed  cleanup_failed");
+  strictAssert.equal(historySummary().textContent, "Failed  cleanup_failed");
   strictAssert.equal(webuiResults.jobSummary(cleanupFailedJob), "Failed  cleanup_failed");
   strictAssert.equal(webuiResults.eventSummary({
     type: "failed",
@@ -166,13 +178,13 @@ webuiApi.fetchJson = async () => ({ job_id: "scan-job" });
   strictAssert.equal(state.jobs[0].presentationJob, cleanupFailedJob);
   setLocale("zh-TW");
   renderHistory();
-  strictAssert.equal(historyNode.children[0].children[4].textContent, "失敗 - cleanup_failed");
+  strictAssert.equal(historySummary().textContent, "失敗 - cleanup_failed");
   strictAssert.equal(webuiResults.jobSummary(cleanupFailedJob), "失敗 - cleanup_failed");
   strictAssert.equal(cleanupFailedJob.error, "Cancellation arrived after the VISA session had closed");
   strictAssert.equal(cleanupFailedJob.error_code, "cleanup_failed");
   setLocale("en");
   renderHistory();
-  strictAssert.equal(historyNode.children[0].children[4].textContent, "Failed  cleanup_failed");
+  strictAssert.equal(historySummary().textContent, "Failed  cleanup_failed");
   strictAssert.equal(state.jobs[0].presentationJob, cleanupFailedIdentity);
 
   renderClientResult("Scan Device", "failed", "Client failure", { error: "detail survives" });

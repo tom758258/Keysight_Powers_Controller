@@ -20,22 +20,27 @@ from _webui_shared import (
 def test_workflow_factory_wiring_omits_unused_dependencies() -> None:
     app_js = read_static_javascript("app.js")
     workflows_js = read_static_javascript("workflows.js")
-    workflow_wiring = app_js[
-        app_js.index("webuiWorkflows.createWorkflows({"):app_js.index(
-            "});", app_js.index("webuiWorkflows.createWorkflows({")
-        )
-    ]
-    artifact_wiring = app_js[
-        app_js.index("webuiWorkflows.createArtifactAndSequenceWorkflows({"):app_js.index(
-            "});", app_js.index("webuiWorkflows.createArtifactAndSequenceWorkflows({")
-        )
-    ]
-    workflow_signature = workflows_js[
-        workflows_js.index("export function createWorkflows({"):workflows_js.index("}) {", workflows_js.index("export function createWorkflows({"))
-    ]
-    artifact_signature = workflows_js[
-        workflows_js.index("export function createArtifactAndSequenceWorkflows({"):workflows_js.index("}) {", workflows_js.index("export function createArtifactAndSequenceWorkflows({"))
-    ]
+    def captured_block(pattern: str, source: str) -> str:
+        match = re.search(pattern, source, re.DOTALL)
+        assert match is not None
+        return match.group("body")
+
+    workflow_wiring = captured_block(
+        r"webuiWorkflows\.createWorkflows\(\{(?P<body>.*?)\}\s*\);",
+        app_js,
+    )
+    artifact_wiring = captured_block(
+        r"webuiWorkflows\.createArtifactAndSequenceWorkflows\(\{(?P<body>.*?)\}\s*\);",
+        app_js,
+    )
+    workflow_signature = captured_block(
+        r"export\s+function\s+createWorkflows\s*\(\s*\{(?P<body>.*?)\}\s*\)\s*\{",
+        workflows_js,
+    )
+    artifact_signature = captured_block(
+        r"export\s+function\s+createArtifactAndSequenceWorkflows\s*\(\s*\{(?P<body>.*?)\}\s*\)\s*\{",
+        workflows_js,
+    )
 
     for removed in ("defaultRampSegment", "triggerListParams", "commandDisplayName", "params", "normalizeChannelValue"):
         assert f"{removed}:" not in workflow_wiring
