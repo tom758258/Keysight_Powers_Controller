@@ -32,6 +32,11 @@ LIVE_DATA_SIMULATE_COMMANDS = {
     "protection-status",
 }
 MAX_JOB_EVENTS = 256
+TERMINAL_JOB_STATUSES = {
+    JobStatus.FINISHED,
+    JobStatus.FAILED,
+    JobStatus.CANCELLED,
+}
 
 
 class Job:
@@ -121,6 +126,8 @@ class JobManager:
         self.active_job_id: Optional[str] = None
         self._lock = asyncio.Lock()
         self._hardware_io_lock = threading.Lock()
+        self._shutdown_started = False
+        self._shutdown_job_ids: set[str] = set()
 
     @asynccontextmanager
     async def hardware_io(self) -> AsyncIterator[None]:
@@ -139,12 +146,75 @@ class JobManager:
         artifacts: Optional[Dict[str, Any]] = None,
         admitted_request: Any | None = None,
     ) -> str:
-        job_id = str(uuid.uuid4())
-        job = Job(job_id, command, runtime, parameters, artifacts, admitted_request)
-        job.add_event("accepted", {"message": f"Job {command} accepted"})
         async with self._lock:
+            if self._shutdown_started:
+                raise RuntimeError("Job manager is shutting down; new jobs are not accepted.")
+            job_id = str(uuid.uuid4())
+            job = Job(job_id, command, runtime, parameters, artifacts, admitted_request)
+            job.add_event("accepted", {"message": f"Job {command} accepted"})
             self.jobs[job_id] = job
         return job_id
+
+    async def shutdown(self, timeout_s: float = 10.0) -> None:
+        if timeout_s < 0:
+            raise ValueError("shutdown timeout must not be negative")
+
+        async with self._lock:
+            self._shutdown_started = True
+            self._shutdown_job_ids.update(
+                job_id
+                for job_id, job in self.jobs.items()
+                if job.status not in TERMINAL_JOB_STATUSES
+            )
+            target_job_ids = set(self._shutdown_job_ids)
+
+        for job_id in target_job_ids:
+            await self.cancel_job(job_id)
+
+        deadline = time.monotonic() + timeout_s
+        while True:
+            async with self._lock:
+                pending_job_ids = {
+                    job_id
+                    for job_id in target_job_ids
+                    if (
+                        (job := self.jobs.get(job_id)) is not None
+                        and job.status not in TERMINAL_JOB_STATUSES
+                    )
+                }
+                live_io_job_ids = {
+                    job_id
+                    for job_id, job in self.jobs.items()
+                    if job.command == "live-data" and job.io_in_progress
+                }
+                cleanup_failures = {
+                    job_id
+                    for job_id in target_job_ids
+                    if (
+                        (job := self.jobs.get(job_id)) is not None
+                        and job.error_code == "cleanup_failed"
+                    )
+                }
+                active_job_id = self.active_job_id
+
+            if cleanup_failures:
+                failed = ", ".join(sorted(cleanup_failures))
+                raise RuntimeError(f"WebUI job cleanup failed during shutdown: {failed}")
+            if not pending_job_ids and active_job_id is None and not live_io_job_ids:
+                return
+            if time.monotonic() >= deadline:
+                details = []
+                if pending_job_ids:
+                    details.append(f"pending jobs: {', '.join(sorted(pending_job_ids))}")
+                if active_job_id is not None:
+                    details.append(f"active job: {active_job_id}")
+                if live_io_job_ids:
+                    details.append(f"live I/O: {', '.join(sorted(live_io_job_ids))}")
+                raise TimeoutError(
+                    "WebUI job shutdown timed out"
+                    + (f" ({'; '.join(details)})" if details else "")
+                )
+            await asyncio.sleep(0.01)
 
     async def start_job(self, job_id: str) -> bool:
         async with self._lock:
@@ -226,8 +296,14 @@ class JobManager:
                 job.status = JobStatus.CANCELLED
                 job.add_event("cancelled", {"message": "Job cancelled before execution"})
                 return True
-            if job and job.status in (JobStatus.STARTED, JobStatus.PROGRESS):
+            if job and job.status in (
+                JobStatus.STARTED,
+                JobStatus.PROGRESS,
+                JobStatus.CANCEL_REQUESTED,
+            ):
                 job.cancel_requested = True
+                if job.status == JobStatus.CANCEL_REQUESTED:
+                    return True
                 if job.command == "live-data" and not job.io_in_progress:
                     job.status = JobStatus.CANCELLED
                     job.add_event("cancelled", {"message": "Live data cancelled between reads"})

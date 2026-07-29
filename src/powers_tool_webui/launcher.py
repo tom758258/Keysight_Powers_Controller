@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import json
 import argparse
+import asyncio
+import json
 from queue import Empty, Queue
 import threading
 import time
@@ -28,6 +29,8 @@ except ImportError:  # pragma: no cover - PyInstaller script entry point
 PACKAGE_NAME = "powers-tool-webui"
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 7999
+JOB_SHUTDOWN_TIMEOUT_S = 10.0
+SERVER_JOIN_TIMEOUT_S = 3.0
 
 
 def build_local_url(port: int) -> str:
@@ -69,10 +72,6 @@ def create_uvicorn_server(port: int) -> Any:
     return uvicorn.Server(config)
 
 
-def hardware_job_is_active() -> bool:
-    return job_manager.is_hardware_locked()
-
-
 def _missing_webui_dependency_error(exc: ModuleNotFoundError) -> RuntimeError:
     missing = exc.name or "webui runtime dependency"
     return RuntimeError(
@@ -90,17 +89,22 @@ class LauncherApp:
         browser_open: Callable[[str], object] | None = None,
         readiness_checker: Callable[[str], bool] | None = None,
         http_checker: Callable[[str], bool] | None = None,
-        hardware_active_checker: Callable[[], bool] | None = None,
+        job_manager_instance: Any = job_manager,
     ) -> None:
         self._root = root
         self._server_factory = server_factory or create_uvicorn_server
         self._browser_open = browser_open or webbrowser.open
         self._readiness_checker = readiness_checker or _server_is_ready
         self._http_checker = http_checker or _http_server_is_ready
-        self._hardware_active_checker = hardware_active_checker or hardware_job_is_active
+        self._job_manager = job_manager_instance
         self._server: Any | None = None
         self._server_thread: threading.Thread | None = None
+        self._server_loop: asyncio.AbstractEventLoop | None = None
+        self._server_loop_ready = threading.Event()
         self._startup_thread: threading.Thread | None = None
+        self._shutdown_thread: threading.Thread | None = None
+        self._shutdown_in_progress = False
+        self._jobs_shutdown_complete = False
         self._ui_queue: Queue[Callable[[], None]] = Queue()
         self._startup_success = threading.Event()
         self._server_error: BaseException | None = None
@@ -156,10 +160,13 @@ class LauncherApp:
             command=self.start,
         )
         self._start_button.grid(row=0, column=0, padx=(0, 8))
-        tk.Button(button_row, text="Quit", width=10, command=self.quit).grid(
-            row=0,
-            column=1,
+        self._quit_button = tk.Button(
+            button_row,
+            text="Quit",
+            width=10,
+            command=self.quit,
         )
+        self._quit_button.grid(row=0, column=1)
 
         self._port_value.trace_add("write", lambda *_args: self._update_url())
         self._sync_port_controls()
@@ -216,19 +223,58 @@ class LauncherApp:
             self._show_startup_error(exc)
 
     def quit(self) -> None:
-        if self._server is not None and self._hardware_active_checker():
-            message = (
-                "A hardware command is still active. Stop or cancel it from the "
-                "browser and wait for cleanup before quitting the launcher."
-            )
-            self._status_value.set("Hardware command active; quit blocked.")
-            messagebox.showerror("Hardware command active", message)
+        if self._shutdown_in_progress:
             return
-        if self._server is not None:
+        if (
+            self._server is None
+            or self._server_thread is None
+            or not self._server_thread.is_alive()
+        ):
+            self._root.destroy()
+            return
+
+        self._shutdown_in_progress = True
+        self._lock_started_controls()
+        self._quit_button.configure(state="disabled")
+        self._status_value.set("Stopping active jobs...")
+        self._shutdown_thread = threading.Thread(
+            target=self._shutdown_owned_server,
+            name="powers-tool-webui-launcher-shutdown",
+            daemon=True,
+        )
+        self._shutdown_thread.start()
+
+    def _shutdown_owned_server(self) -> None:
+        try:
+            if not self._jobs_shutdown_complete:
+                if not self._server_loop_ready.wait(timeout=SERVER_JOIN_TIMEOUT_S):
+                    raise RuntimeError("WebUI server event loop is not available.")
+                server_loop = self._server_loop
+                if server_loop is None or not server_loop.is_running():
+                    raise RuntimeError("WebUI server event loop is not running.")
+                future = asyncio.run_coroutine_threadsafe(
+                    self._job_manager.shutdown(timeout_s=JOB_SHUTDOWN_TIMEOUT_S),
+                    server_loop,
+                )
+                future.result(timeout=JOB_SHUTDOWN_TIMEOUT_S + 1.0)
+                self._jobs_shutdown_complete = True
+
             self._server.should_exit = True
-        if self._server_thread is not None and self._server_thread.is_alive():
-            self._server_thread.join(timeout=3.0)
-        self._root.destroy()
+            if self._server_thread is not None and self._server_thread.is_alive():
+                self._server_thread.join(timeout=SERVER_JOIN_TIMEOUT_S)
+            if self._server_thread is not None and self._server_thread.is_alive():
+                raise TimeoutError("WebUI server did not stop before the join timeout.")
+        except BaseException as exc:
+            self._post_ui(lambda exc=exc: self._show_shutdown_error(exc))
+            return
+        self._post_ui(self._root.destroy)
+
+    def _show_shutdown_error(self, exc: BaseException) -> None:
+        message = f"{type(exc).__name__}: {exc}"
+        self._status_value.set(f"Shutdown incomplete: {message}")
+        self._quit_button.configure(state="normal")
+        self._shutdown_in_progress = False
+        messagebox.showerror("Shutdown incomplete", message)
 
     def _wait_for_startup(self, port: int) -> None:
         url = build_local_url(port)
@@ -253,9 +299,19 @@ class LauncherApp:
 
     def _run_server(self) -> None:
         try:
-            self._server.run()
+            setup_event_loop = getattr(self._server.config, "setup_event_loop", None)
+            if callable(setup_event_loop):
+                setup_event_loop()
+            asyncio.run(self._serve_server())
         except BaseException as exc:  # pragma: no cover - runtime safety net
             self._server_error = exc
+        finally:
+            self._server_loop = None
+
+    async def _serve_server(self) -> None:
+        self._server_loop = asyncio.get_running_loop()
+        self._server_loop_ready.set()
+        await self._server.serve()
 
     def _mark_server_ready(self, url: str, *, already_running: bool = False) -> None:
         self._startup_success.set()

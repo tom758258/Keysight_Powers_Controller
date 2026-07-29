@@ -283,13 +283,16 @@ async def create_job(request: Request):
                 detail="Hardware is currently locked by another job. Please wait for it to complete.",
             )
 
-    job_id = await job_manager.submit_job(
-        command=command,
-        runtime=canonical_runtime,
-        parameters=admitted_parameters,
-        artifacts=artifacts,
-        admitted_request=(None if command in {"capabilities", "safety inspect"} else admitted_request),
-    )
+    try:
+        job_id = await job_manager.submit_job(
+            command=command,
+            runtime=canonical_runtime,
+            parameters=admitted_parameters,
+            artifacts=artifacts,
+            admitted_request=(None if command in {"capabilities", "safety inspect"} else admitted_request),
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     job = job_manager.jobs.get(job_id)
     if job is not None and execution_summary is not None:
@@ -492,11 +495,14 @@ async def start_live_data(request: Request):
     if not (validation_runtime.resource or "").strip():
         raise HTTPException(status_code=400, detail="Live Data requires a selected hardware resource.")
 
-    job_id = await job_manager.submit_job(
-        command="live-data",
-        runtime=_canonical_webui_runtime(validation_runtime),
-        parameters=payload.get("parameters", {}),
-    )
+    try:
+        job_id = await job_manager.submit_job(
+            command="live-data",
+            runtime=_canonical_webui_runtime(validation_runtime),
+            parameters=payload.get("parameters", {}),
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     asyncio.create_task(_execute_live_data_background(job_id))
     return {"ok": True, "job_id": job_id, "events_url": f"/api/live/{job_id}/events"}
 

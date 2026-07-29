@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from queue import Empty, Queue
+import threading
 from urllib.error import HTTPError, URLError
 
 import pytest
@@ -25,6 +27,107 @@ class FakeResponse:
 
     def read(self) -> bytes:
         return json.dumps(self._payload).encode("utf-8")
+
+
+class FakeValue:
+    def __init__(self) -> None:
+        self.value = ""
+
+    def set(self, value: str) -> None:
+        self.value = value
+
+
+class FakeControl:
+    def __init__(self) -> None:
+        self.state = "normal"
+
+    def configure(self, *, state: str) -> None:
+        self.state = state
+
+
+class FakeRoot:
+    def __init__(self, order: list[str]) -> None:
+        self.order = order
+        self.destroyed = False
+
+    def destroy(self) -> None:
+        self.order.append("destroy")
+        self.destroyed = True
+
+
+class FakeServer:
+    def __init__(self) -> None:
+        self.should_exit = False
+
+
+class FakeServerThread:
+    def __init__(self, server: FakeServer, order: list[str]) -> None:
+        self.server = server
+        self.order = order
+        self.alive = True
+
+    def is_alive(self) -> bool:
+        return self.alive
+
+    def join(self, timeout: float) -> None:
+        assert timeout == launcher.SERVER_JOIN_TIMEOUT_S
+        assert self.server.should_exit is True
+        self.order.append("server_join")
+        self.alive = False
+
+
+class StuckServerThread(FakeServerThread):
+    def join(self, timeout: float) -> None:
+        assert timeout == launcher.SERVER_JOIN_TIMEOUT_S
+        assert self.server.should_exit is True
+        self.order.append("server_join")
+
+
+class FakeLoop:
+    def is_running(self) -> bool:
+        return True
+
+
+class FakeManager:
+    def __init__(self, order: list[str]) -> None:
+        self.order = order
+
+    def shutdown(self, *, timeout_s: float):
+        self.order.append("manager_shutdown")
+
+        async def complete() -> None:
+            assert timeout_s == launcher.JOB_SHUTDOWN_TIMEOUT_S
+
+        return complete()
+
+
+def _launcher_for_shutdown(order: list[str]) -> launcher.LauncherApp:
+    app = launcher.LauncherApp.__new__(launcher.LauncherApp)
+    app._root = FakeRoot(order)
+    app._server = FakeServer()
+    app._server_thread = FakeServerThread(app._server, order)
+    app._server_loop = FakeLoop()
+    app._server_loop_ready = threading.Event()
+    app._server_loop_ready.set()
+    app._job_manager = FakeManager(order)
+    app._shutdown_thread = None
+    app._shutdown_in_progress = False
+    app._jobs_shutdown_complete = False
+    app._ui_queue = Queue()
+    app._status_value = FakeValue()
+    app._start_button = FakeControl()
+    app._port_entry = FakeControl()
+    app._quit_button = FakeControl()
+    return app
+
+
+def _drain_ui_queue(app: launcher.LauncherApp) -> None:
+    while True:
+        try:
+            callback = app._ui_queue.get_nowait()
+        except Empty:
+            return
+        callback()
 
 
 def test_build_local_url_uses_loopback_default_port() -> None:
@@ -125,15 +228,143 @@ def test_launcher_does_not_import_cli_adapter() -> None:
     assert "powers_tool_cli" not in source
 
 
-def test_hardware_job_is_active_reads_webui_job_manager() -> None:
-    from powers_tool_webui.jobs import job_manager
+def test_idle_quit_shuts_down_jobs_before_server_and_destroy(monkeypatch) -> None:
+    import asyncio
 
-    previous = job_manager.active_job_id
-    try:
-        job_manager.active_job_id = "active-job"
-        assert launcher.hardware_job_is_active() is True
-    finally:
-        job_manager.active_job_id = previous
+    order: list[str] = []
+    app = _launcher_for_shutdown(order)
+
+    class ImmediateFuture:
+        def __init__(self, coroutine) -> None:
+            self.coroutine = coroutine
+
+        def result(self, *, timeout: float) -> None:
+            assert timeout == launcher.JOB_SHUTDOWN_TIMEOUT_S + 1.0
+            asyncio.run(self.coroutine)
+
+    monkeypatch.setattr(
+        launcher.asyncio,
+        "run_coroutine_threadsafe",
+        lambda coroutine, loop: ImmediateFuture(coroutine),
+    )
+
+    app.quit()
+    app._shutdown_thread.join(timeout=1)
+    _drain_ui_queue(app)
+
+    assert order == ["manager_shutdown", "server_join", "destroy"]
+    assert app._server.should_exit is True
+    assert app._root.destroyed is True
+
+
+def test_quit_shutdown_failure_keeps_server_and_window_open(
+    monkeypatch,
+) -> None:
+    order: list[str] = []
+    app = _launcher_for_shutdown(order)
+
+    class FailedFuture:
+        def __init__(self, coroutine) -> None:
+            self.coroutine = coroutine
+
+        def result(self, *, timeout: float) -> None:
+            self.coroutine.close()
+            raise TimeoutError("controlled shutdown timeout")
+
+    monkeypatch.setattr(
+        launcher.asyncio,
+        "run_coroutine_threadsafe",
+        lambda coroutine, loop: FailedFuture(coroutine),
+    )
+    monkeypatch.setattr(launcher.messagebox, "showerror", lambda *_args: None)
+
+    app.quit()
+    app._shutdown_thread.join(timeout=1)
+    _drain_ui_queue(app)
+
+    assert order == ["manager_shutdown"]
+    assert app._server.should_exit is False
+    assert app._root.destroyed is False
+    assert app._shutdown_in_progress is False
+    assert app._quit_button.state == "normal"
+    assert app._status_value.value.startswith("Shutdown incomplete:")
+
+
+def test_quit_server_join_timeout_keeps_window_open(monkeypatch) -> None:
+    import asyncio
+
+    order: list[str] = []
+    app = _launcher_for_shutdown(order)
+    app._server_thread = StuckServerThread(app._server, order)
+
+    class ImmediateFuture:
+        def __init__(self, coroutine) -> None:
+            self.coroutine = coroutine
+
+        def result(self, *, timeout: float) -> None:
+            asyncio.run(self.coroutine)
+
+    monkeypatch.setattr(
+        launcher.asyncio,
+        "run_coroutine_threadsafe",
+        lambda coroutine, loop: ImmediateFuture(coroutine),
+    )
+    monkeypatch.setattr(launcher.messagebox, "showerror", lambda *_args: None)
+
+    app.quit()
+    app._shutdown_thread.join(timeout=1)
+    _drain_ui_queue(app)
+
+    assert order == ["manager_shutdown", "server_join"]
+    assert app._server.should_exit is True
+    assert app._root.destroyed is False
+    assert app._shutdown_in_progress is False
+    assert app._status_value.value.startswith("Shutdown incomplete:")
+
+
+def test_repeated_quit_starts_only_one_shutdown_flow(monkeypatch) -> None:
+    import asyncio
+
+    order: list[str] = []
+    release_shutdown = threading.Event()
+    app = _launcher_for_shutdown(order)
+
+    class ControlledFuture:
+        def __init__(self, coroutine) -> None:
+            self.coroutine = coroutine
+
+        def result(self, *, timeout: float) -> None:
+            assert release_shutdown.wait(timeout=1)
+            asyncio.run(self.coroutine)
+
+    monkeypatch.setattr(
+        launcher.asyncio,
+        "run_coroutine_threadsafe",
+        lambda coroutine, loop: ControlledFuture(coroutine),
+    )
+
+    app.quit()
+    first_thread = app._shutdown_thread
+    app.quit()
+
+    assert app._shutdown_thread is first_thread
+    assert order == ["manager_shutdown"]
+
+    release_shutdown.set()
+    first_thread.join(timeout=1)
+    _drain_ui_queue(app)
+
+    assert order == ["manager_shutdown", "server_join", "destroy"]
+
+
+def test_quit_does_not_shutdown_server_owned_by_another_process() -> None:
+    order: list[str] = []
+    app = _launcher_for_shutdown(order)
+    app._server = None
+
+    app.quit()
+
+    assert order == ["destroy"]
 
 
 def test_create_uvicorn_server_uses_loopback_and_selected_port() -> None:

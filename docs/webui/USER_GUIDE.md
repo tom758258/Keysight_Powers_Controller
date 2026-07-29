@@ -282,9 +282,10 @@ Do not close the browser or kill the process to interrupt normal cleanup unless
 there is an external safety reason. Cleanup and release/local behavior belong
 to Core and may take time.
 
-The launcher blocks `Quit` while a hardware command is active. Stop or cancel
-the command in the browser first, then wait for cleanup before quitting the
-launcher.
+`Quit` requests cancellation of active WebUI work, including Live Data, and
+waits for normal cleanup before stopping the local server. If shutdown cannot
+finish before its timeout, the launcher stays open and reports `Shutdown
+incomplete` so you can resolve the problem and try again.
 
 ## Common Problems
 

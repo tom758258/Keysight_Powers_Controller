@@ -17,4 +17,6 @@ def client():
     from powers_tool_webui.jobs import job_manager
     job_manager.jobs.clear()
     job_manager.active_job_id = None
+    job_manager._shutdown_started = False
+    job_manager._shutdown_job_ids.clear()
     return TestClient(app)

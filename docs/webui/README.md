@@ -130,8 +130,12 @@ The launcher defaults to `127.0.0.1:7999`, opens the browser after Start, and
 keeps the window available so Quit can stop the local Uvicorn server. If the
 selected port already hosts Powers Tool WebUI, the launcher opens that page
 instead of starting a second server. If the port is used by another service,
-startup is rejected. Quit is blocked while a hardware command is active; stop
-or cancel the command in the browser first and wait for cleanup.
+startup is rejected. Quit first requests cancellation of active WebUI jobs,
+including Live Data and simulation or dry-run workflows, and waits for their
+normal cleanup before stopping the launcher-owned server. If job cleanup or
+server shutdown times out, the launcher stays open and reports that shutdown
+is incomplete. A server started by another process remains outside launcher
+ownership.
 
 The standalone PyInstaller GUI artifact is a separate executable at
 `dist\powers-tool-webui.exe`; it is built from the same launcher implementation
