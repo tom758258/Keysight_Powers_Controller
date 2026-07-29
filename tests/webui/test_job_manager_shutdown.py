@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import asynccontextmanager
 
 import pytest
 
@@ -80,20 +81,106 @@ def test_shutdown_waits_for_live_data_io_to_finish() -> None:
         assert await manager.start_job(job_id) is True
         job = manager.jobs[job_id]
         job.io_in_progress = True
+        cancellation_seen = asyncio.Event()
+        release_live_io = asyncio.Event()
 
         async def finish_live_io_after_cancellation() -> None:
             while not job.cancel_requested:
                 await asyncio.sleep(0)
-            await asyncio.sleep(0)
+            cancellation_seen.set()
+            await release_live_io.wait()
             job.io_in_progress = False
             await manager.complete_cancel(job_id)
 
         worker = asyncio.create_task(finish_live_io_after_cancellation())
-        await manager.shutdown(timeout_s=0.5)
+        shutdown_task = asyncio.create_task(manager.shutdown(timeout_s=0.5))
+        await cancellation_seen.wait()
+
+        assert job.status == JobStatus.CANCEL_REQUESTED
+        assert shutdown_task.done() is False
+
+        release_live_io.set()
+        await shutdown_task
         await worker
 
         assert job.status == JobStatus.CANCELLED
         assert job.io_in_progress is False
+
+    asyncio.run(check())
+
+
+def test_shutdown_waits_for_live_data_blocked_on_hardware_io(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from powers_tool_webui import app as web_app
+    from powers_tool_webui import commands
+
+    async def check() -> None:
+        manager = JobManager()
+        monkeypatch.setattr(web_app, "job_manager", manager)
+
+        def fail_live_panel_read(*_args, **_kwargs):
+            raise AssertionError("cancelled Live Data must not perform a hardware read")
+
+        monkeypatch.setattr(commands, "execute_live_panel_read", fail_live_panel_read)
+
+        original_hardware_io = manager.hardware_io
+        lock_attempts = 0
+        live_waiting_for_lock = asyncio.Event()
+
+        @asynccontextmanager
+        async def observed_hardware_io():
+            nonlocal lock_attempts
+            lock_attempts += 1
+            if lock_attempts == 2:
+                live_waiting_for_lock.set()
+            async with original_hardware_io():
+                yield
+
+        monkeypatch.setattr(manager, "hardware_io", observed_hardware_io)
+
+        release_real_io = asyncio.Event()
+        real_io_acquired = asyncio.Event()
+
+        async def hold_real_hardware_io() -> None:
+            async with manager.hardware_io():
+                real_io_acquired.set()
+                await release_real_io.wait()
+
+        real_io_task = asyncio.create_task(hold_real_hardware_io())
+        await real_io_acquired.wait()
+
+        live_job_id = await manager.submit_job(
+            "live-data",
+            {"resource": "USB0::FAKE::INSTR", "simulate": False, "dry_run": False},
+            {"interval_ms": 50},
+        )
+        live_task = asyncio.create_task(
+            web_app._execute_live_data_background(live_job_id)
+        )
+        await live_waiting_for_lock.wait()
+
+        shutdown_task = asyncio.create_task(manager.shutdown(timeout_s=0.5))
+
+        async def wait_for_cancel_requested() -> None:
+            while manager.jobs[live_job_id].status != JobStatus.CANCEL_REQUESTED:
+                if shutdown_task.done():
+                    raise AssertionError(
+                        "shutdown completed before Live Data left the hardware-I/O path"
+                    )
+                await asyncio.sleep(0)
+
+        await asyncio.wait_for(wait_for_cancel_requested(), timeout=0.5)
+
+        assert shutdown_task.done() is False
+
+        release_real_io.set()
+        await real_io_task
+        await shutdown_task
+
+        assert live_task.done() is True
+        assert manager.jobs[live_job_id].status == JobStatus.CANCELLED
+        assert manager.jobs[live_job_id].io_in_progress is False
 
     asyncio.run(check())
 

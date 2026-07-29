@@ -304,12 +304,8 @@ class JobManager:
                 job.cancel_requested = True
                 if job.status == JobStatus.CANCEL_REQUESTED:
                     return True
-                if job.command == "live-data" and not job.io_in_progress:
-                    job.status = JobStatus.CANCELLED
-                    job.add_event("cancelled", {"message": "Live data cancelled between reads"})
-                else:
-                    job.status = JobStatus.CANCEL_REQUESTED
-                    job.add_event("cancel_requested", {"message": "Waiting for safe-off and cleanup"})
+                job.status = JobStatus.CANCEL_REQUESTED
+                job.add_event("cancel_requested", {"message": "Waiting for safe-off and cleanup"})
                 return True
             return False
 

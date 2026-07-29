@@ -15,8 +15,16 @@ pytest.register_assert_rewrite(
 def client():
     from powers_tool_webui.app import app
     from powers_tool_webui.jobs import job_manager
-    job_manager.jobs.clear()
-    job_manager.active_job_id = None
-    job_manager._shutdown_started = False
-    job_manager._shutdown_job_ids.clear()
-    return TestClient(app)
+
+    def reset_job_manager() -> None:
+        job_manager.jobs.clear()
+        job_manager.active_job_id = None
+        job_manager._shutdown_started = False
+        job_manager._shutdown_job_ids.clear()
+
+    reset_job_manager()
+    try:
+        with TestClient(app) as test_client:
+            yield test_client
+    finally:
+        reset_job_manager()

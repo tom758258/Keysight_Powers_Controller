@@ -538,6 +538,8 @@ async def _execute_live_data_background(job_id: str):
 
                 runtime = build_runtime_options(runtime_opts)
                 async with job_manager.hardware_io():
+                    if job.cancel_requested:
+                        break
                     if _real_command_is_active(job_id):
                         busy_sample = _stale_live_panel_sample(
                             runtime_opts,
