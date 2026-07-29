@@ -6,6 +6,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
@@ -36,7 +37,7 @@ function usage() {
     "  --out <dir>                  artifact directory; default: .tmp_tests/power_sim_workflow",
     `  --resource <string>          must be exactly ${SIM_RESOURCE}`,
     "  --port <number>              owned Worker control port; default: 18766",
-    "  --ready-timeout-ms <n>       stdout ready wait before wait-ready fallback; default: 3000",
+    "  --ready-timeout-ms <n>       owned stdout ready deadline; default: 3000",
     "  --wait-ready-timeout-ms <n>  wait-ready deadline; default: 10000",
     "  --job-timeout-ms <n>         terminal result deadline; default: 15000",
     "  --stop-timeout-ms <n>        owned Worker exit deadline after stop; default: 10000",
@@ -165,17 +166,40 @@ function writeJson(path, value) {
 function runCommand(executable, args, timeoutMs) {
   return new Promise((resolveCommand) => {
     const started = Date.now();
-    const child = spawn(executable, args, {
-      cwd: process.cwd(),
-      windowsHide: true,
-    });
     let stdout = "";
     let stderr = "";
     let timedOut = false;
-    const timer = setTimeout(() => {
-      timedOut = true;
-      child.kill();
-    }, timeoutMs);
+    let settled = false;
+    let timer = null;
+    let child = null;
+
+    const finish = (code, spawnError = null) => {
+      if (settled) return;
+      settled = true;
+      if (timer !== null) clearTimeout(timer);
+      const parsed = parseJson(stdout);
+      resolveCommand({
+        args,
+        exit_code: timedOut ? 3 : (Number.isInteger(code) ? code : 3),
+        timed_out: timedOut,
+        elapsed_ms: Date.now() - started,
+        stdout,
+        stderr,
+        json: parsed.json,
+        parse_error: parsed.error,
+        spawn_error: spawnError ? String(spawnError?.message ?? spawnError) : null,
+      });
+    };
+
+    try {
+      child = spawn(executable, args, {
+        cwd: process.cwd(),
+        windowsHide: true,
+      });
+    } catch (error) {
+      finish(3, error);
+      return;
+    }
     child.stdout.setEncoding("utf8");
     child.stderr.setEncoding("utf8");
     child.stdout.on("data", (chunk) => {
@@ -184,20 +208,21 @@ function runCommand(executable, args, timeoutMs) {
     child.stderr.on("data", (chunk) => {
       stderr += chunk;
     });
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      const parsed = parseJson(stdout);
-      resolveCommand({
-        args,
-        exit_code: timedOut ? 3 : code,
-        timed_out: timedOut,
-        elapsed_ms: Date.now() - started,
-        stdout,
-        stderr,
-        json: parsed.json,
-        parse_error: parsed.error,
-      });
+    child.once("error", (error) => {
+      stderr += `${String(error?.stack ?? error)}\n`;
+      finish(3, error);
     });
+    child.on("close", (code) => {
+      finish(code);
+    });
+    timer = setTimeout(() => {
+      timedOut = true;
+      try {
+        child.kill();
+      } catch (error) {
+        finish(3, error);
+      }
+    }, timeoutMs);
   });
 }
 
@@ -245,6 +270,9 @@ async function main() {
     stop: join(out, "stop.json"),
     report: join(out, "power_sim_report.json"),
   };
+  for (const path of Object.values(paths)) {
+    rmSync(path, { force: true });
+  }
   const workerArtifacts = join(out, `worker_runtime_${process.pid}_${Date.now()}`);
   const workerArgs = [
     "worker",
@@ -257,52 +285,119 @@ async function main() {
     "--artifacts-dir",
     workerArtifacts,
   ];
-  const worker = spawn(executable, workerArgs, {
-    cwd: process.cwd(),
-    windowsHide: true,
-  });
-  worker.stdout.setEncoding("utf8");
-  worker.stderr.setEncoding("utf8");
-
+  let worker = null;
+  let workerClosed = Promise.resolve(null);
+  let workerExited = false;
+  let workerExitCode = null;
+  let workerSpawnError = null;
   let stdout = "";
   let stderr = "";
   let pendingLine = "";
   const events = [];
   const parseErrors = [];
-  worker.stdout.on("data", (chunk) => {
-    stdout += chunk;
-    pendingLine += chunk;
-    while (pendingLine.includes("\n")) {
-      const newline = pendingLine.indexOf("\n");
-      const line = pendingLine.slice(0, newline).trim();
-      pendingLine = pendingLine.slice(newline + 1);
-      if (!line) continue;
-      try {
-        const event = JSON.parse(line);
-        if (event === null || typeof event !== "object" || Array.isArray(event)) {
-          parseErrors.push({ line, message: "JSONL value must be an object" });
-        } else {
-          events.push(event);
-        }
-      } catch (error) {
-        parseErrors.push({ line, message: String(error?.message ?? error) });
-      }
-    }
-  });
-  worker.stderr.on("data", (chunk) => {
-    stderr += chunk;
-  });
-  const workerClosed = new Promise((resolveClosed) => {
-    worker.on("close", (code) => resolveClosed(code));
-  });
-
   const clients = {};
-  let ready = await waitFor(
-    () => events.find((event) => event.event === "ready") ?? null,
-    readyTimeoutMs,
-  );
-  if (!ready && worker.exitCode === null) {
-    clients.wait_ready_fallback = await runCommand(
+  const artifactWriteErrors = [];
+  const cleanupErrors = [];
+  let ready = null;
+  let ownedRunId = null;
+  let portIdentityConfirmed = false;
+  let portIdentityMismatch = false;
+  let cooperativeStopAttempted = false;
+  let cooperativeStopSucceeded = false;
+  let forcedTermination = false;
+  let workflowError = null;
+  let accepted = null;
+  let acceptedEvent = null;
+  let artifactPath = null;
+  let requestArtifact = { json: null, error: "request artifact not read" };
+  let resultArtifact = { json: null, error: "result artifact not read" };
+  let statusAfterResult = null;
+
+  const parseWorkerLine = (rawLine) => {
+    const line = rawLine.trim();
+    if (!line) return;
+    try {
+      const event = JSON.parse(line);
+      if (event === null || typeof event !== "object" || Array.isArray(event)) {
+        parseErrors.push({ line, message: "JSONL value must be an object" });
+      } else {
+        events.push(event);
+      }
+    } catch (error) {
+      parseErrors.push({ line, message: String(error?.message ?? error) });
+    }
+  };
+  const ownedStatus = (client) =>
+    client?.exit_code === 0 &&
+    client?.parse_error === null &&
+    client?.spawn_error === null &&
+    hasSchema2(client?.json) &&
+    client.json.run_id === ownedRunId;
+  const recordIdentityMismatch = (client) => {
+    if (
+      hasSchema2(client?.json) &&
+      typeof client.json.run_id === "string" &&
+      client.json.run_id &&
+      client.json.run_id !== ownedRunId
+    ) {
+      portIdentityMismatch = true;
+      portIdentityConfirmed = false;
+    }
+  };
+
+  try {
+    worker = spawn(executable, workerArgs, {
+      cwd: process.cwd(),
+      windowsHide: true,
+    });
+    worker.stdout.setEncoding("utf8");
+    worker.stderr.setEncoding("utf8");
+    worker.stdout.on("data", (chunk) => {
+      stdout += chunk;
+      pendingLine += chunk;
+      while (pendingLine.includes("\n")) {
+        const newline = pendingLine.indexOf("\n");
+        parseWorkerLine(pendingLine.slice(0, newline));
+        pendingLine = pendingLine.slice(newline + 1);
+      }
+    });
+    worker.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+    worker.once("error", (error) => {
+      workerSpawnError = String(error?.message ?? error);
+      stderr += `${String(error?.stack ?? error)}\n`;
+    });
+    workerClosed = new Promise((resolveClosed) => {
+      worker.once("close", (code) => {
+        workerExited = true;
+        workerExitCode = Number.isInteger(code) ? code : 3;
+        resolveClosed(workerExitCode);
+      });
+    });
+
+    ready = await waitFor(() => {
+      const validReady = events.find(
+        (event) =>
+          hasSchema2(event) &&
+          event.event === "ready" &&
+          typeof event.run_id === "string" &&
+          event.run_id.length > 0,
+      );
+      if (validReady) return validReady;
+      if (workerSpawnError || workerExited) return { startup_failed: true };
+      return null;
+    }, readyTimeoutMs);
+    if (!ready || ready.startup_failed) {
+      throw new Error(
+        workerSpawnError
+          ? `Worker subprocess failed to start: ${workerSpawnError}`
+          : "owned Worker did not emit a valid schema-2 ready event",
+      );
+    }
+    ownedRunId = ready.run_id;
+
+    clients.wait_ready = await runCommand(
       executable,
       [
         "wait-ready",
@@ -316,179 +411,289 @@ async function main() {
       ],
       waitReadyTimeoutMs + 5000,
     );
-  }
+    writeJson(paths.waitReady, clients.wait_ready.json ?? {
+      parse_error: clients.wait_ready.parse_error,
+      spawn_error: clients.wait_ready.spawn_error,
+      exit_code: clients.wait_ready.exit_code,
+    });
+    recordIdentityMismatch(clients.wait_ready);
+    if (!ownedStatus(clients.wait_ready)) {
+      throw new Error("wait-ready did not confirm the owned Worker run_id");
+    }
+    portIdentityConfirmed = true;
+    if (parseErrors.length > 0) {
+      throw new Error("Worker stdout contained a JSONL parse error");
+    }
 
-  clients.wait_ready = await runCommand(
-    executable,
-    [
-      "wait-ready",
-      "--port",
-      String(port),
-      "--json",
-      "--timeout-ms",
-      String(clientTimeoutMs),
-      "--wait-timeout-ms",
-      String(waitReadyTimeoutMs),
-    ],
-    waitReadyTimeoutMs + 5000,
-  );
-  writeJson(paths.waitReady, clients.wait_ready.json ?? {
-    parse_error: clients.wait_ready.parse_error,
-    exit_code: clients.wait_ready.exit_code,
-  });
+    clients.status_before_command = await runCommand(
+      executable,
+      ["status", "--port", String(port), "--json", "--timeout-ms", String(clientTimeoutMs)],
+      commandTimeoutMs,
+    );
+    writeJson(paths.statusBefore, clients.status_before_command.json ?? {
+      parse_error: clients.status_before_command.parse_error,
+      spawn_error: clients.status_before_command.spawn_error,
+      exit_code: clients.status_before_command.exit_code,
+    });
+    recordIdentityMismatch(clients.status_before_command);
+    if (!ownedStatus(clients.status_before_command)) {
+      throw new Error("status did not confirm the owned Worker run_id");
+    }
 
-  clients.status_before_command = await runCommand(
-    executable,
-    ["status", "--port", String(port), "--json", "--timeout-ms", String(clientTimeoutMs)],
-    commandTimeoutMs,
-  );
-  writeJson(paths.statusBefore, clients.status_before_command.json ?? {
-    parse_error: clients.status_before_command.parse_error,
-    exit_code: clients.status_before_command.exit_code,
-  });
+    clients.send_command = await runCommand(
+      executable,
+      [
+        "send-command",
+        "--port",
+        String(port),
+        "--command",
+        "read-status",
+        "--arguments-json",
+        '{"channel":"all"}',
+        "--context-json",
+        `{"mode":"simulate","planning_model_id":"${PLANNING_MODEL_ID}"}`,
+        "--job-id",
+        JOB_ID,
+        "--json",
+        "--timeout-ms",
+        String(clientTimeoutMs),
+      ],
+      commandTimeoutMs,
+    );
+    writeJson(paths.accepted, clients.send_command.json ?? {
+      parse_error: clients.send_command.parse_error,
+      spawn_error: clients.send_command.spawn_error,
+      exit_code: clients.send_command.exit_code,
+    });
+    accepted = clients.send_command.json;
+    if (
+      clients.send_command.exit_code !== 0 ||
+      clients.send_command.parse_error !== null ||
+      clients.send_command.spawn_error !== null ||
+      !hasSchema2(accepted) ||
+      accepted?.http_status !== 202 ||
+      accepted?.status !== "accepted" ||
+      accepted?.command !== "read-status" ||
+      accepted?.job_id !== JOB_ID ||
+      typeof accepted?.worker_job_id !== "string" ||
+      !accepted.worker_job_id ||
+      typeof accepted?.artifact_path !== "string" ||
+      !accepted.artifact_path
+    ) {
+      throw new Error("send-command did not return the expected accepted response");
+    }
+    artifactPath = accepted.artifact_path;
 
-  clients.send_command = await runCommand(
-    executable,
-    [
-      "send-command",
-      "--port",
-      String(port),
-      "--command",
-      "read-status",
-      "--arguments-json",
-      '{"channel":"all"}',
-      "--context-json",
-      `{"mode":"simulate","planning_model_id":"${PLANNING_MODEL_ID}"}`,
-      "--job-id",
-      JOB_ID,
-      "--json",
-      "--timeout-ms",
-      String(clientTimeoutMs),
-    ],
-    commandTimeoutMs,
-  );
-  writeJson(paths.accepted, clients.send_command.json ?? {
-    parse_error: clients.send_command.parse_error,
-    exit_code: clients.send_command.exit_code,
-  });
+    acceptedEvent = await waitFor(
+      () =>
+        events.find(
+          (event) =>
+            event.event === "job_accepted" &&
+            event.job_id === JOB_ID &&
+            event.worker_job_id === accepted.worker_job_id,
+        ) ?? null,
+      clientTimeoutMs,
+    );
+    if (!acceptedEvent || !hasSchema2(acceptedEvent) || acceptedEvent.run_id !== ownedRunId) {
+      throw new Error("job_accepted event did not correlate to the owned Worker");
+    }
 
-  const accepted = clients.send_command.json;
-  const artifactPath =
-    accepted && typeof accepted.artifact_path === "string" ? accepted.artifact_path : null;
-  const sourceRequestPath = artifactPath ? join(artifactPath, "request.json") : null;
-  const sourceResultPath = artifactPath ? join(artifactPath, "result.json") : null;
-  if (sourceRequestPath && existsSync(sourceRequestPath)) {
+    clients.status_after_acceptance = await runCommand(
+      executable,
+      ["status", "--port", String(port), "--json", "--timeout-ms", String(clientTimeoutMs)],
+      commandTimeoutMs,
+    );
+    recordIdentityMismatch(clients.status_after_acceptance);
+    if (!ownedStatus(clients.status_after_acceptance)) {
+      throw new Error("post-acceptance status did not confirm the owned Worker run_id");
+    }
+
+    const sourceRequestPath = join(artifactPath, "request.json");
+    const sourceResultPath = join(artifactPath, "result.json");
+    if (!existsSync(sourceRequestPath)) {
+      throw new Error(`request artifact not found: ${sourceRequestPath}`);
+    }
     copyFileSync(sourceRequestPath, paths.request);
-  }
+    requestArtifact = readJsonFile(paths.request);
+    if (requestArtifact.error !== null || !hasSchema2(requestArtifact.json)) {
+      throw new Error(requestArtifact.error ?? "request artifact did not use schema 2");
+    }
 
-  let terminalStatus = null;
-  let resultAvailable = sourceResultPath ? existsSync(sourceResultPath) : false;
-  const jobDeadline = Date.now() + jobTimeoutMs;
-  while (!resultAvailable && Date.now() < jobDeadline && worker.exitCode === null) {
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
-    resultAvailable = sourceResultPath ? existsSync(sourceResultPath) : false;
-    if (!resultAvailable) {
-      const status = await runCommand(
+    const resultAvailable = await waitFor(
+      () => existsSync(sourceResultPath) || workerExited,
+      jobTimeoutMs,
+    );
+    if (!resultAvailable || !existsSync(sourceResultPath)) {
+      throw new Error("accepted job did not produce terminal result.json");
+    }
+    copyFileSync(sourceResultPath, paths.result);
+    resultArtifact = readJsonFile(paths.result);
+    if (
+      resultArtifact.error !== null ||
+      !hasSchema2(resultArtifact.json) ||
+      resultArtifact.json?.run_id !== ownedRunId ||
+      resultArtifact.json?.worker_job_id !== accepted.worker_job_id ||
+      resultArtifact.json?.status !== "succeeded" ||
+      resultArtifact.json?.ok !== true
+    ) {
+      throw new Error("terminal result did not correlate or succeed");
+    }
+
+    clients.status_after_result = await runCommand(
+      executable,
+      ["status", "--port", String(port), "--json", "--timeout-ms", String(clientTimeoutMs)],
+      commandTimeoutMs,
+    );
+    statusAfterResult = clients.status_after_result.json;
+    recordIdentityMismatch(clients.status_after_result);
+    if (!ownedStatus(clients.status_after_result)) {
+      throw new Error("post-result status did not confirm the owned Worker run_id");
+    }
+  } catch (error) {
+    workflowError = String(error?.message ?? error);
+  } finally {
+    if (worker && !workerExited && ownedRunId && !portIdentityMismatch) {
+      clients.status_before_stop = await runCommand(
         executable,
         ["status", "--port", String(port), "--json", "--timeout-ms", String(clientTimeoutMs)],
         commandTimeoutMs,
       );
-      if (status.exit_code === 0 && status.json) {
-        terminalStatus = status.json;
-      }
-    }
-  }
-  if (sourceResultPath && existsSync(sourceResultPath)) {
-    copyFileSync(sourceResultPath, paths.result);
-  }
-  const requestArtifact = readJsonFile(paths.request);
-  const resultArtifact = readJsonFile(paths.result);
-
-  clients.stop = await runCommand(
-    executable,
-    [
-      "stop",
-      "--port",
-      String(port),
-      "--reason",
-      "power simulator smoke complete",
-      "--json",
-      "--timeout-ms",
-      String(clientTimeoutMs),
-    ],
-    commandTimeoutMs,
-  );
-  writeJson(paths.stop, clients.stop.json ?? {
-    parse_error: clients.stop.parse_error,
-    exit_code: clients.stop.exit_code,
-  });
-
-  let workerExitCode = await Promise.race([
-    workerClosed,
-    new Promise((resolveTimeout) => setTimeout(() => resolveTimeout("timeout"), stopTimeoutMs)),
-  ]);
-  let forcedTermination = false;
-  if (workerExitCode === "timeout") {
-    forcedTermination = true;
-    worker.kill();
-    workerExitCode = await workerClosed;
-  }
-  if (pendingLine.trim()) {
-    const line = pendingLine.trim();
-    try {
-      const event = JSON.parse(line);
-      if (event === null || typeof event !== "object" || Array.isArray(event)) {
-        parseErrors.push({ line, message: "JSONL value must be an object" });
+      recordIdentityMismatch(clients.status_before_stop);
+      if (ownedStatus(clients.status_before_stop)) {
+        portIdentityConfirmed = true;
+        cooperativeStopAttempted = true;
+        clients.stop = await runCommand(
+          executable,
+          [
+            "stop",
+            "--port",
+            String(port),
+            "--reason",
+            "power simulator smoke complete",
+            "--json",
+            "--timeout-ms",
+            String(clientTimeoutMs),
+          ],
+          commandTimeoutMs,
+        );
+        cooperativeStopSucceeded =
+          clients.stop.exit_code === 0 &&
+          clients.stop.parse_error === null &&
+          clients.stop.spawn_error === null &&
+          clients.stop.json?.ok === true &&
+          typeof clients.stop.json?.message === "string" &&
+          clients.stop.json.message.length > 0;
+        try {
+          writeJson(paths.stop, clients.stop.json ?? {
+            parse_error: clients.stop.parse_error,
+            spawn_error: clients.stop.spawn_error,
+            exit_code: clients.stop.exit_code,
+          });
+        } catch (error) {
+          artifactWriteErrors.push(`stop.json: ${String(error?.message ?? error)}`);
+        }
       } else {
-        events.push(event);
+        portIdentityConfirmed = false;
       }
+    }
+
+    if (worker && !workerExited) {
+      const closeResult = await Promise.race([
+        workerClosed,
+        new Promise((resolveTimeout) =>
+          setTimeout(() => resolveTimeout("timeout"), stopTimeoutMs),
+        ),
+      ]);
+      if (closeResult === "timeout") {
+        forcedTermination = true;
+        try {
+          worker.kill();
+        } catch (error) {
+          cleanupErrors.push(`worker termination: ${String(error?.message ?? error)}`);
+        }
+        const forcedCloseResult = await Promise.race([
+          workerClosed,
+          new Promise((resolveTimeout) =>
+            setTimeout(() => resolveTimeout("timeout"), stopTimeoutMs),
+          ),
+        ]);
+        if (forcedCloseResult === "timeout") {
+          workerExitCode = null;
+        }
+      }
+    }
+    if (pendingLine.trim()) {
+      parseWorkerLine(pendingLine);
+      pendingLine = "";
+    }
+    try {
+      writeFileSync(paths.stdout, stdout, "utf8");
     } catch (error) {
-      parseErrors.push({ line, message: String(error?.message ?? error) });
+      artifactWriteErrors.push(`worker_stdout.jsonl: ${String(error?.message ?? error)}`);
+    }
+    try {
+      writeFileSync(paths.stderr, stderr, "utf8");
+    } catch (error) {
+      artifactWriteErrors.push(`worker_stderr.txt: ${String(error?.message ?? error)}`);
     }
   }
-  writeFileSync(paths.stdout, stdout, "utf8");
-  writeFileSync(paths.stderr, stderr, "utf8");
 
-  ready = events.find((event) => event.event === "ready") ?? ready;
   const summary = events.findLast((event) => event.event === "summary") ?? null;
   const relevantJobEvents = events.filter(
     (event) => event.job_id === JOB_ID || event.worker_job_id === accepted?.worker_job_id,
   );
   const runIds = {
     ready: ready?.run_id ?? null,
-    wait_ready: clients.wait_ready.json?.run_id ?? null,
-    status_before_command: clients.status_before_command.json?.run_id ?? null,
-    terminal_status: terminalStatus?.run_id ?? null,
+    wait_ready: clients.wait_ready?.json?.run_id ?? null,
+    status_before_command: clients.status_before_command?.json?.run_id ?? null,
+    accepted_event: acceptedEvent?.run_id ?? null,
+    status_after_acceptance: clients.status_after_acceptance?.json?.run_id ?? null,
+    status_after_result: statusAfterResult?.run_id ?? null,
+    status_before_stop: clients.status_before_stop?.json?.run_id ?? null,
     result: resultArtifact.json?.run_id ?? null,
     summary: summary?.run_id ?? null,
   };
-  const expectedRunId = runIds.ready;
+  const expectedRunId = ownedRunId;
   const presentRunIds = Object.values(runIds).filter((value) => value !== null);
   const workerJobId = accepted?.worker_job_id ?? null;
   const checks = {
     fixed_simulator_resource: resource === SIM_RESOURCE,
-    worker_ready_observed: Boolean(ready),
+    workflow_no_error: workflowError === null,
+    worker_ready_observed: Boolean(ready && !ready.startup_failed),
+    ownership_ready_valid:
+      hasSchema2(ready) &&
+      ready?.event === "ready" &&
+      typeof ownedRunId === "string" &&
+      ownedRunId.length > 0,
+    port_identity_confirmed: portIdentityConfirmed,
+    port_identity_not_mismatched: portIdentityMismatch === false,
     worker_events_present: events.length > 0,
     worker_events_schema_v2: events.length > 0 && events.every(hasSchema2),
     worker_jsonl_parse_ok: parseErrors.length === 0,
     wait_ready_ok:
-      clients.wait_ready.exit_code === 0 &&
-      clients.wait_ready.parse_error === null &&
-      clients.wait_ready.json?.status === "ready",
-    wait_ready_schema_v2: hasSchema2(clients.wait_ready.json),
+      clients.wait_ready?.exit_code === 0 &&
+      clients.wait_ready?.parse_error === null &&
+      clients.wait_ready?.spawn_error === null &&
+      clients.wait_ready?.json?.status === "ready" &&
+      clients.wait_ready?.json?.run_id === ownedRunId,
+    wait_ready_schema_v2: hasSchema2(clients.wait_ready?.json),
     status_before_ok:
-      clients.status_before_command.exit_code === 0 &&
-      clients.status_before_command.parse_error === null &&
-      clients.status_before_command.json?.ok === true,
-    status_before_schema_v2: hasSchema2(clients.status_before_command.json),
+      clients.status_before_command?.exit_code === 0 &&
+      clients.status_before_command?.parse_error === null &&
+      clients.status_before_command?.spawn_error === null &&
+      clients.status_before_command?.json?.ok === true &&
+      clients.status_before_command?.json?.run_id === ownedRunId,
+    status_before_schema_v2: hasSchema2(clients.status_before_command?.json),
     accepted_http_202:
-      clients.send_command.exit_code === 0 &&
-      clients.send_command.parse_error === null &&
+      clients.send_command?.exit_code === 0 &&
+      clients.send_command?.parse_error === null &&
+      clients.send_command?.spawn_error === null &&
       accepted?.http_status === 202 &&
       accepted?.status === "accepted",
     accepted_schema_v2: hasSchema2(accepted),
     accepted_command: accepted?.command === "read-status",
     accepted_job_id: accepted?.job_id === JOB_ID,
+    accepted_session_run_id_correlated: acceptedEvent?.run_id === ownedRunId,
     accepted_worker_job_id: typeof workerJobId === "string" && workerJobId.length > 0,
     accepted_artifact_path: typeof artifactPath === "string" && artifactPath.length > 0,
     request_json_parse_ok: requestArtifact.error === null,
@@ -511,7 +716,7 @@ async function main() {
     run_id_correlated:
       typeof expectedRunId === "string" &&
       expectedRunId.length > 0 &&
-      presentRunIds.length >= 5 &&
+      presentRunIds.length >= 7 &&
       presentRunIds.every((value) => value === expectedRunId),
     job_events_present: relevantJobEvents.length >= 3,
     job_event_job_id_correlated:
@@ -525,14 +730,12 @@ async function main() {
       relevantJobEvents
         .filter((event) => Object.hasOwn(event, "run_id"))
         .every((event) => event.run_id === expectedRunId),
-    stop_acknowledged:
-      clients.stop.exit_code === 0 &&
-      clients.stop.parse_error === null &&
-      clients.stop.json?.ok === true &&
-      typeof clients.stop.json?.message === "string" &&
-      clients.stop.json.message.length > 0,
+    cooperative_stop_attempted: cooperativeStopAttempted,
+    stop_acknowledged: cooperativeStopSucceeded,
     final_summary_present: Boolean(summary),
-    final_summary_ok: summary?.ok === true,
+    final_summary_ok: summary?.ok === true && summary?.run_id === ownedRunId,
+    artifact_writes_ok: artifactWriteErrors.length === 0,
+    cleanup_errors_absent: cleanupErrors.length === 0,
     no_forced_termination: forcedTermination === false,
     worker_exit_code_zero: workerExitCode === 0,
   };
@@ -549,6 +752,7 @@ async function main() {
     job_id: JOB_ID,
     worker_job_id: workerJobId,
     run_id: expectedRunId,
+    owned_run_id: ownedRunId,
     port,
     artifact_paths: paths,
     worker_artifacts: workerArtifacts,
@@ -559,17 +763,37 @@ async function main() {
     request_parse_error: requestArtifact.error,
     result: resultArtifact.json,
     result_parse_error: resultArtifact.error,
-    terminal_status: terminalStatus,
+    terminal_status: statusAfterResult,
     events,
     event_sequence: events.map((event) => event.event),
     parse_errors: parseErrors,
     run_ids: runIds,
     summary,
+    error: workflowError,
+    ownership: {
+      owned_run_id: ownedRunId,
+      ready_observed: Boolean(ready && !ready.startup_failed),
+      port_identity_confirmed: portIdentityConfirmed,
+      port_identity_mismatch: portIdentityMismatch,
+    },
+    cleanup: {
+      cooperative_stop_attempted: cooperativeStopAttempted,
+      cooperative_stop_succeeded: cooperativeStopSucceeded,
+      forced_termination: forcedTermination,
+    },
+    worker_spawn_error: workerSpawnError,
     worker_exit_code: workerExitCode,
     forced_termination: forcedTermination,
+    artifact_write_errors: artifactWriteErrors,
+    cleanup_errors: cleanupErrors,
     checks,
   };
-  writeJson(paths.report, report);
+  try {
+    writeJson(paths.report, report);
+  } catch (error) {
+    console.error(`Could not write failure report: ${String(error?.message ?? error)}`);
+    return 3;
+  }
   console.log(JSON.stringify(report, null, 2));
   return ok ? 0 : 3;
 }
