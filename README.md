@@ -263,6 +263,14 @@ test expectations, and the contributor validation-artifact workflow. Changes
 to live model, command, transport, or backend support require reviewable
 real-instrument evidence when applicable.
 
+## Optional Codex / Agent Skill
+
+The project publishes an optional, manually installed
+[Powers Tool CLI Orchestration Skill](docs/skill/README.md) for contract-aware
+CLI and Power Worker workflows. It is a companion template, not a Powers Tool
+runtime feature, and is not included with Python packages, standalone
+executables, builds, releases, or CI.
+
 ## Documentation
 
 - [Core README](docs/core/README.md)
@@ -277,6 +285,7 @@ real-instrument evidence when applicable.
 - [Public Contracts](docs/contracts)
 - [Power CLI JSONL Contract](docs/contracts/power-cli-jsonl-contract.md)
 - [Power Worker Contract](docs/contracts/power-worker-contract.md)
+- [Optional Codex / Agent Skill](docs/skill/README.md)
 
 ## License and Disclaimer
 

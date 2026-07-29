@@ -24,6 +24,14 @@ Keysight Powers 是用於 Keysight 直流電源供應器的 Python 控制工具�
 - 產生 JSON 與 JSONL 輸出，供自動化、agent 與 orchestrator 使用。
 - 保持真實硬體輸出為選用 (opt-in)；預設測試與模擬流程不會啟用儀器輸出。
 
+## 選用 Codex／Agent Skill
+
+專案提供選用、需手動安裝的
+[Powers Tool CLI 調度 Skill](docs/skill/README.zh-TW.md)，供合約導向的 CLI
+與 Power Worker workflow 使用。它是附屬範本，不是 Powers Tool runtime
+功能，也不包含在 Python package、standalone executable、build、release 或
+CI 中。
+
 ## 專案結構
 
 此 repository 使用單一發行套件與單一版本號。在範例中，`<version>` 代表
@@ -218,6 +226,7 @@ Scripted no-hardware 與 live validation 工作流程記錄在
 - [Public Contracts](docs/contracts)
 - [Power CLI JSONL Contract](docs/contracts/power-cli-jsonl-contract.md)
 - [Power Worker Contract](docs/contracts/power-worker-contract.md)
+- [選用 Codex／Agent Skill](docs/skill/README.zh-TW.md)
 
 ## 授權條款與免責聲明
 
