@@ -119,10 +119,14 @@ def test_shutdown_waits_for_live_data_blocked_on_hardware_io(
         manager = JobManager()
         monkeypatch.setattr(web_app, "job_manager", manager)
 
-        def fail_live_panel_read(*_args, **_kwargs):
-            raise AssertionError("cancelled Live Data must not perform a hardware read")
+        read_calls = 0
 
-        monkeypatch.setattr(commands, "execute_live_panel_read", fail_live_panel_read)
+        def fake_live_panel_read(*_args, **_kwargs):
+            nonlocal read_calls
+            read_calls += 1
+            return {}
+
+        monkeypatch.setattr(commands, "execute_live_panel_read", fake_live_panel_read)
 
         original_hardware_io = manager.hardware_io
         lock_attempts = 0
@@ -181,6 +185,7 @@ def test_shutdown_waits_for_live_data_blocked_on_hardware_io(
         assert live_task.done() is True
         assert manager.jobs[live_job_id].status == JobStatus.CANCELLED
         assert manager.jobs[live_job_id].io_in_progress is False
+        assert read_calls == 0
 
     asyncio.run(check())
 
