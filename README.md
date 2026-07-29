@@ -217,21 +217,22 @@ release\<version>\checksums.txt
 ```
 
 Run the final no-hardware release acceptance from a clean, fully committed
-source working tree. The script validates committed HEAD in an isolated clean worktree.
-The final acceptance uses separate locked Python 3.10 and Python 3.13
-environments, builds and installs the wheel and sdist, checks all console entry
-points, builds both standalone executables, and writes `report.json` and
-`summary.md` under the ignored output root:
+source working tree. The script uses the existing `.venv`, checks that the
+working tree matches committed HEAD, verifies `uv.lock`, and runs the complete
+no-hardware test suite once. It then calls `build_release.ps1` once to produce
+the final versioned artifacts, inspects the wheel, sdist, and standalone
+executables, installs the final sdist in one clean environment, checks all
+console entry points, verifies checksums, runs CLI preflight and a simulator
+`PlanOnly` contract, and writes `report.json` and `summary.md` under the ignored
+output root:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File `
-  .\scripts\release-acceptance.ps1 `
-  -Python310 (uv python find 3.10) `
-  -CurrentPython (uv python find 3.13)
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\release-acceptance.ps1
 ```
 
 This acceptance script never performs VISA discovery, opens a resource, or
-sends SCPI. It does not publish a release or rename the repository.
+sends SCPI. It fails if HEAD or the source working tree changes during the run.
+It does not publish a release or rename the repository.
 
 ## Test
 

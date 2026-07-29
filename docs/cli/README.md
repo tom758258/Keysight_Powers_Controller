@@ -148,7 +148,7 @@ machine-readable `report.json` and a human-readable `summary.md` under
 | --- | --- | --- |
 | `scripts\preflight-cli.ps1` | No hardware | Runs model-aware CLI dry-run and simulator validation for one active model or all active models, parses every JSON result, and enforces `hardware_touched=false`. |
 | `scripts\live-cli-check.ps1` | Plan-only or explicit live hardware | Always runs `preflight-cli.ps1`, then generates the exact selected-suite plans before optional interactive live validation. Use this for candidate feature-validation records. |
-| `scripts\release-acceptance.ps1` | No hardware | Runs the complete version-neutral isolated-worktree release gate, including tests, package/install/entry-point checks, standalone builds, release artifacts, CLI preflight, and live `-PlanOnly`. |
+| `scripts\release-acceptance.ps1` | No hardware | Validates clean committed HEAD with the existing `.venv`, runs the full suite once, builds one final versioned release, checks its package/install/entry-point/standalone artifacts and checksums, then runs CLI preflight and simulator `-PlanOnly`. |
 | `scripts\batch-validation.ps1` | Selected by switches | Runs only the selected simulated or live validation tasks and writes one batch report. |
 
 #### Build entry points

@@ -2,15 +2,12 @@ from __future__ import annotations
 
 import importlib
 import io
-import json
-import os
 from pathlib import Path
 import re
 import shutil
 import subprocess
 import sys
 import tarfile
-from typing import Callable
 from uuid import uuid4
 import zipfile
 
@@ -177,56 +174,10 @@ def _powershell() -> str:
     return executable
 
 
-def _find_uv_python(version: str, cache: Path) -> Path:
-    uv = shutil.which("uv")
-    if uv is None:
-        pytest.skip("uv is required for acceptance-script behavior tests")
-    env = os.environ.copy()
-    env["UV_CACHE_DIR"] = str(cache)
-    result = subprocess.run(
-        [uv, "python", "find", version],
-        check=False,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        env=env,
-    )
-    if result.returncode != 0:
-        pytest.skip(f"Python {version} is not installed for the behavior test")
-    path = Path(result.stdout.strip().splitlines()[-1]).resolve()
-    if not path.is_file():
-        pytest.skip(f"uv returned no usable Python {version} interpreter")
-    return path
-
-
-@pytest.fixture
-def find_python(tmp_path_factory: pytest.TempPathFactory) -> Callable[[str], Path]:
-    _powershell()
-    cache = tmp_path_factory.mktemp("release_uv_cache")
-    return lambda version: _find_uv_python(version, cache)
-
-
-def _make_distinct_interpreter(
-    base_python: Path, request: pytest.FixtureRequest
-) -> Path:
-    environment = ROOT / ".tmp_tests" / "release_preflight_python" / uuid4().hex
-    request.addfinalizer(lambda: shutil.rmtree(environment, ignore_errors=True))
-    clean_env = os.environ.copy()
-    for name in ("PYTHONHOME", "UV_INTERNAL__PYTHONHOME", "VIRTUAL_ENV", "PYTHONPATH"):
-        clean_env.pop(name, None)
-    _run(
-        [str(base_python), "-m", "venv", "--without-pip", str(environment)],
-        cwd=ROOT,
-        env=clean_env,
-    )
-    return environment / "Scripts" / "python.exe"
-
-
-def _make_preflight_repository(request: pytest.FixtureRequest) -> Path:
+def _make_dirty_repository(request: pytest.FixtureRequest) -> Path:
     fixture_id = uuid4().hex
-    repository = ROOT / ".tmp_tests" / "release_preflight_repo" / fixture_id
-    git_directory = ROOT / ".tmp_tests" / "release_preflight_git" / fixture_id
+    repository = ROOT / ".tmp_tests" / "release_dirty_repo" / fixture_id
+    git_directory = ROOT / ".tmp_tests" / "release_dirty_git" / fixture_id
     repository.mkdir(parents=True)
     git_directory.parent.mkdir(parents=True, exist_ok=True)
     request.addfinalizer(lambda: shutil.rmtree(repository, ignore_errors=True))
@@ -259,157 +210,16 @@ def _make_preflight_repository(request: pytest.FixtureRequest) -> Path:
     return repository
 
 
-def _run_preflight(
-    repository: Path,
-    *,
-    python310: Path,
-    current_python: Path,
-) -> tuple[subprocess.CompletedProcess[str], dict[str, object]]:
-    command = [
-        _powershell(),
-        "-NoProfile",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        str(repository / "scripts" / SCRIPT.name),
-        "-InterpreterPreflightOnly",
-        "-Python310",
-        str(python310),
-        "-CurrentPython",
-        str(current_python),
-        "-OutputRoot",
-        ".tmp_tests\\preflight",
-    ]
-    result = _run(command, cwd=repository, check=False)
-    reports = list((repository / ".tmp_tests" / "preflight").glob("r_*/report.json"))
-    assert len(reports) == 1, result.stdout + result.stderr
-    return result, json.loads(reports[0].read_text(encoding="utf-8"))
-
-
-def test_preflight_rejects_non_310_python310(
-    request: pytest.FixtureRequest,
-    find_python: Callable[[str], Path],
-) -> None:
-    repository = _make_preflight_repository(request)
-    current_python = find_python("3.13")
-    wrong_python310 = _make_distinct_interpreter(current_python, request)
-    result, report = _run_preflight(
-        repository,
-        python310=wrong_python310,
-        current_python=current_python,
-    )
-
-    assert result.returncode == 1
-    assert report["ok"] is False
-    assert report["failed_step"] == "interpreter preflight"
-    assert str(wrong_python310) in report["failure_message"]
-    assert "expected Python 3.10" in report["failure_message"]
-    assert "actual Python 3.13" in report["failure_message"]
-
-
-def test_preflight_rejects_non_313_current_python(
-    request: pytest.FixtureRequest,
-    find_python: Callable[[str], Path],
-) -> None:
-    repository = _make_preflight_repository(request)
-    python310 = find_python("3.10")
-    wrong_current = _make_distinct_interpreter(python310, request)
-    result, report = _run_preflight(
-        repository,
-        python310=python310,
-        current_python=wrong_current,
-    )
-
-    assert result.returncode == 1
-    assert report["ok"] is False
-    assert str(wrong_current) in report["failure_message"]
-    assert "expected Python 3.13" in report["failure_message"]
-    assert "actual Python 3.10" in report["failure_message"]
-
-
-def test_preflight_rejects_the_same_interpreter_for_both_roles(
-    request: pytest.FixtureRequest,
-) -> None:
-    repository = _make_preflight_repository(request)
-    interpreter = Path(sys.executable).resolve()
-    result, report = _run_preflight(
-        repository,
-        python310=interpreter,
-        current_python=interpreter,
-    )
-
-    assert result.returncode == 1
-    assert report["ok"] is False
-    assert report["interpreters_distinct"] is False
-    assert "must be distinct files" in report["failure_message"]
-
-
-def test_preflight_report_records_exact_interpreter_and_committed_provenance(
-    request: pytest.FixtureRequest,
-    find_python: Callable[[str], Path],
-) -> None:
-    repository = _make_preflight_repository(request)
-    python310 = find_python("3.10")
-    current_python = find_python("3.13")
-    expected_commit = _run(["git", "rev-parse", "HEAD"], cwd=repository).stdout.strip()
-    result, report = _run_preflight(
-        repository,
-        python310=python310,
-        current_python=current_python,
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert report["schema_version"] == 1
-    assert report["kind"] == "powers-tool-release-acceptance"
-    assert report["ok"] is True
-    assert report["acceptance_mode"] == "interpreter-preflight"
-    assert report["full_acceptance_completed"] is False
-    assert report["source_commit"] == expected_commit
-    assert report["distribution_name"] == "powers-tool"
-    assert report["project_version"] == "3.4.5"
-    assert Path(report["python_310"]["requested_interpreter"]) == python310
-    assert report["python_310"]["expected_version"] == "3.10"
-    assert report["python_310"]["actual_version"].startswith("3.10.")
-    assert report["python_310"]["actual_major"] == 3
-    assert report["python_310"]["actual_minor"] == 10
-    assert (
-        Path(report["python_310"]["resolved_interpreter"])
-        == python310
-    )
-    assert Path(report["current_python"]["requested_interpreter"]) == current_python
-    assert report["current_python"]["expected_version"] == "3.13"
-    assert report["current_python"]["actual_version"].startswith("3.13.")
-    assert report["current_python"]["actual_major"] == 3
-    assert report["current_python"]["actual_minor"] == 13
-    assert (
-        Path(report["current_python"]["resolved_interpreter"])
-        == current_python
-    )
-    assert report["interpreters_distinct"] is True
-    assert report["acceptance_worktree_state"] == "not-created"
-    assert report["hardware_touched"] is False
-    assert report["support_metadata_changed"] is False
-    assert report["evidence_changed"] is False
-    assert report["repository_renamed"] is False
-    assert "working_tree_overlay_applied" not in report
-    assert "candidate_paths" not in report
-
-
 def test_dirty_repository_fails_before_creating_acceptance_output(
     request: pytest.FixtureRequest,
-    find_python: Callable[[str], Path],
 ) -> None:
-    repository = _make_preflight_repository(request)
-    python310 = find_python("3.10")
-    current_python = find_python("3.13")
+    repository = _make_dirty_repository(request)
     (repository / "README.md").write_text("dirty change\n", encoding="utf-8")
-    output_root = repository / ".tmp_tests" / "preflight"
+    output_root = repository / ".tmp_tests" / "release_acceptance"
     result = _run(
         [
             _powershell(), "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
-            str(repository / "scripts" / SCRIPT.name), "-InterpreterPreflightOnly",
-            "-Python310", str(python310), "-CurrentPython", str(current_python),
-            "-OutputRoot", ".tmp_tests\\preflight",
+            str(repository / "scripts" / SCRIPT.name),
         ],
         cwd=repository,
         check=False,
@@ -422,31 +232,51 @@ def test_dirty_repository_fails_before_creating_acceptance_output(
     assert not output_root.exists()
 
 
-def test_release_acceptance_has_no_working_tree_overlay_mode() -> None:
+def test_release_acceptance_uses_one_release_artifact_flow() -> None:
     text = SCRIPT.read_text(encoding="utf-8")
 
+    assert text.count("scripts\\build_release.ps1") == 1
+    assert text.count('"pytest-full-no-hardware"') == 1
+    assert "tests\\packaging\\inspect_distribution.py" not in text
+    assert text.count("tests\\packaging\\inspect_pyinstaller.py") == 1
+    for required in (
+        '"lock", "--check"',
+        '"install-final-sdist"',
+        '"preflight-cli-all"',
+        '"-Target", "all"',
+        '"live-cli-plan-only"',
+        '"-PlanOnly"',
+        '"git-diff-check"',
+        "HEAD changed during release acceptance",
+    ):
+        assert required in text
+
     for removed in (
-        "IncludeWorkingTreeChanges",
-        "allowedCandidatePaths",
-        "candidate_patch_sha256",
-        "working_tree_overlay_applied",
-        "apply-working-tree-diff",
+        "Python310",
+        "CurrentPython",
+        "InterpreterPreflightOnly",
+        "KeepWorktree",
+        "build_cli_exe.ps1",
+        "build_webui_exe.ps1",
+        "test_packaging_identity.py",
+        "pytest-focused",
+        "worktree add",
+        "build-wheel-from-sdist",
     ):
         assert removed not in text
 
 
-def test_release_acceptance_passes_project_version_to_every_inspector() -> None:
+def test_release_acceptance_does_not_invoke_itself() -> None:
+    assert "release-acceptance.ps1" not in SCRIPT.read_text(encoding="utf-8")
+
+
+def test_release_acceptance_passes_project_version_to_standalone_inspector() -> None:
     text = SCRIPT.read_text(encoding="utf-8")
-    invocations = re.findall(
-        r'-Arguments @\("tests\\packaging\\(inspect_(?:distribution|pyinstaller)\.py)"([^\n]*)\)',
-        text,
+    pattern = (
+        r'"tests\\packaging\\inspect_pyinstaller\.py".{0,160}'
+        r'"--expected-version", \$projectVersion'
     )
-    assert {name for name, _ in invocations} == {
-        "inspect_distribution.py",
-        "inspect_pyinstaller.py",
-    }
-    for name, arguments in invocations:
-        assert '"--expected-version", $projectVersion' in arguments, name
+    assert re.search(pattern, text, flags=re.DOTALL)
 
 
 def test_distribution_inspector_accepts_matching_explicit_future_version(
