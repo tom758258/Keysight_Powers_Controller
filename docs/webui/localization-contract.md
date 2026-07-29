@@ -1,16 +1,21 @@
 # WebUI Localization Contract
 
-## 1. Purpose And Phase Boundary
+## 1. Purpose And Current Runtime Status
 
 This document defines the investigation findings, browser-localization boundary,
 initial Traditional Chinese terminology, user-visible text inventory, refresh
-rules, and implementation plan for Powers WebUI localization.
+rules, and maintained runtime contract for Powers WebUI localization.
 
-P0 is a documentation-only phase. It adds this contract and does not change
-production behavior, tests, API behavior, or packaging. The maintained locales
-are `en` and `zh-TW`. English is the source locale, a complete locale, and the
-mandatory fallback locale. Localization is limited to presentation owned by the
-browser WebUI.
+Localization is implemented and maintained in the browser WebUI. The maintained
+locales are `en` and `zh-TW`. English is the source locale, a complete locale,
+and the mandatory fallback locale. Localization is limited to presentation
+owned by the browser WebUI.
+
+Historically, P0 was the documentation-only phase that introduced this
+contract. Subsequent P1-P6 phases implemented the catalogs, i18n runtime, DOM
+bindings, locale control, state-preserving runtime switching, terminology
+review, and regression coverage described below. The phase history is not a
+description of the current implementation status.
 
 The CLI, Core, drivers, SCPI, VISA, transport and backend behavior, API schemas,
 workflow file schemas, CSV, JSON, JSONL, logs, exported artifacts, and raw
@@ -19,13 +24,13 @@ modules are inventoried only where they explicitly provide presentation metadata
 or a message source that the browser displays. This does not transfer ownership
 of those messages, validation, or diagnostics to the WebUI.
 
-P0 does not implement catalogs, an i18n runtime, DOM localization helpers, a locale
-control, or any production prerequisite. It does not alter the English currently
-displayed by the application.
+The current implementation includes catalogs, an i18n runtime, DOM localization
+helpers, and a locale control. It changes browser presentation only and does not
+alter Core, API, SCPI, VISA, Product support, or raw diagnostic behavior.
 
 ## 2. Locked Product Decisions
 
-Future implementation must use these constants and decisions:
+The maintained implementation uses these constants and decisions:
 
 ```text
 SOURCE_LOCALE = "en"
@@ -49,8 +54,8 @@ and `zh-TW` is ignored. Browser-language matching is case-insensitive, first
 normalizes `_` to `-`, and then accepts `zh-TW`, a `zh-TW-` prefix, `zh-Hant`, or
 a `zh-Hant-` prefix. Other Chinese language tags must not be mapped to `zh-TW`.
 
-The future locale control will be a single button in the upper-right of the main
-interface, not inside Device options, Settings, or another menu. It displays the
+The locale control is a single button in the upper-right of the main interface,
+not inside Device options, Settings, or another menu. It displays the
 target language: `繁體中文` in English and `English` in Traditional Chinese.
 Changing locale must take effect immediately without reloading the page, update
 `<html lang>`, and persist a manual selection using the independent locale
@@ -365,7 +370,11 @@ construction/closure, reload, Job actions, preview/monitor actions, and state
 snapshots. They must compare all protected state before and after multiple locale
 switches.
 
-## 11. Planned Implementation Phases
+## 11. Historical Implementation Phases
+
+The following entries record the completed implementation phases. They provide
+historical context and are not a current-status checklist; the maintained
+runtime contract is defined in Sections 1-10.
 
 ### P1: Catalog And Runtime Contract
 
@@ -386,8 +395,8 @@ the static Result framing. English fallback prose remains in the HTML, and the
 production singleton applies the English catalog once after the DOM is ready.
 
 P2 preserves form values, IDs, `data-*` values, event bindings, and the existing
-`<html lang="en">`. Browser-language detection, storage, a language control,
-and runtime switching remain unimplemented until P5. Dynamic execution
+`<html lang="en">`. At the end of P2, browser-language detection, storage, a
+language control, and runtime switching were deferred until P5. Dynamic execution
 presentation, Device/Resource summaries, catalog/forms, workflows, Basic
 controls, Job History entries, result content, and Live Data remain assigned to
 P3 and P4.
@@ -418,12 +427,12 @@ The initial cached health state presents Checking/Unknown until a health
 response arrives; busy execution tooltips and Device/Resource toggle
 accessibility text are also refreshed without changing control state.
 
-P3 intentionally does not localize specialized workflow editors, Basic
+At the end of P3, specialized workflow editors, Basic
 controls, Job History, Workspace Result content, Result Detail content, Live
 Data, workflow operational status, or general backend/client result wrappers;
-those remain P4. Locale selection, browser-language detection, persistence,
-`<html lang>` switching, and the centralized whole-page refresh controller
-remain P5.
+those were deferred to P4. Locale selection, browser-language detection,
+persistence, `<html lang>` switching, and the centralized whole-page refresh
+controller were deferred to P5.
 
 ### P4: Workflows And Dynamic Operational Surfaces
 
@@ -452,9 +461,9 @@ and `error_code` values remain visible verbatim.
 Workflow documents, command and option values, Job IDs, model/resource values,
 units, serialized Result Detail JSON, exported artifacts, and unknown backend,
 Core, VISA, SCPI, instrument, HTTP, support, validation, and file-parse detail
-remain raw. P4 does not add locale selection, browser-language detection,
-persistence, `<html lang>` switching, or a centralized whole-page refresh
-controller; those remain P5.
+remain raw. At the end of P4, locale selection, browser-language detection,
+persistence, `<html lang>` switching, and the centralized whole-page refresh
+controller had not yet been added; P5 subsequently completed them.
 
 ### P5: Locale UI And State-Preserving Runtime Switching
 
@@ -472,8 +481,8 @@ samples, machine values, and raw diagnostics while prohibiting requests, Job or
 workflow actions, EventSource changes, acquisition, sample append, and reload.
 Result panel toggle accessibility is recalculated from canonical collapsed state
 after static translations are applied.
-P6 still owns terminology review, complete localization regression, and
-documentation closeout.
+P6 subsequently completed terminology review, complete localization regression,
+and documentation closeout.
 
 ### P6: Terminology, Regression, And Documentation Closeout
 

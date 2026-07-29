@@ -138,7 +138,9 @@ data or generated test artifacts.
 
 ### Scripted Validation
 
-Run all scripts from the repository root in PowerShell. Each script writes a
+The following table lists the supported standalone validation entry points,
+not a complete inventory of the `scripts/` directory. Run these scripts from
+the repository root in PowerShell. Each validation entry point writes a
 machine-readable `report.json` and a human-readable `summary.md` under
 `.tmp_tests`.
 
@@ -148,6 +150,34 @@ machine-readable `report.json` and a human-readable `summary.md` under
 | `scripts\live-cli-check.ps1` | Plan-only or explicit live hardware | Always runs `preflight-cli.ps1`, then generates the exact selected-suite plans before optional interactive live validation. Use this for candidate feature-validation records. |
 | `scripts\release-acceptance.ps1` | No hardware | Runs the complete version-neutral isolated-worktree release gate, including tests, package/install/entry-point checks, standalone builds, release artifacts, CLI preflight, and live `-PlanOnly`. |
 | `scripts\batch-validation.ps1` | Selected by switches | Runs only the selected simulated or live validation tasks and writes one batch report. |
+
+#### Build entry points
+
+These are public build entry points; detailed usage is maintained in the root
+[README](../../README.md):
+
+- `scripts\build_cli_exe.ps1`
+- `scripts\build_webui_exe.ps1`
+- `scripts\build_release.ps1`
+
+#### CI quality utilities
+
+These scripts support CI quality checks and are not standalone validation
+entries:
+
+- `scripts/check_text_hygiene.py` checks tracked public text for UTF-8,
+  BOM, replacement-character, and mojibake hygiene issues.
+- `scripts/check_changed_whitespace.py` checks the GitHub Actions event range
+  for whitespace errors. It depends on CI event SHA environment variables and
+  is not a general local standalone command.
+
+#### Internal helpers
+
+These files are called by other scripts and are not general user entry points;
+do not execute them directly:
+
+- `scripts/_validation_helpers.ps1`
+- `scripts/e36312a_trigger_validation.py`
 
 The live wrapper uses the Product CLI and loads the Core-owned candidate inventory directly in memory. It creates no intermediate inventory, manifest, or capability files.
 

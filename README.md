@@ -34,6 +34,9 @@ for planning and expected-model behavior.
   RS-232/ASRL settings using VISA
 - Use either the `powers-tool` CLI or the local `powers-tool-webui`
   dashboard
+- Use the WebUI in English or Traditional Chinese, switching at runtime
+  without reload while keeping machine-facing values, API payloads, and raw
+  diagnostics unchanged
 - Preview hardware-affecting commands with dry-run mode before opening VISA
 - Test workflows without hardware using the built-in simulator
 - Set voltage/current limits, control output state, and read back live

@@ -44,6 +44,11 @@ Snapshot, and Restore editors plus their JSON Load/Save orchestration. It
 receives only the state, document helpers, and application callbacks it uses
 across module boundaries; document schemas remain owned by their focused
 document modules.
+`i18n.js` owns locale validation, catalog lookup, English fallback, and
+interpolation. `locale_ui.js` owns browser-language detection, locale
+preference storage, `<html lang>`, and the runtime language control.
+`locale_en.js` provides the English source catalog, and `locale_zh_tw.js`
+provides the maintained Traditional Chinese catalog.
 
 `app.js` remains the bootstrap and composition root. Controller factory
 parameters represent only dependencies supplied across module boundaries;
@@ -66,6 +71,17 @@ FastAPI server and the `powers-tool-webui-launcher` console command for the
 Windows GUI launcher. The standalone PyInstaller GUI artifact is named
 `dist\powers-tool-webui.exe`; it is separate from both installed console
 wrappers and does not rename either entry point.
+
+## Localization
+
+The maintained locales are `en` and `zh-TW`; English is the source and
+fallback locale. Locale selection switches at runtime without reloading the
+page and is presentation-only: it must not create HTTP requests, Jobs,
+workflow actions, or EventSource side effects. Machine values, API schemas,
+command IDs, model IDs, VISA resources, SCPI, and raw diagnostics remain
+unchanged. The locale preference uses the independent browser storage key
+`powers-tool.webui.locale`; storage failures safely fall back without making
+the WebUI unusable.
 
 ## Purpose
 
@@ -587,3 +603,5 @@ authoritative.
   maintainer guide.
 - [WebUI Change Rules](web-ui-change-rules.md): maintainer and agent-facing
   rules for UI changes.
+- [Localization Contract](localization-contract.md): maintained browser
+  localization and presentation-only runtime contract.
