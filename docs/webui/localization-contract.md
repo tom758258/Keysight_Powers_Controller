@@ -234,11 +234,16 @@ Machine values, technical tokens, and the non-translatable contracts in section
 | Unsupported | 不支援 | No | Product/support summary | Preserve an unknown support reason. |
 | Pending | 待處理 | No | Job state | Use `待驗證` only for support validation context. |
 
-## 8. User-Visible Text Inventory
+## 8. Historical User-Visible Text Inventory
+
+This table records the P0 user-visible text inventory and the implementation
+ownership originally planned for P2-P5. It is retained as historical design
+context and does not describe the current implementation status.
 
 Treatment values are `translate`, `translate_with_canonical_token`,
 `preserve_raw`, `machine_value`, `not_user_visible`, and `out_of_scope`.
-P2-P5 references are plans only; P0 changes none of these sources.
+The key and phase columns record the historical P0/P2-P5 plan; they are not
+current implementation requirements.
 
 | Source | Surface/function | Current literal or pattern | Content type | Treatment | Proposed key/namespace | Refresh requirement | Risk | Planned phase |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -304,10 +309,10 @@ Refresh ownership is as follows:
 | Execution mode | P2 updates static radio labels, initial static help, title, and ARIA bindings in place. P3 updates dynamic badges, mode-specific help, identity labels, and Device/Resource summaries from raw state. | Locale refresh must not call `updateExecutionModeUi()` directly because it can modify controls, identity options, commands, or state; never change canonical mode or an identity slot. |
 | Device/Resource summary | Re-label existing DOM or redraw from cached raw identity/resource/support state. | No scan, health fetch, selection change, or support request. Cache raw scan and latest health state before relying on redraw. |
 | Command catalog | Re-label entries from cached catalog metadata while preserving raw command IDs and selection. | No catalog refetch or selection handler. |
-| Command form | Update labels/help/options/validation presentation in place. | Do not call `renderForm()` while it clears/rebuilds controls. A prerequisite is a field-to-key binding or complete raw draft state. |
+| Command form | Update labels/help/options/validation presentation in place. | Do not clear or rebuild controls while editing; preserve raw draft state and user input. |
 | Workflow editors | Update headings, labels, buttons, help, and known validation text in place; redraw only from a complete cached raw editor model. | No preview/run/import/export and no loss of invalid drafts, focus, selection, Loop, or completion-pulse state. |
 | Basic controls | Update labels and known status wrappers in place. | Never read/write output, protection, trigger, or device state. |
-| Job History | Redraw from cached raw command/status plus semantic `{key, params, rawFallback}` descriptors. | Current rendered `label`/`summary` storage is insufficient and must be replaced before retranslation; no Job API action. |
+| Job History | Redraw from cached raw command/status plus semantic `{key, params, rawFallback}` descriptors. | Use cached semantic descriptors for retranslation; no Job API action. |
 | Workspace Result | Re-label or redraw from cached raw result/status and semantic summary data. | No result clear, refetch, or mutation. |
 | Result Detail | Translate only surrounding heading/ARIA; preserve serialized raw JSON exactly. | Never translate keys or values or re-request detail. |
 | Live Data | Update controls, known status text, titles, legends, and axis labels in place, or perform a presentation-only redraw using existing cached samples. | Must not fetch, append samples, create/close EventSource, or change monitor/preview state. Redraw must preserve samples, channel/window state, and connection state. |
@@ -318,25 +323,18 @@ Known unsafe refresh paths include `updateDeviceResourceSummary()`,
 `updateExecutionModeUi()`, `updateSelectedCommandState()`, `renderLivePanel()`,
 `refreshHealth()`, `handleExecutionModeChange()`, and
 `syncSelectedResource()` when they combine presentation with state mutation,
-fetching, or event effects. Future work must separate or bypass those effects for
-locale refresh rather than invoke them wholesale.
+fetching, or event effects. During the P0 investigation, these paths were
+identified as unsafe for direct locale refresh. The maintained implementation
+separates or bypasses those effects rather than invoking the paths wholesale.
 
-`liveResourceSummary()` currently derives state by comparing option
-`textContent` with the English sentence `No live resources found`. It must use
-raw state or an option/data sentinel before that surface is localized. Likewise,
-Job History needs semantic presentation descriptors, and device scan/latest
-health state needs sufficient raw caching. These are implementation
-prerequisites for their respective P3/P4 surfaces, not P0 changes and not
-blockers to the P1 runtime/catalog work.
-
-Visible strings currently inserted using `innerHTML`, notably command catalog
-content and Live Data channel cards, must move to explicit DOM construction and
-`textContent` before translated parameters or backend/raw values pass through
-those paths.
+The P0 investigation also identified English-text state inference, insufficient
+semantic Job History data, incomplete cached scan/health state, and unsafe HTML
+construction as implementation prerequisites. These findings were addressed
+during P3-P5 and are retained here as historical design rationale.
 
 ## 10. Testing And Acceptance Criteria
 
-Future localization work must verify:
+Maintained localization changes must continue to verify:
 
 - committed English and `zh-TW` catalog key parity and English completeness;
 - English fallback using a synthetic missing-translation catalog;
@@ -362,7 +360,7 @@ Future localization work must verify:
   titles, legends, axes, and recognized status text;
 - English source-locale literal tests where language is the subject, while
   structure/behavior tests assert semantic keys, raw values, or DOM structure;
-- future locale modules in the native module graph, `_webui_shared.py` harness,
+- locale modules in the native module graph, `_webui_shared.py` harness,
   explicit static asset contracts, package contents, and standalone build.
 
 The no-side-effect switching tests must instrument `fetch`, EventSource
@@ -427,10 +425,10 @@ The initial cached health state presents Checking/Unknown until a health
 response arrives; busy execution tooltips and Device/Resource toggle
 accessibility text are also refreshed without changing control state.
 
-At the end of P3, specialized workflow editors, Basic
-controls, Job History, Workspace Result content, Result Detail content, Live
-Data, workflow operational status, or general backend/client result wrappers;
-those were deferred to P4. Locale selection, browser-language detection,
+At the end of P3, specialized workflow editors, Basic controls, Job History,
+Workspace Result content, Result Detail content, Live Data, workflow operational
+status, and general backend/client result wrappers were not yet localized; those
+surfaces were deferred to P4. Locale selection, browser-language detection,
 persistence, `<html lang>` switching, and the centralized whole-page refresh
 controller were deferred to P5.
 
