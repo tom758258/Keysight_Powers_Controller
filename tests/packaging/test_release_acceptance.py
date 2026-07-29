@@ -174,7 +174,7 @@ def _powershell() -> str:
     return executable
 
 
-def _make_dirty_repository(request: pytest.FixtureRequest) -> Path:
+def _make_acceptance_repository(request: pytest.FixtureRequest) -> Path:
     fixture_id = uuid4().hex
     repository = ROOT / ".tmp_tests" / "release_dirty_repo" / fixture_id
     git_directory = ROOT / ".tmp_tests" / "release_dirty_git" / fixture_id
@@ -213,7 +213,7 @@ def _make_dirty_repository(request: pytest.FixtureRequest) -> Path:
 def test_dirty_repository_fails_before_creating_acceptance_output(
     request: pytest.FixtureRequest,
 ) -> None:
-    repository = _make_dirty_repository(request)
+    repository = _make_acceptance_repository(request)
     (repository / "README.md").write_text("dirty change\n", encoding="utf-8")
     output_root = repository / ".tmp_tests" / "release_acceptance"
     result = _run(
@@ -230,6 +230,55 @@ def test_dirty_repository_fails_before_creating_acceptance_output(
         (result.stdout + result.stderr).split()
     )
     assert not output_root.exists()
+
+
+def test_output_root_accepts_absolute_path_under_tmp_tests(
+    request: pytest.FixtureRequest,
+) -> None:
+    repository = _make_acceptance_repository(request)
+    output_root = repository / ".tmp_tests" / "accepted_release"
+    result = _run(
+        [
+            _powershell(), "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+            str(repository / "scripts" / SCRIPT.name),
+            "-OutputRoot", str(output_root),
+        ],
+        cwd=repository,
+        check=False,
+    )
+
+    output = " ".join((result.stdout + result.stderr).split())
+    assert result.returncode == 1
+    assert output_root.is_dir()
+    assert "Missing required artifact" in output
+    assert "must stay under the repository .tmp_tests directory" not in output
+
+
+@pytest.mark.parametrize(
+    "relative_output",
+    [Path(".git") / "release_acceptance", Path("dist") / "release_acceptance"],
+)
+def test_output_root_rejects_paths_outside_tmp_tests_without_creating_them(
+    request: pytest.FixtureRequest,
+    relative_output: Path,
+) -> None:
+    repository = _make_acceptance_repository(request)
+    output_root = repository / relative_output
+    result = _run(
+        [
+            _powershell(), "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+            str(repository / "scripts" / SCRIPT.name),
+            "-OutputRoot", str(relative_output),
+        ],
+        cwd=repository,
+        check=False,
+    )
+
+    output = " ".join((result.stdout + result.stderr).split())
+    assert result.returncode == 1
+    assert "must stay under the repository .tmp_tests directory" in output
+    assert not output_root.exists()
+    assert not (repository / ".tmp_tests").exists()
 
 
 def test_release_acceptance_uses_one_release_artifact_flow() -> None:
@@ -268,6 +317,34 @@ def test_release_acceptance_uses_one_release_artifact_flow() -> None:
 
 def test_release_acceptance_does_not_invoke_itself() -> None:
     assert "release-acceptance.ps1" not in SCRIPT.read_text(encoding="utf-8")
+
+
+def test_cleanup_preserves_an_existing_primary_failure() -> None:
+    text = SCRIPT.read_text(encoding="utf-8")
+    cleanup = text.rsplit("finally {", 1)[1].split(
+        "if ($script:RunRoot)", 1
+    )[0]
+
+    assert "if ($script:FailedStep)" in cleanup
+    assert 'Cleanup also failed: $cleanupFailure' in cleanup
+    assert re.search(
+        r"if \(\$script:FailedStep\).*?"
+        r"Cleanup also failed: \$cleanupFailure.*?"
+        r"else \{.*?"
+        r'\$script:FailedStep = "clean generated build directories"',
+        cleanup,
+        flags=re.DOTALL,
+    )
+
+
+def test_console_entry_point_smoke_is_not_recorded_as_python() -> None:
+    text = SCRIPT.read_text(encoding="utf-8")
+    entry_points = text.split("function Test-InstalledEntryPoints {", 1)[1].split(
+        "\ntry {", 1
+    )[0]
+
+    assert entry_points.count("Invoke-Recorded") == 2
+    assert "-Python" not in entry_points
 
 
 def test_release_acceptance_passes_project_version_to_standalone_inspector() -> None:

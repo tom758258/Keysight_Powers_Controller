@@ -63,22 +63,27 @@ function Get-Sha256File {
     }
 }
 
-function Get-ContainedPath {
+function Get-ReleaseOutputPath {
     param(
-        [Parameter(Mandatory = $true)][string]$BasePath,
+        [Parameter(Mandatory = $true)][string]$RepoRoot,
         [Parameter(Mandatory = $true)][string]$CandidatePath
     )
 
     if ([System.IO.Path]::IsPathRooted($CandidatePath)) {
         $full = [System.IO.Path]::GetFullPath($CandidatePath)
     } else {
-        $full = [System.IO.Path]::GetFullPath((Join-Path $BasePath $CandidatePath))
+        $full = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot $CandidatePath))
     }
-    $base = [System.IO.Path]::GetFullPath($BasePath).TrimEnd([System.IO.Path]::DirectorySeparatorChar)
+    $base = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot ".tmp_tests")).TrimEnd(
+        [char[]]@(
+            [System.IO.Path]::DirectorySeparatorChar,
+            [System.IO.Path]::AltDirectorySeparatorChar
+        )
+    )
     $prefix = $base + [System.IO.Path]::DirectorySeparatorChar
     if (-not ($full.Equals($base, [System.StringComparison]::OrdinalIgnoreCase) -or
         $full.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase))) {
-        throw "Path must stay under ${base}: $full"
+        throw "Release acceptance output must stay under the repository .tmp_tests directory: $full"
     }
     return $full
 }
@@ -257,12 +262,12 @@ function Test-InstalledEntryPoints {
         Assert-File -Path $exe
         $versionOutput = Invoke-Recorded -Name ("sdist-" + $check[0] + "-version") `
             -FilePath $exe -Arguments @("--version") -WorkingDirectory $script:RunRoot `
-            -Python -TimeoutSeconds 30
+            -TimeoutSeconds 30
         Add-Check -Target $script:EntryPointChecks -Name ($check[0] + " --version") `
             -Passed ($versionOutput.Trim() -eq $check[1]) -Detail $versionOutput.Trim()
         $helpOutput = Invoke-Recorded -Name ("sdist-" + $check[0] + "-help") `
             -FilePath $exe -Arguments @("--help") -WorkingDirectory $script:RunRoot `
-            -Python -TimeoutSeconds 30
+            -TimeoutSeconds 30
         Add-Check -Target $script:EntryPointChecks -Name ($check[0] + " --help") `
             -Passed ($helpOutput.Contains($check[2])) -Detail $check[2]
     }
@@ -287,7 +292,7 @@ try {
         throw "Release acceptance requires a clean source worktree: $($initialStatus -join '; ')"
     }
 
-    $outputFull = Get-ContainedPath -BasePath $script:RepoRoot -CandidatePath $OutputRoot
+    $outputFull = Get-ReleaseOutputPath -RepoRoot $script:RepoRoot -CandidatePath $OutputRoot
     New-Item -ItemType Directory -Force -Path $outputFull | Out-Null
     $runName = "r_" + ([guid]::NewGuid().ToString("N").Substring(0, 8))
     $script:RunRoot = Join-Path $outputFull $runName
@@ -508,8 +513,13 @@ finally {
             }
         } catch {
             $script:Ok = $false
-            $script:FailedStep = "clean generated build directories"
-            $script:FailureMessage = $_.Exception.Message
+            $cleanupFailure = $_.Exception.Message
+            if ($script:FailedStep) {
+                $script:FailureMessage += " Cleanup also failed: $cleanupFailure"
+            } else {
+                $script:FailedStep = "clean generated build directories"
+                $script:FailureMessage = $cleanupFailure
+            }
             Write-Warning $_
         }
     }

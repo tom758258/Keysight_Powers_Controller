@@ -230,6 +230,9 @@ output root:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\release-acceptance.ps1
 ```
 
+If `-OutputRoot` is provided, it must resolve to `.tmp_tests` or one of its
+subdirectories within the repository.
+
 This acceptance script never performs VISA discovery, opens a resource, or
 sends SCPI. It fails if HEAD or the source working tree changes during the run.
 It does not publish a release or rename the repository.
