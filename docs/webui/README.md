@@ -165,17 +165,31 @@ port used by another Powers Tool WebUI or any other service is skipped without
 opening that existing service. The browser opens only after the newly started
 WebUI reports ready at `/api/health`, using the port that was actually bound.
 
-Use `--port 9000` to try only port `9000`. Add `--auto-port` to try up to 100
-ports beginning at the selected port:
+Use `--port 9000` to try only port `9000`. If that fixed port cannot be bound,
+the launcher reports the original bind error, cleans up, and exits with a
+nonzero status; it does not try another port or open the manual port window.
+Add `--auto-port` to explicitly try up to 100 ports beginning at the selected
+port:
 
 ```powershell
 .\.venv\Scripts\powers-tool-webui-launcher.exe --port 9000
 .\.venv\Scripts\powers-tool-webui-launcher.exe --port 9000 --auto-port
 ```
 
-Automatic candidates never exceed port `65535`. If every candidate is in use,
-the launcher restores its window, reports the attempted range, and allows a
-different port to be entered manually. Start then tries only that port.
+Automatic candidates never exceed port `65535`. Only when every automatic
+candidate fails because its address is already in use does the launcher restore
+its window, report the attempted range, and allow a different port to be
+entered manually. Start then tries only that port. If the manually entered port
+is also in use, the window stays open and re-enables the port field and Start
+button for another retry.
+
+A non-address-in-use bind failure stops automatic selection immediately.
+Uvicorn or application initialization failures, an early server-thread exit,
+and readiness timeout are also fatal startup failures. The launcher preserves
+the original error details, requests the partially created server to stop,
+closes its owned socket, waits briefly for its server thread, and exits with a
+nonzero status. These failures never reopen the manual port window, including
+when they occur during a manual fallback retry.
 
 The launcher keeps the window available so Quit can stop its local Uvicorn
 server. Quit first requests cancellation of active WebUI jobs, including Live

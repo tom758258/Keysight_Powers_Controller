@@ -129,6 +129,10 @@ class LauncherApp:
         self._ui_queue: Queue[Callable[[], None]] = Queue()
         self._startup_success = threading.Event()
         self._server_error: BaseException | None = None
+        self._manual_port_fallback = False
+        self._startup_attempt = 0
+        self._startup_result_handled = False
+        self._exit_code = 0
 
         self._use_default_port = tk.BooleanVar(value=initial_port == DEFAULT_PORT)
         self._port_value = tk.StringVar(value=str(initial_port))
@@ -201,6 +205,10 @@ class LauncherApp:
     def server_thread(self) -> threading.Thread | None:
         return self._server_thread
 
+    @property
+    def exit_code(self) -> int:
+        return self._exit_code
+
     def start(self, *, auto_port: bool = False) -> None:
         try:
             start_port = self._selected_port()
@@ -208,6 +216,11 @@ class LauncherApp:
             messagebox.showerror("Invalid port", str(exc))
             return
 
+        self._startup_attempt += 1
+        startup_attempt = self._startup_attempt
+        self._startup_result_handled = False
+        if auto_port:
+            self._manual_port_fallback = False
         candidates = _candidate_ports(start_port, auto_port=auto_port)
         self._lock_started_controls()
         if auto_port:
@@ -223,6 +236,7 @@ class LauncherApp:
         self._server_thread = None
         self._server_loop = None
         self._server_loop_ready.clear()
+        self._startup_thread = None
 
         for port in candidates:
             self._port_value.set(str(port))
@@ -230,13 +244,25 @@ class LauncherApp:
                 server_socket = self._socket_binder(port)
             except OSError as exc:
                 if not _is_port_in_use_error(exc):
-                    self._show_startup_error(exc)
+                    self._show_startup_error(
+                        exc,
+                        startup_attempt=startup_attempt,
+                    )
                     return
                 if not auto_port:
-                    self._use_default_port.set(False)
-                    self._show_startup_error(
-                        RuntimeError(f"Port {port} is already in use.")
-                    )
+                    if self._manual_port_fallback:
+                        self._show_manual_port_conflict(
+                            port,
+                            exc,
+                            startup_attempt=startup_attempt,
+                        )
+                    else:
+                        self._show_startup_error(
+                            exc,
+                            startup_attempt=startup_attempt,
+                            port=port,
+                            port_in_use=True,
+                        )
                     return
                 continue
 
@@ -254,17 +280,20 @@ class LauncherApp:
                 self._server_thread.start()
                 self._startup_thread = threading.Thread(
                     target=self._wait_for_startup,
-                    args=(port,),
+                    args=(port, startup_attempt),
                     name="powers-tool-webui-launcher-startup",
                     daemon=True,
                 )
                 self._startup_thread.start()
             except Exception as exc:
-                server_socket.close()
-                self._server_socket = None
-                self._show_startup_error(exc)
+                self._show_startup_error(
+                    exc,
+                    startup_attempt=startup_attempt,
+                )
             return
 
+        self._startup_result_handled = True
+        self._manual_port_fallback = True
         self._use_default_port.set(False)
         self._sync_port_controls()
         message = (
@@ -330,24 +359,35 @@ class LauncherApp:
         self._shutdown_in_progress = False
         messagebox.showerror("Shutdown incomplete", message)
 
-    def _wait_for_startup(self, port: int) -> None:
+    def _wait_for_startup(self, port: int, startup_attempt: int) -> None:
         url = build_local_url(port)
         health_url = f"{url}/api/health"
         deadline = time.monotonic() + 8.0
         while time.monotonic() < deadline:
             if self._readiness_checker(health_url):
-                self._post_ui(lambda: self._mark_server_ready(url))
+                self._post_ui(
+                    lambda: self._mark_server_ready(
+                        url,
+                        startup_attempt=startup_attempt,
+                    )
+                )
                 return
             if self._server_thread is not None and not self._server_thread.is_alive():
                 error = self._server_error or RuntimeError(
                     "WebUI server stopped during startup."
                 )
-                self._post_ui(lambda error=error: self._show_startup_error(error))
+                self._post_ui(
+                    lambda error=error: self._show_startup_error(
+                        error,
+                        startup_attempt=startup_attempt,
+                    )
+                )
                 return
             time.sleep(0.2)
         self._post_ui(
             lambda: self._show_startup_error(
-                TimeoutError(f"WebUI server did not become ready at {url}.")
+                TimeoutError(f"WebUI server did not become ready at {url}."),
+                startup_attempt=startup_attempt,
             )
         )
 
@@ -358,10 +398,10 @@ class LauncherApp:
         except BaseException as exc:  # pragma: no cover - runtime safety net
             self._server_error = exc
         finally:
-            if server_socket is not None:
-                server_socket.close()
             if self._server_socket is server_socket:
                 self._server_socket = None
+                if server_socket is not None:
+                    server_socket.close()
             self._server_loop = None
 
     async def _serve_server(self, server_socket: Any) -> None:
@@ -369,22 +409,99 @@ class LauncherApp:
         self._server_loop_ready.set()
         await self._server.serve(sockets=[server_socket])
 
-    def _mark_server_ready(self, url: str) -> None:
+    def _mark_server_ready(self, url: str, *, startup_attempt: int) -> None:
+        if (
+            startup_attempt != self._startup_attempt
+            or self._startup_result_handled
+        ):
+            return
+        self._startup_result_handled = True
         self._startup_success.set()
         self._status_value.set(f"Running at {url}")
         self._browser_open(url)
 
-    def _show_startup_error(self, exc: BaseException) -> None:
-        if self._startup_success.is_set():
+    def _show_startup_error(
+        self,
+        exc: BaseException,
+        *,
+        startup_attempt: int,
+        port: int | None = None,
+        port_in_use: bool = False,
+    ) -> None:
+        if (
+            startup_attempt != self._startup_attempt
+            or self._startup_result_handled
+            or self._startup_success.is_set()
+        ):
             return
-        message = f"{type(exc).__name__}: {exc}"
+        self._startup_result_handled = True
+        self._exit_code = 1
+        message = self._startup_error_message(
+            exc,
+            port=port,
+            port_in_use=port_in_use,
+        )
+        self._status_value.set(f"Failed: {message}")
+        messagebox.showerror("Start failed", message)
+        self._cleanup_failed_startup()
+
+    def _show_manual_port_conflict(
+        self,
+        port: int,
+        exc: BaseException,
+        *,
+        startup_attempt: int,
+    ) -> None:
+        if (
+            startup_attempt != self._startup_attempt
+            or self._startup_result_handled
+        ):
+            return
+        self._startup_result_handled = True
+        message = self._startup_error_message(
+            exc,
+            port=port,
+            port_in_use=True,
+        )
         self._status_value.set(f"Failed: {message}")
         self._start_button.configure(state="normal")
-        if self._server is not None:
-            self._server.should_exit = True
         self._sync_port_controls()
         self._restore_window()
-        messagebox.showerror("Start failed", message)
+        messagebox.showerror("Port unavailable", message)
+
+    @staticmethod
+    def _startup_error_message(
+        exc: BaseException,
+        *,
+        port: int | None,
+        port_in_use: bool,
+    ) -> str:
+        details = f"{type(exc).__name__}: {exc}"
+        if port_in_use and port is not None:
+            return f"Port {port} is already in use. {details}"
+        return details
+
+    def _cleanup_failed_startup(self) -> None:
+        if self._server is not None:
+            self._server.should_exit = True
+
+        server_socket = self._server_socket
+        self._server_socket = None
+        if server_socket is not None:
+            try:
+                server_socket.close()
+            except OSError:
+                pass
+
+        server_thread = self._server_thread
+        if (
+            server_thread is not None
+            and server_thread is not threading.current_thread()
+            and server_thread.is_alive()
+        ):
+            server_thread.join(timeout=SERVER_JOIN_TIMEOUT_S)
+
+        self._root.destroy()
 
     def _restore_window(self) -> None:
         self._root.deiconify()
@@ -451,7 +568,11 @@ def main(argv: list[str] | None = None) -> int:
         action="version",
         version=f"powers-tool-webui-launcher {WEBUI_VERSION}",
     )
-    parser.add_argument("--port", type=parse_port, help="Port to bind")
+    parser.add_argument(
+        "--port",
+        type=parse_port,
+        help="Port to bind; fixed unless --auto-port is also set",
+    )
     parser.add_argument(
         "--auto-port",
         action="store_true",
@@ -466,7 +587,7 @@ def main(argv: list[str] | None = None) -> int:
     app = LauncherApp(root, initial_port=initial_port)
     root.after(0, lambda: app.start(auto_port=auto_port))
     root.mainloop()
-    return 0
+    return app.exit_code
 
 
 if __name__ == "__main__":

@@ -63,6 +63,7 @@ class FakeRoot:
     def __init__(self, order: list[str]) -> None:
         self.order = order
         self.destroyed = False
+        self.destroy_count = 0
         self.iconified = False
         self.restored = False
         self.lifted = False
@@ -70,6 +71,7 @@ class FakeRoot:
     def destroy(self) -> None:
         self.order.append("destroy")
         self.destroyed = True
+        self.destroy_count += 1
 
     def iconify(self) -> None:
         self.iconified = True
@@ -197,6 +199,10 @@ def _launcher_for_startup(
     app._ui_queue = Queue()
     app._startup_success = threading.Event()
     app._server_error = None
+    app._manual_port_fallback = False
+    app._startup_attempt = 0
+    app._startup_result_handled = False
+    app._exit_code = 0
     app._use_default_port = FakeBoolean(initial_port == launcher.DEFAULT_PORT)
     app._port_value = FakeValue(str(initial_port))
     app._url_value = FakeValue(launcher.build_local_url(initial_port))
@@ -364,6 +370,7 @@ def test_launcher_cli_selects_expected_port_candidates(
     class FakeMainApp:
         def __init__(self, _root: FakeRoot, *, initial_port: int) -> None:
             self.initial_port = initial_port
+            self.exit_code = 0
 
         def start(self, *, auto_port: bool) -> None:
             recorded_ports.append(
@@ -403,9 +410,14 @@ def test_fixed_port_conflict_does_not_increment(monkeypatch) -> None:
     app.start()
 
     assert attempted_ports == [9000]
-    assert app._root.restored is True
-    assert app._start_button.state == "normal"
-    assert errors == [("Start failed", "RuntimeError: Port 9000 is already in use.")]
+    assert app._root.restored is False
+    assert app._root.destroyed is True
+    assert app._start_button.state == "disabled"
+    assert app.exit_code == 1
+    assert len(errors) == 1
+    assert errors[0][0] == "Start failed"
+    assert errors[0][1].startswith("Port 9000 is already in use. OSError:")
+    assert "in use" in errors[0][1]
 
 
 def test_auto_port_exhaustion_restores_manual_window(monkeypatch) -> None:
@@ -414,6 +426,8 @@ def test_auto_port_exhaustion_restores_manual_window(monkeypatch) -> None:
 
     def socket_binder(port: int) -> FakeSocket:
         attempted_ports.append(port)
+        if port == 9001:
+            raise PermissionError("bind denied")
         raise OSError(launcher.errno.EADDRINUSE, "in use")
 
     app = _launcher_for_startup(
@@ -436,6 +450,26 @@ def test_auto_port_exhaustion_restores_manual_window(monkeypatch) -> None:
     assert app._port_entry.state == "normal"
     assert "7999..8001" in app._status_value.value
     assert errors == [("No available port", app._status_value.value)]
+
+    app._port_value.set("9000")
+    app.start()
+
+    assert attempted_ports == [7999, 8000, 8001, 9000]
+    assert app._root.destroyed is False
+    assert app._root.restored is True
+    assert app._port_entry.state == "normal"
+    assert app._start_button.state == "normal"
+    assert app.exit_code == 0
+    assert errors[1][0] == "Port unavailable"
+    assert errors[1][1].startswith("Port 9000 is already in use. OSError:")
+
+    app._port_value.set("9001")
+    app.start()
+
+    assert attempted_ports == [7999, 8000, 8001, 9000, 9001]
+    assert app._root.destroyed is True
+    assert app.exit_code == 1
+    assert errors[2] == ("Start failed", "PermissionError: bind denied")
 
 
 @pytest.mark.parametrize("failure_phase", ["bind", "server"])
@@ -472,6 +506,9 @@ def test_auto_port_stops_on_non_conflict_error(
     app.start(auto_port=True)
 
     assert attempted_ports == [7999]
+    assert app._root.restored is False
+    assert app._root.destroyed is True
+    assert app.exit_code == 1
     if failure_phase == "bind":
         assert created_ports == []
         assert bound_socket.closed is False
@@ -480,6 +517,61 @@ def test_auto_port_stops_on_non_conflict_error(
         assert created_ports == [7999]
         assert bound_socket.closed is True
         assert errors == ["RuntimeError: app initialization failed"]
+
+
+def test_startup_failure_cleans_owned_resources_once(monkeypatch) -> None:
+    errors: list[str] = []
+    app = _launcher_for_startup(
+        initial_port=launcher.DEFAULT_PORT,
+        socket_binder=lambda _port: pytest.fail("bind must not run"),
+        server_factory=lambda _port: pytest.fail("server must not be created"),
+    )
+    server = FakeServer()
+    server_socket = FakeSocket()
+    app._server = server
+    app._server_socket = server_socket
+    app._server_thread = FakeServerThread(server, app._root.order)
+    app._startup_attempt = 4
+    monkeypatch.setattr(
+        launcher.messagebox,
+        "showerror",
+        lambda _title, message: errors.append(message),
+    )
+
+    error = TimeoutError("WebUI server did not become ready.")
+    app._show_startup_error(error, startup_attempt=4)
+    app._show_startup_error(error, startup_attempt=4)
+    app._mark_server_ready(
+        launcher.build_local_url(launcher.DEFAULT_PORT),
+        startup_attempt=3,
+    )
+
+    assert errors == ["TimeoutError: WebUI server did not become ready."]
+    assert server.should_exit is True
+    assert server_socket.closed is True
+    assert app._root.order == ["server_join", "destroy"]
+    assert app._root.destroy_count == 1
+    assert app._root.restored is False
+    assert app.exit_code == 1
+
+
+def test_launcher_main_returns_startup_exit_code(monkeypatch) -> None:
+    root = FakeRoot([])
+
+    class FailedMainApp:
+        def __init__(self, _root: FakeRoot, *, initial_port: int) -> None:
+            assert initial_port == 9000
+            self.exit_code = 1
+
+        def start(self, *, auto_port: bool) -> None:
+            assert auto_port is False
+
+    root.after = lambda delay, callback: callback()
+    root.mainloop = lambda: None
+    monkeypatch.setattr(launcher.tk, "Tk", lambda: root)
+    monkeypatch.setattr(launcher, "LauncherApp", FailedMainApp)
+
+    assert launcher.main(["--port", "9000"]) == 1
 
 
 def test_launcher_does_not_import_cli_adapter() -> None:
