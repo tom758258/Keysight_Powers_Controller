@@ -93,7 +93,9 @@ def _missing_webui_dependency_error(exc: ModuleNotFoundError) -> RuntimeError:
     missing = exc.name or "webui runtime dependency"
     return RuntimeError(
         f"Missing optional WebUI dependency {missing!r}. "
-        'From the repository root, run `uv sync --extra webui --locked --link-mode=copy`.'
+        "Install the WebUI optional dependencies. "
+        "For a source checkout, run "
+        "`uv sync --extra webui --locked --link-mode=copy` from the repository root."
     )
 
 
