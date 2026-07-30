@@ -97,8 +97,8 @@ transport, or backend.
 | Python | Use the minimum version declared by `pyproject.toml`: `>=3.10`. | The same Python requirement applies. |
 | Core/CLI runtime | Install the current `powers-tool` distribution. | Install the current `powers-tool` distribution. |
 | No-hardware | Simulator, dry-run, CLI help, and ordinary tests do not require a physical instrument or vendor VISA runtime. | Not applicable. |
-| Live hardware | Not applicable. | Requires a supported physical instrument, an accepted connection/backend scope, an external VISA implementation/runtime that PyVISA can load, and a VISA resource explicitly supplied by the user. |
-| Product support | No-hardware availability does not imply live support. | Follow the exact `model + command + transport + backend + required feature` scope in [Supported Models](../core/supported-models.md). |
+| Live hardware | Not applicable. | Requires a supported physical instrument, an external VISA implementation/runtime that PyVISA can load, and an applicable accepted connection/backend scope. Resource-specific live commands require an explicit operator-selected VISA resource; discovery commands can enumerate resources without a pre-supplied resource. |
+| Product support | No-hardware availability does not imply live support. | Model-aware live commands follow the exact `model + command + transport + backend + required feature` scope in [Supported Models](../core/supported-models.md). Diagnostic exemptions remain limited to their documented diagnostic purpose. |
 | Safety | Preview and simulator paths do not enable real output. | Output-affecting commands remain subject to the existing confirmation gates and safety limits. |
 
 ## Install
@@ -117,12 +117,7 @@ Alternatively, for a basic Core/CLI runtime-only environment, use:
 uv sync --locked --link-mode=copy
 ```
 
-The primary entry point is the installed console script:
-
-```powershell
-uv run powers-tool --version
-uv run powers-tool doctor --simulate --json
-```
+The primary installed console entry point is `powers-tool`.
 
 The fallback module entry point is:
 
@@ -130,8 +125,8 @@ The fallback module entry point is:
 uv run python -m powers_tool_cli.cli doctor --simulate --json
 ```
 
-`--version` prints `powers-tool <package-version>` and exits without
-requiring a subcommand or opening VISA.
+The global `powers-tool --version` option prints `powers-tool <package-version>`
+and exits without requiring a subcommand or opening VISA.
 
 ## Quick Start
 
@@ -143,9 +138,9 @@ uv run powers-tool --version
 uv run powers-tool doctor --simulate --json
 ```
 
-This Quick Start does not perform VISA resource discovery, open a VISA resource,
-send SCPI, modify physical instrument state, or enable output. It does not
-require a physical instrument or vendor VISA runtime.
+This Quick Start does not perform live or system-VISA resource discovery, open a
+VISA resource, send SCPI, modify physical instrument state, or enable output. It
+does not require a physical instrument or vendor VISA runtime.
 
 For normal operator workflows, continue with the [CLI User Guide](USER_GUIDE.md).
 To use the local browser interface, see the
