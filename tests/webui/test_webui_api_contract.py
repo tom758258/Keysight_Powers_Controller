@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import json
 import re
-import time
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 
+from _webui_api_helpers import wait_for_job
 from _webui_shared import (
     WEBUI_COMMAND_NAMES,
     WEBUI_HIDDEN_DIAGNOSTIC_COMMANDS,
@@ -593,14 +593,7 @@ def test_trigger_commands_submit_in_dry_run(client: TestClient, command: str, pa
     response = client.post("/api/jobs", json=payload)
     assert response.status_code == 200
 
-    job_id = response.json()["job_id"]
-    for _ in range(20):
-        res = client.get(f"/api/jobs/{job_id}")
-        if res.json()["status"] in ("finished", "failed"):
-            break
-        time.sleep(0.05)
-
-    job_data = client.get(f"/api/jobs/{job_id}").json()
+    job_data = wait_for_job(client, response.json()["job_id"])
     assert job_data["status"] == "finished", job_data.get("error")
     assert job_data["result"]["plan"]["operation"]["name"] == command
 
@@ -645,14 +638,7 @@ def test_trigger_dry_run_with_e36312a_sim_resource_infers_model(client: TestClie
     response = client.post("/api/jobs", json=payload)
     assert response.status_code == 200
 
-    job_id = response.json()["job_id"]
-    for _ in range(20):
-        res = client.get(f"/api/jobs/{job_id}")
-        if res.json()["status"] in ("finished", "failed"):
-            break
-        time.sleep(0.05)
-
-    job_data = client.get(f"/api/jobs/{job_id}").json()
+    job_data = wait_for_job(client, response.json()["job_id"])
     assert job_data["status"] == "finished", job_data.get("error")
     assert job_data["result"]["plan"]["target"]["planning_model_id"] == "keysight-e36312a"
 
@@ -666,14 +652,7 @@ def test_hidden_list_resources_direct_submit_succeeds(client: TestClient):
     response = client.post("/api/jobs", json=payload)
     assert response.status_code == 200
 
-    job_id = response.json()["job_id"]
-    for _ in range(20):
-        res = client.get(f"/api/jobs/{job_id}")
-        if res.json()["status"] in ("finished", "failed"):
-            break
-        time.sleep(0.05)
-
-    job_data = client.get(f"/api/jobs/{job_id}").json()
+    job_data = wait_for_job(client, response.json()["job_id"])
     assert job_data["status"] == "finished"
     assert "resources" in job_data["result"]
 
@@ -690,15 +669,7 @@ def test_post_job_simulate_set(client: TestClient):
     assert data["ok"] is True
     assert "job_id" in data
 
-    # Wait for job to finish (simulate is fast)
-    job_id = data["job_id"]
-    for _ in range(20):
-        res = client.get(f"/api/jobs/{job_id}")
-        if res.json()["status"] in ("finished", "failed"):
-            break
-        time.sleep(0.1)
-
-    job_data = client.get(f"/api/jobs/{job_id}").json()
+    job_data = wait_for_job(client, data["job_id"])
     assert job_data["status"] == "finished"
     assert "operation" in job_data["result"]
 
@@ -712,14 +683,7 @@ def test_post_job_simulate_set_accepts_voltage_only(client: TestClient):
     response = client.post("/api/jobs", json=payload)
     assert response.status_code == 200
 
-    job_id = response.json()["job_id"]
-    for _ in range(20):
-        res = client.get(f"/api/jobs/{job_id}")
-        if res.json()["status"] in ("finished", "failed"):
-            break
-        time.sleep(0.1)
-
-    job_data = client.get(f"/api/jobs/{job_id}").json()
+    job_data = wait_for_job(client, response.json()["job_id"])
     assert job_data["status"] == "finished"
     assert [step["action"] for step in job_data["result"]["steps"]] == ["set_voltage"]
     assert job_data["parameters"] == {"channel": 1, "voltage": 5.0}
@@ -767,14 +731,7 @@ def test_post_job_simulate_apply_preserves_all_channel(client: TestClient, monke
     response = client.post("/api/jobs", json=payload)
     assert response.status_code == 200
 
-    job_id = response.json()["job_id"]
-    for _ in range(20):
-        res = client.get(f"/api/jobs/{job_id}")
-        if res.json()["status"] in ("finished", "failed"):
-            break
-        time.sleep(0.1)
-
-    job_data = client.get(f"/api/jobs/{job_id}").json()
+    job_data = wait_for_job(client, response.json()["job_id"])
     assert job_data["status"] == "finished"
     assert captured[0].command == "apply"
     assert captured[0].parameters["channel"] == "all"

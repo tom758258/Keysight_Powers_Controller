@@ -213,7 +213,7 @@ def test_live_panel_read_returns_only_panel_fields():
     assert "read_count" not in res
 
 
-def test_live_panel_read_reports_protection_by_channel():
+def test_live_panel_read_reports_protection_by_channel(monkeypatch):
     from powers_tool_core.testing import simulator
 
     resource = "USB0::SIM::E36312A::INSTR"
@@ -221,7 +221,11 @@ def test_live_panel_read_reports_protection_by_channel():
     req = OperationRequest(command="live-panel", runtime=runtime)
 
     def trip_opener(resource_name, manager, backend=None, timeout_ms=5000):
-        simulator.SIMULATED_PROTECTION_TRIPS[resource_name][2]["current"] = True
+        monkeypatch.setitem(
+            simulator.SIMULATED_PROTECTION_TRIPS[resource_name][2],
+            "current",
+            True,
+        )
         return open_resource(resource_name, manager, backend=backend, timeout_ms=timeout_ms)
 
     res = run_live_panel_read(req, opener=trip_opener)

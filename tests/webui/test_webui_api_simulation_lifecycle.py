@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-import time
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+
+from _webui_api_helpers import wait_for_job
+
 
 def test_webui_commands_simulate_mode(client: TestClient):
     """Test WebUI-specific commands work in simulate mode."""
@@ -26,14 +28,7 @@ def test_webui_commands_simulate_mode(client: TestClient):
         response = client.post("/api/jobs", json=payload)
         assert response.status_code == 200, f"Command {cmd} failed to submit"
 
-        job_id = response.json()["job_id"]
-        for _ in range(20):
-            res = client.get(f"/api/jobs/{job_id}")
-            if res.json()["status"] in ("finished", "failed"):
-                break
-            time.sleep(0.05)
-
-        job_data = client.get(f"/api/jobs/{job_id}").json()
+        job_data = wait_for_job(client, response.json()["job_id"])
         assert job_data["status"] == "finished", f"Command {cmd} failed: {job_data.get('error')}"
 
 
@@ -57,13 +52,7 @@ def test_hidden_diagnostic_commands_remain_directly_submittable(client: TestClie
     response = client.post("/api/jobs", json=payload)
     assert response.status_code == 200
 
-    job_id = response.json()["job_id"]
-    for _ in range(20):
-        job_data = client.get(f"/api/jobs/{job_id}").json()
-        if job_data["status"] in ("finished", "failed"):
-            break
-        time.sleep(0.05)
-
+    job_data = wait_for_job(client, response.json()["job_id"])
     assert job_data["status"] == "finished", job_data.get("error")
 
 
@@ -96,14 +85,7 @@ def test_readonly_commands_simulate_with_resource(client: TestClient):
         response = client.post("/api/jobs", json=payload)
         assert response.status_code == 200, f"Command {cmd} failed to submit"
 
-        job_id = response.json()["job_id"]
-        for _ in range(20):
-            res = client.get(f"/api/jobs/{job_id}")
-            if res.json()["status"] in ("finished", "failed"):
-                break
-            time.sleep(0.05)
-
-        job_data = client.get(f"/api/jobs/{job_id}").json()
+        job_data = wait_for_job(client, response.json()["job_id"])
         assert job_data["status"] == "finished", f"Command {cmd} failed: {job_data.get('error')}"
 
 
@@ -128,14 +110,7 @@ def test_output_commands_simulate(client: TestClient):
         response = client.post("/api/jobs", json=payload)
         assert response.status_code == 200, f"Command {cmd} failed to submit"
 
-        job_id = response.json()["job_id"]
-        for _ in range(20):
-            res = client.get(f"/api/jobs/{job_id}")
-            if res.json()["status"] in ("finished", "failed"):
-                break
-            time.sleep(0.05)
-
-        job_data = client.get(f"/api/jobs/{job_id}").json()
+        job_data = wait_for_job(client, response.json()["job_id"])
         assert job_data["status"] == "finished", f"Command {cmd} failed: {job_data.get('error')}"
 
 
@@ -152,15 +127,7 @@ def test_confirm_policy_enforced(client: TestClient):
         "parameters": {"channel": 1}
     }
     response = client.post("/api/jobs", json=payload)
-    job_id = response.json()["job_id"]
-
-    for _ in range(20):
-        res = client.get(f"/api/jobs/{job_id}")
-        if res.json()["status"] in ("finished", "failed"):
-            break
-        time.sleep(0.05)
-
-    job_data = client.get(f"/api/jobs/{job_id}").json()
+    job_data = wait_for_job(client, response.json()["job_id"])
     assert job_data["status"] == "failed"
     assert "confirmation" in job_data["error"].lower()
 

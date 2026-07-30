@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import json
-import time
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 
-from _webui_api_helpers import policy_snapshot_document
+from _webui_api_helpers import policy_snapshot_document, wait_for_job
 
 def test_api_sequence_webui_step_limit(client: TestClient, tmp_path):
     from powers_tool_webui.jobs import job_manager
@@ -128,13 +127,7 @@ def test_api_restore_from_snapshot_dry_run(client: TestClient):
     job_id = response.json()["job_id"]
     assert client.get("/api/health").json()["hardware_locked"] is False
 
-    for _ in range(20):
-        res = client.get(f"/api/jobs/{job_id}")
-        if res.json()["status"] in ("finished", "failed"):
-            break
-        time.sleep(0.05)
-
-    job_data = client.get(f"/api/jobs/{job_id}").json()
+    job_data = wait_for_job(client, job_id)
     assert job_data["status"] == "finished"
     assert "error" not in job_data or job_data["error"] is None
 
@@ -254,13 +247,7 @@ def test_api_sequence_execution(client: TestClient):
     assert response.status_code == 200
     job_id = response.json()["job_id"]
 
-    for _ in range(20):
-        res = client.get(f"/api/jobs/{job_id}")
-        if res.json()["status"] in ("finished", "failed"):
-            break
-        time.sleep(0.05)
-
-    job_data = client.get(f"/api/jobs/{job_id}").json()
+    job_data = wait_for_job(client, job_id)
     assert job_data["status"] == "finished"
     assert "plan" in job_data["result"]
 

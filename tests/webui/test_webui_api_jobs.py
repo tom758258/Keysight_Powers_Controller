@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import threading
-import time
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
@@ -153,16 +152,7 @@ def test_post_job_real_output_without_confirm_fails(client: TestClient):
     response = client.post("/api/jobs", json=payload)
     assert response.status_code == 200  # Job is accepted
     data = response.json()
-    job_id = data["job_id"]
-
-    # Wait for job to fail
-    for _ in range(20):
-        res = client.get(f"/api/jobs/{job_id}")
-        if res.json()["status"] in ("finished", "failed"):
-            break
-        time.sleep(0.1)
-
-    job_data = client.get(f"/api/jobs/{job_id}").json()
+    job_data = wait_for_job(client, data["job_id"])
     assert job_data["status"] == "failed"
     assert "requires explicit confirmation" in job_data["error"]
 
@@ -182,14 +172,7 @@ def test_post_job_real_apply_all_without_confirm_fails(client: TestClient):
     response = client.post("/api/jobs", json=payload)
     assert response.status_code == 200
 
-    job_id = response.json()["job_id"]
-    for _ in range(20):
-        res = client.get(f"/api/jobs/{job_id}")
-        if res.json()["status"] in ("finished", "failed"):
-            break
-        time.sleep(0.1)
-
-    job_data = client.get(f"/api/jobs/{job_id}").json()
+    job_data = wait_for_job(client, response.json()["job_id"])
     assert job_data["status"] == "failed"
     assert "requires explicit confirmation" in job_data["error"]
 
@@ -325,15 +308,7 @@ def test_sequence_lint_dry_run(client: TestClient):
     response = client.post("/api/jobs", json=payload)
     assert response.status_code == 200
     data = response.json()
-    job_id = data["job_id"]
-
-    for _ in range(20):
-        res = client.get(f"/api/jobs/{job_id}")
-        if res.json()["status"] in ("finished", "failed"):
-            break
-        time.sleep(0.1)
-
-    job_data = client.get(f"/api/jobs/{job_id}").json()
+    job_data = wait_for_job(client, data["job_id"])
     assert job_data["status"] == "finished"
     assert job_data["result"]["status"] == "valid"
 
@@ -364,13 +339,7 @@ def test_ramp_list_lint_dry_run(client: TestClient):
 
     response = client.post("/api/jobs", json=payload)
     assert response.status_code == 200
-    job_id = response.json()["job_id"]
-    for _ in range(20):
-        job_data = client.get(f"/api/jobs/{job_id}").json()
-        if job_data["status"] in ("finished", "failed"):
-            break
-        time.sleep(0.1)
-
+    job_data = wait_for_job(client, response.json()["job_id"])
     assert job_data["status"] == "finished"
     assert job_data["result"]["status"] == "valid"
     assert job_data["result"]["segment_count"] == 1

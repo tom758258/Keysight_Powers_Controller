@@ -38,13 +38,22 @@ class FakeCoreSession:
         raise AssertionError(f"unexpected query {command!r}")
 
 
-def wait_for_job(client: TestClient, job_id: str) -> dict[str, Any]:
-    for _ in range(20):
+def wait_for_job(
+    client: TestClient,
+    job_id: str,
+    *,
+    timeout: float = 5.0,
+    poll_interval: float = 0.05,
+) -> dict[str, Any]:
+    deadline = time.monotonic() + timeout
+    while True:
         job_data = client.get(f"/api/jobs/{job_id}").json()
         if job_data["status"] in ("finished", "failed"):
             return job_data
-        time.sleep(0.05)
-    return client.get(f"/api/jobs/{job_id}").json()
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            pytest.fail(f"Timed out waiting for job {job_id!r}; last payload: {job_data!r}")
+        time.sleep(min(poll_interval, remaining))
 
 
 def patch_core_opener(monkeypatch: pytest.MonkeyPatch, session: FakeCoreSession) -> None:
