@@ -222,9 +222,12 @@ working tree matches committed HEAD, verifies `uv.lock`, and runs the complete
 no-hardware test suite once. It then calls `build_release.ps1` once to produce
 the final versioned artifacts, inspects the wheel, sdist, and standalone
 executables, installs the final sdist in one clean environment, checks all
-console entry points, verifies checksums, runs CLI preflight and a simulator
-`PlanOnly` contract, and writes `report.json` and `summary.md` under the ignored
-output root:
+console entry points, verifies checksums, runs fast CLI smoke for every
+Product-active model, runs deeper CLI workflows for capability-representative
+models, and checks a simulator `PlanOnly` contract. A new model needs another
+deep representative only when it introduces a capability family or hardware
+structure not already represented. The script writes `report.json` and
+`summary.md` under the ignored output root:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\release-acceptance.ps1

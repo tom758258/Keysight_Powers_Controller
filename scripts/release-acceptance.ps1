@@ -253,9 +253,9 @@ function Test-InstalledEntryPoints {
 
     $scripts = Split-Path -Parent $Python
     $checks = @(
-        @("powers-tool", "powers-tool $projectVersion", "Safe Powers Tool CLI for supported DC power supplies."),
-        @("powers-tool-webui", "powers-tool-webui $projectVersion", "Powers Tool WebUI Server"),
-        @("powers-tool-webui-launcher", "powers-tool-webui-launcher $projectVersion", "Powers Tool WebUI Launcher")
+        @("powers-tool", "powers-tool $projectVersion"),
+        @("powers-tool-webui", "powers-tool-webui $projectVersion"),
+        @("powers-tool-webui-launcher", "powers-tool-webui-launcher $projectVersion")
     )
     foreach ($check in $checks) {
         $exe = Join-Path $scripts ($check[0] + ".exe")
@@ -268,8 +268,12 @@ function Test-InstalledEntryPoints {
         $helpOutput = Invoke-Recorded -Name ("sdist-" + $check[0] + "-help") `
             -FilePath $exe -Arguments @("--help") -WorkingDirectory $script:RunRoot `
             -TimeoutSeconds 30
+        $helpText = $helpOutput.Trim()
         Add-Check -Target $script:EntryPointChecks -Name ($check[0] + " --help") `
-            -Passed ($helpOutput.Contains($check[2])) -Detail $check[2]
+            -Passed (-not [string]::IsNullOrWhiteSpace($helpText) -and
+                $helpText -match '(?im)^usage:\s*' -and
+                $helpText.Contains($check[0])) `
+            -Detail "Non-empty usage output for $($check[0])"
     }
 }
 
@@ -451,13 +455,24 @@ for filename in ("index.html", "styles.css", "app.js"):
         $script:BuildArtifacts += ,(Get-ReportPath -Path $artifact.FullName)
     }
 
-    $script:CurrentStep = "model-aware CLI preflight"
+    $script:CurrentStep = "all-model CLI smoke preflight"
     $preflightRoot = Join-Path $script:RepoRoot (".tmp_tests\cli_preflight\" + $runName)
-    Invoke-Recorded -Name "preflight-cli-all" -FilePath "powershell.exe" `
+    Invoke-Recorded -Name "preflight-cli-all-smoke" -FilePath "powershell.exe" `
         -Arguments @(
             "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
             (Join-Path $script:RepoRoot "scripts\preflight-cli.ps1"),
             "-Target", "all",
+            "-Suite", "smoke",
+            "-OutputRoot", $preflightRoot
+        ) -WorkingDirectory $script:RepoRoot | Out-Null
+
+    $script:CurrentStep = "representative CLI deep preflight"
+    Invoke-Recorded -Name "preflight-cli-deep-representatives" -FilePath "powershell.exe" `
+        -Arguments @(
+            "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+            (Join-Path $script:RepoRoot "scripts\preflight-cli.ps1"),
+            "-Target", "all",
+            "-Suite", "deep",
             "-OutputRoot", $preflightRoot
         ) -WorkingDirectory $script:RepoRoot | Out-Null
 

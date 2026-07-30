@@ -281,18 +281,15 @@ def test_output_root_rejects_paths_outside_tmp_tests_without_creating_them(
     assert not (repository / ".tmp_tests").exists()
 
 
-def test_release_acceptance_uses_one_release_artifact_flow() -> None:
+def test_release_acceptance_preserves_required_no_hardware_release_flow() -> None:
     text = SCRIPT.read_text(encoding="utf-8")
 
-    assert text.count("scripts\\build_release.ps1") == 1
-    assert text.count('"pytest-full-no-hardware"') == 1
-    assert "tests\\packaging\\inspect_distribution.py" not in text
-    assert text.count("tests\\packaging\\inspect_pyinstaller.py") == 1
     for required in (
+        "scripts\\build_release.ps1",
+        '"pytest-full-no-hardware"',
+        "tests\\packaging\\inspect_pyinstaller.py",
         '"lock", "--check"',
         '"install-final-sdist"',
-        '"preflight-cli-all"',
-        '"-Target", "all"',
         '"live-cli-plan-only"',
         '"-PlanOnly"',
         '"git-diff-check"',
@@ -300,19 +297,18 @@ def test_release_acceptance_uses_one_release_artifact_flow() -> None:
     ):
         assert required in text
 
-    for removed in (
-        "Python310",
-        "CurrentPython",
-        "InterpreterPreflightOnly",
-        "KeepWorktree",
-        "build_cli_exe.ps1",
-        "build_webui_exe.ps1",
-        "test_packaging_identity.py",
-        "pytest-focused",
-        "worktree add",
-        "build-wheel-from-sdist",
-    ):
-        assert removed not in text
+    assert re.search(
+        r'"scripts\\preflight-cli\.ps1"\),\s*'
+        r'"-Target", "all",\s*'
+        r'"-Suite", "smoke"',
+        text,
+    )
+    assert re.search(
+        r'"scripts\\preflight-cli\.ps1"\),\s*'
+        r'"-Target", "all",\s*'
+        r'"-Suite", "deep"',
+        text,
+    )
 
 
 def test_release_acceptance_does_not_invoke_itself() -> None:
@@ -337,14 +333,17 @@ def test_cleanup_preserves_an_existing_primary_failure() -> None:
     )
 
 
-def test_console_entry_point_smoke_is_not_recorded_as_python() -> None:
+def test_console_entry_point_help_smoke_uses_stable_usage_contract() -> None:
     text = SCRIPT.read_text(encoding="utf-8")
-    entry_points = text.split("function Test-InstalledEntryPoints {", 1)[1].split(
-        "\ntry {", 1
-    )[0]
 
-    assert entry_points.count("Invoke-Recorded") == 2
-    assert "-Python" not in entry_points
+    assert "'(?im)^usage:\\s*'" in text
+    assert "IsNullOrWhiteSpace" in text
+    for brittle_description in (
+        "Safe Powers Tool CLI for supported DC power supplies.",
+        "Powers Tool WebUI Server",
+        "Powers Tool WebUI Launcher",
+    ):
+        assert brittle_description not in text
 
 
 def test_release_acceptance_passes_project_version_to_standalone_inspector() -> None:

@@ -146,9 +146,9 @@ machine-readable `report.json` and a human-readable `summary.md` under
 
 | Script | Hardware use | Purpose |
 | --- | --- | --- |
-| `scripts\preflight-cli.ps1` | No hardware | Runs model-aware CLI dry-run and simulator validation for one active model or all active models, parses every JSON result, and enforces `hardware_touched=false`. |
+| `scripts\preflight-cli.ps1` | No hardware | Runs `smoke`, `deep`, or compatibility `full` model-aware CLI validation, parses every JSON result, and enforces `hardware_touched=false`. |
 | `scripts\live-cli-check.ps1` | Plan-only or explicit live hardware | Always runs `preflight-cli.ps1`, then generates the exact selected-suite plans before optional interactive live validation. Use this for candidate feature-validation records. |
-| `scripts\release-acceptance.ps1` | No hardware | Validates clean committed HEAD with the existing `.venv`, runs the full suite once, builds one final versioned release, checks its package/install/entry-point/standalone artifacts and checksums, then runs CLI preflight and simulator `-PlanOnly`. |
+| `scripts\release-acceptance.ps1` | No hardware | Validates clean committed HEAD with the existing `.venv`, runs the full suite once, builds one final versioned release, checks its package/install/entry-point/standalone artifacts and checksums, then runs all-model CLI smoke, representative deep preflight, and simulator `-PlanOnly`. |
 | `scripts\batch-validation.ps1` | Selected by switches | Runs only the selected simulated or live validation tasks and writes one batch report. |
 
 #### Build entry points
@@ -185,17 +185,35 @@ If the current Windows execution policy blocks `.ps1` files, use a
 process-local bypass for the selected script:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\preflight-cli.ps1 -Target all
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\preflight-cli.ps1 -Target all -Suite smoke
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\live-cli-check.ps1 -Target keysight-e36312a -Connection USB -Resource "SIM::E36312A" -Suite readonly -PlanOnly
 ```
 
-`preflight-cli.ps1` validates actual public CLI no-hardware paths for all three
-Product-active models by default. It writes timestamped aggregate and
-per-model reports under `.tmp_tests\cli_preflight`:
+`preflight-cli.ps1` validates actual public CLI no-hardware paths and writes
+timestamped aggregate and per-model reports under
+`.tmp_tests\cli_preflight`. Use `smoke` to check identity, simulator mapping,
+capabilities, representative read-only behavior, model-aware planning, and
+model-specific topology or support policy for every Product-active model:
 
 ```powershell
-.\scripts\preflight-cli.ps1 -Target all
+.\scripts\preflight-cli.ps1 -Target all -Suite smoke
 ```
+
+Use `deep` for capability-representative models. With `-Target all`, the
+current representatives are `keysight-e36312a` for three-channel Protection,
+Snapshot, Trigger List, and complete workflow coverage, and
+`keysight-e3646a` for two-channel ASRL/RS-232 and global-output structure.
+`keysight-edu36311a` remains covered by all-model smoke without duplicating
+E36312A deep workflows. Add another deep representative only when a new model
+introduces a capability family or hardware structure not already represented:
+
+```powershell
+.\scripts\preflight-cli.ps1 -Target all -Suite deep
+```
+
+The default `full` suite retains the prior broad per-target preflight for
+explicit validation and compatibility with existing wrapper workflows.
+Smoke, deep, and full are all no-hardware paths.
 
 Suite live validation uses an explicit target, connection, resource, and
 suite. Every run, including `-PlanOnly`, first calls the broad model-level
@@ -356,11 +374,12 @@ enable trigger/native LIST, snapshot, or restore-from-snapshot.
 
 CLI preflight uses only `--dry-run` and `--simulate`; it does not scan for or
 open VISA resources. It uses deterministic SIM resources and supports one
-canonical model or all active models:
+canonical model or all applicable models for the selected preflight suite:
 
 ```powershell
-.\scripts\preflight-cli.ps1 -Target all
-.\scripts\preflight-cli.ps1 -Target keysight-e3646a
+.\scripts\preflight-cli.ps1 -Target all -Suite smoke
+.\scripts\preflight-cli.ps1 -Target all -Suite deep
+.\scripts\preflight-cli.ps1 -Target keysight-e3646a -Suite full
 ```
 
 Live validation requires an explicit `-Resource`. The script does not scan for

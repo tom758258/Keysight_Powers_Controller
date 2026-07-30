@@ -1,5 +1,6 @@
 param(
     [string]$Target = "all",
+    [ValidateSet("smoke", "deep", "full")][string]$Suite = "full",
     [string]$OutputRoot = ".tmp_tests\cli_preflight"
 )
 
@@ -89,9 +90,19 @@ function Invoke-PreflightCase {
                 if ([string]$actual -ne [string]$Case.expected_value) { $failures.Add("$($Case.expected_path) expected '$($Case.expected_value)' but got '$actual'.") }
             } catch { $failures.Add($_.Exception.Message) }
         }
+        foreach ($expectation in $Case.expected_values.GetEnumerator()) {
+            try {
+                $actual = Get-NestedValue -Object $payload -Path $expectation.Key
+                $actualJson = ConvertTo-Json -InputObject $actual -Compress -Depth 10
+                $expectedJson = ConvertTo-Json -InputObject $expectation.Value -Compress -Depth 10
+                if ($actualJson -cne $expectedJson) {
+                    $failures.Add("$($expectation.Key) expected '$expectedJson' but got '$actualJson'.")
+                }
+            } catch { $failures.Add($_.Exception.Message) }
+        }
     }
     return [pscustomobject]@{
-        name = $Case.name; category = $Case.category; command = $Case.command
+        name = $Case.name; suite = $Case.suite; category = $Case.category; command = $Case.command
         arguments = $arguments; exit_code = $exitCode
         duration_ms = [math]::Round(((Get-Date) - $started).TotalMilliseconds, 3)
         ok = if ($null -ne $payload) { $payload.ok } else { $null }
@@ -118,23 +129,31 @@ $env:PYTHONPATH = Join-Path $RepoRoot "src"
 $metadata = Get-ProjectMetadata
 if ($metadata.name -ne "powers-tool") { throw "Unexpected distribution name '$($metadata.name)'." }
 
-try { $targets = @(Resolve-ValidationTargets -Target $Target) } catch { [Console]::Error.WriteLine($_.Exception.Message); exit 2 }
+try {
+    $resolvedSuite = Resolve-ValidationSuite -Suite $Suite
+    $targets = @(Resolve-ValidationPreflightTargets -Target $Target -Suite $resolvedSuite)
+} catch {
+    [Console]::Error.WriteLine($_.Exception.Message)
+    exit 2
+}
 $targetReports = [System.Collections.Generic.List[object]]::new()
 foreach ($resolvedTarget in $targets) {
     $targetDir = Join-Path $runRoot $resolvedTarget
     New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
     $sequencePath = Join-Path $targetDir "sequence-readonly.yaml"
-    Write-Utf8NoBomFile -LiteralPath $sequencePath -Value "version: 1`nsteps:`n  - action: readback`n    channel: 1`n  - action: output-state`n    channel: 1`n"
+    if ($resolvedSuite -ne "smoke") {
+        Write-Utf8NoBomFile -LiteralPath $sequencePath -Value "version: 1`nsteps:`n  - action: readback`n    channel: 1`n  - action: output-state`n    channel: 1`n"
+    }
     $startedAt = Get-Date
     $commands = [System.Collections.Generic.List[object]]::new()
-    foreach ($case in @(Get-ValidationPreflightCases -Target $resolvedTarget -ArtifactDirectory $targetDir -SequencePath $sequencePath)) {
+    foreach ($case in @(Get-ValidationPreflightCases -Target $resolvedTarget -ArtifactDirectory $targetDir -SequencePath $sequencePath -Suite $resolvedSuite)) {
         $commands.Add((Invoke-PreflightCase -Case $case -OutputDirectory $targetDir))
     }
     $failed = @($commands | Where-Object { -not $_.passed })
     $profile = Get-ValidationTargetProfile -Target $resolvedTarget
     $report = [ordered]@{
         schema_version = 1; kind = "powers-tool-cli-preflight"; status = if ($failed.Count -eq 0) { "passed" } else { "failed" }
-        target = $resolvedTarget; targets = @($resolvedTarget); model_id = $resolvedTarget; expected_model = $profile.model
+        target = $resolvedTarget; targets = @($resolvedTarget); suite = $resolvedSuite; model_id = $resolvedTarget; expected_model = $profile.model
         package_version = $metadata.version; git_head = Get-GitHead; generated_at = (Get-Date).ToUniversalTime().ToString("o")
         validation_mode = "no-hardware-cli-preflight"; hardware_touched = $false; simulator_resource = $profile.simulator_resource
         support_policy_mode = "no-hardware"; visa_io_performed = $false; resource_scan_performed = $false; resource_guess_performed = $false
@@ -143,7 +162,7 @@ foreach ($resolvedTarget in $targets) {
         summary_counts = [ordered]@{ total = $commands.Count; passed = $commands.Count - $failed.Count; failed = $failed.Count }
     }
     Write-Utf8NoBomFile -LiteralPath (Join-Path $targetDir "report.json") -Value ($report | ConvertTo-Json -Depth 30)
-    $summary = @("# Powers Tool CLI Preflight", "", "Target: ``$resolvedTarget``", "Status: ``$($report.status)``", "Hardware touched: ``false``", "", "| Command | Category | Exit | Result |", "| --- | --- | ---: | --- |")
+    $summary = @("# Powers Tool CLI Preflight", "", "Target: ``$resolvedTarget``", "Suite: ``$resolvedSuite``", "Status: ``$($report.status)``", "Hardware touched: ``false``", "", "| Command | Category | Exit | Result |", "| --- | --- | ---: | --- |")
     $summary += @($commands | ForEach-Object { "| ``$($_.name)`` | ``$($_.category)`` | $($_.exit_code) | ``$(if ($_.passed) { 'passed' } else { 'failed' })`` |" })
     Write-Utf8NoBomFile -LiteralPath (Join-Path $targetDir "summary.md") -Value ($summary -join "`n")
     $targetReports.Add([pscustomobject]$report)
@@ -152,15 +171,15 @@ foreach ($resolvedTarget in $targets) {
 $aggregateFailed = @($targetReports | Where-Object { $_.status -ne "passed" })
 $aggregate = [ordered]@{
     schema_version = 1; kind = "powers-tool-cli-preflight"; status = if ($aggregateFailed.Count -eq 0) { "passed" } else { "failed" }
-    target = $Target; targets = @($targets); package_version = $metadata.version; git_head = Get-GitHead
+    target = $Target; targets = @($targets); suite = $resolvedSuite; package_version = $metadata.version; git_head = Get-GitHead
     generated_at = (Get-Date).ToUniversalTime().ToString("o"); validation_mode = "no-hardware-cli-preflight"; hardware_touched = $false
     support_policy_mode = "no-hardware"; visa_io_performed = $false; resource_scan_performed = $false; resource_guess_performed = $false
-    target_results = @($targetReports | ForEach-Object { [pscustomobject]@{ target = $_.target; status = $_.status; summary_counts = $_.summary_counts; artifact_paths = $_.artifact_paths } })
+    target_results = @($targetReports | ForEach-Object { [pscustomobject]@{ target = $_.target; suite = $_.suite; status = $_.status; summary_counts = $_.summary_counts; artifact_paths = $_.artifact_paths } })
     artifact_paths = [ordered]@{ output_dir = ConvertTo-RepoRelativePath -Path $runRoot; report = ConvertTo-RepoRelativePath -Path (Join-Path $runRoot "report.json"); summary = ConvertTo-RepoRelativePath -Path (Join-Path $runRoot "summary.md") }
     summary_counts = [ordered]@{ targets = $targetReports.Count; passed = $targetReports.Count - $aggregateFailed.Count; failed = $aggregateFailed.Count }
 }
 Write-Utf8NoBomFile -LiteralPath (Join-Path $runRoot "report.json") -Value ($aggregate | ConvertTo-Json -Depth 20)
-$aggregateSummary = @("# Powers Tool CLI Preflight", "", "Status: ``$($aggregate.status)``", "Targets: ``$($targets -join ', ')``", "Hardware touched: ``false``", "", "| Target | Status |", "| --- | --- |")
+$aggregateSummary = @("# Powers Tool CLI Preflight", "", "Suite: ``$resolvedSuite``", "Status: ``$($aggregate.status)``", "Targets: ``$($targets -join ', ')``", "Hardware touched: ``false``", "", "| Target | Status |", "| --- | --- |")
 $aggregateSummary += @($targetReports | ForEach-Object { "| ``$($_.target)`` | ``$($_.status)`` |" })
 Write-Utf8NoBomFile -LiteralPath (Join-Path $runRoot "summary.md") -Value ($aggregateSummary -join "`n")
 Write-Host "Report: $(ConvertTo-RepoRelativePath -Path (Join-Path $runRoot 'report.json'))"

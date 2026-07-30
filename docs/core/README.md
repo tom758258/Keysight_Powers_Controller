@@ -188,7 +188,7 @@ adapter. Run the model-aware no-hardware preflight before a plan-only live
 wrapper check:
 
 ```powershell
-.\scripts\preflight-cli.ps1 -Target all
+.\scripts\preflight-cli.ps1 -Target all -Suite smoke
 .\scripts\live-cli-check.ps1 -Target keysight-e36312a -Connection USB -Resource SIM::E36312A -Suite readonly -PlanOnly
 ```
 
