@@ -28,6 +28,16 @@ for current model and connection coverage, and the
 [CLI README](docs/cli/README.md#planning-identities-and-live-expected-model-guards)
 for planning and expected-model behavior.
 
+**Live hardware prerequisite:** Live hardware operation requires a separately
+installed VISA implementation/runtime that PyVISA can load. The `powers-tool`
+distribution installs PyVISA, but PyVISA is the Python API layer rather than a
+complete system or vendor VISA runtime. Powers Tool does not bundle Keysight IO
+Libraries Suite, NI-VISA, or another vendor/system VISA runtime. Simulator,
+dry-run, and normal no-hardware validation do not require a physical instrument
+or vendor VISA runtime. Installing a VISA runtime does not expand support:
+live operation remains limited to the exact model, command, transport, backend,
+and required-feature scopes in [Supported Models](docs/core/supported-models.md).
+
 ## Features
 
 - Control supported Keysight DC power supplies over USB, LAN, or explicit
@@ -141,6 +151,11 @@ recreate the project console wrappers:
 ```powershell
 uv sync --all-extras --link-mode=copy --reinstall-package powers-tool
 ```
+
+After installation, use the [CLI Quick Start](docs/cli/README.md#quick-start)
+for a safe no-hardware check, or see the
+[WebUI User Guide](docs/webui/USER_GUIDE.md) to start the local browser
+interface.
 
 ## Build
 

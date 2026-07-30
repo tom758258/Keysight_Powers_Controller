@@ -22,6 +22,57 @@ Do not use it to widen Product support, change SCPI, discover hardware, choose a
 live resource for the user, or automatically run live output changes. Repository
 contract originals remain authoritative.
 
+## Schema 2 And Machine Evidence
+
+### Schema 2 Is V2-Only
+
+Where a runtime contract explicitly requires schema 2, `schema_version` must be
+the exact JSON integer `2`. Missing versions, schema 1, the string `"2"`,
+booleans, other integers, fallback, and schema negotiation are not accepted.
+Unknown fields are accepted only when the individual schema-2 contract allows
+them; do not expand that policy locally. Missing or mistyped required fields
+must not be ignored.
+
+The `POST /stop` acknowledgment is an explicit endpoint exception when its
+formal contract does not define `schema_version`: validate HTTP `200`, `ok:
+true`, and a non-empty `message`, without adding or requiring a version field.
+
+The simulator helper's own wrapper report may use its own `schema_version: 1`
+and `runtime_schema_version: 2`. That wrapper schema does not make the checked
+Powers runtime schema 1.
+
+### Ready Does Not Mean Finished
+
+- Worker `ready` means only that the control plane can accept lifecycle operations.
+- `GET /status` readiness or idle-like lifecycle state is not evidence that a domain command succeeded.
+- HTTP `202` and `status: "accepted"` mean that a job entered the queue.
+- `request.json` proves that the admitted request was persisted; it does not prove execution success.
+- Continue observing the accepted artifact until terminal `result.json` exists.
+- Success requires terminal `status: "succeeded"`, `ok: true`, and matching `run_id` and `worker_job_id` correlation.
+- `failed`, `cancelled`, or missing terminal evidence is not success.
+- A `POST /stop` acknowledgment means only that cooperative stop was requested and accepted. It does not prove cleanup completion, final summary emission, or Worker process exit.
+
+### Machine Evidence Principle
+
+Agents and orchestrators should decide from JSON/JSONL, Worker status objects,
+`request.json`, terminal `result.json`, the final summary, wrapper reports,
+process exit codes, and run/job correlation. Human-readable stdout, stderr, or
+screen text is diagnostic only and cannot replace machine evidence.
+
+Treat the following as failure or incomplete convergence:
+
+- JSON parse errors;
+- missing or mistyped required fields;
+- inconsistent run/job identities;
+- missing terminal `result.json`;
+- `summary.ok: false`;
+- a nonzero Worker exit code;
+- unconfirmed cleanup or process shutdown.
+
+See [SKILL.md](SKILL.md), [Common Worker Protocol](../contracts/common-worker-protocol.md),
+[Power Worker Contract](../contracts/power-worker-contract.md), and
+[Power Orchestrator Workflows](../contracts/power-orchestrator-workflows.md).
+
 ## Standalone references
 
 Inside a Powers Tool checkout, the original files under `docs/contracts/` and

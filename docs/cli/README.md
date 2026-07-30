@@ -85,6 +85,22 @@ not carry the top-level `powers_tool_cli.cli` module or another service-locator
 object. Request mapping remains owned by the command-family modules and the
 existing CLI facades.
 
+## Requirements
+
+The root [README Install guide](../../README.md#install) is the canonical setup
+reference. See [Supported Models](../core/supported-models.md) for the exact
+Product support matrix; this section does not add support for another model,
+transport, or backend.
+
+| Requirement | No-hardware | Live operation |
+| --- | --- | --- |
+| Python | Use the minimum version declared by `pyproject.toml`: `>=3.10`. | The same Python requirement applies. |
+| Core/CLI runtime | Install the current `powers-tool` distribution. | Install the current `powers-tool` distribution. |
+| No-hardware | Simulator, dry-run, CLI help, and ordinary tests do not require a physical instrument or vendor VISA runtime. | Not applicable. |
+| Live hardware | Not applicable. | Requires a supported physical instrument, an accepted connection/backend scope, an external VISA implementation/runtime that PyVISA can load, and a VISA resource explicitly supplied by the user. |
+| Product support | No-hardware availability does not imply live support. | Follow the exact `model + command + transport + backend + required feature` scope in [Supported Models](../core/supported-models.md). |
+| Safety | Preview and simulator paths do not enable real output. | Output-affecting commands remain subject to the existing confirmation gates and safety limits. |
+
 ## Install
 
 The root [README Install guide](../../README.md#install) is the canonical
@@ -116,6 +132,44 @@ uv run python -m powers_tool_cli.cli doctor --simulate --json
 
 `--version` prints `powers-tool <package-version>` and exits without
 requiring a subcommand or opening VISA.
+
+## Quick Start
+
+Use these commands from the project root to confirm the installed console entry
+point, basic CLI/Core loading, and the deterministic simulator no-hardware path:
+
+```powershell
+uv run powers-tool --version
+uv run powers-tool doctor --simulate --json
+```
+
+This Quick Start does not perform VISA resource discovery, open a VISA resource,
+send SCPI, modify physical instrument state, or enable output. It does not
+require a physical instrument or vendor VISA runtime.
+
+For normal operator workflows, continue with the [CLI User Guide](USER_GUIDE.md).
+To use the local browser interface, see the
+[WebUI User Guide](../webui/USER_GUIDE.md). Exact live model and connection
+coverage is documented in [Supported Models](../core/supported-models.md).
+
+## Command Family Index
+
+This is a quick orientation index, not a replacement for
+`powers-tool --help` or the detailed examples below.
+
+| Family | Purpose | Representative commands | Details |
+| --- | --- | --- | --- |
+| Setup and diagnostics | Installation, discovery, identity, error, and safety checks. | `powers-tool --version`, `doctor`, `list-resources`, `verify`, `identify`, `error`, `clear` | [Resource Discovery And Live Resource Setup](#resource-discovery-and-live-resource-setup); `powers-tool --help` |
+| Read-only and state | Measurements, readback, output state, capabilities, and instrument status. | `measure`, `measure-all`, `read-status`, `readback`, `output-state`, `capabilities` | [Read-Only Command Examples](#read-only-command-examples); `read-status` is the instrument command. |
+| Setpoint and output control | Setpoints, output transitions, safe-off, and guarded output actions. | `set`, `apply`, `output-on`, `output-off`, `safe-off`, `cycle-output`, `smoke-output` | [Output-Affecting Examples](#output-affecting-examples); [Safety Defaults](#safety-defaults) |
+| Output workflows | Ramps, ramp lists, software sequences, and telemetry logging. | `ramp`, `ramp-list`, `sequence`, `log` | [Ramp And Sequence Examples](#ramp-and-sequence-examples); [Safety Defaults](#safety-defaults) |
+| Protection | Protection status, configuration, and clearing. | `protection-status`, `protection-set`, `clear-protection` | [Protection And Trigger Examples](#protection-and-trigger-examples); `powers-tool --help` |
+| Trigger | Trigger status, setup, firing, abort, pulse, and LIST workflows. | `trigger-status`, `trigger-step`, `trigger-list`, `trigger-fire`, `trigger-abort`, `trigger-pulse` | [Protection And Trigger Examples](#protection-and-trigger-examples); exact feature scope still applies. |
+| Snapshot and restore | Capture, compare, report, and restore saved instrument state. | `snapshot`, `snapshot-diff`, `hardware-report`, `restore-from-snapshot` | [Snapshot And Restore Examples](#snapshot-and-restore-examples); [Power CLI JSON / JSONL Contract](../contracts/power-cli-jsonl-contract.md) |
+| Worker and automation | Local Worker lifecycle and command submission. | `worker`, `send-command`, `status`, `stop`, `wait-ready` | [Power Worker Daemon](#power-worker-daemon); [Power Worker Contract](../contracts/power-worker-contract.md). `status` is Worker lifecycle status; instrument status is `read-status`. |
+
+Actual live availability remains determined by the exact Product scope for the
+model, command, transport, backend, and required feature.
 
 ## Test
 

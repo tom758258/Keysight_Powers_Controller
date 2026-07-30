@@ -73,6 +73,36 @@ It is a local tool, not a cloud service. Closing the browser tab does not
 always stop the server; use `Quit` in the launcher or stop the terminal process
 when you are done.
 
+## Browser Language
+
+The WebUI supports English and Traditional Chinese. Use the single language
+toggle button in the upper-right of the main interface. When the current
+language is English, the button shows `繁體中文`; when the current language is
+Traditional Chinese, it shows `English`.
+
+Language switching takes effect at runtime without reloading the page. It keeps
+the current page state, including:
+
+- execution mode;
+- resource and identity selection;
+- command form;
+- workflow editor;
+- Job History and Job Result;
+- Result Detail;
+- Live Data display state.
+
+The switch changes browser presentation only. It does not make an HTTP request,
+create a Job, run a workflow action, or create, stop, or otherwise affect an
+EventSource.
+
+Machine-facing values remain unchanged and are not translated, including
+command IDs, model IDs, VISA resources, API payloads and schemas, SCPI, raw
+diagnostics, and original error content.
+
+English is the source and fallback locale. The language preference is retained
+in the same browser. If browser storage is unavailable, the WebUI safely falls
+back without affecting normal operation.
+
 ## Screen Overview
 
 The page is an instrument control console. The main areas are:
