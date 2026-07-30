@@ -95,7 +95,7 @@ and test environment before running the commands in this document:
 uv sync --all-extras --locked --link-mode=copy
 ```
 
-For a basic Core/CLI runtime-only environment, use:
+Alternatively, for a basic Core/CLI runtime-only environment, use:
 
 ```powershell
 uv sync --locked --link-mode=copy
