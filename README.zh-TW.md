@@ -1,21 +1,42 @@
 [English](README.md)
 
-# Keysight Powers
+# Powers Tool
 
-Keysight Powers 是用於 Keysight 直流電源供應器的 Python 控制工具。
-專案提供單一可安裝發行套件 `keysight-powers` `<version>`，並保留三個
-獨立的 import package：`keysight_power_core`、`keysight_power_cli` 與
-`keysight_power_webui`。
+Powers Tool 是用於支援之直流電源供應器的 vendor-neutral Python 控制工具。
+2.0.0 版本提供單一可安裝發行套件 `powers-tool`，並保留三個獨立的
+import package：`powers_tool_core`、`powers_tool_cli` 與 `powers_tool_webui`。
 
-本專案透過 VISA 支援 USB、LAN 與明確的 RS-232/ASRL 通訊，並提供命令列
-工具與本機瀏覽器 WebUI。它適合需要明確安全檢查、模擬器支援，以及機器可讀
-輸出的電源供應器工作流程。
+本架構是 vendor-neutral，但目前 Product-active 且已完成硬體驗證的型號為
+`keysight-e36312a`、`keysight-edu36311a` 與 `keysight-e3646a`。Vendor-neutral
+架構不代表任意或未知電源供應器都受支援；未註冊或無法解析的 live hardware
+會 fail closed。Vendor-specific driver、alias、手冊、SCPI 行為、evidence
+與 support table 保留正確的 vendor 名稱。
+
+共用 Core runtime 負責 identity resolution、driver、SCPI 行為、安全性與 exact
+live-support 決策。CLI 與 WebUI 是建立在 Core 之上的平行 adapter；Power Worker
+則將相同的 Core command boundary 提供給本機 automation。專案透過 VISA 支援
+USB、LAN 與明確設定的 RS-232/ASRL 通訊，並提供安全優先的 dry-run、simulator
+與 machine-readable workflow。
+
+Live hardware 會從 `*IDN?` 解析，且在文件所述 exact support scope 之外保持
+fail closed。當前型號與 connection coverage 請參閱
+[Supported Models](docs/core/supported-models.md)。
+
+**Live hardware prerequisite：** 實體硬體操作需要另行安裝可由 PyVISA 載入的
+VISA implementation/runtime。`powers-tool` 會安裝 PyVISA，但 PyVISA 是
+Python API 層，不等於完整的 system 或 vendor VISA runtime。Powers Tool
+不內含 Keysight IO Libraries Suite、NI-VISA 或其他廠商／系統 VISA runtime。
+Simulator、dry-run 與一般 no-hardware validation 不需要實體儀器或 vendor VISA
+runtime。安裝 VISA runtime 不會擴大支援範圍；live operation 仍受
+[Supported Models](docs/core/supported-models.md) 所記載的 exact model、command、
+transport、backend 與 required-feature scope 限制。
 
 ## 功能特性
 
 - 透過 VISA 使用 USB、LAN 或明確的 RS-232/ASRL 設定控制支援的 Keysight
   直流電源供應器。
-- 可使用 `keysight-power` CLI 或本機 `keysight-power-webui` 儀表板。
+- 可使用 `powers-tool` CLI 或本機 `powers-tool-webui` 儀表板。
+- WebUI 支援 English 與繁體中文，可在 runtime 切換語言，且不需 reload。
 - 使用 dry-run 模式在開啟 VISA 前預覽會影響硬體的命令。
 - 使用內建模擬器在沒有硬體時測試流程。
 - 設定電壓/電流限制、控制輸出狀態，並讀取即時儀器資料。
@@ -37,18 +58,18 @@ CI 中。
 此 repository 使用單一發行套件與單一版本號。在範例中，`<version>` 代表
 根目錄 `pyproject.toml` 中的 `[project].version`：
 
-- 發行套件：`keysight-powers` `<version>`
-- Core import：`keysight_power_core`
-- CLI import：`keysight_power_cli`
-- WebUI import：`keysight_power_webui`
+- 發行套件：`powers-tool` `<version>`
+- Core import：`powers_tool_core`
+- CLI import：`powers_tool_cli`
+- WebUI import：`powers_tool_webui`
 
 import 路徑彼此獨立。請不要使用 `keysight_power.*` namespace package。
 
 ```text
 src/
-  keysight_power_core/
-  keysight_power_cli/
-  keysight_power_webui/
+  powers_tool_core/
+  powers_tool_cli/
+  powers_tool_webui/
 tests/
   core/
   cli/
@@ -66,7 +87,7 @@ scripts/
 先開啟 PowerShell 並進入專案根目錄：
 
 ```powershell
-cd path\to\Keysight_Powers_Controller
+cd path\to\powers-tool
 ```
 
 如果尚未安裝 uv，先安裝：
@@ -119,9 +140,13 @@ uv venv .venv --python 3.12
 ```
 
 Windows 會建立虛擬環境 console wrapper，例如
-`.\.venv\Scripts\keysight-power.exe` 與
-`.\.venv\Scripts\keysight-power-webui.exe`。WebUI 啟動器的 wrapper 是
-`.\.venv\Scripts\keysight-power-webui-launcher.exe`。
+`.\.venv\Scripts\powers-tool.exe` 與
+`.\.venv\Scripts\powers-tool-webui.exe`。WebUI 啟動器的 wrapper 是
+`.\.venv\Scripts\powers-tool-webui-launcher.exe`。
+
+安裝完成後，請使用 [CLI Quick Start](docs/cli/README.zh-TW.md#快速開始)
+進行安全的 no-hardware 檢查，或參閱
+[WebUI 使用者指南](docs/webui/USER_GUIDE.zh-TW.md) 啟動本機瀏覽器介面。
 
 ## 建置
 
@@ -135,21 +160,12 @@ Windows 會建立虛擬環境 console wrapper，例如
 這只會產生一個 Python 發行套件：
 
 ```text
-dist\keysight_powers-<version>-py3-none-any.whl
-dist\keysight_powers-<version>.tar.gz
+dist\powers_tool-<version>-py3-none-any.whl
+dist\powers_tool-<version>.tar.gz
 ```
 
-獨立的執行檔有分開的 PyInstaller 工作流程。在建置 exe 產物之前，請先安裝 PyInstaller：
-
-```powershell
-uv pip install pyinstaller --python .\.venv\Scripts\python.exe
-```
-
-如果您的虛擬環境直接使用 pip：
-
-```powershell
-.\.venv\Scripts\python.exe -m pip install pyinstaller
-```
+獨立的執行檔有分開的 PyInstaller 工作流程。請先準備上方的 locked
+development environment；`dev` extra 已提供 PyInstaller，不需要另外安裝：
 
 建置獨立的 CLI 與 WebUI 啟動器執行檔：
 
@@ -161,15 +177,15 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_webui_ex
 預設情況下，這些命令會產生：
 
 ```text
-dist\keysight-power.exe
-dist\keysight-power-webui-launcher.exe
+dist\powers-tool.exe
+dist\powers-tool-webui.exe
 ```
 
 在不接觸硬體的情況下，快速測試建置完成的 CLI 執行檔：
 
 ```powershell
-.\dist\keysight-power.exe --version
-.\dist\keysight-power.exe doctor --simulate --json
+.\dist\powers-tool.exe --version
+.\dist\powers-tool.exe doctor --simulate --json
 ```
 
 建置包含 wheel、sdist、獨立執行檔與檢查碼 (checksums) 的發佈資料夾：
@@ -181,12 +197,18 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_release.
 這會產生以所選專案版本命名的發佈產物：
 
 ```text
-release\<version>\keysight-power-<version>.exe
-release\<version>\keysight-power-webui-launcher-<version>.exe
-release\<version>\keysight_powers-<version>-py3-none-any.whl
-release\<version>\keysight_powers-<version>.tar.gz
+release\<version>\powers-tool-<version>.exe
+release\<version>\powers-tool-webui-<version>.exe
+release\<version>\powers_tool-<version>-py3-none-any.whl
+release\<version>\powers_tool-<version>.tar.gz
 release\<version>\checksums.txt
 ```
+
+正式 release acceptance 必須從 clean、fully committed source working tree 執行。
+它會檢查 HEAD、`uv.lock`、wheel、sdist、standalone executable、console entry
+points 與 checksums，並執行 no-hardware CLI smoke、代表性 deep preflight 與
+simulator PlanOnly。此 acceptance script 不會進行 VISA discovery、開啟 resource
+或送出 SCPI，也不會自動 publication release。
 
 ## 測試
 
@@ -211,6 +233,13 @@ Pytest 預設使用已忽略的 repository-local `.tmp_pytest` 目錄，因此�
 
 Scripted no-hardware 與 live validation 工作流程記錄在
 [CLI README](docs/cli/README.zh-TW.md)。
+
+公開文件與驗證腳本請以目前英文 README、CLI README 與 contracts 為準；
+繁中文件保留操作員導覽與安全邊界，不改變 runtime 行為。
+
+## 貢獻
+
+貢獻、變更規則與驗證要求請參閱 [CONTRIBUTING](docs/CONTRIBUTING.md)。
 
 ## 文件
 

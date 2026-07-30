@@ -1,37 +1,65 @@
-# Keysight Power WebUI 使用者指南
+# Powers Tool WebUI 使用者指南
 
 本指南針對取得已建置之 WebUI 啟動器並使用它來檢查與控制支援的 Keysight 直流電源供應器的操作員。本指南避開了開發人員細節，專注於一般的本機 WebUI 工作流程。開發人員環境設定、API 行為、驗證以及 UI 變更邊界，皆記錄於 [WebUI README](README.zh-TW.md) 與 [Web UI 變更規則](web-ui-change-rules.md)。
 
 ## 啟動 WebUI
 
-一般使用時，請雙擊發行套件或本機建置提供的 WebUI 啟動器：
+一般使用時，請雙擊 release 或本機 PyInstaller build 提供的 WebUI standalone
+artifact：
 
 ```text
-keysight-power-webui-launcher.exe
+powers-tool-webui.exe
 ```
 
-若要從 PowerShell 確認啟動器版本：
+若要從 PowerShell 確認 standalone artifact 版本：
 
 ```powershell
-.\keysight-power-webui-launcher.exe --version
+.\powers-tool-webui.exe --version
 ```
 
-發佈資料夾可能包含帶有版本號的啟動器名稱，例如：
+release 資料夾可能包含帶有版本號的 standalone artifact，例如：
 
 ```text
-keysight-power-webui-launcher-<version>.exe
+powers-tool-webui-<version>.exe
 ```
 
-在啟動器視窗中：
+這些 standalone artifact 與 installed console wrappers 是分開的 artifacts。`dist`
+中的 `powers-tool-webui.exe` 或 release 中的 `powers-tool-webui-<version>.exe` 是
+standalone GUI launcher；`.venv\Scripts\powers-tool-webui.exe` 則是 FastAPI server
+wrapper。本機 `dist` artifact 與 server wrapper 的 basename 都是
+`powers-tool-webui.exe`，但所在路徑與用途不同；versioned release artifact 的名稱
+則包含版本號。`.venv\Scripts\powers-tool-webui-launcher.exe` 是 GUI launcher
+wrapper，且 standalone artifact 與它使用相同的 launcher implementation。
 
-1. 除非該 port 已被佔用，否則請保持勾選 `Use default port 7999`。
-2. 點擊 `Start` (啟動)。
-3. 等待瀏覽器開啟。啟動器會在此電腦上啟動本機 WebUI 伺服器，並為您開啟瀏覽器頁面。
-4. 使用完 WebUI 後，請在啟動器中點擊 `Quit` (離開)。
 
-如果 port 7999 已被佔用，請取消勾選 `Use default port 7999`，輸入一個可用的本機 port (例如 `8001`)，然後點擊 `Start`。
+不帶命令列選項時，啟動器會在 `127.0.0.1` 上從 port `7999` 開始，最多嘗試
+100 個候選 port，通常到 `8098`。每個候選 port 都會透過實際 bind 測試；無論
+該 port 是被另一個 Powers Tool WebUI 或其他服務占用，都只會跳過，不會開啟
+已存在於該 port 的服務。新啟動的 WebUI 通過 `/api/health` readiness 後，才會
+開啟瀏覽器；啟動器接著顯示包含實際 URL、Running 狀態與 `Quit` 的精簡 Running
+視窗，port 設定與 `Start` 會隱藏。
 
-如果瀏覽器沒有自動開啟，請手動開啟此網址：
+只有所有自動候選 port 都因 address-in-use 失敗時，才會顯示 manual fallback
+視窗。請輸入其他本機 port 並點擊 `Start`；如果手動輸入的 port 也因
+address-in-use 失敗，視窗會保留以便編輯與重試。重試成功後會回到精簡 Running
+視窗。
+
+從 PowerShell 使用 `--port` 可要求固定 port；除非同時提供 `--auto-port`，否則
+不會自動切換到其他 port：
+
+```powershell
+.\powers-tool-webui.exe --port 9000
+.\powers-tool-webui.exe --port 9000 --auto-port
+```
+
+固定 port 衝突會回報選定的 port、完成清理並以非零狀態結束，不會改用其他 port
+或開啟 manual port 視窗。其他 bind、startup、application、server exit 或
+readiness error 也會保留原始細節、完成清理並結束，不會開啟 manual fallback。
+只有自動 address-in-use exhaustion 會開啟 manual fallback，且只有另一個
+address-in-use error 才會讓 fallback 保持開啟。
+
+如果瀏覽器沒有自動開啟，請先開啟啟動器顯示的實際 URL。若實際使用預設 port，
+該 URL 會是：
 
 ```text
 http://127.0.0.1:7999/
@@ -40,6 +68,30 @@ http://127.0.0.1:7999/
 開發人員或簽出原始碼的使用者應參閱 [WebUI README](README.zh-TW.md) 以了解終端機指令、驗證、API 與建置細節。
 
 WebUI 執行於與儀器連接的同一台 Windows 電腦上。它是一個本機工具，而非雲端服務。關閉瀏覽器分頁並不一定會停止伺服器；使用完畢後，請使用啟動器中的 `Quit` 或停止終端機程序。
+
+## 瀏覽器語言
+
+WebUI 支援 English 與繁體中文。請使用主介面的右上方單一語言切換按鈕；目前
+語言為 English 時按鈕顯示 `繁體中文`，目前語言為繁體中文時顯示 `English`。
+
+切換會在 runtime 立即生效，不需要 reload page，並保留目前頁面狀態，包括：
+
+- execution mode；
+- resource 與 identity selection；
+- command form；
+- workflow editor；
+- Job History 與 Job Result；
+- Result Detail；
+- Live Data 顯示狀態。
+
+語言切換只改變瀏覽器 presentation，不會建立 HTTP request、Job 或 workflow
+action，也不會建立、停止或以其他方式影響 EventSource。
+
+以下 machine-facing values 保持原值且不翻譯：command IDs、model IDs、VISA
+resources、API payload/schema、SCPI、raw diagnostics 與原始錯誤內容。
+
+English 是 source/fallback locale。語言偏好會保留在相同瀏覽器中；如果 browser
+storage 不可用，WebUI 會安全 fallback，不影響正常操作。
 
 ## 畫面總覽
 
@@ -135,17 +187,20 @@ Simulate (模擬) 與 dry-run (預演) 工作有助於在實機硬體執行前�
 
 ### 頁面無法載入
 
-確認伺服器仍在執行並開啟：
+確認伺服器仍在執行，並開啟啟動器顯示的實際 URL。若實際使用預設 port，範例為：
 
 ```text
 http://127.0.0.1:7999/
 ```
 
-如果該 port 已被佔用，請在不同的 port 啟動伺服器並開啟該網址。
+自動啟動可能選擇不是 `7999` 的 port，請以啟動器顯示的 URL 為準。
 
 ### 啟動器顯示 port 已被佔用
 
-如果該 port 上已運行另一個 Keysight Power WebUI 伺服器，啟動器會直接開啟它。如果是由其他服務占用該 port，請在啟動啟動器前選擇其他 port 或停止該服務。
+啟動器絕不會開啟已經占用候選 port 的服務。預設自動啟動會跳過 address-in-use
+候選 port；固定 `--port` 發生衝突時會直接結束，不會選擇其他 port。若已開啟
+manual fallback 視窗，請選擇其他 port，或停止占用所選 port 的服務後，再點擊
+`Start`。
 
 ### Scan Device 找不到任何東西
 

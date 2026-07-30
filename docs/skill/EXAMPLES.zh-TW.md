@@ -10,7 +10,9 @@
 ```
 
 預期行為：Agent 使用固定 helper workflow，不開啟真實硬體，並回報任何
-correlation、parse、terminal result、summary 或 exit code 檢查失敗。
+correlation、parse、terminal result、summary 或 exit code 檢查失敗。成功判定
+必須依 terminal `result.json`、summary、correlation 與 Worker exit code；
+`ready` 或 queue acceptance 不代表 workflow 已完成。
 
 ## Contract-aware repository diff review
 

@@ -20,6 +20,58 @@ live workflow。
 不要用它擴張 Product support、修改 SCPI、探索硬體、替使用者選擇 live
 resource，或自動執行 live output 變更。Repository 原始合約永遠是 authority。
 
+## Schema 2 與機器證據
+
+### Schema 2 僅限 v2
+
+凡 runtime contract 明確要求 schema 2 的位置，`schema_version` 必須是 exact
+JSON integer `2`。缺少版本、schema 1、字串 `"2"`、boolean、其他 integer、
+fallback 與 schema negotiation 都不接受。Unknown fields 是否可接受，必須依
+個別 schema 2 contract 判定，不可在本地自行擴張；required field 缺少或型別錯誤
+也不可忽略。
+
+如果正式 contract 沒有為 `POST /stop` acknowledgment 定義 `schema_version`，
+它是明確的 endpoint exception：只驗證 HTTP `200`、`ok: true` 與非空
+`message`，不可自行加入或要求 version field。
+
+Simulator helper 的 wrapper report 可以使用自己的 `schema_version: 1` 與
+`runtime_schema_version: 2`。那只是 wrapper report 的 schema，不代表被檢查的
+Powers runtime 使用 schema 1。
+
+### Ready 不等於完成
+
+- Worker `ready` 只表示 control plane 可以接受 lifecycle operation。
+- `GET /status` 的 ready 或 idle-like 狀態不是 domain command 成功證據。
+- HTTP `202` 與 `status: "accepted"` 只表示 job 已進入 queue。
+- `request.json` 只證明 admitted request 已持久化，不代表 execution 成功。
+- 必須持續觀察 accepted artifact，直到 terminal `result.json` 存在。
+- 成功至少需要 terminal `status: "succeeded"`、`ok: true`，以及正確對應的
+  `run_id` 與 `worker_job_id` correlation。
+- `failed`、`cancelled` 或缺少 terminal evidence 都不是成功。
+- `POST /stop` acknowledgment 只代表 cooperative stop request 已提出並被接受，
+  不代表 cleanup 完成、final summary 已產生，或 Worker process 已退出。
+
+### Machine evidence 原則
+
+Agent 與 orchestrator 應依據 JSON／JSONL、Worker status objects、`request.json`、
+terminal `result.json`、final summary、wrapper report、process exit code，以及
+run/job correlation 做決策。Human-readable stdout、stderr 或畫面文字只能作
+diagnostic，不能取代 machine evidence。
+
+以下情況應視為 failure 或 incomplete convergence：
+
+- JSON parse error；
+- required field 缺少或型別錯誤；
+- run/job identity 不一致；
+- 缺少 terminal `result.json`；
+- `summary.ok: false`；
+- Worker exit code 非零；
+- 無法確認 cleanup 或 process shutdown。
+
+請參閱 [SKILL.md](SKILL.md)、[Common Worker Protocol](../contracts/common-worker-protocol.md)、
+[Power Worker Contract](../contracts/power-worker-contract.md) 與
+[Power Orchestrator Workflows](../contracts/power-orchestrator-workflows.md)。
+
 ## Standalone references
 
 在 Powers Tool checkout 內，`docs/contracts/` 與 `docs/core/` 的原始文件永遠
