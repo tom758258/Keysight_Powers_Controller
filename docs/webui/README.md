@@ -142,16 +142,30 @@ The installed Windows console wrappers are:
 .\.venv\Scripts\powers-tool-webui-launcher.exe
 ```
 
-The launcher defaults to `127.0.0.1:7999`, opens the browser after Start, and
-keeps the window available so Quit can stop the local Uvicorn server. If the
-selected port already hosts Powers Tool WebUI, the launcher opens that page
-instead of starting a second server. If the port is used by another service,
-startup is rejected. Quit first requests cancellation of active WebUI jobs,
-including Live Data and simulation or dry-run workflows, and waits for their
-normal cleanup before stopping the launcher-owned server. If job cleanup or
-server shutdown times out, the launcher stays open and reports that shutdown
-is incomplete. A server started by another process remains outside launcher
-ownership.
+With no arguments, the launcher starts automatically on `127.0.0.1`, beginning
+at port `7999` and trying up to 100 ports through `8098`. The launcher window
+starts minimized. Each candidate is tested by binding the server socket, so a
+port used by another Powers Tool WebUI or any other service is skipped without
+opening that existing service. The browser opens only after the newly started
+WebUI reports ready at `/api/health`, using the port that was actually bound.
+
+Use `--port 9000` to try only port `9000`. Add `--auto-port` to try up to 100
+ports beginning at the selected port:
+
+```powershell
+.\.venv\Scripts\powers-tool-webui-launcher.exe --port 9000
+.\.venv\Scripts\powers-tool-webui-launcher.exe --port 9000 --auto-port
+```
+
+Automatic candidates never exceed port `65535`. If every candidate is in use,
+the launcher restores its window, reports the attempted range, and allows a
+different port to be entered manually. Start then tries only that port.
+
+The launcher keeps the window available so Quit can stop its local Uvicorn
+server. Quit first requests cancellation of active WebUI jobs, including Live
+Data and simulation or dry-run workflows, and waits for their normal cleanup
+before stopping the launcher-owned server. If job cleanup or server shutdown
+times out, the launcher stays open and reports that shutdown is incomplete.
 
 The standalone PyInstaller GUI artifact is a separate executable at
 `dist\powers-tool-webui.exe`; it is built from the same launcher implementation

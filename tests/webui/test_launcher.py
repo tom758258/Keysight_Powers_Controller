@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from queue import Empty, Queue
 import threading
-from urllib.error import HTTPError, URLError
+from urllib.error import URLError
 
 import pytest
 
@@ -30,11 +30,25 @@ class FakeResponse:
 
 
 class FakeValue:
-    def __init__(self) -> None:
-        self.value = ""
+    def __init__(self, value: str = "") -> None:
+        self.value = value
 
     def set(self, value: str) -> None:
         self.value = value
+
+    def get(self) -> str:
+        return self.value
+
+
+class FakeBoolean:
+    def __init__(self, value: bool) -> None:
+        self.value = value
+
+    def set(self, value: bool) -> None:
+        self.value = value
+
+    def get(self) -> bool:
+        return self.value
 
 
 class FakeControl:
@@ -49,15 +63,41 @@ class FakeRoot:
     def __init__(self, order: list[str]) -> None:
         self.order = order
         self.destroyed = False
+        self.iconified = False
+        self.restored = False
+        self.lifted = False
 
     def destroy(self) -> None:
         self.order.append("destroy")
         self.destroyed = True
 
+    def iconify(self) -> None:
+        self.iconified = True
+
+    def deiconify(self) -> None:
+        self.iconified = False
+        self.restored = True
+
+    def lift(self) -> None:
+        self.lifted = True
+
 
 class FakeServer:
     def __init__(self) -> None:
         self.should_exit = False
+        self.config = object()
+        self.served_sockets: list[object] = []
+
+    async def serve(self, *, sockets: list[object]) -> None:
+        self.served_sockets = sockets
+
+
+class FakeSocket:
+    def __init__(self) -> None:
+        self.closed = False
+
+    def close(self) -> None:
+        self.closed = True
 
 
 class FakeServerThread:
@@ -117,6 +157,42 @@ def _launcher_for_shutdown(order: list[str]) -> launcher.LauncherApp:
     app._status_value = FakeValue()
     app._start_button = FakeControl()
     app._port_entry = FakeControl()
+    app._quit_button = FakeControl()
+    return app
+
+
+def _launcher_for_startup(
+    *,
+    initial_port: int,
+    socket_binder,
+    server_factory,
+    readiness_checker=lambda _url: False,
+    browser_open=lambda _url: None,
+) -> launcher.LauncherApp:
+    app = launcher.LauncherApp.__new__(launcher.LauncherApp)
+    app._root = FakeRoot([])
+    app._server_factory = server_factory
+    app._socket_binder = socket_binder
+    app._browser_open = browser_open
+    app._readiness_checker = readiness_checker
+    app._server = None
+    app._server_socket = None
+    app._server_thread = None
+    app._server_loop = None
+    app._server_loop_ready = threading.Event()
+    app._startup_thread = None
+    app._shutdown_thread = None
+    app._shutdown_in_progress = False
+    app._jobs_shutdown_complete = False
+    app._ui_queue = Queue()
+    app._startup_success = threading.Event()
+    app._server_error = None
+    app._use_default_port = FakeBoolean(initial_port == launcher.DEFAULT_PORT)
+    app._port_value = FakeValue(str(initial_port))
+    app._url_value = FakeValue(launcher.build_local_url(initial_port))
+    app._status_value = FakeValue("Ready")
+    app._port_entry = FakeControl()
+    app._start_button = FakeControl()
     app._quit_button = FakeControl()
     return app
 
@@ -187,37 +263,212 @@ def test_server_is_ready_rejects_other_http_service(monkeypatch) -> None:
     assert launcher._server_is_ready(health_url) is False
 
 
-def test_http_server_is_ready_detects_any_http_response(monkeypatch) -> None:
-    url = launcher.build_local_url(launcher.DEFAULT_PORT)
-
-    def fake_urlopen(_url: str, timeout: float) -> FakeResponse:
-        return FakeResponse({}, status=404)
-
-    monkeypatch.setattr(launcher, "urlopen", fake_urlopen)
-
-    assert launcher._http_server_is_ready(url) is True
-
-
-def test_http_server_is_ready_accepts_http_error(monkeypatch) -> None:
-    url = launcher.build_local_url(launcher.DEFAULT_PORT)
-
-    def fake_urlopen(_url: str, timeout: float) -> FakeResponse:
-        raise HTTPError(url, 503, "busy", {}, None)
-
-    monkeypatch.setattr(launcher, "urlopen", fake_urlopen)
-
-    assert launcher._http_server_is_ready(url) is True
-
-
-def test_http_server_is_ready_rejects_connection_error(monkeypatch) -> None:
-    url = launcher.build_local_url(launcher.DEFAULT_PORT)
+def test_server_is_ready_rejects_connection_error(monkeypatch) -> None:
+    health_url = f"{launcher.build_local_url(launcher.DEFAULT_PORT)}/api/health"
 
     def fake_urlopen(_url: str, timeout: float) -> FakeResponse:
         raise URLError("connection refused")
 
     monkeypatch.setattr(launcher, "urlopen", fake_urlopen)
 
-    assert launcher._http_server_is_ready(url) is False
+    assert launcher._server_is_ready(health_url) is False
+
+
+def test_auto_port_uses_first_bound_socket_and_actual_browser_url(
+    monkeypatch,
+) -> None:
+    attempted_ports: list[int] = []
+    created_ports: list[int] = []
+    browser_urls: list[str] = []
+    bound_socket = FakeSocket()
+    server = FakeServer()
+
+    def socket_binder(port: int) -> FakeSocket:
+        attempted_ports.append(port)
+        if port < 8001:
+            raise OSError(launcher.errno.EADDRINUSE, "in use")
+        return bound_socket
+
+    def server_factory(port: int) -> FakeServer:
+        created_ports.append(port)
+        return server
+
+    class ImmediateThread:
+        def __init__(
+            self,
+            *,
+            target,
+            name: str,
+            daemon: bool,
+            args: tuple[object, ...] = (),
+        ) -> None:
+            self._target = target
+            self._args = args
+            self._alive = False
+
+        def start(self) -> None:
+            self._alive = True
+            self._target(*self._args)
+            self._alive = False
+
+        def is_alive(self) -> bool:
+            return self._alive
+
+    app = _launcher_for_startup(
+        initial_port=launcher.DEFAULT_PORT,
+        socket_binder=socket_binder,
+        server_factory=server_factory,
+        readiness_checker=lambda url: url.endswith(":8001/api/health"),
+        browser_open=browser_urls.append,
+    )
+    monkeypatch.setattr(launcher.threading, "Thread", ImmediateThread)
+
+    app.start(auto_port=True)
+    _drain_ui_queue(app)
+
+    assert attempted_ports == [7999, 8000, 8001]
+    assert created_ports == [8001]
+    assert server.served_sockets == [bound_socket]
+    assert browser_urls == ["http://127.0.0.1:8001"]
+    assert app._status_value.value == "Running at http://127.0.0.1:8001"
+
+
+@pytest.mark.parametrize(
+    ("argv", "expected_ports"),
+    [
+        ([], tuple(range(7999, 8099))),
+        (["--port", "9000"], (9000,)),
+        (["--port", "9000", "--auto-port"], tuple(range(9000, 9100))),
+        (["--port", "65534", "--auto-port"], (65534, 65535)),
+    ],
+)
+def test_launcher_cli_selects_expected_port_candidates(
+    monkeypatch,
+    argv: list[str],
+    expected_ports: tuple[int, ...],
+) -> None:
+    recorded_ports: list[tuple[int, ...]] = []
+    root = FakeRoot([])
+
+    class FakeMainApp:
+        def __init__(self, _root: FakeRoot, *, initial_port: int) -> None:
+            self.initial_port = initial_port
+
+        def start(self, *, auto_port: bool) -> None:
+            recorded_ports.append(
+                launcher._candidate_ports(self.initial_port, auto_port=auto_port)
+            )
+
+    root.after = lambda delay, callback: callback()
+    root.mainloop = lambda: None
+    monkeypatch.setattr(launcher.tk, "Tk", lambda: root)
+    monkeypatch.setattr(launcher, "LauncherApp", FakeMainApp)
+
+    assert launcher.main(argv) == 0
+
+    assert root.iconified is True
+    assert recorded_ports == [expected_ports]
+
+
+def test_fixed_port_conflict_does_not_increment(monkeypatch) -> None:
+    attempted_ports: list[int] = []
+    errors: list[tuple[str, str]] = []
+
+    def socket_binder(port: int) -> FakeSocket:
+        attempted_ports.append(port)
+        raise OSError(launcher.errno.EADDRINUSE, "in use")
+
+    app = _launcher_for_startup(
+        initial_port=9000,
+        socket_binder=socket_binder,
+        server_factory=lambda _port: pytest.fail("server must not be created"),
+    )
+    monkeypatch.setattr(
+        launcher.messagebox,
+        "showerror",
+        lambda title, message: errors.append((title, message)),
+    )
+
+    app.start()
+
+    assert attempted_ports == [9000]
+    assert app._root.restored is True
+    assert app._start_button.state == "normal"
+    assert errors == [("Start failed", "RuntimeError: Port 9000 is already in use.")]
+
+
+def test_auto_port_exhaustion_restores_manual_window(monkeypatch) -> None:
+    attempted_ports: list[int] = []
+    errors: list[tuple[str, str]] = []
+
+    def socket_binder(port: int) -> FakeSocket:
+        attempted_ports.append(port)
+        raise OSError(launcher.errno.EADDRINUSE, "in use")
+
+    app = _launcher_for_startup(
+        initial_port=launcher.DEFAULT_PORT,
+        socket_binder=socket_binder,
+        server_factory=lambda _port: pytest.fail("server must not be created"),
+    )
+    monkeypatch.setattr(launcher, "AUTO_PORT_ATTEMPTS", 3)
+    monkeypatch.setattr(
+        launcher.messagebox,
+        "showerror",
+        lambda title, message: errors.append((title, message)),
+    )
+
+    app.start(auto_port=True)
+
+    assert attempted_ports == [7999, 8000, 8001]
+    assert app._root.restored is True
+    assert app._use_default_port.get() is False
+    assert app._port_entry.state == "normal"
+    assert "7999..8001" in app._status_value.value
+    assert errors == [("No available port", app._status_value.value)]
+
+
+@pytest.mark.parametrize("failure_phase", ["bind", "server"])
+def test_auto_port_stops_on_non_conflict_error(
+    monkeypatch,
+    failure_phase: str,
+) -> None:
+    attempted_ports: list[int] = []
+    created_ports: list[int] = []
+    bound_socket = FakeSocket()
+    errors: list[str] = []
+
+    def socket_binder(port: int) -> FakeSocket:
+        attempted_ports.append(port)
+        if failure_phase == "bind":
+            raise PermissionError("bind denied")
+        return bound_socket
+
+    def server_factory(port: int) -> FakeServer:
+        created_ports.append(port)
+        raise RuntimeError("app initialization failed")
+
+    app = _launcher_for_startup(
+        initial_port=launcher.DEFAULT_PORT,
+        socket_binder=socket_binder,
+        server_factory=server_factory,
+    )
+    monkeypatch.setattr(
+        launcher.messagebox,
+        "showerror",
+        lambda _title, message: errors.append(message),
+    )
+
+    app.start(auto_port=True)
+
+    assert attempted_ports == [7999]
+    if failure_phase == "bind":
+        assert created_ports == []
+        assert bound_socket.closed is False
+        assert errors == ["PermissionError: bind denied"]
+    else:
+        assert created_ports == [7999]
+        assert bound_socket.closed is True
+        assert errors == ["RuntimeError: app initialization failed"]
 
 
 def test_launcher_does_not_import_cli_adapter() -> None:

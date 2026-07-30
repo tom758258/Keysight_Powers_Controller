@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import errno
 import json
 from queue import Empty, Queue
+import socket
 import threading
 import time
 import tkinter as tk
 from tkinter import messagebox
 from typing import Any, Callable
-from urllib.error import HTTPError, URLError
+from urllib.error import URLError
 from urllib.request import urlopen
 import webbrowser
 
@@ -29,6 +31,7 @@ except ImportError:  # pragma: no cover - PyInstaller script entry point
 PACKAGE_NAME = "powers-tool-webui"
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 7999
+AUTO_PORT_ATTEMPTS = 100
 JOB_SHUTDOWN_TIMEOUT_S = 10.0
 SERVER_JOIN_TIMEOUT_S = 3.0
 
@@ -45,6 +48,20 @@ def parse_port(value: str) -> int:
     if port < 1 or port > 65535:
         raise ValueError("Port must be between 1 and 65535.")
     return port
+
+
+def _candidate_ports(start_port: int, *, auto_port: bool) -> tuple[int, ...]:
+    attempt_count = AUTO_PORT_ATTEMPTS if auto_port else 1
+    stop_port = min(start_port + attempt_count, 65536)
+    return tuple(range(start_port, stop_port))
+
+
+def bind_local_socket(port: int) -> socket.socket:
+    return socket.create_server((DEFAULT_HOST, port))
+
+
+def _is_port_in_use_error(exc: OSError) -> bool:
+    return exc.errno == errno.EADDRINUSE or getattr(exc, "winerror", None) == 10048
 
 
 def create_uvicorn_server(port: int) -> Any:
@@ -86,18 +103,20 @@ class LauncherApp:
         root: tk.Tk,
         *,
         server_factory: Callable[[int], Any] | None = None,
+        socket_binder: Callable[[int], Any] | None = None,
         browser_open: Callable[[str], object] | None = None,
         readiness_checker: Callable[[str], bool] | None = None,
-        http_checker: Callable[[str], bool] | None = None,
         job_manager_instance: Any = job_manager,
+        initial_port: int = DEFAULT_PORT,
     ) -> None:
         self._root = root
         self._server_factory = server_factory or create_uvicorn_server
+        self._socket_binder = socket_binder or bind_local_socket
         self._browser_open = browser_open or webbrowser.open
         self._readiness_checker = readiness_checker or _server_is_ready
-        self._http_checker = http_checker or _http_server_is_ready
         self._job_manager = job_manager_instance
         self._server: Any | None = None
+        self._server_socket: Any | None = None
         self._server_thread: threading.Thread | None = None
         self._server_loop: asyncio.AbstractEventLoop | None = None
         self._server_loop_ready = threading.Event()
@@ -109,9 +128,9 @@ class LauncherApp:
         self._startup_success = threading.Event()
         self._server_error: BaseException | None = None
 
-        self._use_default_port = tk.BooleanVar(value=True)
-        self._port_value = tk.StringVar(value=str(DEFAULT_PORT))
-        self._url_value = tk.StringVar(value=build_local_url(DEFAULT_PORT))
+        self._use_default_port = tk.BooleanVar(value=initial_port == DEFAULT_PORT)
+        self._port_value = tk.StringVar(value=str(initial_port))
+        self._url_value = tk.StringVar(value=build_local_url(initial_port))
         self._status_value = tk.StringVar(value="Ready")
 
         self._root.title("Powers Tool WebUI Launcher")
@@ -180,47 +199,80 @@ class LauncherApp:
     def server_thread(self) -> threading.Thread | None:
         return self._server_thread
 
-    def start(self) -> None:
+    def start(self, *, auto_port: bool = False) -> None:
         try:
-            port = self._selected_port()
+            start_port = self._selected_port()
         except ValueError as exc:
             messagebox.showerror("Invalid port", str(exc))
             return
 
+        candidates = _candidate_ports(start_port, auto_port=auto_port)
         self._lock_started_controls()
-        self._status_value.set("Starting...")
-        self._port_value.set(str(port))
-        url = build_local_url(port)
-        health_url = f"{url}/api/health"
+        if auto_port:
+            self._status_value.set(
+                f"Starting on an available port in {candidates[0]}..{candidates[-1]}..."
+            )
+        else:
+            self._status_value.set(f"Starting on port {start_port}...")
         self._startup_success.clear()
         self._server_error = None
-        if self._readiness_checker(health_url):
-            self._mark_server_ready(url, already_running=True)
-            return
-        if self._http_checker(url):
-            self._show_startup_error(
-                RuntimeError(
-                    f"Port {port} is already in use by a service that is not {PACKAGE_NAME}."
+        self._server = None
+        self._server_socket = None
+        self._server_thread = None
+        self._server_loop = None
+        self._server_loop_ready.clear()
+
+        for port in candidates:
+            self._port_value.set(str(port))
+            try:
+                server_socket = self._socket_binder(port)
+            except OSError as exc:
+                if not _is_port_in_use_error(exc):
+                    self._show_startup_error(exc)
+                    return
+                if not auto_port:
+                    self._use_default_port.set(False)
+                    self._show_startup_error(
+                        RuntimeError(f"Port {port} is already in use.")
+                    )
+                    return
+                continue
+
+            if port != DEFAULT_PORT:
+                self._use_default_port.set(False)
+                self._port_value.set(str(port))
+            self._server_socket = server_socket
+            try:
+                self._server = self._server_factory(port)
+                self._server_thread = threading.Thread(
+                    target=self._run_server,
+                    name="powers-tool-webui-launcher-server",
+                    daemon=True,
                 )
-            )
+                self._server_thread.start()
+                self._startup_thread = threading.Thread(
+                    target=self._wait_for_startup,
+                    args=(port,),
+                    name="powers-tool-webui-launcher-startup",
+                    daemon=True,
+                )
+                self._startup_thread.start()
+            except Exception as exc:
+                server_socket.close()
+                self._server_socket = None
+                self._show_startup_error(exc)
             return
-        try:
-            self._server = self._server_factory(port)
-            self._server_thread = threading.Thread(
-                target=self._run_server,
-                name="powers-tool-webui-launcher-server",
-                daemon=True,
-            )
-            self._server_thread.start()
-            self._startup_thread = threading.Thread(
-                target=self._wait_for_startup,
-                args=(port,),
-                name="powers-tool-webui-launcher-startup",
-                daemon=True,
-            )
-            self._startup_thread.start()
-        except Exception as exc:
-            self._show_startup_error(exc)
+
+        self._use_default_port.set(False)
+        self._sync_port_controls()
+        message = (
+            f"No available port was found in {candidates[0]}..{candidates[-1]}. "
+            "Enter another port and select Start."
+        )
+        self._status_value.set(message)
+        self._start_button.configure(state="normal")
+        self._restore_window()
+        messagebox.showerror("No available port", message)
 
     def quit(self) -> None:
         if self._shutdown_in_progress:
@@ -298,27 +350,29 @@ class LauncherApp:
         )
 
     def _run_server(self) -> None:
+        server_socket = self._server_socket
         try:
             setup_event_loop = getattr(self._server.config, "setup_event_loop", None)
             if callable(setup_event_loop):
                 setup_event_loop()
-            asyncio.run(self._serve_server())
+            asyncio.run(self._serve_server(server_socket))
         except BaseException as exc:  # pragma: no cover - runtime safety net
             self._server_error = exc
         finally:
+            if server_socket is not None:
+                server_socket.close()
+            if self._server_socket is server_socket:
+                self._server_socket = None
             self._server_loop = None
 
-    async def _serve_server(self) -> None:
+    async def _serve_server(self, server_socket: Any) -> None:
         self._server_loop = asyncio.get_running_loop()
         self._server_loop_ready.set()
-        await self._server.serve()
+        await self._server.serve(sockets=[server_socket])
 
-    def _mark_server_ready(self, url: str, *, already_running: bool = False) -> None:
+    def _mark_server_ready(self, url: str) -> None:
         self._startup_success.set()
-        if already_running:
-            self._status_value.set(f"Server already running at {url}")
-        else:
-            self._status_value.set(f"Running at {url}")
+        self._status_value.set(f"Running at {url}")
         self._browser_open(url)
 
     def _show_startup_error(self, exc: BaseException) -> None:
@@ -330,7 +384,12 @@ class LauncherApp:
         if self._server is not None:
             self._server.should_exit = True
         self._sync_port_controls()
+        self._restore_window()
         messagebox.showerror("Start failed", message)
+
+    def _restore_window(self) -> None:
+        self._root.deiconify()
+        self._root.lift()
 
     def _post_ui(self, callback: Callable[[], None]) -> None:
         self._ui_queue.put(callback)
@@ -386,16 +445,6 @@ def _server_is_ready(url: str) -> bool:
         return False
 
 
-def _http_server_is_ready(url: str) -> bool:
-    try:
-        with urlopen(url, timeout=0.5) as response:
-            return 100 <= int(response.status) < 600
-    except HTTPError as exc:
-        return 100 <= int(exc.code) < 600
-    except (OSError, URLError, ValueError):
-        return False
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Powers Tool WebUI Launcher")
     parser.add_argument(
@@ -403,10 +452,20 @@ def main(argv: list[str] | None = None) -> int:
         action="version",
         version=f"powers-tool-webui-launcher {WEBUI_VERSION}",
     )
-    parser.parse_args(argv)
+    parser.add_argument("--port", type=parse_port, help="Port to bind")
+    parser.add_argument(
+        "--auto-port",
+        action="store_true",
+        help="Try up to 100 ports starting from --port or 7999",
+    )
+    args = parser.parse_args(argv)
 
+    initial_port = args.port if args.port is not None else DEFAULT_PORT
+    auto_port = args.auto_port or args.port is None
     root = tk.Tk()
-    LauncherApp(root)
+    root.iconify()
+    app = LauncherApp(root, initial_port=initial_port)
+    root.after(0, lambda: app.start(auto_port=auto_port))
     root.mainloop()
     return 0
 
