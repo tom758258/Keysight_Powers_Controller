@@ -39,6 +39,14 @@ def test_wait_for_job_returns_later_terminal_payload() -> None:
     assert result["result"] == {"ok": True}
 
 
+def test_wait_for_job_returns_cancelled_payload() -> None:
+    client = _FakeClient([{"job_id": "job-3", "status": "cancelled"}])
+
+    result = helpers.wait_for_job(client, "job-3")
+
+    assert result["status"] == "cancelled"
+
+
 def test_wait_for_job_timeout_reports_job_and_last_payload() -> None:
     client = _FakeClient([{"job_id": "job-2", "status": "running"}])
 

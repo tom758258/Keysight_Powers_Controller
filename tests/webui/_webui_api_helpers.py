@@ -48,7 +48,7 @@ def wait_for_job(
     deadline = time.monotonic() + timeout
     while True:
         job_data = client.get(f"/api/jobs/{job_id}").json()
-        if job_data["status"] in ("finished", "failed"):
+        if job_data["status"] in ("finished", "failed", "cancelled"):
             return job_data
         remaining = deadline - time.monotonic()
         if remaining <= 0:
