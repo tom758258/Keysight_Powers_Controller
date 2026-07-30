@@ -147,7 +147,7 @@ machine-readable `report.json` and a human-readable `summary.md` under
 | Script | Hardware use | Purpose |
 | --- | --- | --- |
 | `scripts\preflight-cli.ps1` | No hardware | Runs `smoke`, `deep`, or compatibility `full` model-aware CLI validation, parses every JSON result, and enforces `hardware_touched=false`. |
-| `scripts\live-cli-check.ps1` | Plan-only or explicit live hardware | Always runs `preflight-cli.ps1`, then generates the exact selected-suite plans before optional interactive live validation. Use this for candidate feature-validation records. |
+| `scripts\live-cli-check.ps1` | Plan-only or explicit live hardware | Runs `preflight-cli.ps1`, then generates the exact selected-suite plans before optional interactive live validation. Formal release acceptance may skip only the redundant external preflight for its subsequent `PlanOnly` check. Use this for candidate feature-validation records. |
 | `scripts\release-acceptance.ps1` | No hardware | Validates clean committed HEAD with the existing `.venv`, runs the full suite once, builds one final versioned release, checks its package/install/entry-point/standalone artifacts and checksums, then runs all-model CLI smoke, representative deep preflight, and simulator `-PlanOnly`. |
 | `scripts\batch-validation.ps1` | Selected by switches | Runs only the selected simulated or live validation tasks and writes one batch report. |
 
@@ -199,10 +199,15 @@ model-specific topology or support policy for every Product-active model:
 .\scripts\preflight-cli.ps1 -Target all -Suite smoke
 ```
 
+Output-control scope is owned by Core model metadata and is tested there:
+E36312A and EDU36311A are `per_channel`, while E3646A is `global`. The CLI
+capabilities smoke does not treat `output_control_scope` as a capabilities
+payload field.
+
 Use `deep` for capability-representative models. With `-Target all`, the
 current representatives are `keysight-e36312a` for three-channel Protection,
 Snapshot, Trigger List, and complete workflow coverage, and
-`keysight-e3646a` for two-channel ASRL/RS-232 and global-output structure.
+`keysight-e3646a` for two-channel ASRL/RS-232 and global-output behavior.
 `keysight-edu36311a` remains covered by all-model smoke without duplicating
 E36312A deep workflows. Add another deep representative only when a new model
 introduces a capability family or hardware structure not already represented:
@@ -216,10 +221,13 @@ explicit validation and compatibility with existing wrapper workflows.
 Smoke, deep, and full are all no-hardware paths.
 
 Suite live validation uses an explicit target, connection, resource, and
-suite. Every run, including `-PlanOnly`, first calls the broad model-level
-`preflight-cli.ps1` and then generates the selected suite's exact simulator,
-dry-run, lint, and expected-failure cases. `-PlanOnly` stops there and does not
-open the supplied resource. Without `-PlanOnly`, interactive Enter confirmation
+suite. By default, every run, including `-PlanOnly`, first calls the broad
+model-level `preflight-cli.ps1` and then generates the selected suite's exact
+simulator, dry-run, lint, and expected-failure cases. Formal release acceptance
+uses its internal skip switch only after all-model smoke and representative deep
+preflight have passed; the selected-suite PlanOnly cases still run. `-PlanOnly`
+stops there and does not open the supplied resource. Without `-PlanOnly`,
+interactive Enter confirmation
 is required before opening VISA. If stdin is redirected, live execution is
 refused with a confirmation-required report.
 

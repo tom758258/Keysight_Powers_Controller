@@ -292,6 +292,7 @@ def test_release_acceptance_preserves_required_no_hardware_release_flow() -> Non
         '"install-final-sdist"',
         '"live-cli-plan-only"',
         '"-PlanOnly"',
+        '"-SkipExternalPreflight"',
         '"git-diff-check"',
         "HEAD changed during release acceptance",
     ):
@@ -309,6 +310,11 @@ def test_release_acceptance_preserves_required_no_hardware_release_flow() -> Non
         r'"-Suite", "deep"',
         text,
     )
+    smoke_position = text.index('"preflight-cli-all-smoke"')
+    deep_position = text.index('"preflight-cli-deep-representatives"')
+    plan_only_position = text.index('"live-cli-plan-only"')
+    skip_position = text.index('"-SkipExternalPreflight"')
+    assert smoke_position < deep_position < plan_only_position < skip_position
 
 
 def test_release_acceptance_does_not_invoke_itself() -> None:

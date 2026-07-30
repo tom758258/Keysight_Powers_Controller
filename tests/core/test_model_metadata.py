@@ -14,6 +14,19 @@ from powers_tool_core.support_policy import (
 )
 
 
+def test_product_active_output_control_scope_metadata_is_model_aware() -> None:
+    metadata = product_active_model_metadata(())
+
+    assert {
+        model_id: profile["output_control_scope"]
+        for model_id, profile in metadata.items()
+    } == {
+        "keysight-e36312a": "per_channel",
+        "keysight-edu36311a": "per_channel",
+        "keysight-e3646a": "global",
+    }
+
+
 def test_generic_planning_profile_metadata_is_complete_and_nonphysical() -> None:
     commands = {"set", "trigger-list", "clear", "error", "safety inspect"}
 

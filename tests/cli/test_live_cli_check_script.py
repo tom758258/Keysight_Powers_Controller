@@ -1620,7 +1620,52 @@ def test_live_cli_check_readonly_plan_only_succeeds_without_hardware(target, con
     assert report["instrument_identity"]["availability"] == "not_observed_plan_only"
     assert report["instrument_identity"]["detected_model"] is None
     assert report["cleanup"]["status"] == "not_executed_plan_only"
+    assert report["external_preflight"]["status"] == "passed"
     assert "hardware_touched" not in json.dumps(report)
+
+
+def test_live_cli_check_skip_external_preflight_requires_plan_only() -> None:
+    result = _run_live_cli_check("-SkipExternalPreflight")
+
+    assert result.returncode == 2
+    assert "can only be used with -PlanOnly" in (result.stdout + result.stderr)
+
+
+def test_plan_only_can_skip_completed_release_preflight_without_skipping_plans() -> None:
+    result = _run_live_cli_check(
+        "-Target",
+        "keysight-e36312a",
+        "-Connection",
+        "USB",
+        "-Resource",
+        "SIM::E36312A",
+        "-Suite",
+        "readonly",
+        "-PlanOnly",
+        "-SkipExternalPreflight",
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    report_path = _report_path(result.stdout, result.stderr)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["external_preflight"] == {
+        "status": "skipped_by_caller_after_release_preflight"
+    }
+    assert report["plan_only"] is True
+    assert report["live_executed"] is False
+    assert report["commands"]
+    assert {"verify", "identify", "capabilities"} <= {
+        command["name"] for command in report["commands"]
+    }
+    private_payloads = list(
+        (report_path.parent.parent / "private").glob("preflight-*.json")
+    )
+    assert private_payloads
+    assert all(
+        json.loads(path.read_text(encoding="utf-8"))["execution"]["hardware_touched"]
+        is False
+        for path in private_payloads
+    )
 
 
 def test_live_cli_check_rejects_redirected_stdin_before_live_execution() -> None:

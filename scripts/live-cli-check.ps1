@@ -13,6 +13,8 @@ param(
 
     [switch]$PlanOnly,
 
+    [switch]$SkipExternalPreflight,
+
     [bool]$Restore = $true
 )
 
@@ -2810,6 +2812,10 @@ if ($env:POWERS_TOOL_LIVE_CLI_CHECK_IMPORT_ONLY -eq "1") {
     return
 }
 
+if ($SkipExternalPreflight -and -not $PlanOnly) {
+    Fail-Validation "-SkipExternalPreflight can only be used with -PlanOnly."
+}
+
 $NormalizedTarget = Resolve-Target -Value $Target
 $ConnectionLabel = Resolve-Connection -Value $Connection
 if ([string]::IsNullOrWhiteSpace($Resource)) {
@@ -2876,35 +2882,44 @@ catch {
     Write-Error "Core candidate inventory load failed before VISA access."
     exit 1
 }
-$externalPreflightRoot = Join-Path $script:PrivateArtifactDir "external_preflight"
-$externalPreflightStdout = Join-Path $script:PrivateArtifactDir "external_preflight.stdout.txt"
-$externalPreflightStderr = Join-Path $script:PrivateArtifactDir "external_preflight.stderr.txt"
-Write-Host "Running external no-hardware CLI preflight for $NormalizedTarget..."
-$oldErrorActionPreference = $ErrorActionPreference
-$nativePreferenceVariable = Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue
-$hadNativePreference = $null -ne $nativePreferenceVariable
-$oldNativePreference = $null
-try {
-    $ErrorActionPreference = "Continue"
-    if ($hadNativePreference) {
-        $oldNativePreference = [bool]$nativePreferenceVariable.Value
-        $PSNativeCommandUseErrorActionPreference = $false
+$externalPreflightExit = 0
+if ($SkipExternalPreflight) {
+    Write-Host "External no-hardware CLI preflight was completed by the release caller."
+    $script:ExternalPreflight = [pscustomobject]@{
+        status = "skipped_by_caller_after_release_preflight"
     }
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $PreflightScript -Target $NormalizedTarget -OutputRoot $externalPreflightRoot 1> $externalPreflightStdout 2> $externalPreflightStderr
-    $externalPreflightExit = $LASTEXITCODE
 }
-finally {
-    $ErrorActionPreference = $oldErrorActionPreference
-    if ($hadNativePreference) { $PSNativeCommandUseErrorActionPreference = $oldNativePreference }
-}
-$externalReportPath = @(Get-ChildItem -LiteralPath $externalPreflightRoot -Filter report.json -File -Recurse -ErrorAction SilentlyContinue | Sort-Object { $_.FullName.Length } | Select-Object -First 1)
-$script:ExternalPreflight = [pscustomobject]@{
-    status = if ($externalPreflightExit -eq 0) { "passed" } else { "failed" }
-    exit_code = $externalPreflightExit
-    output_root = ConvertTo-RepoRelativePath -Path $externalPreflightRoot
-    report = if ($externalReportPath.Count -eq 1) { ConvertTo-RepoRelativePath -Path $externalReportPath[0].FullName } else { $null }
-    stdout = ConvertTo-RepoRelativePath -Path $externalPreflightStdout
-    stderr = ConvertTo-RepoRelativePath -Path $externalPreflightStderr
+else {
+    $externalPreflightRoot = Join-Path $script:PrivateArtifactDir "external_preflight"
+    $externalPreflightStdout = Join-Path $script:PrivateArtifactDir "external_preflight.stdout.txt"
+    $externalPreflightStderr = Join-Path $script:PrivateArtifactDir "external_preflight.stderr.txt"
+    Write-Host "Running external no-hardware CLI preflight for $NormalizedTarget..."
+    $oldErrorActionPreference = $ErrorActionPreference
+    $nativePreferenceVariable = Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue
+    $hadNativePreference = $null -ne $nativePreferenceVariable
+    $oldNativePreference = $null
+    try {
+        $ErrorActionPreference = "Continue"
+        if ($hadNativePreference) {
+            $oldNativePreference = [bool]$nativePreferenceVariable.Value
+            $PSNativeCommandUseErrorActionPreference = $false
+        }
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $PreflightScript -Target $NormalizedTarget -OutputRoot $externalPreflightRoot 1> $externalPreflightStdout 2> $externalPreflightStderr
+        $externalPreflightExit = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $oldErrorActionPreference
+        if ($hadNativePreference) { $PSNativeCommandUseErrorActionPreference = $oldNativePreference }
+    }
+    $externalReportPath = @(Get-ChildItem -LiteralPath $externalPreflightRoot -Filter report.json -File -Recurse -ErrorAction SilentlyContinue | Sort-Object { $_.FullName.Length } | Select-Object -First 1)
+    $script:ExternalPreflight = [pscustomobject]@{
+        status = if ($externalPreflightExit -eq 0) { "passed" } else { "failed" }
+        exit_code = $externalPreflightExit
+        output_root = ConvertTo-RepoRelativePath -Path $externalPreflightRoot
+        report = if ($externalReportPath.Count -eq 1) { ConvertTo-RepoRelativePath -Path $externalReportPath[0].FullName } else { $null }
+        stdout = ConvertTo-RepoRelativePath -Path $externalPreflightStdout
+        stderr = ConvertTo-RepoRelativePath -Path $externalPreflightStderr
+    }
 }
 if ($externalPreflightExit -ne 0) {
     $script:Failures.Add("External preflight-cli.ps1 failed before live resource access.")

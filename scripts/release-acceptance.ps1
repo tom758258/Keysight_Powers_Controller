@@ -485,7 +485,8 @@ for filename in ("index.html", "styles.css", "app.js"):
             "-Connection", "USB",
             "-Resource", "SIM::E36312A",
             "-Suite", "readonly",
-            "-PlanOnly"
+            "-PlanOnly",
+            "-SkipExternalPreflight"
         ) -WorkingDirectory $script:RepoRoot | Out-Null
 
     $script:CurrentStep = "final source hygiene"

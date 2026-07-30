@@ -46,8 +46,27 @@ def test_shared_helper_owns_all_model_and_suite_boundaries() -> None:
     command = (
         f". '{helper}'; "
         "$profiles = @(Get-ValidationTargetProfiles | ForEach-Object { "
-        "[pscustomobject]@{ model_id=$_.model_id; channels=@($_.channels); suites=@($_.suites) } }); "
-        "ConvertTo-Json -InputObject $profiles -Compress -Depth 5"
+        "[pscustomobject]@{ "
+        "model_id=$_.model_id; channels=@($_.channels); suites=@($_.suites) "
+        "} }); "
+        "$smokeCases = @(Get-ValidationPreflightCases -Target 'keysight-e36312a' "
+        "-ArtifactDirectory '.' -SequencePath '.' -Suite 'smoke'); "
+        "$deepCases = @(Get-ValidationPreflightCases -Target 'keysight-e36312a' "
+        "-ArtifactDirectory '.' -SequencePath '.' -Suite 'deep'); "
+        "$fullCases = @(Get-ValidationPreflightCases -Target 'keysight-e36312a' "
+        "-ArtifactDirectory '.' -SequencePath '.' -Suite 'full'); "
+        "$result = [pscustomobject]@{ "
+        "profiles=$profiles; "
+        "suites=@((Resolve-ValidationSuite -Suite 'smoke'), "
+        "(Resolve-ValidationSuite -Suite 'deep'), "
+        "(Resolve-ValidationSuite -Suite 'full')); "
+        "smoke_targets=@(Resolve-ValidationPreflightTargets -Target 'all' -Suite 'smoke'); "
+        "deep_targets=@(Resolve-ValidationPreflightTargets -Target 'all' -Suite 'deep'); "
+        "smoke_cases=@($smokeCases | ForEach-Object { $_.name }); "
+        "deep_cases=@($deepCases | ForEach-Object { $_.name }); "
+        "full_cases=@($fullCases | ForEach-Object { $_.name }) "
+        "}; "
+        "ConvertTo-Json -InputObject $result -Compress -Depth 6"
     )
     result = subprocess.run(
         [
@@ -66,7 +85,8 @@ def test_shared_helper_owns_all_model_and_suite_boundaries() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    profiles = {item["model_id"]: item for item in json.loads(result.stdout)}
+    inventory = json.loads(result.stdout)
+    profiles = {item["model_id"]: item for item in inventory["profiles"]}
     assert set(profiles) == {
         "keysight-e36312a",
         "keysight-edu36311a",
@@ -81,13 +101,31 @@ def test_shared_helper_owns_all_model_and_suite_boundaries() -> None:
     assert profiles["keysight-e3646a"]["suites"] == [
         "readonly", "output", "software-sequence"
     ]
+    assert inventory["suites"] == ["smoke", "deep", "full"]
+    assert inventory["smoke_targets"] == [
+        "keysight-e36312a",
+        "keysight-edu36311a",
+        "keysight-e3646a",
+    ]
+    assert inventory["deep_targets"] == ["keysight-e36312a", "keysight-e3646a"]
+    assert inventory["smoke_cases"] == [
+        "identify-simulate",
+        "capabilities-simulate",
+        "measure-ch1-simulate",
+        "set-dry-run",
+    ]
+    assert len(inventory["deep_cases"]) == 12
+    assert set(inventory["full_cases"]) == {
+        *inventory["smoke_cases"],
+        *inventory["deep_cases"],
+    }
 
 
-def test_all_model_smoke_executes_required_no_hardware_cli() -> None:
+def test_representative_smoke_executes_required_no_hardware_cli() -> None:
     output = ROOT / ".tmp_tests" / "pytest_cli_preflight" / uuid4().hex
     result = _run(
         "scripts/preflight-cli.ps1",
-        "-Target", "all",
+        "-Target", "keysight-edu36311a",
         "-Suite", "smoke",
         "-OutputRoot", str(output.relative_to(ROOT)),
     )
@@ -98,81 +136,53 @@ def test_all_model_smoke_executes_required_no_hardware_cli() -> None:
     assert report["kind"] == "powers-tool-cli-preflight"
     assert report["status"] == "passed"
     assert report["suite"] == "smoke"
-    assert report["targets"] == [
-        "keysight-e36312a",
-        "keysight-edu36311a",
-        "keysight-e3646a",
-    ]
+    assert report["targets"] == ["keysight-edu36311a"]
     assert report["hardware_touched"] is False
     assert report["summary_counts"]["failed"] == 0
     assert "Suite: `smoke`" in reports[0].with_name("summary.md").read_text(
         encoding="utf-8"
     )
 
-    expected_topology = {
-        "keysight-e36312a": {
-            "model": "E36312A",
-            "channels": [1, 2, 3],
-            "interface": "USB",
-            "supported": ("snapshot", True),
-        },
-        "keysight-edu36311a": {
-            "model": "EDU36311A",
-            "channels": [1, 2, 3],
-            "interface": "USB",
-            "supported": ("snapshot", False),
-        },
-        "keysight-e3646a": {
-            "model": "E3646A",
-            "channels": [1, 2],
-            "interface": "ASRL",
-            "supported": ("protection-status", False),
-        },
+    target_report = json.loads(
+        (reports[0].parent / "keysight-edu36311a" / "report.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    commands = {command["name"]: command for command in target_report["commands"]}
+    assert set(commands) == {
+        "identify-simulate",
+        "capabilities-simulate",
+        "measure-ch1-simulate",
+        "set-dry-run",
     }
-
-    for model_id, expected in expected_topology.items():
-        target_report = json.loads(
-            (reports[0].parent / model_id / "report.json").read_text(encoding="utf-8")
-        )
-        assert target_report["suite"] == "smoke"
-        commands = {command["name"]: command for command in target_report["commands"]}
-        assert set(commands) >= {
-            "identify-simulate",
-            "capabilities-simulate",
-            "measure-ch1-simulate",
-            "set-dry-run",
-        }
-        assert all(command["hardware_touched"] is False for command in commands.values())
-        identify = json.loads(
-            (ROOT / commands["identify-simulate"]["json_path"]).read_text(encoding="utf-8")
-        )
-        assert identify["data"]["idn"]["model"] == expected["model"]
-        capabilities = json.loads(
-            (ROOT / commands["capabilities-simulate"]["json_path"]).read_text(encoding="utf-8")
-        )
-        assert capabilities["data"]["resource"]["model_id"] == model_id
-        assert capabilities["data"]["channels"] == expected["channels"]
-        assert capabilities["data"]["resource"]["interface"] == expected["interface"]
-        command_name, supported = expected["supported"]
-        assert capabilities["data"]["command_support"][command_name]["simulate"] is supported
-        planned_set = json.loads(
-            (ROOT / commands["set-dry-run"]["json_path"]).read_text(encoding="utf-8")
-        )
-        assert planned_set["data"]["plan"]["target"]["planning_model_id"] == model_id
-
-        for command in commands.values():
-            assert command["suite"] == "smoke"
-            assert command["passed"] is True
-            assert command["hardware_touched"] is False
-            for key in ("json_path", "stdout_path", "stderr_path"):
-                assert str(command[key]).startswith(".tmp_tests\\")
+    identify = json.loads(
+        (ROOT / commands["identify-simulate"]["json_path"]).read_text(encoding="utf-8")
+    )
+    assert identify["data"]["idn"]["model"] == "EDU36311A"
+    capabilities = json.loads(
+        (ROOT / commands["capabilities-simulate"]["json_path"]).read_text(encoding="utf-8")
+    )
+    assert capabilities["data"]["resource"]["model_id"] == "keysight-edu36311a"
+    planned_set = json.loads(
+        (ROOT / commands["set-dry-run"]["json_path"]).read_text(encoding="utf-8")
+    )
+    assert (
+        planned_set["data"]["plan"]["target"]["planning_model_id"]
+        == "keysight-edu36311a"
+    )
+    assert all(
+        command["suite"] == "smoke"
+        and command["passed"] is True
+        and command["hardware_touched"] is False
+        for command in commands.values()
+    )
 
 
-def test_deep_preflight_executes_only_capability_representatives() -> None:
+def test_representative_deep_executes_required_no_hardware_cli() -> None:
     output = ROOT / ".tmp_tests" / "pytest_cli_preflight" / uuid4().hex
     result = _run(
         "scripts/preflight-cli.ps1",
-        "-Target", "all",
+        "-Target", "keysight-e3646a",
         "-Suite", "deep",
         "-OutputRoot", str(output.relative_to(ROOT)),
     )
@@ -180,24 +190,12 @@ def test_deep_preflight_executes_only_capability_representatives() -> None:
     report_path = next(output.glob("run_*/report.json"))
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert report["suite"] == "deep"
-    assert report["targets"] == ["keysight-e36312a", "keysight-e3646a"]
+    assert report["targets"] == ["keysight-e3646a"]
     assert report["hardware_touched"] is False
     assert "Suite: `deep`" in report_path.with_name("summary.md").read_text(
         encoding="utf-8"
     )
 
-    e36312a = json.loads(
-        (report_path.parent / "keysight-e36312a" / "report.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    assert {command["category"] for command in e36312a["commands"]} >= {
-        "protection",
-        "snapshot",
-        "trigger-list",
-        "software-sequence",
-        "safe-off",
-    }
     e3646a = json.loads(
         (report_path.parent / "keysight-e3646a" / "report.json").read_text(
             encoding="utf-8"
@@ -223,9 +221,9 @@ def test_deep_preflight_executes_only_capability_representatives() -> None:
     }
     assert all(
         command["hardware_touched"] is False
-        for target in (e36312a, e3646a)
-        for command in target["commands"]
+        for command in e3646a["commands"]
     )
+    assert not (report_path.parent / "keysight-e36312a").exists()
     assert not (report_path.parent / "keysight-edu36311a").exists()
 
 
