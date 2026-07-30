@@ -352,9 +352,6 @@ class LauncherApp:
     def _run_server(self) -> None:
         server_socket = self._server_socket
         try:
-            setup_event_loop = getattr(self._server.config, "setup_event_loop", None)
-            if callable(setup_event_loop):
-                setup_event_loop()
             asyncio.run(self._serve_server(server_socket))
         except BaseException as exc:  # pragma: no cover - runtime safety net
             self._server_error = exc

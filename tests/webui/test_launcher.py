@@ -82,10 +82,20 @@ class FakeRoot:
         self.lifted = True
 
 
+class FakeServerConfig:
+    def __init__(self) -> None:
+        self.setup_event_loop_accessed = False
+
+    @property
+    def setup_event_loop(self) -> None:
+        self.setup_event_loop_accessed = True
+        raise AttributeError("setup_event_loop was removed")
+
+
 class FakeServer:
     def __init__(self) -> None:
         self.should_exit = False
-        self.config = object()
+        self.config = FakeServerConfig()
         self.served_sockets: list[object] = []
 
     async def serve(self, *, sockets: list[object]) -> None:
@@ -328,6 +338,7 @@ def test_auto_port_uses_first_bound_socket_and_actual_browser_url(
 
     assert attempted_ports == [7999, 8000, 8001]
     assert created_ports == [8001]
+    assert server.config.setup_event_loop_accessed is False
     assert server.served_sockets == [bound_socket]
     assert browser_urls == ["http://127.0.0.1:8001"]
     assert app._status_value.value == "Running at http://127.0.0.1:8001"
