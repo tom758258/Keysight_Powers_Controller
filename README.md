@@ -123,27 +123,24 @@ compatible Python. If you need a specific Python version, request it explicitly:
 uv venv .venv --python 3.12
 ```
 
-The `uv.lock` file is used by uv for development and CI reproducibility.
-`pip install .` reads `pyproject.toml`, not `uv.lock`. Users without uv must
-install uv before using the locked environment.
-
 The lock file records the local project as `powers-tool`. Installed command
 wrappers are `powers-tool`, `powers-tool-webui`, and
 `powers-tool-webui-launcher`; former distribution, package, and command names
 are not compatibility aliases.
 
-If you need pip directly, use the virtual environment's Python:
-
-```powershell
-.\.venv\Scripts\python.exe -m pip install .
-.\.venv\Scripts\python.exe -m pip install ".[webui]"
-.\.venv\Scripts\python.exe -m pip install -e ".[all,dev]"
-```
-
 Windows creates virtualenv console wrappers such as
 `.\.venv\Scripts\powers-tool.exe` and
 `.\.venv\Scripts\powers-tool-webui.exe`. The WebUI launcher wrapper is
 `.\.venv\Scripts\powers-tool-webui-launcher.exe`.
+
+Normal setup only requires the existing `uv sync` workflow. If sync succeeds but
+one of these wrappers is missing or has not been updated, run this from the
+repository root to force uv to reinstall the `powers-tool` distribution and
+recreate the project console wrappers:
+
+```powershell
+uv sync --all-extras --link-mode=copy --reinstall-package powers-tool
+```
 
 ## Build
 

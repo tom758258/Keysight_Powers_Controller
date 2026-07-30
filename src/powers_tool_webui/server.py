@@ -29,7 +29,7 @@ def main(argv: list[str] | None = None) -> int:
         missing = exc.name or "webui runtime dependency"
         print(
             f"Missing optional WebUI dependency {missing!r}. "
-            'Install with `pip install ".[webui]"` or `pip install ".[all]"`.',
+            'From the repository root, run `uv sync --extra webui --locked --link-mode=copy`.',
             file=sys.stderr,
         )
         raise SystemExit(2) from exc
