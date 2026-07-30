@@ -33,7 +33,7 @@ These instructions guide coding agents working in this repository. They are long
   vendor/model boundaries.
 - Main environment is Windows.
 - Use the root single-distribution workflow. Install development dependencies
-  with `pip install -e ".[all,dev]"` or sync with `uv sync --all-extras`.
+  with `uv sync --all-extras --locked --link-mode=copy`.
 - Primary communication interfaces are USB, LAN, and explicitly configured
   RS-232/ASRL through PyVISA.
 

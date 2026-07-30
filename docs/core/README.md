@@ -145,22 +145,27 @@ are never reported as Product-open exact live commands.
 
 ## Install
 
-From the repository root:
+The root [README Install guide](../../README.md#install) is the canonical
+setup reference. From the repository root, synchronize the basic Core/CLI
+runtime environment with:
 
 ```powershell
-pip install -e ".[all,dev]"
+uv sync --locked --link-mode=copy
 ```
 
-For a basic Core/CLI install:
+For Core tests or other development tasks, use the locked environment with all
+extras:
 
 ```powershell
-pip install .
+uv sync --all-extras --locked --link-mode=copy
 ```
 
 Runtime installs resolve `pyvisa`, PyYAML for sequence YAML support, and the
-Python-version TOML fallback where needed. The package does not include a
-console script. This project supports Python `>=3.10`; test dependencies come
-from the root `dev` extra.
+Python-version TOML fallback where needed. The `powers_tool_core` import
+package has no component-specific console command. The single `powers-tool`
+distribution still installs the `powers-tool`, `powers-tool-webui`, and
+`powers-tool-webui-launcher` console entry points. This project supports Python
+`>=3.10`; test dependencies come from the root `dev` extra.
 
 ## Test
 

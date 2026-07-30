@@ -87,16 +87,18 @@ existing CLI facades.
 
 ## Install
 
-From the repository root:
+The root [README Install guide](../../README.md#install) is the canonical
+setup reference. From the repository root, synchronize the locked development
+and test environment before running the commands in this document:
 
 ```powershell
-pip install -e ".[all,dev]"
+uv sync --all-extras --locked --link-mode=copy
 ```
 
-For a basic Core/CLI install:
+For a basic Core/CLI runtime-only environment, use:
 
 ```powershell
-pip install .
+uv sync --locked --link-mode=copy
 ```
 
 The primary entry point is the installed console script:

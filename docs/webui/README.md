@@ -72,6 +72,22 @@ Windows GUI launcher. The standalone PyInstaller GUI artifact is named
 `dist\powers-tool-webui.exe`; it is separate from both installed console
 wrappers and does not rename either entry point.
 
+## Environment
+
+The root [README Install guide](../../README.md#install) is the canonical
+setup reference. From the repository root, prepare the WebUI runtime with:
+
+```powershell
+uv sync --extra webui --locked --link-mode=copy
+```
+
+For tests or PyInstaller builds in this document, use the locked development
+environment instead:
+
+```powershell
+uv sync --all-extras --locked --link-mode=copy
+```
+
 ## Localization
 
 The maintained locales are `en` and `zh-TW`; English is the source and
@@ -587,13 +603,11 @@ Broader no-hardware validation when practical:
 uv run python -m pytest tests -q -p no:cacheprovider
 ```
 
-Build the optional local WebUI launcher exe with PyInstaller from an
-environment that already has `powers-tool` installed. PyInstaller is a
-local release-build tool, not a WebUI runtime dependency, so install it into
-the venv before rebuilding on a fresh machine:
+Build the optional local WebUI launcher exe from the locked development
+environment described above. PyInstaller is provided by the `dev` extra and
+does not need a separate install:
 
 ```powershell
-uv pip install pyinstaller --python .\.venv\Scripts\python.exe
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_webui_exe.ps1
 ```
 

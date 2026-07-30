@@ -94,6 +94,14 @@ backend/API change as a proposal instead of implementing it.
 
 ## Current WebUI Shape
 
+Before running the developer commands below, use the root
+[README Install guide](../../README.md#install) to prepare the locked
+development environment from the repository root:
+
+```powershell
+uv sync --all-extras --locked --link-mode=copy
+```
+
 Developer runtime entry point:
 
 ```powershell
