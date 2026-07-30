@@ -1572,17 +1572,19 @@ if (($script:Failures -join "`n") -notmatch "no-hardware validation") {{ throw (
 
 
 @pytest.mark.parametrize(
-    ("target", "connection", "resource"),
+    ("target", "connection", "resource", "skip_external_preflight"),
     [
-        ("keysight-e36312a", "USB", "USB0::SIM::E36312A::INSTR"),
-        ("keysight-edu36311a", "USB", "USB0::SIM::EDU36311A::INSTR"),
-        ("keysight-e3646a", "ASRL", "ASRL1::SIM::E3646A::INSTR"),
+        ("keysight-e36312a", "USB", "USB0::SIM::E36312A::INSTR", False),
+        ("keysight-edu36311a", "USB", "USB0::SIM::EDU36311A::INSTR", True),
+        ("keysight-e3646a", "ASRL", "ASRL1::SIM::E3646A::INSTR", True),
     ],
 )
-def test_live_cli_check_readonly_plan_only_succeeds_without_hardware(target, connection, resource):
+def test_live_cli_check_readonly_plan_only_succeeds_without_hardware(
+    target, connection, resource, skip_external_preflight
+):
     assert SCRIPT.exists()
 
-    result = _run_live_cli_check(
+    arguments = [
         "-Target",
         target,
         "-Connection",
@@ -1592,7 +1594,10 @@ def test_live_cli_check_readonly_plan_only_succeeds_without_hardware(target, con
         "-Suite",
         "readonly",
         "-PlanOnly",
-    )
+    ]
+    if skip_external_preflight:
+        arguments.append("-SkipExternalPreflight")
+    result = _run_live_cli_check(*arguments)
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "Press Enter" not in result.stdout
@@ -1620,7 +1625,12 @@ def test_live_cli_check_readonly_plan_only_succeeds_without_hardware(target, con
     assert report["instrument_identity"]["availability"] == "not_observed_plan_only"
     assert report["instrument_identity"]["detected_model"] is None
     assert report["cleanup"]["status"] == "not_executed_plan_only"
-    assert report["external_preflight"]["status"] == "passed"
+    expected_preflight_status = (
+        "skipped_by_caller_after_release_preflight"
+        if skip_external_preflight
+        else "passed"
+    )
+    assert report["external_preflight"]["status"] == expected_preflight_status
     assert "hardware_touched" not in json.dumps(report)
 
 
@@ -1629,6 +1639,29 @@ def test_live_cli_check_skip_external_preflight_requires_plan_only() -> None:
 
     assert result.returncode == 2
     assert "can only be used with -PlanOnly" in (result.stdout + result.stderr)
+
+
+def test_live_cli_check_external_preflight_failure_remains_fail_closed() -> None:
+    before = set(Path(".tmp_tests/live_cli_check").glob("*/shareable/report.json"))
+    command = r"""
+function global:powershell.exe { $global:LASTEXITCODE = 1 }
+& .\scripts\live-cli-check.ps1 `
+    -Target keysight-e36312a `
+    -Connection USB `
+    -Resource SIM::E36312A `
+    -Suite readonly `
+    -PlanOnly
+"""
+    result = _run_powershell_command(command)
+
+    assert result.returncode == 1
+    output = " ".join((result.stdout + result.stderr).split())
+    assert "External preflight failed; no VISA resource was opened" in output
+    report = json.loads(_new_live_check_report(before).read_text(encoding="utf-8"))
+    assert report["validation_mode"] == "preflight_failed"
+    assert report["external_preflight"]["status"] == "failed"
+    assert report["commands"] == []
+    assert report["live_executed"] is False
 
 
 def test_plan_only_can_skip_completed_release_preflight_without_skipping_plans() -> None:
@@ -1702,6 +1735,7 @@ def test_trigger_list_plan_only_lists_manual_candidate_without_helper_or_stdin()
         "-Suite",
         "trigger-list",
         "-PlanOnly",
+        "-SkipExternalPreflight",
         stdin_text="unexpected input must not be read",
     )
 
@@ -1754,6 +1788,7 @@ def test_plan_only_has_no_stale_candidate_scope_marking(connection, backend) -> 
         "-Suite",
         "trigger-list",
         "-PlanOnly",
+        "-SkipExternalPreflight",
     ]
     if backend is not None:
         arguments += ["-Backend", backend]
@@ -2211,6 +2246,7 @@ def test_live_cli_check_plan_artifact_redacts_resource_and_command_paths():
         "-Suite",
         "readonly",
         "-PlanOnly",
+        "-SkipExternalPreflight",
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
@@ -2236,6 +2272,7 @@ def test_live_cli_check_shareable_plan_contains_no_private_runtime_material():
         "-Suite",
         "readonly",
         "-PlanOnly",
+        "-SkipExternalPreflight",
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
@@ -2289,6 +2326,7 @@ def test_live_cli_check_e3646a_full_plan_contains_software_sequence_not_native_l
         "-Suite",
         "full",
         "-PlanOnly",
+        "-SkipExternalPreflight",
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
@@ -2451,6 +2489,7 @@ def test_live_cli_check_full_plan_reports_expanded_software_sequence_suites(
         "-Suite",
         "full",
         "-PlanOnly",
+        "-SkipExternalPreflight",
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
@@ -2521,6 +2560,7 @@ def test_live_cli_check_software_sequence_plan_only_supported_for_active_targets
         "-Suite",
         "software-sequence",
         "-PlanOnly",
+        "-SkipExternalPreflight",
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
@@ -2592,6 +2632,7 @@ def test_live_cli_check_software_sequence_expected_failures_are_reported_as_pass
         "-Suite",
         "software-sequence",
         "-PlanOnly",
+        "-SkipExternalPreflight",
     )
 
     assert result.returncode == 0, result.stdout + result.stderr

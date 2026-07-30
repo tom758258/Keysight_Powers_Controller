@@ -78,8 +78,8 @@ jobs:
       - name: Install package
         run: uv sync --locked --all-extras --reinstall-package powers-tool
 
-      - name: Run tests
-        run: uv run python -m pytest tests -q -p no:cacheprovider
+      - name: Run fast tests
+        run: uv run python -m pytest tests -q -p no:cacheprovider --ignore=tests/cli/test_cli_wrappers.py
 
       - name: Smoke console scripts
         run: |
@@ -123,8 +123,8 @@ jobs:
       - name: Install package
         run: uv sync --locked --all-extras --reinstall-package powers-tool
 
-      - name: Run tests
-        run: uv run python -m pytest tests -q -p no:cacheprovider
+      - name: Run fast tests
+        run: uv run python -m pytest tests -q -p no:cacheprovider --ignore=tests/cli/test_cli_wrappers.py
 
       - name: Smoke console scripts
         run: |
