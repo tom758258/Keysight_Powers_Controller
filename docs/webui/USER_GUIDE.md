@@ -29,15 +29,17 @@ Release folders may include a versioned launcher name, such as:
 powers-tool-webui-<version>.exe
 ```
 
-With no command-line options, the launcher starts minimized and automatically
-tries port `7999` followed by up to 99 higher ports. Wait for the browser to
-open. The launcher starts a local WebUI server on this computer and opens the
-page for the port it selected.
+With no command-line options, the launcher remains hidden while it
+automatically tries port `7999` followed by up to 99 higher ports. Wait for the
+browser to open. After startup succeeds, the launcher shows a compact Running
+window with the actual URL, Running status, and `Quit`; the port settings and
+`Start` are hidden.
 
-If every automatic candidate is already in use, the launcher restores its
-window. Enter another local port and click `Start`. If that manually entered
-port is also in use, the window stays open and lets you edit the port and try
-again.
+Only if every automatic candidate is already in use does the launcher show the
+full port settings window. Enter another local port and click `Start`. If that
+manually entered port is also in use, the full fallback window stays open and
+lets you edit the port and try again. After a retry succeeds, the launcher
+returns to the compact Running window.
 
 From PowerShell, `--port` requests one fixed port. It never switches to another
 port unless `--auto-port` is also supplied:
@@ -52,6 +54,8 @@ the manual port window. Other startup failures, including application startup,
 server exit, or readiness errors, also report their original details, clean up,
 and exit. Only automatic address-in-use exhaustion opens the manual fallback,
 and only another address-in-use error keeps that fallback window open.
+This window presentation does not change port selection, startup failure,
+cleanup, or exit-code behavior.
 
 If the browser does not open automatically after the launcher reports that the
 server is running, open the URL shown by the launcher. For the default port it

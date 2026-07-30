@@ -54,9 +54,16 @@ class FakeBoolean:
 class FakeControl:
     def __init__(self) -> None:
         self.state = "normal"
+        self.visible = True
 
     def configure(self, *, state: str) -> None:
         self.state = state
+
+    def grid(self) -> None:
+        self.visible = True
+
+    def grid_remove(self) -> None:
+        self.visible = False
 
 
 class FakeRoot:
@@ -65,8 +72,10 @@ class FakeRoot:
         self.destroyed = False
         self.destroy_count = 0
         self.iconified = False
+        self.withdrawn = False
         self.restored = False
         self.lifted = False
+        self.idle_updates = 0
 
     def destroy(self) -> None:
         self.order.append("destroy")
@@ -76,12 +85,19 @@ class FakeRoot:
     def iconify(self) -> None:
         self.iconified = True
 
+    def withdraw(self) -> None:
+        self.withdrawn = True
+
     def deiconify(self) -> None:
         self.iconified = False
+        self.withdrawn = False
         self.restored = True
 
     def lift(self) -> None:
         self.lifted = True
+
+    def update_idletasks(self) -> None:
+        self.idle_updates += 1
 
 
 class FakeServerConfig:
@@ -167,6 +183,8 @@ def _launcher_for_shutdown(order: list[str]) -> launcher.LauncherApp:
     app._jobs_shutdown_complete = False
     app._ui_queue = Queue()
     app._status_value = FakeValue()
+    app._config_frame = FakeControl()
+    app._default_checkbox = FakeControl()
     app._start_button = FakeControl()
     app._port_entry = FakeControl()
     app._quit_button = FakeControl()
@@ -207,6 +225,8 @@ def _launcher_for_startup(
     app._port_value = FakeValue(str(initial_port))
     app._url_value = FakeValue(launcher.build_local_url(initial_port))
     app._status_value = FakeValue("Ready")
+    app._config_frame = FakeControl()
+    app._default_checkbox = FakeControl()
     app._port_entry = FakeControl()
     app._start_button = FakeControl()
     app._quit_button = FakeControl()
@@ -337,6 +357,7 @@ def test_auto_port_uses_first_bound_socket_and_actual_browser_url(
         readiness_checker=lambda url: url.endswith(":8001/api/health"),
         browser_open=browser_urls.append,
     )
+    app._root.withdraw()
     monkeypatch.setattr(launcher.threading, "Thread", ImmediateThread)
 
     app.start(auto_port=True)
@@ -347,6 +368,12 @@ def test_auto_port_uses_first_bound_socket_and_actual_browser_url(
     assert server.config.setup_event_loop_accessed is False
     assert server.served_sockets == [bound_socket]
     assert browser_urls == ["http://127.0.0.1:8001"]
+    assert app._root.withdrawn is False
+    assert app._root.restored is True
+    assert app._config_frame.visible is False
+    assert app._start_button.visible is False
+    assert app._quit_button.state == "normal"
+    assert app._url_value.value == "http://127.0.0.1:8001"
     assert app._status_value.value == "Running at http://127.0.0.1:8001"
 
 
@@ -384,7 +411,8 @@ def test_launcher_cli_selects_expected_port_candidates(
 
     assert launcher.main(argv) == 0
 
-    assert root.iconified is True
+    assert root.withdrawn is True
+    assert root.iconified is False
     assert recorded_ports == [expected_ports]
 
 
@@ -446,6 +474,9 @@ def test_auto_port_exhaustion_restores_manual_window(monkeypatch) -> None:
 
     assert attempted_ports == [7999, 8000, 8001]
     assert app._root.restored is True
+    assert app._config_frame.visible is True
+    assert app._start_button.visible is True
+    assert app._start_button.state == "normal"
     assert app._use_default_port.get() is False
     assert app._port_entry.state == "normal"
     assert "7999..8001" in app._status_value.value
@@ -470,6 +501,34 @@ def test_auto_port_exhaustion_restores_manual_window(monkeypatch) -> None:
     assert app._root.destroyed is True
     assert app.exit_code == 1
     assert errors[2] == ("Start failed", "PermissionError: bind denied")
+
+
+def test_fallback_success_switches_to_compact_running_window() -> None:
+    browser_urls: list[str] = []
+    app = _launcher_for_startup(
+        initial_port=9000,
+        socket_binder=lambda _port: pytest.fail("bind must not run"),
+        server_factory=lambda _port: pytest.fail("server must not be created"),
+        browser_open=browser_urls.append,
+    )
+    app._root.withdraw()
+    app._manual_port_fallback = True
+    app._startup_attempt = 2
+    app._show_fallback_window()
+
+    assert app._config_frame.visible is True
+    assert app._start_button.visible is True
+
+    url = launcher.build_local_url(9000)
+    app._mark_server_ready(url, startup_attempt=2)
+
+    assert app._root.withdrawn is False
+    assert app._config_frame.visible is False
+    assert app._start_button.visible is False
+    assert app._quit_button.state == "normal"
+    assert app._url_value.value == url
+    assert app._status_value.value == f"Running at {url}"
+    assert browser_urls == [url]
 
 
 @pytest.mark.parametrize("failure_phase", ["bind", "server"])
@@ -616,6 +675,7 @@ def test_quit_shutdown_failure_keeps_server_and_window_open(
 ) -> None:
     order: list[str] = []
     app = _launcher_for_shutdown(order)
+    app._show_running_window()
 
     class FailedFuture:
         def __init__(self, coroutine) -> None:
@@ -640,6 +700,8 @@ def test_quit_shutdown_failure_keeps_server_and_window_open(
     assert app._server.should_exit is False
     assert app._root.destroyed is False
     assert app._shutdown_in_progress is False
+    assert app._config_frame.visible is False
+    assert app._start_button.visible is False
     assert app._quit_button.state == "normal"
     assert app._status_value.value.startswith("Shutdown incomplete:")
 

@@ -159,11 +159,13 @@ The installed Windows console wrappers are:
 ```
 
 With no arguments, the launcher starts automatically on `127.0.0.1`, beginning
-at port `7999` and trying up to 100 ports through `8098`. The launcher window
-starts minimized. Each candidate is tested by binding the server socket, so a
-port used by another Powers Tool WebUI or any other service is skipped without
-opening that existing service. The browser opens only after the newly started
-WebUI reports ready at `/api/health`, using the port that was actually bound.
+at port `7999` and trying up to 100 ports through `8098`. The launcher remains
+hidden during automatic startup. Each candidate is tested by binding the server
+socket, so a port used by another Powers Tool WebUI or any other service is
+skipped without opening that existing service. After the newly started WebUI
+reports ready at `/api/health`, the browser opens and the launcher shows a
+compact Running window containing only the actual bound URL, Running status,
+and Quit.
 
 Use `--port 9000` to try only port `9000`. If that fixed port cannot be bound,
 the launcher reports the original bind error, cleans up, and exits with a
@@ -177,11 +179,12 @@ port:
 ```
 
 Automatic candidates never exceed port `65535`. Only when every automatic
-candidate fails because its address is already in use does the launcher restore
-its window, report the attempted range, and allow a different port to be
-entered manually. Start then tries only that port. If the manually entered port
-is also in use, the window stays open and re-enables the port field and Start
-button for another retry.
+candidate fails because its address is already in use does the launcher show
+the full port fallback window, report the attempted range, and allow a
+different port to be entered manually. Start then tries only that port. If the
+manually entered port is also in use, the full fallback window stays open and
+re-enables the port field and Start button for another retry. A successful
+fallback retry returns to the compact Running window.
 
 A non-address-in-use bind failure stops automatic selection immediately.
 Uvicorn or application initialization failures, an early server-thread exit,
@@ -196,6 +199,10 @@ server. Quit first requests cancellation of active WebUI jobs, including Live
 Data and simulation or dry-run workflows, and waits for their normal cleanup
 before stopping the launcher-owned server. If job cleanup or server shutdown
 times out, the launcher stays open and reports that shutdown is incomplete.
+The compact/fallback presentation does not change port selection, startup
+failure classification, cleanup, or process exit-code behavior.
+It is a software-only launcher presentation change and does not require
+real-instrument validation.
 
 The standalone PyInstaller GUI artifact is a separate executable at
 `dist\powers-tool-webui.exe`; it is built from the same launcher implementation

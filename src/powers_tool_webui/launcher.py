@@ -148,28 +148,41 @@ class LauncherApp:
         self._root.rowconfigure(0, weight=1)
         frame.columnconfigure(1, weight=1)
 
-        default_checkbox = tk.Checkbutton(
-            frame,
+        self._config_frame = tk.Frame(frame)
+        self._config_frame.grid(row=0, column=0, columnspan=2, sticky="ew")
+        self._config_frame.columnconfigure(1, weight=1)
+
+        self._default_checkbox = tk.Checkbutton(
+            self._config_frame,
             text=f"Use default port {DEFAULT_PORT}",
             variable=self._use_default_port,
             command=self._sync_port_controls,
         )
-        default_checkbox.grid(row=0, column=0, columnspan=2, sticky="w")
+        self._default_checkbox.grid(row=0, column=0, columnspan=2, sticky="w")
 
-        tk.Label(frame, text="Port").grid(row=1, column=0, sticky="w", pady=(10, 0))
-        self._port_entry = tk.Entry(frame, textvariable=self._port_value, width=10)
+        tk.Label(self._config_frame, text="Port").grid(
+            row=1,
+            column=0,
+            sticky="w",
+            pady=(10, 0),
+        )
+        self._port_entry = tk.Entry(
+            self._config_frame,
+            textvariable=self._port_value,
+            width=10,
+        )
         self._port_entry.grid(row=1, column=1, sticky="w", pady=(10, 0))
 
-        tk.Label(frame, text="URL").grid(row=2, column=0, sticky="w", pady=(10, 0))
+        tk.Label(frame, text="URL").grid(row=1, column=0, sticky="w", pady=(10, 0))
         tk.Label(frame, textvariable=self._url_value, anchor="w").grid(
-            row=2,
+            row=1,
             column=1,
             sticky="ew",
             pady=(10, 0),
         )
 
         tk.Label(frame, textvariable=self._status_value, anchor="w").grid(
-            row=3,
+            row=2,
             column=0,
             columnspan=2,
             sticky="ew",
@@ -177,7 +190,7 @@ class LauncherApp:
         )
 
         button_row = tk.Frame(frame)
-        button_row.grid(row=4, column=0, columnspan=2, sticky="e", pady=(14, 0))
+        button_row.grid(row=3, column=0, columnspan=2, sticky="e", pady=(14, 0))
         self._start_button = tk.Button(
             button_row,
             text="Start",
@@ -301,8 +314,7 @@ class LauncherApp:
             "Enter another port and select Start."
         )
         self._status_value.set(message)
-        self._start_button.configure(state="normal")
-        self._restore_window()
+        self._show_fallback_window()
         messagebox.showerror("No available port", message)
 
     def quit(self) -> None:
@@ -417,7 +429,9 @@ class LauncherApp:
             return
         self._startup_result_handled = True
         self._startup_success.set()
+        self._url_value.set(url)
         self._status_value.set(f"Running at {url}")
+        self._show_running_window()
         self._browser_open(url)
 
     def _show_startup_error(
@@ -464,9 +478,7 @@ class LauncherApp:
             port_in_use=True,
         )
         self._status_value.set(f"Failed: {message}")
-        self._start_button.configure(state="normal")
-        self._sync_port_controls()
-        self._restore_window()
+        self._show_fallback_window()
         messagebox.showerror("Port unavailable", message)
 
     @staticmethod
@@ -503,7 +515,21 @@ class LauncherApp:
 
         self._root.destroy()
 
-    def _restore_window(self) -> None:
+    def _show_running_window(self) -> None:
+        self._config_frame.grid_remove()
+        self._start_button.grid_remove()
+        self._quit_button.configure(state="normal")
+        self._root.update_idletasks()
+        self._root.deiconify()
+
+    def _show_fallback_window(self) -> None:
+        self._config_frame.grid()
+        self._start_button.grid()
+        self._start_button.configure(state="normal")
+        self._default_checkbox.configure(state="normal")
+        self._quit_button.configure(state="normal")
+        self._sync_port_controls()
+        self._root.update_idletasks()
         self._root.deiconify()
         self._root.lift()
 
@@ -583,7 +609,7 @@ def main(argv: list[str] | None = None) -> int:
     initial_port = args.port if args.port is not None else DEFAULT_PORT
     auto_port = args.auto_port or args.port is None
     root = tk.Tk()
-    root.iconify()
+    root.withdraw()
     app = LauncherApp(root, initial_port=initial_port)
     root.after(0, lambda: app.start(auto_port=auto_port))
     root.mainloop()
