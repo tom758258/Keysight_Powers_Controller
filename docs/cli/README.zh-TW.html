@@ -313,6 +313,12 @@ human-readable <code>summary.md</code>。</p>
 </tr>
 </tbody>
 </table>
+<div class="code-wrapper"><pre><code class="language-powershell">powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\release-acceptance.ps1
+</code></pre></div>
+<p>每個 recorded command 都會顯示 <code>[start]</code>，接著顯示 <code>[passed]</code> 或 <code>[failed]</code>，
+並包含 <code>duration=&lt;seconds&gt;s</code>。child-process stdout/stderr 仍會在命令完成後收集，
+再印出或寫入 acceptance output，不會逐行即時串流。詳細 release acceptance
+範圍請參閱根目錄 <a href="../../README.md" rel="noopener noreferrer" target="_blank">README</a>。</p>
 <p>Build entry points、CI quality utilities 與 internal helpers 的完整用途請參閱
 英文 CLI README；本文件不把它們誤列為一般 operator command。<code>preflight-cli.ps1</code>
 的 smoke、deep 與 full suite 是 no-hardware 路徑。<code>live-cli-check.ps1</code> 的

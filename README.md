@@ -245,6 +245,11 @@ structure not already represented. The script writes `report.json` and
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\release-acceptance.ps1
 ```
 
+For each recorded command, it prints a `[start]` line followed by a `[passed]`
+or `[failed]` line with `duration=<seconds>s`. Child-process stdout/stderr
+remains collected after the command completes and is printed or written to the
+acceptance output; it is not streamed line by line.
+
 If `-OutputRoot` is provided, it must resolve to `.tmp_tests` or one of its
 subdirectories within the repository.
 

@@ -152,6 +152,17 @@ human-readable `summary.md`。
 | `scripts\release-acceptance.ps1` | No hardware 加上受控 release workflow | 驗證 clean committed HEAD、套件、entry point、standalone artifact 與 checksums，並執行指定的 no-hardware checks。 |
 | `scripts\batch-validation.ps1` | 依 switches 選定 | 只執行選定的 simulated 或 live validation task，並產生一份 batch report。 |
 
+從 repository 根目錄執行正式 release acceptance：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\release-acceptance.ps1
+```
+
+每個 recorded command 都會顯示 `[start]`，接著顯示 `[passed]` 或 `[failed]`，
+並包含 `duration=<seconds>s`。child-process stdout/stderr 仍會在命令完成後收集，
+再印出或寫入 acceptance output，不會逐行即時串流。詳細 release acceptance
+範圍請參閱根目錄 [README](../../README.md)。
+
 Build entry points、CI quality utilities 與 internal helpers 的完整用途請參閱
 英文 CLI README；本文件不把它們誤列為一般 operator command。`preflight-cli.ps1`
 的 smoke、deep 與 full suite 是 no-hardware 路徑。`live-cli-check.ps1` 的

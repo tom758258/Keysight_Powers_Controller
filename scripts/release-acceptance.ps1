@@ -114,6 +114,7 @@ function Invoke-Recorded {
     )
 
     $started = Get-Date
+    Write-Host "[start] $Name"
     $lines = @()
     $exitCode = 1
     $previousErrorActionPreference = $ErrorActionPreference
@@ -166,6 +167,17 @@ function Invoke-Recorded {
     $script:Commands += ,$record
     if ($output) {
         $lines | ForEach-Object { Write-Host $_ }
+    }
+    $durationSeconds = ($finished - $started).TotalSeconds
+    $durationText = [string]::Format(
+        [System.Globalization.CultureInfo]::InvariantCulture,
+        "{0:F3}",
+        $durationSeconds
+    )
+    if ($exitCode -eq 0) {
+        Write-Host "[passed] $Name duration=${durationText}s"
+    } else {
+        Write-Host "[failed] $Name duration=${durationText}s"
     }
     if ($exitCode -ne 0) {
         throw "$Name failed with exit code $exitCode"

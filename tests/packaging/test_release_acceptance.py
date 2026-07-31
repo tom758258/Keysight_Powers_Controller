@@ -317,6 +317,24 @@ def test_release_acceptance_preserves_required_no_hardware_release_flow() -> Non
     assert smoke_position < deep_position < plan_only_position < skip_position
 
 
+def test_release_acceptance_reports_recorded_command_status() -> None:
+    text = SCRIPT.read_text(encoding="utf-8")
+    helper = text.split("function Invoke-Recorded", 1)[1].split(
+        "function Get-PythonMetadata", 1
+    )[0]
+    start_position = helper.index("[start]")
+    assert start_position < helper.index("Start-Process -FilePath")
+    assert start_position < helper.index("& $FilePath @Arguments")
+    assert "[passed]" in helper
+    assert "[failed]" in helper
+    assert "duration=" in helper
+    assert ".TotalSeconds" in helper
+    assert "InvariantCulture" in helper
+    assert helper.count("[failed]") == 1
+    for field in ("exit_code = $exitCode", "duration_ms =", "output_tail = $output"):
+        assert field in helper
+
+
 def test_release_acceptance_does_not_invoke_itself() -> None:
     assert "release-acceptance.ps1" not in SCRIPT.read_text(encoding="utf-8")
 

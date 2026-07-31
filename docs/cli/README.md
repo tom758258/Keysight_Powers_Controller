@@ -202,6 +202,18 @@ machine-readable `report.json` and a human-readable `summary.md` under
 | `scripts\release-acceptance.ps1` | No hardware | Validates clean committed HEAD with the existing `.venv`, runs the full suite once, builds one final versioned release, checks its package/install/entry-point/standalone artifacts and checksums, then runs all-model CLI smoke, representative deep preflight, and simulator `-PlanOnly`. |
 | `scripts\batch-validation.ps1` | Selected by switches | Runs only the selected simulated or live validation tasks and writes one batch report. |
 
+Run formal release acceptance from the repository root with:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\release-acceptance.ps1
+```
+
+Each recorded command prints `[start]`, then `[passed]` or `[failed]`, with a
+`duration=<seconds>s` value. Child-process stdout/stderr is still collected
+after command completion and printed or written to the acceptance output; it is
+not streamed line by line. See the root [README](../../README.md) for the
+detailed release acceptance scope.
+
 #### Build entry points
 
 These are public build entry points; detailed usage is maintained in the root

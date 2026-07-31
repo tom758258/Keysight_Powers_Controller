@@ -208,7 +208,15 @@ release\<version>\checksums.txt
 它會檢查 HEAD、`uv.lock`、wheel、sdist、standalone executable、console entry
 points 與 checksums，並執行 no-hardware CLI smoke、代表性 deep preflight 與
 simulator PlanOnly。此 acceptance script 不會進行 VISA discovery、開啟 resource
-或送出 SCPI，也不會自動 publication release。
+或送出 SCPI，也不會自動 publication release。可直接執行：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\release-acceptance.ps1
+```
+
+每個 recorded command 都會先顯示 `[start]`，完成後顯示 `[passed]` 或
+`[failed]` 以及 `duration=<seconds>s`。child-process stdout/stderr 仍會在命令
+完成後收集並印出或寫入 acceptance output，不會逐行即時串流。
 
 ## 測試
 
