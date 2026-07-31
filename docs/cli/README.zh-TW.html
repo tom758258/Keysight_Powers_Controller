@@ -1,1 +1,477 @@
-<html><head><meta charset="UTF-8"><title>README zh-TW</title></head><body><a href="README.zh-TW.md">README.zh-TW.md</a></body></html>
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Powers Tool CLI</title>
+  <style>
+:root {
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --bg-body: #ffffff;
+  --bg-sidebar: #f8fafc;
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --border-color: #e2e8f0;
+  --bg-code: #1e293b;
+  --text-code: #f8fafc;
+  --bg-inline-code: #f1f5f9;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+  line-height: 1.72;
+  color: var(--text-main);
+  background: var(--bg-body);
+  display: flex;
+  min-height: 100vh;
+}
+aside {
+  width: 290px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 2rem 1.25rem;
+  flex-shrink: 0;
+}
+aside h2 {
+  margin: 0 0 1rem;
+  padding: 0;
+  border: 0;
+  font-size: .875rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: .05em;
+}
+nav { display: flex; flex-direction: column; gap: .25rem; }
+.toc-link {
+  text-decoration: none;
+  color: var(--text-main);
+  font-size: .94rem;
+  padding: .4rem .7rem;
+  border-radius: 6px;
+}
+.toc-link.level-3 { padding-left: 1.35rem; font-size: .87rem; color: var(--text-muted); }
+.toc-link:hover, .toc-link.active { background: #e2e8f0; color: var(--primary); }
+main { flex: 1; padding: 3rem 4rem 5rem; max-width: 1080px; margin: 0 auto; min-width: 0; }
+h1 { font-size: 2.45rem; margin: 0 0 1.5rem; line-height: 1.2; letter-spacing: -.02em; }
+h2 { font-size: 1.72rem; margin: 3rem 0 1.25rem; padding-bottom: .5rem; border-bottom: 1px solid var(--border-color); scroll-margin-top: 1.5rem; }
+h3 { font-size: 1.25rem; margin: 2rem 0 1rem; scroll-margin-top: 1.5rem; }
+h4 { font-size: 1.08rem; margin: 1.5rem 0 .75rem; }
+p, ul, ol, blockquote { color: var(--text-muted); margin: 0 0 1.25rem; }
+ul, ol { padding-left: 1.6rem; }
+li { margin-bottom: .45rem; }
+a { color: var(--primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.6rem; font-size: .94rem; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--border-color); padding: .72rem .9rem; text-align: left; vertical-align: top; min-width: 8rem; }
+th { background: #f1f5f9; color: var(--text-main); }
+tr:nth-child(even) { background: #f8fafc; }
+code { font-family: "Cascadia Code", "Fira Code", Consolas, monospace; font-size: .9em; }
+:not(pre) > code { background: var(--bg-inline-code); color: #be123c; padding: .16em .38em; border-radius: 4px; overflow-wrap: anywhere; }
+.code-wrapper { position: relative; margin: 0 0 1.5rem; border-radius: 8px; overflow: hidden; background: var(--bg-code); box-shadow: 0 4px 6px -1px rgba(0,0,0,.1); }
+pre { margin: 0; padding: 1.2rem; overflow-x: auto; }
+pre code { color: var(--text-code); background: transparent; padding: 0; }
+.copy-btn { position: absolute; top: .5rem; right: .5rem; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.22); color: #fff; padding: .28rem .72rem; font-size: .78rem; border-radius: 4px; cursor: pointer; }
+.copy-btn:hover { background: rgba(255,255,255,.2); }
+@media (max-width: 820px) {
+  body { flex-direction: column; }
+  aside { width: 100%; height: auto; position: relative; border-right: 0; border-bottom: 1px solid var(--border-color); padding: 1rem 1.25rem; }
+  nav { max-height: 14rem; overflow-y: auto; }
+  main { padding: 1.5rem; width: 100%; }
+  h1 { font-size: 2rem; }
+}
+</style>
+</head>
+<body>
+  <aside aria-label="章節導覽">
+    <h2>章節導覽</h2>
+    <nav id="toc"></nav>
+  </aside>
+  <main>
+<h1 id="powers-tool-cli">Powers Tool CLI</h1>
+<h2 id="參數接收">參數接收</h2>
+<p>CLI 會將 argparse 解析出的 Python primitives 傳給共用 Core command
+contract。這保留有效的 flag 用法，同時讓 raw Worker/WebUI JSON fail closed：
+Core 會拒絕未知或不適用欄位、同時提供的 alias、未記載為 nullable 的明確
+null，以及用來代替 exact boolean、integer 或 finite numeric field 的可強制轉換
+字串或數字。</p>
+<p>這是用於控制支援之直流電源供應器的 vendor-neutral CLI adapter。目前
+Product-active 且已完成硬體驗證的型號以文件所述 Keysight models 為準；未知
+live hardware 會 fail closed。</p>
+<p>CLI 包含在單一 <code>powers-tool</code> distribution 中，保留 <code>powers_tool_cli</code> import
+boundary，並透過 <code>powers-tool</code> console command 將操作員命令轉接到共用
+<code>powers_tool_core</code> runtime。</p>
+<p>此文件是 <code>docs/cli/README.md</code> 的繁體中文操作摘要。完整工程細節、命令清單與最新範例仍以英文 README 為主；操作員工作流程請優先閱讀 <a href="USER_GUIDE.zh-TW.html">CLI 使用者指南</a>。</p>
+<h2 id="文件集">文件集</h2>
+<ul>
+<li><a href="USER_GUIDE.zh-TW.html">CLI 使用者指南</a> - 操作員工作流程、即時資源選擇與安全優先檢查。</li>
+<li><a href="README.zh-TW.html">CLI README</a> - 工程建置、驗證腳本、詳細指令參考、自動化與維護者邊界。</li>
+<li><a href="../contracts/power-cli-jsonl-contract.md" rel="noopener noreferrer" target="_blank">Power CLI JSON / JSONL 契約</a> - 命令列 JSON 封裝與 JSONL 規則。</li>
+<li><a href="../contracts/power-worker-contract.md" rel="noopener noreferrer" target="_blank">Power Worker 契約</a> - 本機 worker REST、JSONL 與 artifact 契約。</li>
+<li><a href="../contracts/power-orchestrator-workflows.md" rel="noopener noreferrer" target="_blank">Power Orchestrator 工作流程</a> - 子行程交接與結果輪詢指南。</li>
+<li><a href="../contracts/commands-parameter-contract.md" rel="noopener noreferrer" target="_blank">命令參數契約</a> - 穩定的命令參數邊界。</li>
+</ul>
+<h2 id="用途">用途</h2>
+<p>此套件提供 <code>powers-tool</code> console script、命令參數解析、JSON envelope 處理、
+SCPI logging，以及供 orchestrator／agent 使用的本機 Power Worker daemon。
+會影響硬體的命令仍須明確且 opt-in；預設套件測試不需要硬體。</p>
+<h2 id="套件內容">套件內容</h2>
+<ul>
+<li><code>powers_tool_cli.cli</code>：top-level parser、command dispatch、JSON/error/exit
+mapping、SCPI logging 與 Core adapter。</li>
+<li><code>powers_tool_cli.cli_io</code>：穩定的 JSON success/error envelope 與 <code>--save-json</code>。</li>
+<li><code>powers_tool_cli.lifecycle_client</code>：Worker lifecycle HTTP request、response
+validation、dry-run 與錯誤 mapping。</li>
+<li><code>powers_tool_cli.request_primitives</code>：共用 argv parsing 與 JSON request fields。</li>
+<li><code>powers_tool_cli.runtime_mapping</code>：identity、execution、support-policy 與
+serial-option mapping。</li>
+<li><code>powers_tool_cli.worker</code>：本機 async Worker、job queue、event 與 artifact。</li>
+<li><code>powers_tool_cli.commands.*</code>：各 command family 的 parser registration 與
+request mapping。</li>
+</ul>
+<p>Parser construction 使用明確的 runner callable；request mapping 仍由各 command
+family module 與既有 CLI facade 負責，不引入 service-locator。</p>
+<h2 id="需求">需求</h2>
+<p>根目錄的 <a href="../../README.zh-TW.md#安裝" rel="noopener noreferrer" target="_blank">README 安裝指南</a> 是 canonical setup
+reference。<a href="../core/supported-models.md" rel="noopener noreferrer" target="_blank">Supported Models</a> 是 exact Product
+support matrix；本節不會為其他 model、transport 或 backend 增加支援。</p>
+<table>
+<thead>
+<tr>
+<th>需求</th>
+<th>No-hardware</th>
+<th>Live operation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Python</td>
+<td>使用 <code>pyproject.toml</code> 定義的最低版本：<code>&gt;=3.10</code>。</td>
+<td>相同的 Python 需求。</td>
+</tr>
+<tr>
+<td>Core/CLI runtime</td>
+<td>安裝目前的 <code>powers-tool</code> distribution。</td>
+<td>安裝目前的 <code>powers-tool</code> distribution。</td>
+</tr>
+<tr>
+<td>No-hardware</td>
+<td>simulator、dry-run、CLI help 與一般測試不需要實體儀器或 vendor VISA runtime。</td>
+<td>不適用。</td>
+</tr>
+<tr>
+<td>Live hardware</td>
+<td>不適用。</td>
+<td>需要受支援的實體儀器、PyVISA 可載入的外部 VISA implementation/runtime，以及適用且已接受的 connection/backend scope。Resource-specific live commands 需要 operator 明確選定的 VISA resource；discovery commands 可在沒有預先提供 resource 時列舉 resources。</td>
+</tr>
+<tr>
+<td>Product support</td>
+<td>No-hardware 可用不代表 live 支援。</td>
+<td>Model-aware live commands 遵循 <a href="../core/supported-models.md" rel="noopener noreferrer" target="_blank">Supported Models</a> 中 exact <code>model + command + transport + backend + required feature</code> scope。Diagnostic exemptions 僅限其文件化的 diagnostic purpose。</td>
+</tr>
+<tr>
+<td>Safety</td>
+<td>Preview 與 simulator 路徑不會啟用真實輸出。</td>
+<td>影響輸出的命令仍受既有 confirmation gate 與 safety limit 約束。</td>
+</tr>
+</tbody>
+</table>
+<h2 id="安裝">安裝</h2>
+<p>根目錄的 <a href="../../README.zh-TW.md#安裝" rel="noopener noreferrer" target="_blank">README 安裝指南</a> 是 canonical setup
+reference。從 repository 根目錄先同步 locked development/test environment：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">uv sync --all-extras --locked --link-mode=copy
+</code></pre></div>
+<p>若只需要基本 Core/CLI runtime，可使用：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">uv sync --locked --link-mode=copy
+</code></pre></div>
+<p>主要安裝後 console entry point 是 <code>powers-tool</code>。</p>
+<p>Fallback module entry point：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">uv run python -m powers_tool_cli.cli doctor --simulate --json
+</code></pre></div>
+<p>global <code>powers-tool --version</code> option 會輸出 <code>powers-tool &lt;package-version&gt;</code>，
+不需要 subcommand，也不會開啟 VISA。</p>
+<h2 id="快速開始">快速開始</h2>
+<p>在專案根目錄執行以下命令，以確認 installed console entry point、CLI/Core 基本
+載入，以及 deterministic simulator 的 no-hardware 路徑：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">uv run powers-tool --version
+uv run powers-tool doctor --simulate --json
+</code></pre></div>
+<p>此 Quick Start 不會進行 live 或 system-VISA resource discovery、不會開啟 VISA resource、不會送出 SCPI、不會修改實體儀器狀態，也不會啟用輸出；不需要實體儀器或 vendor
+VISA runtime。
+一般操作員工作流程請接續閱讀 <a href="USER_GUIDE.zh-TW.html">CLI 使用者指南</a>。本機瀏覽器
+介面請參閱 <a href="../webui/USER_GUIDE.zh-TW.html">WebUI 使用者指南</a>。Exact live model
+與 connection coverage 請參閱 <a href="../core/supported-models.md" rel="noopener noreferrer" target="_blank">Supported Models</a>。</p>
+<h2 id="命令系列索引">命令系列索引</h2>
+<p>以下是快速導覽，不取代 <code>powers-tool --help</code> 或下方詳細範例。</p>
+<table>
+<thead>
+<tr>
+<th>Family</th>
+<th>Purpose</th>
+<th>Representative commands</th>
+<th>Details</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>安裝與診斷</td>
+<td>安裝、探索、身分、錯誤與安全檢查。</td>
+<td><code>powers-tool --version</code>、<code>doctor</code>、<code>list-resources</code>、<code>verify</code>、<code>identify</code>、<code>error</code>、<code>clear</code></td>
+<td><a href="README.md#resource-discovery-and-live-resource-setup" rel="noopener noreferrer" target="_blank">資源探索與實機資源設定</a>；<code>powers-tool --help</code></td>
+</tr>
+<tr>
+<td>唯讀與狀態</td>
+<td>measurement、readback、output state、capabilities 與儀器狀態。</td>
+<td><code>measure</code>、<code>measure-all</code>、<code>read-status</code>、<code>readback</code>、<code>output-state</code>、<code>capabilities</code></td>
+<td><a href="README.md#read-only-command-examples" rel="noopener noreferrer" target="_blank">唯讀指令範例</a>；<code>read-status</code> 是儀器命令。</td>
+</tr>
+<tr>
+<td>Setpoint 與 output control</td>
+<td>設定點、輸出切換、safe-off 與受保護的輸出操作。</td>
+<td><code>set</code>、<code>apply</code>、<code>output-on</code>、<code>output-off</code>、<code>safe-off</code>、<code>cycle-output</code>、<code>smoke-output</code></td>
+<td><a href="README.md#output-affecting-examples" rel="noopener noreferrer" target="_blank">會影響輸出的範例</a>；<a href="README.md#safety-defaults" rel="noopener noreferrer" target="_blank">Safety Defaults</a></td>
+</tr>
+<tr>
+<td>Output workflows</td>
+<td>ramp、ramp-list、software sequence 與 telemetry logging。</td>
+<td><code>ramp</code>、<code>ramp-list</code>、<code>sequence</code>、<code>log</code></td>
+<td><a href="README.md#ramp-and-sequence-examples" rel="noopener noreferrer" target="_blank">Ramp、Sequence 與模擬器範例</a>；<a href="README.md#safety-defaults" rel="noopener noreferrer" target="_blank">Safety Defaults</a></td>
+</tr>
+<tr>
+<td>Protection</td>
+<td>protection status、設定與清除。</td>
+<td><code>protection-status</code>、<code>protection-set</code>、<code>clear-protection</code></td>
+<td><a href="README.md#protection-and-trigger-examples" rel="noopener noreferrer" target="_blank">Protection 與 Trigger 範例</a>；<code>powers-tool --help</code></td>
+</tr>
+<tr>
+<td>Trigger</td>
+<td>trigger status、setup、fire、abort、pulse 與 LIST workflow。</td>
+<td><code>trigger-status</code>、<code>trigger-step</code>、<code>trigger-list</code>、<code>trigger-fire</code>、<code>trigger-abort</code>、<code>trigger-pulse</code></td>
+<td><a href="README.md#protection-and-trigger-examples" rel="noopener noreferrer" target="_blank">Protection 與 Trigger 範例</a>；仍受 exact feature scope 約束。</td>
+</tr>
+<tr>
+<td>Snapshot 與 restore</td>
+<td>擷取、比較、報告與還原儲存的儀器狀態。</td>
+<td><code>snapshot</code>、<code>snapshot-diff</code>、<code>hardware-report</code>、<code>restore-from-snapshot</code></td>
+<td><a href="README.md#snapshot-and-restore-examples" rel="noopener noreferrer" target="_blank">Snapshot 與 Restore 範例</a>；<a href="../contracts/power-cli-jsonl-contract.md" rel="noopener noreferrer" target="_blank">Power CLI JSON / JSONL 契約</a></td>
+</tr>
+<tr>
+<td>Worker 與 automation</td>
+<td>本機 Worker lifecycle 與 command submission。</td>
+<td><code>worker</code>、<code>send-command</code>、<code>status</code>、<code>stop</code>、<code>wait-ready</code></td>
+<td><a href="README.md#power-worker-daemon" rel="noopener noreferrer" target="_blank">Power Worker Daemon</a>；<a href="../contracts/power-worker-contract.md" rel="noopener noreferrer" target="_blank">Power Worker 契約</a>。<code>status</code> 是 Worker lifecycle status；儀器狀態使用 <code>read-status</code>。</td>
+</tr>
+</tbody>
+</table>
+<p>實際 live availability 仍由 model、command、transport、backend 與 required feature
+的 exact Product scope 決定。</p>
+<h2 id="測試">測試</h2>
+<p>預設 CLI 測試不需要硬體：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">.\.vent\Scripts\python.exe -m pytest tests\cli -q -p no:cacheprovider
+</code></pre></div>
+<p>pytest 預設使用 repository-local、已忽略的 <code>.tmp_pytest</code>，因此不依賴
+Windows system temporary directory。請從 repository 根目錄執行 pytest；若需
+單次覆寫 basetemp，使用 <code>--basetemp .tmp_tests/&lt;purpose&gt;</code>，不要使用 <code>Local/</code>。</p>
+<h3 id="scripted-validation">Scripted Validation</h3>
+<p>以下是支援的 standalone validation entry points，不是 <code>scripts/</code> 的完整清單。
+每個 entry point 都會在 <code>.tmp_tests</code> 下寫入 machine-readable <code>report.json</code> 與
+human-readable <code>summary.md</code>。</p>
+<table>
+<thead>
+<tr>
+<th>Script</th>
+<th>Hardware use</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scripts\preflight-cli.ps1</code></td>
+<td>No hardware</td>
+<td>執行 smoke、deep 或 compatibility full model-aware CLI validation，解析每個 JSON 結果並強制 <code>hardware_touched=false</code>。</td>
+</tr>
+<tr>
+<td><code>scripts\live-cli-check.ps1</code></td>
+<td>Plan-only 或明確 live hardware</td>
+<td>先執行 preflight，再產生指定 suite 的 exact plan；只有非 <code>-PlanOnly</code> 且明確確認後才進入 live validation。</td>
+</tr>
+<tr>
+<td><code>scripts\release-acceptance.ps1</code></td>
+<td>No hardware 加上受控 release workflow</td>
+<td>驗證 clean committed HEAD、套件、entry point、standalone artifact 與 checksums，並執行指定的 no-hardware checks。</td>
+</tr>
+<tr>
+<td><code>scripts\batch-validation.ps1</code></td>
+<td>依 switches 選定</td>
+<td>只執行選定的 simulated 或 live validation task，並產生一份 batch report。</td>
+</tr>
+</tbody>
+</table>
+<p>Build entry points、CI quality utilities 與 internal helpers 的完整用途請參閱
+英文 CLI README；本文件不把它們誤列為一般 operator command。<code>preflight-cli.ps1</code>
+的 smoke、deep 與 full suite 是 no-hardware 路徑。<code>live-cli-check.ps1</code> 的
+PlanOnly 不會開啟 resource；沒有 <code>-PlanOnly</code> 時仍需明確互動確認。</p>
+<p>Validation artifact 只證明選定的 model、connection、suite 與 cases，不會自動
+提升 Product support，也不代表其他 model、connection、feature 或整個儀器。</p>
+<h2 id="命令狀態">命令狀態</h2>
+<p>CLI 的 planning identity 與 live expected-model guard 是不同概念。<code>expected_model_id</code>
+只用來檢查 live <code>*IDN?</code> identity mismatch，不會選擇 driver、解鎖 command 或
+擴大 Product scope。<code>planning_model_id</code> 用於 simulate 或 model-specific dry-run；
+<code>planning_profile_id</code> 只代表非實體的 dry-run profile，例如 <code>generic-scpi</code>，不是
+physical model，也不會選擇 live driver。</p>
+<p>Accepted physical planning IDs 與 live Product scope 以
+<a href="../core/supported-models.md" rel="noopener noreferrer" target="_blank">Supported Models</a> 為準。Known deterministic simulator
+resource 必須與明確 identity 一致；CLI 不會從 fake、live-looking 或 alias-only
+resource 猜測 model。</p>
+<h2 id="power-worker-daemon">Power Worker Daemon</h2>
+<p>Power Worker 以 machine mode 提供本機 lifecycle 與 command submission。<code>GET /status</code>
+只代表 control-plane health/progress，不是儀器 <code>read-status</code>；<code>POST /command</code> 的
+accepted／HTTP <code>202</code> 只代表 job 進入 queue。必須繼續觀察 artifact 直到 terminal
+<code>result.json</code>，並確認 <code>status: "succeeded"</code>、<code>ok: true</code>、<code>run_id</code> 與
+<code>worker_job_id</code> correlation 正確。</p>
+<p>Worker JSON/JSONL stdout 只輸出 machine evidence；human-readable stdout/stderr
+只能作 diagnostic。<code>ready</code> 不代表 domain command 完成，<code>request.json</code> 只證明
+request 已持久化。<code>POST /stop</code> acknowledgment 只代表 cooperative stop 已提出，
+不代表 cleanup、final summary 或 Worker process exit 已完成。請依
+<a href="../contracts/power-worker-contract.md" rel="noopener noreferrer" target="_blank">Power Worker 契約</a> 與
+<a href="../contracts/power-orchestrator-workflows.md" rel="noopener noreferrer" target="_blank">Power Orchestrator 工作流程</a> 觀察
+完整生命週期。</p>
+<h2 id="範例">範例</h2>
+<h3 id="資源搜尋與實機資源設定">資源搜尋與實機資源設定</h3>
+<p>僅列出可以被開啟並透過 <code>*IDN?</code> 查詢的 VISA 資源：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">uv run powers-tool list-resources --live-only
+</code></pre></div>
+<p>通用實機 USB/LAN 範例請先在 PowerShell 工作階段設定 VISA 資源一次：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">$env:POWERS_TOOL_RESOURCE = "USB0::...::INSTR"
+</code></pre></div>
+<p>驗證單一資源可被開啟並透過 <code>*IDN?</code> 查詢：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">uv run powers-tool verify --resource "$env:POWERS_TOOL_RESOURCE"
+uv run powers-tool verify --resource "$env:POWERS_TOOL_RESOURCE" --log-scpi
+</code></pre></div>
+<h3 id="e3646a-rs-232-asrl-範例">E3646A RS-232 / ASRL 範例</h3>
+<p>E3646A 在 RS-232/ASRL 上支援已實機驗證的唯讀/狀態查詢與輸出工作流程。執行任何 E3646A 實機輸出命令前，請確認實體接線已檢查完成，且要求的電壓/電流限制對連接負載是安全的。</p>
+<p>型號支援的命令包括 <code>identify</code>、<code>measure</code>、<code>readback</code>、<code>read-status</code>、<code>output-state</code>、<code>capabilities</code>、<code>set</code>、<code>apply</code>、<code>output-on</code>、<code>output-off</code>、<code>safe-off</code>、<code>cycle-output</code>、<code>smoke-output</code>、<code>ramp</code>、<code>ramp-list</code> 與影響輸出的 <code>sequence</code> 步驟。<code>verify</code> 也可作為與型號無關的連線診斷。E3646A 使用 <code>INST:NSEL</code> 做通道預選；<code>OUTP ON/OFF</code> 是全域輸出啟用/停用行為，即使命令接受通道參數，啟用或停用輸出仍可能影響儀器整體輸出狀態。E3646A 的保護寫入、trigger 工作流程、snapshot restore、completion pulse 與 native LIST 仍維持停用。</p>
+<p>每個 PowerShell 工作階段設定一次 ASRL 資源：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">$env:POWERS_TOOL_ASRL_RESOURCE = "ASRL1::INSTR"
+</code></pre></div>
+<p>重複執行範例時，可把共用 ASRL 設定放在 PowerShell 變數：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">$Base = @("--resource", "$env:POWERS_TOOL_ASRL_RESOURCE", "--serial-read-termination", "CRLF", "--serial-write-termination", "LF")
+$Remote = @("--serial-remote", "--serial-local-on-close")
+</code></pre></div>
+<p>如果 Connection Expert 已經設定並驗證 ASRL 資源，可讓 VISA 使用既有設定：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">uv run powers-tool verify --resource "$env:POWERS_TOOL_ASRL_RESOURCE"
+</code></pre></div>
+<p>若要為單一命令明確套用序列設定，請只傳入要覆寫的欄位：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">uv run powers-tool verify --resource "$env:POWERS_TOOL_ASRL_RESOURCE" --serial-baud-rate 9600 --serial-data-bits 8 --serial-parity none --serial-stop-bits 2 --serial-flow-control dtr_dsr --serial-remote --serial-local-on-close
+</code></pre></div>
+<p><code>--serial-remote</code> 會在開啟 ASRL 資源後發送 <code>SYST:REM</code>。<code>--serial-local-on-close</code> 會在清理時盡最大努力發送 <code>SYST:LOC</code>。這些命令會影響儀器遠端/本機狀態，且只在明確要求時發送。</p>
+<p>常用唯讀/狀態範例：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">uv run powers-tool identify --resource "$env:POWERS_TOOL_ASRL_RESOURCE" --serial-remote --serial-local-on-close
+uv run powers-tool readback --resource "$env:POWERS_TOOL_ASRL_RESOURCE" --channel 1 --serial-remote --serial-local-on-close
+uv run powers-tool measure --resource "$env:POWERS_TOOL_ASRL_RESOURCE" --channel 2 --serial-remote --serial-local-on-close
+uv run powers-tool output-state --resource "$env:POWERS_TOOL_ASRL_RESOURCE" --channel 1 --serial-remote --serial-local-on-close
+</code></pre></div>
+<p>已驗證的輸出範例：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">uv run powers-tool set @Base @Remote --channel 1 --voltage 1 --current 0.05 --json --log-scpi
+uv run powers-tool apply @Base @Remote --channel 1 --voltage 1 --current 0.05 --no-output --json --log-scpi
+uv run powers-tool output-on @Base @Remote --channel 1 --confirm --json --log-scpi
+uv run powers-tool output-off @Base @Remote --channel 1 --json --log-scpi
+uv run powers-tool safe-off @Base @Remote --channel 1 --json --log-scpi
+uv run powers-tool ramp @Base @Remote --channel 1 --start-voltage 0 --stop-voltage 1 --step-voltage 0.25 --current 0.05 --delay-ms 100 --json --log-scpi
+</code></pre></div>
+<p><code>output-on</code>、<code>cycle-output</code>、<code>smoke-output</code>，以及未使用 <code>--no-output</code> 的 <code>apply</code>，在選定設定點超過確認門檻時需要 <code>--confirm</code>。<code>set</code>、<code>output-off</code>、<code>safe-off</code>、<code>ramp</code>、<code>ramp-list</code> 不要求 <code>--confirm</code>。</p>
+<p>序列終止字元請優先使用別名 <code>CR</code>、<code>LF</code>、<code>CRLF</code> 或 <code>NONE</code>。<code>NONE</code> 表示不設定該終止字元選項；省略或空白欄位也表示不覆寫 VISA 設定。</p>
+<h3 id="唯讀指令範例">唯讀指令範例</h3>
+<div class="code-wrapper"><pre><code class="language-powershell">uv run powers-tool measure --resource "$env:POWERS_TOOL_RESOURCE" --channel 1 --log-scpi
+uv run powers-tool measure-all --json --resource "$env:POWERS_TOOL_RESOURCE" --log-scpi
+uv run powers-tool read-status --json --resource "$env:POWERS_TOOL_RESOURCE" --log-scpi
+uv run powers-tool validate-readonly --json --resource "$env:POWERS_TOOL_RESOURCE" --log-scpi --save-json logs/validate-readonly.json
+uv run powers-tool readback --json --resource "$env:POWERS_TOOL_RESOURCE" --log-scpi
+uv run powers-tool protection-status --json --resource "$env:POWERS_TOOL_RESOURCE" --log-scpi
+</code></pre></div>
+<h3 id="snapshot-與-restore-範例">Snapshot 與 Restore 範例</h3>
+<div class="code-wrapper"><pre><code class="language-powershell">uv run powers-tool snapshot --json --resource "$env:POWERS_TOOL_RESOURCE" --log-scpi
+uv run powers-tool snapshot --json --resource "$env:POWERS_TOOL_RESOURCE" --compare logs/e36312a-baseline.json
+uv run powers-tool snapshot-diff --summary --json --before logs/before.json --after logs/after.json
+uv run powers-tool restore-from-snapshot --dry-run --json --snapshot logs/before.json --resource "$env:POWERS_TOOL_RESOURCE" --channel all --plan-json logs/restore-plan.json
+</code></pre></div>
+<h3 id="protection-與-trigger-範例">Protection 與 Trigger 範例</h3>
+<div class="code-wrapper"><pre><code class="language-powershell">uv run powers-tool clear-protection --dry-run --json --resource "$env:POWERS_TOOL_RESOURCE" --all
+uv run powers-tool protection-set --dry-run --json --resource "$env:POWERS_TOOL_RESOURCE" --channel all --ovp-voltage 5 --ocp on
+uv run powers-tool trigger-pulse --json --resource "$env:POWERS_TOOL_RESOURCE" --pin 1 --channel 1 --polarity positive --log-scpi
+uv run powers-tool trigger-status --json --resource "$env:POWERS_TOOL_RESOURCE" --channel all
+</code></pre></div>
+<h3 id="會影響輸出的範例">會影響輸出的範例</h3>
+<p>影響輸出的命令必須明確要求，且使用前需確認型號、通道、DUT 接線、電壓、電流限制與保護設定。E3646A RS-232 / ASRL 輸出工作流程已實機驗證；執行前請確認實體接線已檢查完成，且要求的電壓/電流限制對連接負載是安全的。詳細範例請參考英文 README 與 CLI 使用者指南。</p>
+<h3 id="rampsequence-與模擬器範例">Ramp、Sequence 與模擬器範例</h3>
+<div class="code-wrapper"><pre><code class="language-powershell">uv run powers-tool ramp-list --lint --json --file example.ramp-list.json
+uv run powers-tool sequence --lint --json --resource "USB0::SIM::E36312A::INSTR" --file examples/sequence-readonly.yaml
+uv run powers-tool clear --dry-run --json --resource "USB0::SIM::E36312A::INSTR"
+uv run powers-tool measure --simulate --json --resource "USB0::SIM::E36312A::INSTR" --channel 2
+uv run powers-tool doctor --simulate --json
+uv run powers-tool capabilities --simulate --json --resource "USB0::SIM::EDU36311A::INSTR" --command protection-set
+uv run powers-tool safety inspect --json --explain --safety-config examples/safety-config.toml --resource-alias sim-e36312a --channel 1
+</code></pre></div>
+<h2 id="safety-defaults">Safety Defaults</h2>
+<ul>
+<li>影響輸出的行為必須明確要求。</li>
+<li>E3646A 在 RS-232 / ASRL 上保留唯讀與狀態查詢工作流程，並加入已實機驗證的輸出工作流程。</li>
+<li><code>--safety-config</code> 只會套用本機 plan validation 限制；它不會自動啟用硬體輸出。</li>
+<li>真實 VISA resource 不應硬編碼在提交的檔案中。</li>
+<li>硬體測試必須要求使用者提供 resource。</li>
+<li>啟用輸出的範例必須設定安全的 current limit，並在清理時關閉輸出。</li>
+</ul>
+<h2 id="狀態">狀態</h2>
+<p>Active package。E36312A live validation 涵蓋 hardware test guide 所記載的唯讀 CLI
+流程、安全 setpoint 流程、Worker dry-run／read-only 行為與 native trigger-list
+流程。</p>
+
+  </main>
+  <script>
+document.addEventListener('DOMContentLoaded', () => {
+  const toc = document.getElementById('toc');
+  const headers = document.querySelectorAll('main h2, main h3');
+  headers.forEach(header => {
+    const a = document.createElement('a');
+    a.href = '#' + header.id;
+    a.textContent = header.textContent;
+    a.className = 'toc-link level-' + header.tagName.substring(1);
+    toc.appendChild(a);
+  });
+
+  document.querySelectorAll('.code-wrapper pre').forEach(pre => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'copy-btn';
+    btn.textContent = '複製';
+    pre.parentElement.appendChild(btn);
+    btn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(pre.innerText);
+        btn.textContent = '已複製';
+        setTimeout(() => { btn.textContent = '複製'; }, 1600);
+      } catch (err) {
+        btn.textContent = '複製失敗';
+        setTimeout(() => { btn.textContent = '複製'; }, 1600);
+      }
+    });
+  });
+
+  const links = [...document.querySelectorAll('.toc-link')];
+  const observer = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      links.forEach(link => link.classList.toggle('active', link.hash === '#' + entry.target.id));
+    }
+  }, { rootMargin: '0px 0px -78% 0px', threshold: 0 });
+  headers.forEach(header => observer.observe(header));
+});
+</script>
+</body>
+</html>

@@ -1,500 +1,341 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Keysight Power CLI 使用者指南</title>
-    <style>
-        :root {
-            --primary: #2563eb;
-            --primary-hover: #1d4ed8;
-            --bg-body: #ffffff;
-            --bg-sidebar: #f8fafc;
-            --text-main: #0f172a;
-            --text-muted: #475569;
-            --border-color: #e2e8f0;
-            --bg-code: #1e293b;
-            --text-code: #f8fafc;
-            --bg-inline-code: #f1f5f9;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
-            line-height: 1.7;
-            color: var(--text-main);
-            background-color: var(--bg-body);
-            display: flex;
-            min-height: 100vh;
-        }
-
-        /* Sidebar Navigation */
-        aside {
-            width: 280px;
-            background-color: var(--bg-sidebar);
-            border-right: 1px solid var(--border-color);
-            position: sticky;
-            top: 0;
-            height: 100vh;
-            overflow-y: auto;
-            padding: 2rem 1.5rem;
-            flex-shrink: 0;
-        }
-
-        aside h3 {
-            font-size: 0.875rem;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            letter-spacing: 0.05em;
-            margin-bottom: 1rem;
-        }
-
-        nav {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .toc-link {
-            text-decoration: none;
-            color: var(--text-main);
-            font-size: 0.95rem;
-            padding: 0.4rem 0.75rem;
-            border-radius: 6px;
-            transition: all 0.2s ease;
-        }
-
-        .toc-link:hover, .toc-link.active {
-            background-color: #e2e8f0;
-            color: var(--primary);
-        }
-
-        /* Main Content */
-        main {
-            flex: 1;
-            padding: 3rem 4rem;
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-
-        h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            letter-spacing: -0.02em;
-        }
-
-        h2 {
-            font-size: 1.75rem;
-            font-weight: 600;
-            margin-top: 3rem;
-            margin-bottom: 1.25rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid var(--border-color);
-            scroll-margin-top: 2rem;
-        }
-
-        h3 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-top: 2rem;
-            margin-bottom: 1rem;
-            color: #1e293b;
-        }
-
-        p {
-            margin-bottom: 1.25rem;
-            color: var(--text-muted);
-        }
-
-        ul, ol {
-            margin-bottom: 1.25rem;
-            padding-left: 1.5rem;
-            color: var(--text-muted);
-        }
-
-        li {
-            margin-bottom: 0.5rem;
-        }
-
-        a {
-            color: var(--primary);
-            text-decoration: none;
-        }
-
-        a:hover {
-            text-decoration: underline;
-        }
-
-        /* Code Blocks & Inline Code */
-        code {
-            font-family: "Fira Code", "Consolas", monospace;
-            font-size: 0.9em;
-        }
-
-        p > code, li > code, td > code {
-            background-color: var(--bg-inline-code);
-            color: #be123c;
-            padding: 0.2em 0.4em;
-            border-radius: 4px;
-        }
-
-        .code-wrapper {
-            position: relative;
-            margin-bottom: 1.5rem;
-            border-radius: 8px;
-            overflow: hidden;
-            background-color: var(--bg-code);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
-        pre {
-            margin: 0;
-            padding: 1.25rem;
-            overflow-x: auto;
-        }
-
-        pre code {
-            color: var(--text-code);
-            background: transparent;
-            padding: 0;
-            border-radius: 0;
-        }
-
-        .copy-btn {
-            position: absolute;
-            top: 0.5rem;
-            right: 0.5rem;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: #fff;
-            padding: 0.25rem 0.75rem;
-            font-size: 0.8rem;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .copy-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        /* Tables */
-        .table-container {
-            overflow-x: auto;
-            margin-bottom: 2rem;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
-        }
-
-        th, td {
-            padding: 0.875rem 1rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        th {
-            background-color: #f1f5f9;
-            font-weight: 600;
-            color: var(--text-main);
-            white-space: nowrap;
-        }
-
-        tr:last-child td {
-            border-bottom: none;
-        }
-
-        tr:hover td {
-            background-color: #f8fafc;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            body {
-                flex-direction: column;
-            }
-            aside {
-                width: 100%;
-                height: auto;
-                position: relative;
-                border-right: none;
-                border-bottom: 1px solid var(--border-color);
-            }
-            main {
-                padding: 1.5rem;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Powers Tool CLI 使用者指南</title>
+  <style>
+:root {
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --bg-body: #ffffff;
+  --bg-sidebar: #f8fafc;
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --border-color: #e2e8f0;
+  --bg-code: #1e293b;
+  --text-code: #f8fafc;
+  --bg-inline-code: #f1f5f9;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+  line-height: 1.72;
+  color: var(--text-main);
+  background: var(--bg-body);
+  display: flex;
+  min-height: 100vh;
+}
+aside {
+  width: 290px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 2rem 1.25rem;
+  flex-shrink: 0;
+}
+aside h2 {
+  margin: 0 0 1rem;
+  padding: 0;
+  border: 0;
+  font-size: .875rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: .05em;
+}
+nav { display: flex; flex-direction: column; gap: .25rem; }
+.toc-link {
+  text-decoration: none;
+  color: var(--text-main);
+  font-size: .94rem;
+  padding: .4rem .7rem;
+  border-radius: 6px;
+}
+.toc-link.level-3 { padding-left: 1.35rem; font-size: .87rem; color: var(--text-muted); }
+.toc-link:hover, .toc-link.active { background: #e2e8f0; color: var(--primary); }
+main { flex: 1; padding: 3rem 4rem 5rem; max-width: 1080px; margin: 0 auto; min-width: 0; }
+h1 { font-size: 2.45rem; margin: 0 0 1.5rem; line-height: 1.2; letter-spacing: -.02em; }
+h2 { font-size: 1.72rem; margin: 3rem 0 1.25rem; padding-bottom: .5rem; border-bottom: 1px solid var(--border-color); scroll-margin-top: 1.5rem; }
+h3 { font-size: 1.25rem; margin: 2rem 0 1rem; scroll-margin-top: 1.5rem; }
+h4 { font-size: 1.08rem; margin: 1.5rem 0 .75rem; }
+p, ul, ol, blockquote { color: var(--text-muted); margin: 0 0 1.25rem; }
+ul, ol { padding-left: 1.6rem; }
+li { margin-bottom: .45rem; }
+a { color: var(--primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.6rem; font-size: .94rem; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--border-color); padding: .72rem .9rem; text-align: left; vertical-align: top; min-width: 8rem; }
+th { background: #f1f5f9; color: var(--text-main); }
+tr:nth-child(even) { background: #f8fafc; }
+code { font-family: "Cascadia Code", "Fira Code", Consolas, monospace; font-size: .9em; }
+:not(pre) > code { background: var(--bg-inline-code); color: #be123c; padding: .16em .38em; border-radius: 4px; overflow-wrap: anywhere; }
+.code-wrapper { position: relative; margin: 0 0 1.5rem; border-radius: 8px; overflow: hidden; background: var(--bg-code); box-shadow: 0 4px 6px -1px rgba(0,0,0,.1); }
+pre { margin: 0; padding: 1.2rem; overflow-x: auto; }
+pre code { color: var(--text-code); background: transparent; padding: 0; }
+.copy-btn { position: absolute; top: .5rem; right: .5rem; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.22); color: #fff; padding: .28rem .72rem; font-size: .78rem; border-radius: 4px; cursor: pointer; }
+.copy-btn:hover { background: rgba(255,255,255,.2); }
+@media (max-width: 820px) {
+  body { flex-direction: column; }
+  aside { width: 100%; height: auto; position: relative; border-right: 0; border-bottom: 1px solid var(--border-color); padding: 1rem 1.25rem; }
+  nav { max-height: 14rem; overflow-y: auto; }
+  main { padding: 1.5rem; width: 100%; }
+  h1 { font-size: 2rem; }
+}
+</style>
 </head>
 <body>
+  <aside aria-label="章節導覽">
+    <h2>章節導覽</h2>
+    <nav id="toc"></nav>
+  </aside>
+  <main>
+<h1 id="powers-tool-cli-使用者指南">Powers Tool CLI 使用者指南</h1>
+<p>本指南針對取得已建置之 CLI 執行檔或已安裝 <code>powers-tool</code> 命令的操作員，說明如何控制支援的 Keysight 直流電源供應器。重點涵蓋常規的實機 (live) 工作流程、資源選擇與安全優先檢查。有關開發人員環境設定、詳細指令參考與自動化細節，請參見 <a href="README.zh-TW.html">CLI README</a>。</p>
+<h2 id="啟動-cli">啟動 CLI</h2>
+<p>在包含 CLI 執行檔的資料夾中開啟 PowerShell 並檢查：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe --version
+</code></pre></div>
+<p>發佈資料夾可能包含帶有版本號的執行檔名稱，例如：</p>
+<div class="code-wrapper"><pre><code class="language-text">powers-tool-&lt;version&gt;.exe
+</code></pre></div>
+<p>如果您的發佈資料夾使用的是帶有版本號的執行檔，請在以下的命令中使用該檔名。開發人員或簽出原始碼的使用者請參閱 <a href="README.zh-TW.html">CLI README</a> 以了解虛擬環境、模組、驗證與建置命令。</p>
+<p>若為已安裝的命令，請將 <code>.\powers-tool.exe</code> 替換為 <code>powers-tool</code>：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">powers-tool --version
+</code></pre></div>
+<h2 id="首次實機檢查-first-live-check">首次實機檢查 (First Live Check)</h2>
+<p>在檢查新電腦、VISA runtime、連線或電源供應器設定時，請使用此流程。</p>
+<ol>
+<li>確認該儀器可安全地進行查詢，且任何連接的受測物 (DUT) 均能承受現有的輸出狀態。</li>
+<li>僅列出目前能回應 <code>*IDN?</code> 的 VISA 資源：</li>
+</ol>
+<div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe list-resources --live-only
+</code></pre></div>
+<ol start="3">
+<li>複製目標儀器確切的資源字串，並設定工作階段變數：</li>
+</ol>
+<div class="code-wrapper"><pre><code class="language-powershell">$env:POWERS_TOOL_RESOURCE = "USB0::...::INSTR"
+</code></pre></div>
+<ol start="4">
+<li>執行唯讀的身分檢查：</li>
+</ol>
+<div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe verify --resource "$env:POWERS_TOOL_RESOURCE" --log-scpi
+</code></pre></div>
+<ol start="5">
+<li>在執行任何輸出動作前，進行唯讀的測量或狀態檢查：</li>
+</ol>
+<div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe measure --resource "$env:POWERS_TOOL_RESOURCE" --channel 1 --log-scpi
+.\powers-tool.exe read-status --resource "$env:POWERS_TOOL_RESOURCE" --json --log-scpi
+</code></pre></div>
+<p>對於實機命令，請使用明確的資源字串。請勿依賴腳本或無人值守的工作流程來猜測應使用哪台儀器。</p>
+<p><code>list-resources</code> 與 <code>list-resources --live-only</code> 是 discovery commands，可以在
+沒有預先提供 resource 時列舉 backend 發現的 resources。Resource-specific live
+commands 則必須由 operator 明確選定並傳入 VISA resource。</p>
+<h2 id="資源列表">資源列表</h2>
+<p>對於正常的實機使用，建議使用：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe list-resources --live-only
+</code></pre></div>
+<p>單純的 <code>list-resources</code> 是被動的 VISA 探索。當裝置斷線或無法使用時，它可能會顯示過時的快取資源。<code>--live-only</code> 會開啟每個找到的資源，查詢 <code>*IDN?</code>，並只印出有回應的資源。</p>
+<p>診斷過時項目時請使用 <code>--verify</code>，因為它會同時回報實機存活與連線失敗的資源：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe list-resources --verify
+</code></pre></div>
+<p>將結果複製到自動化流程時，請加上 <code>--json</code>：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe list-resources --live-only --json
+</code></pre></div>
+<h2 id="資源環境變數">資源環境變數</h2>
+<p>使用環境變數可以簡化在同一個工作階段中複製與執行多個命令的操作：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">$env:POWERS_TOOL_RESOURCE = "USB0::...::INSTR"
+$env:POWERS_TOOL_ASRL_RESOURCE = "ASRL1::INSTR"
+</code></pre></div>
+<p>請注意：</p>
+<ul>
+<li><code>$env:POWERS_TOOL_RESOURCE</code> 用於通用的實機 USB/LAN 範例。</li>
+<li><code>$env:POWERS_TOOL_ASRL_RESOURCE</code> 用於 E3646A RS-232 / ASRL 範例。</li>
+<li>這些是為了文件方便而提供的變數，並非隱藏的 CLI 預設值。</li>
+<li>實機命令仍需要明確提供 <code>--resource</code> 參數。</li>
+</ul>
+<h2 id="有限工作流程迴圈">有限工作流程迴圈</h2>
+<p>Ramp、Ramp List 與 Sequence 接受 <code>--loop-count N</code>。這個值代表完整執行次數：
+<code>1</code> 是一般單次執行，<code>2</code> 代表重新執行一次，最大值為 <code>10,000</code>。小於 <code>1</code>、
+大於 <code>10,000</code> 或不是嚴格整數的值都會被拒絕。對 Ramp List 與 Sequence 文件，
+明確提供的 CLI 值優先；否則使用文件值，再以舊版支援文件的預設值 <code>1</code> 收尾。</p>
+<h2 id="e3646a-rs-232-asrl">E3646A RS-232 / ASRL</h2>
+<p>E3646A 的 Product LIVE 支援僅限 ASRL／RS-232 transport 與 system VISA backend。執行任何 E3646A 實機輸出命令前，請確認實體接線已檢查完成，且要求的電壓/電流限制對連接負載是安全的。</p>
+<p>E3646A 的 Product-open model-aware commands 是 <code>measure</code>、<code>output-state</code>、
+<code>read-status</code>、<code>readback</code>、<code>capabilities</code>、<code>set</code>、<code>output-on</code>、<code>output-off</code>、
+<code>safe-off</code>、<code>cycle-output</code>、<code>apply</code>、<code>ramp</code>、<code>smoke-output</code>、<code>ramp-list</code>、
+<code>sequence</code> 與 resource-backed <code>doctor</code>。<code>identify</code> 與 <code>verify</code> 是明確的
+diagnostic exemptions；成功只證明各自的 diagnostic operation，不會開啟其他
+command 或 feature family。E3646A 使用 <code>INST:NSEL</code> 做通道預選；<code>OUTP ON/OFF</code>
+是全域輸出啟用/停用行為，即使命令接受通道參數，啟用或停用輸出仍可能影響
+儀器整體輸出狀態。</p>
+<p>E3646A 的 <code>ramp-list</code> 與 <code>sequence</code> 是 software workflows，不是 native LIST。
+Sequence 只允許目前已驗證的 read-only/output steps；Protection、Trigger、
+Snapshot、Restore、native LIST 與 completion-pulse steps 不支援。</p>
+<p>每個 PowerShell 工作階段設定一次 ASRL 資源：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">$env:POWERS_TOOL_ASRL_RESOURCE = "ASRL1::INSTR"
+</code></pre></div>
+<p>單純的 <code>list-resources</code> 通常不需要序列設定：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">powers-tool list-resources
+</code></pre></div>
+<p>如果 Keysight IO Libraries Suite / Connection Expert 已經設定好 ASRL 資源，請嘗試進行唯讀檢查而不覆寫這些設定：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">powers-tool verify --resource "$env:POWERS_TOOL_ASRL_RESOURCE"
+</code></pre></div>
+<p>若要為單一命令明確套用序列設定，請僅傳遞您要覆寫的欄位。E3646A 的出廠預設範例為 9600 baud、8 data bits、none parity、2 stop bits 與 DTR/DSR 握手，但儀器前控制板的設定可能已被修改：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">powers-tool verify --resource "$env:POWERS_TOOL_ASRL_RESOURCE" --serial-baud-rate 9600 --serial-data-bits 8 --serial-parity none --serial-stop-bits 2 --serial-flow-control dtr_dsr --serial-remote --serial-local-on-close
+</code></pre></div>
+<p><code>--serial-remote</code> 會發送 <code>SYST:REM</code>。<code>--serial-local-on-close</code> 會在清理時盡最大努力發送 <code>SYST:LOC</code>。這些設定會影響遠端/本機狀態，且僅在明確要求時才會發送。</p>
+<p>實用的唯讀/狀態範例：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">powers-tool identify --resource "$env:POWERS_TOOL_ASRL_RESOURCE" --serial-remote --serial-local-on-close
+powers-tool readback --resource "$env:POWERS_TOOL_ASRL_RESOURCE" --channel 1 --serial-remote --serial-local-on-close
+powers-tool measure --resource "$env:POWERS_TOOL_ASRL_RESOURCE" --channel 2 --serial-remote --serial-local-on-close
+powers-tool output-state --resource "$env:POWERS_TOOL_ASRL_RESOURCE" --channel 1 --serial-remote --serial-local-on-close
+</code></pre></div>
+<p>對於 PowerShell 中的序列讀取/寫入終止字元，請儘量使用別名：<code>CR</code>、<code>LF</code>、<code>CRLF</code> 或 <code>NONE</code>。<code>NONE</code>、省略或空白終止字元表示不覆寫 VISA 設定。</p>
+<h2 id="唯讀工作流程">唯讀工作流程</h2>
+<p>驗證儀器時，請先使用唯讀命令：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe identify --resource "$env:POWERS_TOOL_RESOURCE" --json --log-scpi
+.\powers-tool.exe readback --resource "$env:POWERS_TOOL_RESOURCE" --json --log-scpi
+.\powers-tool.exe protection-status --resource "$env:POWERS_TOOL_RESOURCE" --json --log-scpi
+.\powers-tool.exe validate-readonly --resource "$env:POWERS_TOOL_RESOURCE" --json --log-scpi
+</code></pre></div>
+<p>這些命令會查詢身分、程式設定點、測量值、狀態或保護狀態。它們不會刻意啟用輸出。</p>
+<h2 id="影響輸出的工作流程">影響輸出的工作流程</h2>
+<p>影響輸出的命令需要明確指定。使用前，請確認儀器型號、通道、DUT 接線、電壓、電流限制與保護設定。</p>
+<p>在不啟用輸出的情況下設定較低的設定點：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe set --resource "$env:POWERS_TOOL_RESOURCE" --channel 1 --voltage 1 --current 0.05 --json --log-scpi
+</code></pre></div>
+<p>讀回已設定的狀態：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe readback --resource "$env:POWERS_TOOL_RESOURCE" --json --log-scpi
+</code></pre></div>
+<p>僅在確認設定點安全後才啟用輸出。對 E3646A 而言，<code>OUTP ON/OFF</code> 是全域輸出啟用/停用行為；啟用輸出前請先確認實體接線與連接負載：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe output-on --resource "$env:POWERS_TOOL_RESOURCE" --channel 1 --confirm --json --log-scpi
+</code></pre></div>
+<p>檢查完成後關閉輸出：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe output-off --resource "$env:POWERS_TOOL_RESOURCE" --channel 1 --json --log-scpi
+</code></pre></div>
+<p>若要進行簡短的快速測試動作 (smoke action)，請將電壓與電流保持在低位，並使用 CLI README 中記錄的有限度命令。請勿針對未知的資源在無人值守的情況下執行輸出工作流程。</p>
+<h2 id="常用指令">常用指令</h2>
+<table>
+<thead>
+<tr>
+<th>指令</th>
+<th>典型用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list-resources --live-only</code></td>
+<td>尋找目前能回應 <code>*IDN?</code> 的資源。</td>
+</tr>
+<tr>
+<td><code>verify</code></td>
+<td>確認單一明確資源可被開啟並回應。</td>
+</tr>
+<tr>
+<td><code>identify</code></td>
+<td>讀取型號身分。</td>
+</tr>
+<tr>
+<td><code>measure</code></td>
+<td>讀取單一通道的電壓/電流。</td>
+</tr>
+<tr>
+<td><code>read-status</code></td>
+<td>讀取輸出狀態。</td>
+</tr>
+<tr>
+<td><code>readback</code></td>
+<td>讀取程式設定點與測量值。</td>
+</tr>
+<tr>
+<td><code>protection-status</code></td>
+<td>讀取保護狀態。</td>
+</tr>
+<tr>
+<td><code>validate-readonly</code></td>
+<td>執行一次唯讀診斷。</td>
+</tr>
+<tr>
+<td><code>set</code></td>
+<td>設定電壓/電流而不啟用輸出。</td>
+</tr>
+<tr>
+<td><code>output-on</code> / <code>output-off</code></td>
+<td>明確啟用或停用輸出。</td>
+</tr>
+<tr>
+<td><code>safe-off</code></td>
+<td>使用支援的安全路徑關閉輸出。</td>
+</tr>
+</tbody>
+</table>
+<h2 id="無硬體檢查">無硬體檢查</h2>
+<p>若只要確認安裝、CLI entry point 與 simulator 路徑，請使用：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">uv run powers-tool --version
+uv run powers-tool doctor --simulate --json
+</code></pre></div>
+<p>這些命令不會進行 live 或 system-VISA resource discovery、不會開啟 VISA resource、
+不會送出 SCPI、不會修改實體儀器狀態，也不會啟用輸出；不需要實體儀器或 vendor
+VISA runtime。</p>
+<h2 id="常見問題">常見問題</h2>
+<p>如果找不到 <code>powers-tool.exe</code>，請確認您位於包含 CLI 執行檔的資料夾中，並使用該資料夾中實際的檔名。</p>
+<p>如果找不到實機存活的資源，請檢查儀器電源、USB/LAN 纜線、VISA 驅動程式可見度，以及是否有其他程式佔用了該儀器。</p>
+<p>如果單純的 <code>list-resources</code> 顯示舊項目，請在常規操作流程改用 <code>--live-only</code> 重新執行，或使用 <code>--verify</code> 來診斷過時的 VISA 快取項目。</p>
+<p>如果命令拒絕執行，請在重試前閱讀驗證訊息。CLI 會在執行風險動作前，刻意拒絕不支援的型號、通道、不安全的設定點，以及缺少確認的操作。</p>
+<p>如果日誌或自動化需要 JSON 輸出，請加上 <code>--json</code>。來自 <code>--log-scpi</code> 的診斷 SCPI 日誌會分開寫入 (stderr)，讓 JSON stdout 保持可解析狀態。</p>
+<h2 id="更多-cli-文件">更多 CLI 文件</h2>
+<ul>
+<li><a href="README.zh-TW.html">CLI README</a>：工程建置、驗證腳本、完整指令參考、JSON 行為、worker 細節與維護者筆記。</li>
+<li><a href="../contracts/power-cli-jsonl-contract.md" rel="noopener noreferrer" target="_blank">Power CLI JSON / JSONL 契約</a>：結構化的命令列輸出規則。</li>
+<li><a href="../contracts/power-worker-contract.md" rel="noopener noreferrer" target="_blank">Power Worker 契約</a>：本機 worker REST、JSONL 與產物 (artifact) 契約。</li>
+<li><a href="../core/supported-models.md" rel="noopener noreferrer" target="_blank">支援型號</a>：特定型號的支援狀態與驗證筆記。</li>
+</ul>
 
-    <aside>
-        <h3>目錄 (Table of Contents)</h3>
-        <nav id="toc">
-            <!-- JavaScript 會自動產生側邊導航 -->
-        </nav>
-    </aside>
+  </main>
+  <script>
+document.addEventListener('DOMContentLoaded', () => {
+  const toc = document.getElementById('toc');
+  const headers = document.querySelectorAll('main h2, main h3');
+  headers.forEach(header => {
+    const a = document.createElement('a');
+    a.href = '#' + header.id;
+    a.textContent = header.textContent;
+    a.className = 'toc-link level-' + header.tagName.substring(1);
+    toc.appendChild(a);
+  });
 
-    <main>
-        <h1>Keysight Power CLI 使用者指南</h1>
+  document.querySelectorAll('.code-wrapper pre').forEach(pre => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'copy-btn';
+    btn.textContent = '複製';
+    pre.parentElement.appendChild(btn);
+    btn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(pre.innerText);
+        btn.textContent = '已複製';
+        setTimeout(() => { btn.textContent = '複製'; }, 1600);
+      } catch (err) {
+        btn.textContent = '複製失敗';
+        setTimeout(() => { btn.textContent = '複製'; }, 1600);
+      }
+    });
+  });
 
-        <p>本指南針對取得已建置之 CLI 執行檔或已安裝 <code>keysight-power</code> 命令的操作員，說明如何控制支援的 Keysight 直流電源供應器。重點涵蓋常規的實機 (live) 工作流程、資源選擇與安全優先檢查。有關開發人員環境設定、詳細指令參考與自動化細節，請參見 <a href="README.zh-TW.html">CLI README</a>。</p>
-
-        <h2 id="startup">啟動 CLI</h2>
-        <p>在包含 CLI 執行檔的資料夾中開啟 PowerShell 並檢查：</p>
-        <div class="code-wrapper"><pre><code>.\keysight-power.exe --version</code></pre></div>
-
-        <p>發佈資料夾可能包含帶有版本號的執行檔名稱，例如：</p>
-        <div class="code-wrapper"><pre><code>keysight-power-&lt;version&gt;.exe</code></pre></div>
-
-        <p>如果您的發佈資料夾使用的是帶有版本號的執行檔，請在以下的命令中使用該檔名。開發人員或簽出原始碼的使用者請參閱 <a href="README.zh-TW.html">CLI README</a> 以了解虛擬環境、模組、驗證與建置命令。</p>
-
-        <p>若為已安裝的命令，請將 <code>.\keysight-power.exe</code> 替換為 <code>keysight-power</code>：</p>
-        <div class="code-wrapper"><pre><code>keysight-power --version</code></pre></div>
-
-        <h2 id="first-live-check">首次實機檢查 (First Live Check)</h2>
-        <p>在檢查新電腦、VISA runtime、連線或電源供應器設定時，請使用此流程。</p>
-        <ol>
-            <li>確認該儀器可安全地進行查詢，且任何連接的受測物 (DUT) 均能承受現有的輸出狀態。</li>
-            <li>僅列出目前能回應 <code>*IDN?</code> 的 VISA 資源：
-                <div class="code-wrapper"><pre><code>.\keysight-power.exe list-resources --live-only</code></pre></div>
-            </li>
-            <li>複製目標儀器確切的資源字串，並設定工作階段變數：
-                <div class="code-wrapper"><pre><code>$env:KEYSIGHT_POWER_RESOURCE = "USB0::...::INSTR"</code></pre></div>
-            </li>
-            <li>執行唯讀的身分檢查：
-                <div class="code-wrapper"><pre><code>.\keysight-power.exe verify --resource "$env:KEYSIGHT_POWER_RESOURCE" --log-scpi</code></pre></div>
-            </li>
-            <li>在執行任何輸出動作前，進行唯讀的測量或狀態檢查：
-                <div class="code-wrapper"><pre><code>.\keysight-power.exe measure --resource "$env:KEYSIGHT_POWER_RESOURCE" --channel 1 --log-scpi
-.\keysight-power.exe read-status --resource "$env:KEYSIGHT_POWER_RESOURCE" --json --log-scpi</code></pre></div>
-            </li>
-        </ol>
-        <p>對於實機命令，請使用明確的資源字串。請勿依賴腳本或無人值守的工作流程來猜測應使用哪台儀器。</p>
-
-        <h2 id="list-resources">資源列表</h2>
-        <p>對於正常的實機使用，建議使用：</p>
-        <div class="code-wrapper"><pre><code>.\keysight-power.exe list-resources --live-only</code></pre></div>
-
-        <p>單純的 <code>list-resources</code> 是被動的 VISA 探索。當裝置斷線或無法使用時，它可能會顯示過時的快取資源。<code>--live-only</code> 會開啟每個找到的資源，查詢 <code>*IDN?</code>，並只印出有回應的資源。</p>
-
-        <p>診斷過時項目時請使用 <code>--verify</code>，因為它會同時回報實機存活與連線失敗的資源：</p>
-        <div class="code-wrapper"><pre><code>.\keysight-power.exe list-resources --verify</code></pre></div>
-
-        <p>將結果複製到自動化流程時，請加上 <code>--json</code>：</p>
-        <div class="code-wrapper"><pre><code>.\keysight-power.exe list-resources --live-only --json</code></pre></div>
-
-                <h2 id="resource-vars">資源環境變數</h2>
-        <p>使用環境變數可以簡化在同一個工作階段中複製與執行多個命令的操作：</p>
-        <div class="code-wrapper"><pre><code>$env:KEYSIGHT_POWER_RESOURCE = "USB0::...::INSTR"
-$env:KEYSIGHT_POWER_ASRL_RESOURCE = "ASRL1::INSTR"</code></pre></div>
-        <p>請注意：</p>
-        <ul>
-            <li><code>$env:KEYSIGHT_POWER_RESOURCE</code> 用於通用的實機 USB/LAN 範例。</li>
-            <li><code>$env:KEYSIGHT_POWER_ASRL_RESOURCE</code> 用於 E3646A RS-232 / ASRL 範例。</li>
-            <li>這些是為了文件方便而提供的變數，並非隱藏的 CLI 預設值。</li>
-            <li>實機命令仍需要明確提供 <code>--resource</code> 參數。</li>
-        </ul>
-
-        <h2 id="e3646a-asrl">E3646A RS-232 / ASRL</h2>
-        <p>E3646A 在 RS-232/ASRL 上支援已實機驗證的唯讀/狀態查詢與輸出工作流程。型號支援的實機命令包括 <code>identify</code>、<code>measure</code>、<code>readback</code>、<code>read-status</code>、<code>output-state</code>、<code>capabilities</code>、<code>set</code>、<code>apply</code>、<code>output-on</code>、<code>output-off</code>、<code>safe-off</code>、<code>cycle-output</code>、<code>smoke-output</code>、<code>ramp</code>、<code>ramp-list</code> 與影響輸出的 <code>sequence</code> 步驟。<code>verify</code> 也可作為與型號無關的連線診斷，用以開啟所選資源並查詢 <code>*IDN?</code>。E3646A 使用 <code>INST:NSEL</code> 做通道預選；<code>OUTP ON/OFF</code> 是全域輸出啟用/停用行為。E3646A 的保護寫入、trigger 工作流程、snapshot restore、completion pulse 與 native LIST 仍維持停用。</p>
-
-        <p>每個 PowerShell 工作階段設定一次 ASRL 資源：</p>
-        <div class="code-wrapper"><pre><code>$env:KEYSIGHT_POWER_ASRL_RESOURCE = "ASRL1::INSTR"</code></pre></div>
-
-        <p>單純的 <code>list-resources</code> 通常不需要序列設定：</p>
-        <div class="code-wrapper"><pre><code>keysight-power list-resources</code></pre></div>
-
-        <p>如果 Keysight IO Libraries Suite / Connection Expert 已經設定好 ASRL 資源，請嘗試進行唯讀檢查而不覆寫這些設定：</p>
-        <div class="code-wrapper"><pre><code>keysight-power verify --resource "$env:KEYSIGHT_POWER_ASRL_RESOURCE"</code></pre></div>
-
-        <p>若要為單一命令明確套用序列設定，請僅傳遞您要覆寫的欄位。E3646A 的出廠預設範例為 9600 baud、8 data bits、none parity、2 stop bits 與 DTR/DSR 握手，但儀器前控制板的設定可能已被修改：</p>
-        <div class="code-wrapper"><pre><code>keysight-power verify --resource "$env:KEYSIGHT_POWER_ASRL_RESOURCE" --serial-baud-rate 9600 --serial-data-bits 8 --serial-parity none --serial-stop-bits 2 --serial-flow-control dtr_dsr --serial-remote --serial-local-on-close</code></pre></div>
-
-        <p><code>--serial-remote</code> 會發送 <code>SYST:REM</code>。<code>--serial-local-on-close</code> 會在清理時盡最大努力發送 <code>SYST:LOC</code>。這些設定會影響遠端/本機狀態，且僅在明確要求時才會發送。</p>
-
-        <p>實用的唯讀範例：</p>
-        <div class="code-wrapper"><pre><code>keysight-power identify --resource "$env:KEYSIGHT_POWER_ASRL_RESOURCE" --serial-remote --serial-local-on-close
-keysight-power readback --resource "$env:KEYSIGHT_POWER_ASRL_RESOURCE" --channel 1 --serial-remote --serial-local-on-close
-keysight-power measure --resource "$env:KEYSIGHT_POWER_ASRL_RESOURCE" --channel 2 --serial-remote --serial-local-on-close
-keysight-power output-state --resource "$env:KEYSIGHT_POWER_ASRL_RESOURCE" --channel 1 --serial-remote --serial-local-on-close</code></pre></div>
-
-        <p>對於 PowerShell 中的序列讀取/寫入終止字元，請儘量使用別名：<code>CR</code>、<code>LF</code>、<code>CRLF</code> 或 <code>NONE</code>。<code>NONE</code>、省略或空白終止字元表示不覆寫 VISA 設定。</p>
-
-<h2 id="readonly-workflow">唯讀工作流程</h2>
-        <p>驗證儀器時，請先使用唯讀命令：</p>
-        <div class="code-wrapper"><pre><code>.\keysight-power.exe identify --resource "$env:KEYSIGHT_POWER_RESOURCE" --json --log-scpi
-.\keysight-power.exe readback --resource "$env:KEYSIGHT_POWER_RESOURCE" --json --log-scpi
-.\keysight-power.exe protection-status --resource "$env:KEYSIGHT_POWER_RESOURCE" --json --log-scpi
-.\keysight-power.exe validate-readonly --resource "$env:KEYSIGHT_POWER_RESOURCE" --json --log-scpi</code></pre></div>
-        <p>這些命令會查詢身分、程式設定點、測量值、狀態或保護狀態。它們不會刻意啟用輸出。</p>
-
-        <h2 id="output-workflow">影響輸出的工作流程</h2>
-        <p>影響輸出的命令需要明確指定。使用前，請確認儀器型號、通道、DUT 接線、電壓、電流限制與保護設定。</p>
-
-        <p>在不啟用輸出的情況下設定較低的設定點：</p>
-        <div class="code-wrapper"><pre><code>.\keysight-power.exe set --resource "$env:KEYSIGHT_POWER_RESOURCE" --channel 1 --voltage 1 --current 0.05 --json --log-scpi</code></pre></div>
-
-        <p>讀回已設定的狀態：</p>
-        <div class="code-wrapper"><pre><code>.\keysight-power.exe readback --resource "$env:KEYSIGHT_POWER_RESOURCE" --json --log-scpi</code></pre></div>
-
-        <p>僅在確認設定點安全後才啟用輸出：</p>
-        <div class="code-wrapper"><pre><code>.\keysight-power.exe output-on --resource "$env:KEYSIGHT_POWER_RESOURCE" --channel 1 --confirm --json --log-scpi</code></pre></div>
-
-        <p>檢查完成後關閉輸出：</p>
-        <div class="code-wrapper"><pre><code>.\keysight-power.exe output-off --resource "$env:KEYSIGHT_POWER_RESOURCE" --channel 1 --json --log-scpi</code></pre></div>
-
-        <p>若要進行簡短的快速測試動作 (smoke action)，請將電壓與電流保持在低位，並使用 CLI README 中記錄的有限度命令。請勿針對未知的資源在無人值守的情況下執行輸出工作流程。</p>
-
-        <h2 id="common-commands">常用指令</h2>
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>指令</th>
-                        <th>典型用途</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><code>list-resources --live-only</code></td>
-                        <td>尋找目前能回應 <code>*IDN?</code> 的資源。</td>
-                    </tr>
-                    <tr>
-                        <td><code>verify</code></td>
-                        <td>確認單一明確資源可被開啟並回應。</td>
-                    </tr>
-                    <tr>
-                        <td><code>identify</code></td>
-                        <td>讀取型號身分。</td>
-                    </tr>
-                    <tr>
-                        <td><code>measure</code></td>
-                        <td>讀取單一通道的電壓/電流。</td>
-                    </tr>
-                    <tr>
-                        <td><code>read-status</code></td>
-                        <td>讀取輸出狀態。</td>
-                    </tr>
-                    <tr>
-                        <td><code>readback</code></td>
-                        <td>讀取程式設定點與測量值。</td>
-                    </tr>
-                    <tr>
-                        <td><code>protection-status</code></td>
-                        <td>讀取保護狀態。</td>
-                    </tr>
-                    <tr>
-                        <td><code>validate-readonly</code></td>
-                        <td>執行一次唯讀診斷。</td>
-                    </tr>
-                    <tr>
-                        <td><code>set</code></td>
-                        <td>設定電壓/電流而不啟用輸出。</td>
-                    </tr>
-                    <tr>
-                        <td><code>output-on</code> / <code>output-off</code></td>
-                        <td>明確啟用或停用輸出。</td>
-                    </tr>
-                    <tr>
-                        <td><code>safe-off</code></td>
-                        <td>使用支援的安全路徑關閉輸出。</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <h2 id="faq">常見問題</h2>
-        <p>如果找不到 <code>keysight-power.exe</code>，請確認您位於包含 CLI 執行檔的資料夾中，並使用該資料夾中實際的檔名。</p>
-        <p>如果找不到實機存活的資源，請檢查儀器電源、USB/LAN 纜線、VISA 驅動程式可見度，以及是否有其他程式佔用了該儀器。</p>
-        <p>如果單純的 <code>list-resources</code> 顯示舊項目，請在常規操作流程改用 <code>--live-only</code> 重新執行，或使用 <code>--verify</code> 來診斷過時的 VISA 快取項目。</p>
-        <p>如果命令拒絕執行，請在重試前閱讀驗證訊息。CLI 會在執行風險動作前，刻意拒絕不支援的型號、通道、不安全的設定點，以及缺少確認的操作。</p>
-        <p>如果日誌或自動化需要 JSON 輸出，請加上 <code>--json</code>。來自 <code>--log-scpi</code> 的診斷 SCPI 日誌會分開寫入 (stderr)，讓 JSON stdout 保持可解析狀態。</p>
-
-        <h2 id="more-docs">更多 CLI 文件</h2>
-        <ul>
-            <li><a href="README.zh-TW.html">CLI README</a>：工程建置、驗證腳本、完整指令參考、JSON 行為、worker 細節與維護者筆記。</li>
-            <li><a href="../contracts/power-cli-jsonl-contract.md">Power CLI JSON / JSONL 契約</a>：結構化的命令列輸出規則。</li>
-            <li><a href="../contracts/power-worker-contract.md">Power Worker 契約</a>：本機 worker REST、JSONL 與產物 (artifact) 契約。</li>
-            <li><a href="../core/supported-models.md">支援型號</a>：特定型號的支援狀態與驗證筆記。</li>
-        </ul>
-
-    </main>
-
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            // 自動產生 TOC 側邊導航欄
-            const toc = document.getElementById("toc");
-            const headers = document.querySelectorAll("h2");
-
-            headers.forEach(h2 => {
-                if (!h2.id) {
-                    h2.id = h2.innerText.replace(/\s+/g, '-').toLowerCase();
-                }
-                const a = document.createElement("a");
-                a.href = "#" + h2.id;
-                a.innerText = h2.innerText;
-                a.className = "toc-link";
-                toc.appendChild(a);
-            });
-
-            // 加入「複製程式碼」功能
-            document.querySelectorAll(".code-wrapper pre").forEach(pre => {
-                const btn = document.createElement("button");
-                btn.innerText = "複製";
-                btn.className = "copy-btn";
-
-                // 將按鈕加入 code-wrapper，而非 pre 內，避免排版問題
-                pre.parentElement.appendChild(btn);
-
-                btn.onclick = () => {
-                    const code = pre.querySelector("code").innerText;
-                    navigator.clipboard.writeText(code).then(() => {
-                        btn.innerText = "已複製!";
-                        btn.style.backgroundColor = "rgba(16, 185, 129, 0.8)";
-                        setTimeout(() => {
-                            btn.innerText = "複製";
-                            btn.style.backgroundColor = "";
-                        }, 2000);
-                    }).catch(err => {
-                        console.error('複製失敗:', err);
-                    });
-                };
-            });
-
-            // 滾動時標記目前章節 (Scrollspy)
-            const tocLinks = document.querySelectorAll('.toc-link');
-            const observerOptions = {
-                root: null,
-                rootMargin: '0px 0px -80% 0px',
-                threshold: 0
-            };
-
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        tocLinks.forEach(link => {
-                            link.classList.remove('active');
-                            if (link.getAttribute('href') === `#${entry.target.id}`) {
-                                link.classList.add('active');
-                            }
-                        });
-                    }
-                });
-            }, observerOptions);
-
-            headers.forEach(header => observer.observe(header));
-        });
-    </script>
+  const links = [...document.querySelectorAll('.toc-link')];
+  const observer = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      links.forEach(link => link.classList.toggle('active', link.hash === '#' + entry.target.id));
+    }
+  }, { rootMargin: '0px 0px -78% 0px', threshold: 0 });
+  headers.forEach(header => observer.observe(header));
+});
+</script>
 </body>
 </html>

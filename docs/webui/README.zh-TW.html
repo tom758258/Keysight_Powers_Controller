@@ -1,10 +1,11 @@
 <!DOCTYPE html>
+
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Keysight Power WebUI 說明書</title>
-    <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Powers Tool WebUI</title>
+<style>
         :root {
             --primary: #2563eb;
             --primary-hover: #1d4ed8;
@@ -72,6 +73,7 @@
         .toc-link:hover, .toc-link.active {
             background-color: #e2e8f0;
             color: var(--primary);
+            font-weight: 500;
         }
 
         /* Main Content */
@@ -85,7 +87,7 @@
         h1 {
             font-size: 2.5rem;
             font-weight: 700;
-            margin-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
             letter-spacing: -0.02em;
         }
 
@@ -104,7 +106,7 @@
             font-weight: 600;
             margin-top: 2rem;
             margin-bottom: 1rem;
-            color: #1e293b;
+            color: var(--text-main);
         }
 
         p {
@@ -129,6 +131,31 @@
 
         a:hover {
             text-decoration: underline;
+        }
+
+        /* Table Styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 0.75rem 1rem;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background-color: #f1f5f9;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        tr:nth-child(even) {
+            background-color: #f8fafc;
         }
 
         /* Code Blocks & Inline Code */
@@ -184,40 +211,6 @@
             background: rgba(255, 255, 255, 0.2);
         }
 
-        /* Tables */
-        .table-container {
-            overflow-x: auto;
-            margin-bottom: 2rem;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
-        }
-
-        th, td {
-            padding: 0.875rem 1rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        th {
-            background-color: #f1f5f9;
-            font-weight: 600;
-            color: var(--text-main);
-            white-space: nowrap;
-        }
-
-        tr:last-child td {
-            border-bottom: none;
-        }
-
-        tr:hover td {
-            background-color: #f8fafc;
-        }
-
         /* Responsive */
         @media (max-width: 768px) {
             body {
@@ -229,6 +222,7 @@
                 position: relative;
                 border-right: none;
                 border-bottom: 1px solid var(--border-color);
+                padding: 1.5rem;
             }
             main {
                 padding: 1.5rem;
@@ -237,165 +231,125 @@
     </style>
 </head>
 <body>
-
-    <aside>
-        <h3>目錄 (Table of Contents)</h3>
-        <nav id="toc">
-            <!-- JavaScript 會自動產生側邊導航 -->
-        </nav>
-    </aside>
-
-    <main>
-        <h1>Keysight Power WebUI</h1>
-
-        <p>用於 Keysight Power 的 FastAPI 與靜態資源 WebUI 轉接器。</p>
-        <p>此 README 涵蓋 WebUI 的行為、API、驗證與維護者指南。關於一般操作員的工作流程，請參閱 <a href="USER_GUIDE.zh-TW.html">WebUI 使用者指南</a>。關於開發人員與 agent UI 變更的邊界，請參閱 <a href="web-ui-change-rules.md">Web UI 變更規則</a>。</p>
-        <p>WebUI 與 CLI 是建立在共用 Core runtime 之上的平行產品介面。</p>
-        <p>WebUI 內建於單一 <code>keysight-powers</code> 發行套件中，同時保留了 <code>keysight_power_webui</code> 的 import 邊界。它依賴共用的 <code>keysight_power_core</code> runtime 與發行套件的 <code>webui</code> extra。其前端由靜態的 <code>index.html</code>、<code>styles.css</code> 與 <code>app.js</code> 組成；不需要 Node 工具鏈。</p>
-
-        <h2 id="package-and-entry-point">套件與進入點 (Package And Entry Point)</h2>
-        <p>WebUI 提供了用於本機 FastAPI 伺服器的 <code>keysight-power-webui</code> 主控台命令，以及用於 Windows 啟動器的 <code>keysight-power-webui-launcher</code> wrapper。</p>
-
-        <h2 id="usage">用途</h2>
-        <p>WebUI 轉接器圍繞 <code>keysight_power_core</code> 中共用的 Core runtime，提供本機 FastAPI 與瀏覽器介面。</p>
-
-        <p>WebUI 負責：</p>
-        <ul>
-            <li>瀏覽器介面與 <code>src/keysight_power_webui/static/</code> 下的靜態資源。</li>
-            <li><code>src/keysight_power_webui/app.py</code> 中的 FastAPI 路由架構 (route shape)。</li>
-            <li><code>src/keysight_power_webui/launcher.py</code> 中的本機 Tkinter 啟動器行為。</li>
-            <li>面向瀏覽器的請求與回應序列化 (serialization)。</li>
-            <li>工作 (Job) 提交、工作狀態顯示與 SSE 事件呈現。</li>
-            <li>從唯讀 Core 操作衍生出來的 Live Data 顯示狀態。</li>
-            <li>資源掃描顯示與命令 metadata 的渲染。</li>
-        </ul>
-
-        <p>Core 負責：</p>
-        <ul>
-            <li>SCPI 命令生成與儀器 I/O。</li>
-            <li>Runtime 請求驗證與 dry-run 計畫。</li>
-            <li>輸出、保護、觸發、序列 (sequence)、斜坡 (ramp)、快照與還原行為。</li>
-            <li>安全限制與型號能力 (capability) 判定。</li>
-            <li>停止、取消、release/local (解除遠端/轉為本機)、關閉與清理行為。</li>
-        </ul>
-
-        <p>WebUI 必須使用 Core 的公開 API，不可 import CLI 轉接器程式碼，也不可重新實作儀器行為。</p>
-
-        <h2 id="execution">執行</h2>
-        <p>從 repository 根目錄：</p>
-        <div class="code-wrapper"><pre><code>uv run python -m keysight_power_webui.server --host 127.0.0.1 --port 7999</code></pre></div>
-
-        <p>開啟 <code>http://127.0.0.1:7999/</code>。</p>
-
-        <p>除非有刻意的原因需要將伺服器暴露給本機以外的網路，否則請保持 host 為 <code>127.0.0.1</code>。</p>
-
-        <p>安裝的 Windows GUI 啟動器 wrapper 為：</p>
-        <div class="code-wrapper"><pre><code>.\.venv\Scripts\keysight-power-webui.exe --version
-.\.venv\Scripts\keysight-power-webui-launcher.exe</code></pre></div>
-
-        <p>啟動器預設使用 <code>127.0.0.1:7999</code>，在點擊「Start」後開啟瀏覽器，並保持視窗存在，以便透過「Quit」停止本機的 Uvicorn 伺服器。如果所選的 port 上已經執行了 Keysight Power WebUI，啟動器會直接開啟該頁面而不會啟動第二個伺服器。如果該 port 被其他服務占用，則會拒絕啟動。硬體命令處於活動狀態時，「Quit」會被封鎖；請先在瀏覽器中停止或取消命令，並等待清理完成。</p>
-
-        <h2 id="api">API</h2>
-        <ul>
-            <li><code>GET /api/health</code>：伺服器與硬體鎖定狀態。</li>
-            <li><code>GET /api/commands</code>：命令 metadata、確認旗標，以及僅 WebUI 適用的停用限制。</li>
-            <li><code>POST /api/jobs</code>：以 <code>command</code>、<code>runtime</code>、<code>parameters</code> 及選用的 <code>artifacts</code> 提交命令工作。</li>
-            <li><code>GET /api/jobs/{job_id}</code>：讀取目前工作狀態。</li>
-            <li><code>POST /api/jobs/{job_id}/cancel</code>：請求取消。</li>
-            <li><code>GET /api/events?job_id=...</code>：帶有 <code>id</code>、<code>event</code> 與 <code>data</code> 的工作 SSE 串流。</li>
-            <li><code>POST /api/live</code>：啟動實機唯讀輪詢 (polling)。</li>
-            <li><code>GET /api/live/{job_id}/events</code>：即時資料 (live-data) SSE 串流。</li>
-            <li><code>POST /api/live/{job_id}/stop</code>：停止即時資料輪詢。</li>
-        </ul>
-        <p><code>/api/health</code> 在 <code>package</code> 欄位保留了轉接器識別碼 <code>keysight-power-webui</code>，而 <code>version</code> 則是來自單一安裝的 <code>keysight-powers</code> 發行套件。</p>
-
-        <h2 id="runtime-boundary">Runtime 邊界 (Runtime Boundary)</h2>
-        <p>WebUI 不會 import <code>keysight_power_cli</code>，也不會執行直接的 VISA 或 SCPI 操作。它會將 HTTP payload 對應到 core 的 <code>RuntimeOptions</code> 與請求物件，接著呼叫 <code>keysight_power_core.command_runner</code>。</p>
-
-        <p>真實硬體工作會由單一硬體鎖進行序列化。Simulate (模擬)、dry-run (預演)、離線 metadata 命令與 live-data 工作不會占用該鎖定。同步的 core 執行運行於 worker 執行緒，因此 FastAPI 的事件迴圈能繼續提供 health、工作狀態、取消與 SSE 端點的服務。</p>
-
-        <p>取消執行中的工作會先將其移至非終止狀態 <code>cancel_requested</code>。WebUI 會保留 <code>active_job_id</code> 與硬體鎖定，直到當前執行緒的 I/O 與 Core 的停止清理完成為止。只有在那之後，工作才會變成 <code>cancelled</code>；若清理失敗，則會變成 <code>failed</code>。已接受但尚未啟動的工作可立即變為 <code>cancelled</code>。</p>
-
-        <h2 id="ui">使用者介面 (UI)</h2>
-        <p>靜態 UI 是一個分為三區塊的儀表板：</p>
-        <ul>
-            <li>包含套件版本的標題區域，以及用於資源選擇和健康狀態的上方連線列；</li>
-            <li>用於各通道直接設定點及輸出捷徑的基本命令面板 (Basic command panel)；</li>
-            <li>透過 <code>/api/commands</code> 填充的可折疊命令列 (command rail)；</li>
-            <li>透過進階命令切換按鈕顯示的自動生成命令表單，內含具型別檢查的控制項，以及圖形化序列步進卡片編輯器 (Sequence step-card editor)；</li>
-            <li>用於即時趨勢圖、即時表格、工作歷程與結果 JSON 的右側面板。</li>
-        </ul>
-
-        <p>面向機器的命令 ID 保持 kebab-case（例如：<code>output-on</code>）。面向人類的 WebUI 命令名稱則使用空格與句首大寫 (sentence case)。</p>
-
-        <p><code>set</code> 命令在 Basic command 與 Commands 中接受設定電壓 (Voltage)、電流 (Current) 或兩者。空白的設定點欄位將自工作 payload 中被省略，且在 Core 中不被改變；Live Data/readback (讀回) 仍是獲取儀器完整設定點狀態的來源。
-        Basic output 控制項是帶有亮燈狀態的 ON 按鈕：未亮的 ON 控制項代表 OFF/未知，而亮起的 ON 控制項則代表根據最新 Live Data 的狀態為 ON。</p>
-
-        <p>Live Data 狀態列對 WebUI 狀態 (WebUI State)、命令狀態 (Command State) 與實機狀態 (Live State) 使用 LED 指示燈。命令狀態回報 WebUI 的命令路徑是否空閒以接受真實硬體工作；它反映的是 WebUI 的硬體 I/O 鎖定，而非儀器內部的狀態暫存器。實機狀態則維持與真實 Live Data 讀回及指令執行後的一次性更新綁定。</p>
-
-        <p>前端保留一個工作 SSE 控制器與一個即時資料 SSE 控制器。
-        Ramp List 使用專屬的區段卡片 (segment-card) 編輯器，具備版本化 JSON 載入/儲存功能，支援最多 10 個有序的區段，並在送出前具備全清單觸發保護 (full-list trip guarding) 機制。
-        Sequence (序列) 使用可折疊的步進卡片搭配 JSON 載入/儲存，在 WebUI 中最高支援 250 個步驟。載入的 Sequence JSON 在儲存或執行前會正規化為標準的 <code>{"version": 1, "steps": [...]}</code> 格式。CLI 與 Core 對 Sequence YAML/JSON 的支援保持不變，且不受 WebUI 步驟數量的限制。
-        工作結果 (Job Result) 歷程記錄預設為展開，且可以折疊或清除而不影響結果詳情 (Result Detail)。</p>
-
-        <h3>脈波工作流程</h3>
-        <p>Cycle Output 提供可選的完成脈波 (finished pulse)。Ramp 提供互斥的「區段完成」(Segment complete) 與「每一步驟」(Every-step) 脈波控制。Ramp List 載入/儲存會保留其全域脈波設定，而 Sequence 包含 Trigger pulse 動作。</p>
-
-        <p>脈波的後面板腳位與輸出通道相互獨立，並且僅限 E36312A。當已知所選資源為其他型號時，這些控制項會停用。Cycle Output 與 Ramp 中的脈波詳情欄位僅在脈波選項啟用後顯示。後面板腳位欄位提供所有有效腳位組合的選擇器，包含 All。Ramp 與 Ramp List 每一步驟的脈波接受額外的零毫秒延遲。</p>
-
-        <p>工作流程的完成脈波是軟體排程的後續動作 <code>*TRG</code> 脈波，而非原生的 LIST 執行。它們會短暫修改並還原觸發/後面板腳位設定，且全域的 <code>*TRG</code> 可能會影響其他已經 arm 的 BUS 行為。Sequence Trigger pulse 的 <code>Leave configured</code> 僅控制這些設定是否在脈波後被還原；它不會讓脈波觸發保持 armed 狀態，且可能影響後續的 Sequence 步驟或其他 BUS 觸發。</p>
-
-        <h3>觸發執行</h3>
-        <p>Trigger Fire 會對每個已經 arm 的 BUS 觸發發送全域 <code>*TRG</code>。其 Abort 目標通道僅在啟用 Wait complete 時才需要，並只在全儀器範圍的完成等待發生逾時或被中斷時使用。</p>
-
-        <p>對於 Trigger Step 與 Trigger List，Immediate 會在發送 <code>INIT</code> 時啟動，因此 Fire now 會被清除並停用。BUS 的 Wait complete 需要在同一個命令中使用 Fire now。沒有 Wait complete 就啟動的 LIST 需要 Leave configured；請選擇 Wait complete 以便在完成後還原，或是選擇 Leave configured 進行非同步執行。</p>
-
-        <h3>Trigger List 工作區</h3>
-        <p>Trigger List 使用專屬的三通道工作區編輯器。每個通道保有自己的計數以及 1 到 100 個步驟列，包含 Voltage、Current、Dwell、BOST 與 EOST。Run 僅提交所選的通道。Load/Save 使用嚴格的 <code>keysight-power-trigger-list-workspace</code> 版本 1 JSON，並保存所有三個通道草稿及共用控制項。啟用的 BOST/EOST 步驟列需要有 LIST 輸出腳位。</p>
-
-        <p>當選擇了 Wait complete 且關閉 Leave configured 時，完成後會寫回執行前的 Trigger 設定與 LIST 表格。執行中的表格在還原前可能會短暫可見。選擇 Leave configured 可保留新表格與 Trigger 設定。
-        Live Data 樣本包含已解析的型號身分及各通道的 OVP/OCP 觸發狀態 (trip state)。有效的 Live Data 型號能修復所選資源的命令支援快取；缺乏型號的結果不會取代已知的型號。</p>
-
-        <p>最新、明確的通道觸發狀態會針對該通道的直接輸出命令加入 WebUI 軟體保護 (soft guard)。過時或未知的觸發狀態則不會加入保護。Safe/off 及復原命令仍然可用。</p>
-
-        <p>命令被分類到 Output (輸出)、Output Workflows (輸出工作流程)、Protection (保護)、Trigger (觸發)、Snapshot (快照) 以及 Advanced Diagnostics (進階診斷)。Clear Protection (清除保護) 位於 Protection 下方，且依然需要明確確認。已觸發的通道卡片可開啟並自動填寫表單，而不會直接執行。Clear Status / Errors (清除狀態/錯誤) 是分開的，並且不會清除 OVP/OCP 保護鎖存器 (latches)。</p>
-
-        <p>進階診斷提供了 Clear Status / Errors、Get capabilities、Read device information 以及 Read errors。工作區為每個命令與資源保留最新的成功結果，而 Result Detail (結果詳情) 保留完整的原始工作 payload。Read errors (讀取錯誤) 會將儀器錯誤佇列中每個回傳的條目移除。</p>
-
-        <h2 id="limitations">限制</h2>
-        <p>不屬於 WebUI 介面範圍的命令會被 <code>/api/commands</code> 標記為停用，若被直接提交會回傳 <code>not_implemented_in_webui</code>。預設情況下，此套件不會執行任何硬體測試。</p>
-
-        <h2 id="testing">測試</h2>
-        <div class="code-wrapper"><pre><code>uv run python -m pytest tests/webui -q -p no:cacheprovider</code></pre></div>
-
-        <p>焦點啟動器與套件驗證：</p>
-        <div class="code-wrapper"><pre><code>.\.venv\Scripts\python.exe -m pytest tests\webui\test_launcher.py tests\webui\test_webui_import.py tests\core\test_distribution_metadata.py -q -p no:cacheprovider</code></pre></div>
-
-        <p>編輯 <code>src/keysight_power_webui/static/app.js</code> 後，請另外執行：</p>
-        <div class="code-wrapper"><pre><code>node --check src\keysight_power_webui\static\app.js</code></pre></div>
-
-        <p>在可行的情況下，進行更廣泛的無硬體驗證：</p>
-        <div class="code-wrapper"><pre><code>uv run python -m pytest tests -q -p no:cacheprovider</code></pre></div>
-
-        <p>在已經安裝 <code>keysight-powers</code> 的環境中，使用 PyInstaller 建置選用的本機 WebUI 啟動器執行檔。PyInstaller 是本機發佈建置工具，而非 WebUI 的 runtime 依賴套件，因此在全新機器上重新建置前，請先將其安裝至 venv：</p>
-        <div class="code-wrapper"><pre><code>uv pip install pyinstaller --python .\.venv\Scripts\python.exe
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_webui_exe.ps1</code></pre></div>
-
-        <p>建置完成後，請確認啟動器能回報套件版本：</p>
-        <div class="code-wrapper"><pre><code>.\dist\keysight-power-webui-launcher.exe --version</code></pre></div>
-
-        <p>數字欄位限制來自共用的<a href="../contracts/commands-parameter-contract.md">命令參數契約</a>。在辨識出資源型號後，UI 會套用已驗證的官方獨立通道直流輸出額定值，並對已知超出額定的請求停用「Run」。未知的型號不會套用憑空發明的限制；Core 仍具有最終決定權。</p>
-
-        <h2 id="documentation-navigation">文件導覽</h2>
-        <ul>
-            <li><a href="USER_GUIDE.zh-TW.html">WebUI 使用者指南</a>：面向操作員的 WebUI 使用指南。</li>
-            <li><a href="README.zh-TW.html">WebUI README</a>：此份有關 WebUI 行為、API、驗證及維護者的指南。</li>
-            <li><a href="web-ui-change-rules.md">Web UI 變更規則</a>：面向維護者與 agent 的 UI 變更規則。</li>
-        </ul>
-
-    </main>
-
-    <script>
+<aside>
+<h3>章節導覽</h3>
+<nav id="toc">
+<!-- JavaScript 會自動產生側邊導航 -->
+</nav>
+</aside>
+<main>
+<h1>Powers Tool WebUI</h1>
+<p>Powers Tool 的 FastAPI 與靜態資源 WebUI adapter。</p>
+<p>WebUI 是不綁定特定廠牌的產品介面；目前 Product-active 且完成硬體驗證的型號，以專案文件列出的 Keysight 型號為準，未知的實機硬體會在 Core 中 fail closed。</p>
+<p>本 README 說明 WebUI 行為、API、驗證與維護者邊界。一般操作員工作流程請參閱 <a href="USER_GUIDE.zh-TW.html">WebUI 使用者指南</a>；開發人員與 agent 的 UI 變更規則請參閱 <a href="web-ui-change-rules.md" rel="noopener noreferrer" target="_blank">WebUI 變更規則</a>。</p>
+<p>WebUI 與 CLI 是建立在共用 Core runtime 之上的平行產品介面。</p>
+<p>WebUI 內建於單一 <code>powers-tool</code> 發行套件中，同時保留 <code>powers_tool_webui</code> 的 import 邊界。前端由靜態 HTML/CSS 與以 <code>app.js</code> 為 composition root 的原生 JavaScript modules 組成，不需要 bundler 或 npm build pipeline；各功能則分散到 API、execution context、state、device/resource、command form、results、jobs、Live Data、JSON files、workflow editors、i18n 與 locale UI 等聚焦模組。</p>
+<h2 id="section-1">套件與進入點 (Package And Entry Point)</h2>
+<p>WebUI 提供兩個已安裝的 console command：</p>
+<ul>
+<li><code>powers-tool-webui</code>：啟動本機 FastAPI 伺服器。</li>
+<li><code>powers-tool-webui-launcher</code>：啟動 Windows GUI 啟動器。</li>
+</ul>
+<p>PyInstaller 獨立 GUI 執行檔位於 <code>dist\powers-tool-webui.exe</code>，它與上述兩個已安裝 wrapper 分開，不會重新命名或取代任何 entry point。獨立執行檔與 GUI launcher wrapper 共用同一套 launcher implementation。</p>
+<h2 id="section-2">Environment</h2>
+<p>根目錄的 <a href="../../README.zh-TW.md#安裝" rel="noopener noreferrer" target="_blank">README Install guide</a> 是 canonical setup reference。從 repository 根目錄準備 WebUI runtime：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">uv sync --extra webui --locked --link-mode=copy</code></pre></div>
+<p>若要執行測試或 PyInstaller build，請使用 locked development environment：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">uv sync --all-extras --locked --link-mode=copy</code></pre></div>
+<h2 id="section-3">Localization</h2>
+<p>維護中的 locale 是 <code>en</code> 與 <code>zh-TW</code>；English 是來源與 fallback locale。切換會在執行階段生效且不重新載入頁面，只改變瀏覽器呈現，不得建立 HTTP request、Job、workflow action 或 EventSource side effect。Machine values、API schema、command IDs、model IDs、VISA resources、SCPI 與 raw diagnostics 保持原值。</p>
+<p>語言偏好使用獨立的 browser storage key <code>powers-tool.webui.locale</code>。即使 storage 不可用，也會安全 fallback，不影響 WebUI 的正常操作。</p>
+<h2 id="section-4">Job Parameter Admission</h2>
+<p><code>POST /api/jobs</code> 頂層只接受 <code>command</code>、<code>runtime</code>、<code>parameters</code> 與可選的空 <code>artifacts</code>；未知的頂層欄位會回傳 HTTP 400。</p>
+<p><code>parameters</code> 必須先通過 Core 擁有的命令契約，才會排入工作或取得硬體鎖。WebUI 不重複維護各命令 allowlist、alias 或型別強制轉換。錯誤的精確型別、非法 null、未知／不適用欄位與 alias conflict 都會回傳 HTTP 400，而不是伺服器錯誤；實際執行的是 admission 後的 canonical request。</p>
+<h2 id="section-5">用途</h2>
+<p>WebUI adapter 以 <code>powers_tool_core</code> 的共用 Core runtime 為中心，提供本機 FastAPI 與瀏覽器介面。</p>
+<p>WebUI 負責瀏覽器與靜態資源、FastAPI route shape、Tkinter launcher、面向瀏覽器的序列化、Job 提交與 SSE 呈現、Live Data 顯示、資源掃描，以及命令 metadata 呈現。</p>
+<p>Core 負責 SCPI 與儀器 I/O、Runtime 驗證與 dry-run 規劃、輸出／保護／觸發／Sequence／Ramp／Snapshot／Restore 行為、安全限制、型號與 planning-profile metadata，以及 Stop、取消、release/local、session close 與 cleanup。</p>
+<p>WebUI 必須使用 Core 公開 API，不得 import CLI adapter 程式碼，也不得重新實作儀器行為。</p>
+<h2 id="section-6">執行</h2>
+<p>從 repository 根目錄執行：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">uv run python -m powers_tool_webui.server --host 127.0.0.1 --port 7999</code></pre></div>
+<p>開啟 <code>http://127.0.0.1:7999/</code>。除非刻意要把伺服器暴露到本機以外的網路，否則請保持 host 為 <code>127.0.0.1</code>。</p>
+<p>已安裝的 Windows console wrappers：</p>
+<div class="code-wrapper"><pre><code class="language-powershell"># FastAPI server console wrapper
+.\.venv\Scripts\powers-tool-webui.exe --version
+# GUI launcher console wrapper
+.\.venv\Scripts\powers-tool-webui-launcher.exe</code></pre></div>
+<p>無參數啟動時，launcher 會保持隱藏，從 <code>7999</code> 開始最多嘗試 100 個連接埠（通常到 <code>8098</code>），並以實際 bind 測試每個候選。新服務通過 <code>/api/health</code> readiness 後才開啟瀏覽器與 Running 視窗。</p>
+<p><code>--port 9000</code> 只嘗試固定連接埠；加上 <code>--auto-port</code> 才會從指定值繼續自動嘗試：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">.\.venv\Scripts\powers-tool-webui-launcher.exe --port 9000
+.\.venv\Scripts\powers-tool-webui-launcher.exe --port 9000 --auto-port</code></pre></div>
+<p>只有全部自動候選都因 address-in-use 失敗時才顯示手動 fallback。其他 bind、application initialization、server-thread early exit 或 readiness timeout 都是 fatal startup failure，會保留原始細節並完成清理。</p>
+<p><code>Quit</code> 會先要求取消所有活動中的 WebUI 工作（包含 Live Data、Simulate 與 Dry-run workflow），等待正常清理，再停止 launcher 擁有的伺服器。若清理或關閉逾時，launcher 會保持開啟並回報 shutdown incomplete。</p>
+<h2 id="section-7">API</h2>
+<ul>
+<li><code>GET /api/health</code>：伺服器與硬體鎖狀態。</li>
+<li><code>GET /api/commands</code>：命令 metadata、確認旗標、WebUI 限制，以及 Core 衍生的型號與精確實機支援摘要。</li>
+<li><code>POST /api/jobs</code>：以 <code>command</code>、<code>runtime</code>、<code>parameters</code> 與可選 <code>artifacts</code> 提交工作。</li>
+<li><code>GET /api/jobs/{job_id}</code>：讀取目前工作狀態。</li>
+<li><code>POST /api/jobs/{job_id}/cancel</code>：提出取消要求。</li>
+<li><code>GET /api/events?job_id=...</code>：Job SSE stream。</li>
+<li><code>POST /api/live</code>：啟動實機唯讀輪詢。</li>
+<li><code>GET /api/live/{job_id}/events</code>：Live Data SSE stream。</li>
+<li><code>POST /api/live/{job_id}/stop</code>：停止 Live Data 輪詢。</li>
+</ul>
+<p><code>/api/commands</code> 的實體 metadata 只會以 canonical <code>model_id</code> 作為各 model map 的 key；非實體 profile（例如 <code>generic-scpi</code>）位於獨立的 <code>planning_profiles</code>，不會混入實體型號 map。Evidence 與私有支援 metadata 不會對外暴露。</p>
+<p><code>/api/health</code> 的 <code>package</code> 保留 adapter 識別碼 <code>powers-tool-webui</code>，<code>version</code> 則來自單一已安裝的 <code>powers-tool</code> distribution。</p>
+<h2 id="section-8">Runtime 邊界 (Runtime Boundary)</h2>
+<p>WebUI 不 import <code>powers_tool_cli</code>，也不直接執行 VISA 或 SCPI；它把 HTTP payload 對應到 Core 的 <code>RuntimeOptions</code> 與 request objects，再呼叫 <code>powers_tool_core.command_runner</code>。</p>
+<p>真實硬體工作由單一硬體鎖序列化；Simulate、Dry-run、離線 metadata 與 Live Data 工作不占用該鎖。同步 Core 執行位於 worker thread，因此 FastAPI event loop 仍可服務 health、工作狀態、取消與 SSE。</p>
+<p>Raw <code>/api/jobs</code> 使用 V2 runtime identity：Dry-run 必須且只能提供 <code>planning_model_id</code> 或 <code>planning_profile_id</code> 其中之一；Simulate 只接受實體 <code>planning_model_id</code>；Real 只接受可選的 <code>expected_model_id</code>。Core 會查詢 <code>*IDN?</code>、解析廠牌與型號，並在命令特定 SCPI 前檢查預期型號；安全護欄永遠不能覆蓋 IDN 選出的實際驅動程式。</p>
+<p>Legacy <code>runtime.model_profile</code> 與 <code>runtime.model</code> 會被拒絕。WebUI 不會從看似真實或虛假的 resource string 猜測規劃型號；請提供 V2 planning field，或使用 deterministic SIM resource。</p>
+<p>瀏覽器的 Real、Simulate 與 Dry-run 都是頁面內狀態；重新載入時一律回到 Real，且不把模式、身分或實機寫入授權存入 browser storage。No-hardware request 會省略 live resource、serial options、expected-model guard 與 confirmation。</p>
+<p>取消執行中的工作會先進入非終止狀態 <code>cancel_requested</code>；WebUI 保留 <code>active_job_id</code> 與硬體鎖，直到 I/O 與 Core 清理結束。之後才進入 <code>cancelled</code>；清理失敗則為 <code>failed</code>。</p>
+<h2 id="section-9">使用者介面 (UI)</h2>
+<p>靜態 UI 是三區塊儀表板：上方連線與版本區、Basic command 與可折疊 command rail、以及 Live Data、Job History 和結果 JSON 的右側面板。命令 ID 保持 kebab-case；面向使用者的名稱使用空格與 sentence case。</p>
+<p>Device options 提供 Real、Simulate、Dry-run 與 Real 模式的 <code>Expected model</code>。<code>Auto-detect</code> 依連線儀器 IDN 判定；<code>Require &lt;model&gt;</code> 只建立預期型號護欄與前端規劃提示，不會覆蓋 IDN 選出的驅動程式。頁面會分別顯示已偵測型號、Expected model、transport/backend 與支援內容。</p>
+<p>Real 模式使用頁面內的寫入授權。非空白資源會為目前的資源、Expected model 與偵測型號內容建立預設啟用的授權；Device options 可鎖定寫入。資源或身分內容改變時會建立新授權內容。標題中的 Writes locked／enabled 只是狀態顯示。</p>
+<p>前端可隱藏或停用不支援命令，但這只是 UX；直接呼叫 <code>/api/jobs</code> 仍必須通過 WebUI backend 與 Core 的精確 model/command/transport/backend/feature gate。WebUI 是 Product-only，不提供 validation override 或 backend selector。</p>
+<p>Basic <code>set</code> 可只設定 Voltage、Current 或兩者。空白欄位會從 payload 省略。E3646A 使用一個全域輸出開關：CH1／CH2 的輸出控制會顯示由 ALL 控制，但各通道的 Voltage、Current 與 Set 仍保持獨立。</p>
+<p>Ramp List 編輯器最多 10 個有序 segment，儲存 strict v4；Sequence 編輯器最多 250 步，儲存 strict v2。兩者都明確包含 <code>loop_count</code>。Ramp、Ramp List 與 Sequence 的 Loop count 在啟用時接受 2 至 10,000；Core admission 另限制最多 1,000,000 個 logical execution units，超過 100,000 時 UI 會顯示長時間執行警告。</p>
+<h3>脈波工作流程</h3>
+<p>Cycle Output 可選 finished pulse；Ramp 的 Pulse timing 為 None、Every step、Ramp complete 或 Loop complete；Ramp List 為 None、Every step、Segment complete 或 Loop complete；Sequence 只保留 per-Step Trigger pulse。</p>
+<p>後面板 pulse pin 與輸出通道互相獨立，且只支援 E36312A。完成脈波是軟體排程的後續 <code>*TRG</code>，不是 native LIST；它會暫時修改並還原 trigger／rear-pin 設定，而全域 <code>*TRG</code> 可能影響其他已 arm 的 BUS 行為。</p>
+<h3>觸發執行</h3>
+<p>Trigger Fire 會對所有已 arm 的 BUS trigger 發送全域 <code>*TRG</code>。Trigger Step/List 使用 Immediate 時會在送出 <code>INIT</code> 即啟動，因此 Fire now 會被清除並停用。BUS 的 Wait complete 必須在同一命令中搭配 Fire now；不等待完成的 LIST 則必須選擇 Leave configured。</p>
+<h3>Trigger List 工作區</h3>
+<p>Trigger List 使用三通道工作區，每個通道保留自己的 count 與 1 至 100 個 step row，包含 Voltage、Current、Dwell、BOST 與 EOST。Run 只提交所選通道；Load/Save 使用 strict <code>powers-tool-trigger-list-workspace</code> version 1 JSON。</p>
+<p>Live Data 樣本包含解析後型號與各通道 OVP/OCP trip state。新鮮且明確的 trip 狀態會對該通道的直接輸出命令加入 WebUI soft guard；safe/off 與復原命令仍可用。Advanced Diagnostics 提供 Clear Status / Errors、Get capabilities、Read device information 與 Read errors。</p>
+<h2 id="section-10">限制</h2>
+<p>不在 WebUI 介面範圍內的命令會由 <code>/api/commands</code> 標示停用，直接提交時回傳 <code>not_implemented_in_webui</code>。後端／Core 也會拒絕不支援型號、命令、模式與必要功能的直接請求；瀏覽器顯示不是安全邊界。</p>
+<p>實機驗證 evidence 由 CLI suite artifact 記錄，不會因瀏覽器選擇器而建立或提升。權威命令清單請參閱 <a href="../core/supported-models.md#product-live-exact-scope-matrix" rel="noopener noreferrer" target="_blank">Product LIVE exact-scope matrix</a>。目前連線範圍為：</p>
+<ul>
+<li>E36312A：USB + system VISA；LAN + system VISA。</li>
+<li>EDU36311A：USB + system VISA；LAN + system VISA。</li>
+<li>E3646A：ASRL／RS-232 + system VISA。</li>
+</ul>
+<p>只有 Core 精確矩陣中的命令會在上述連線開放。E3646A 的 USB 與 LAN 目前不在範圍內；其 protection、trigger/native LIST、snapshot/restore 與 completion pulse 也維持停用。</p>
+<h2 id="section-11">測試</h2>
+<div class="code-wrapper"><pre><code class="language-powershell">uv run python -m pytest tests/webui -q -p no:cacheprovider</code></pre></div>
+<p>聚焦 launcher 與套件驗證：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">.\.venv\Scripts\python.exe -m pytest tests\webui\test_launcher.py tests\webui\test_webui_import.py tests\core\test_distribution_metadata.py -q -p no:cacheprovider</code></pre></div>
+<p>編輯 WebUI JavaScript 後，另執行：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">node --check src\powers_tool_webui\static\execution-context.js
+node --check src\powers_tool_webui\static\electrical.js
+node --check src\powers_tool_webui\static\app.js</code></pre></div>
+<p>可行時執行更廣泛的無硬體驗證：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">uv run python -m pytest tests -q -p no:cacheprovider</code></pre></div>
+<p>從 locked development environment 建置本機 WebUI launcher：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_webui_exe.ps1
+.\dist\powers-tool-webui.exe --version</code></pre></div>
+<p>數字欄位限制來自共用的 <a href="../contracts/commands-parameter-contract.md" rel="noopener noreferrer" target="_blank">Commands parameter contract</a>。辨識資源型號後，UI 會套用已驗證的官方獨立通道直流輸出額定值；未知型號不會被套用臆測限制，Core 仍是最終權威。</p>
+<h2 id="section-12">文件導覽</h2>
+<ul>
+<li><a href="USER_GUIDE.zh-TW.html">WebUI 使用者指南</a>：面向操作員的 WebUI 使用指南。</li>
+<li><a href="README.zh-TW.html">WebUI README</a>：本文件，涵蓋 WebUI 行為、API、驗證與維護者邊界。</li>
+<li><a href="web-ui-change-rules.md" rel="noopener noreferrer" target="_blank">WebUI 變更規則</a>：面向維護者與 agent 的 UI 變更規則。</li>
+<li><a href="localization-contract.md" rel="noopener noreferrer" target="_blank">Localization Contract</a>：維護中的瀏覽器在地化與 presentation-only runtime contract。</li>
+</ul>
+</main>
+<script>
         document.addEventListener("DOMContentLoaded", () => {
             // 自動產生 TOC 側邊導航欄
             const toc = document.getElementById("toc");
@@ -424,7 +378,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_webui_ex
                 btn.onclick = () => {
                     const code = pre.querySelector("code").innerText;
                     navigator.clipboard.writeText(code).then(() => {
-                        btn.innerText = "已複製!";
+                        btn.innerText = "已複製！";
                         btn.style.backgroundColor = "rgba(16, 185, 129, 0.8)";
                         setTimeout(() => {
                             btn.innerText = "複製";
