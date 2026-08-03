@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Clarifies Product support and contributor-validation documentation by
+  removing stale implementation history and making explicit that passing
+  validation evidence does not automatically open Product support.
+
 ## 2.0.0
 
 - Updates the Common Worker, CLI JSON/JSONL, and orchestrator
