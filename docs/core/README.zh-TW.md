@@ -39,7 +39,7 @@ ID，例如 `keysight-e36312a`。Vendor-specific driver class name 保持不變�
 Product execution 必須通過 exact `model_id + command + transport + backend +
 required feature` scope；缺少、未知或 pending scope 都會 fail closed。`expected_model_id`
 只作 live mismatch guard，不會選擇 driver 或解鎖 command。No-hardware capability、
-candidate、歷史 evidence、另一種 transport/backend 或另一個 feature 都不代表
+candidate、validation evidence、另一種 transport/backend 或另一個 feature 都不代表
 Product-open。
 
 `list-resources`、`verify`、`identify`、`error` 與 `clear` 是明確的 diagnostic

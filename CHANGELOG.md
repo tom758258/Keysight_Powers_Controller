@@ -2,11 +2,7 @@
 
 ## 2.0.0
 
-- Simplifies internal live validation to use the Product CLI and Core-owned
-  candidate inventory directly; removes the former companion toolchain and
-  artifact-security machinery. Product support remains fail-closed and
-  validation evidence remains non-promoting.
-- Updates the provisional Common Worker, CLI JSON/JSONL, and orchestrator
+- Updates the Common Worker, CLI JSON/JSONL, and orchestrator
   contracts to schema version 2 only for the shared `POST /command` mode/model
   context. Common fields are `mode`, live-only `expected_model_id`, and physical
   `planning_model_id`; project-specific contracts may define an additional
@@ -34,15 +30,9 @@
   discriminator to `powers-tool-ramp-list`.
 - Migrates support policy to canonical `model_id` while preserving the exact
   Product-open and pending command, transport, backend, and feature boundaries.
-- Preserves existing hardware evidence without treating the identity migration
-  as new hardware validation. Currently validated hardware remains the
-  documented Keysight models; no support scope was expanded by the rename.
-- Expands the model-specific `full` contributor-validation plans with bounded
-  standalone `output-on`, logging, resource-backed doctor, E36312A
-  `measure-all`, and E36312A real restore candidates. Product mode remains
-  closed for these commands until separate live evidence review and promotion;
-  historical accepted evidence is unchanged and predates these cases. The
-  expanded suite has not yet been run or accepted as new hardware evidence.
+- Preserves the documented Keysight hardware support boundaries during the
+  identity migration. Product support remains limited to exact model, command,
+  transport, backend, and required-feature scopes.
 - Keeps Product release artifacts limited to the single `powers-tool`
   distribution and excludes repository validation scripts, private fixtures,
   candidate evidence, and internal-only tests.

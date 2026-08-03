@@ -50,7 +50,7 @@ setpoint-range metadata.
 
 The contributor-validation policy mode admits only registered pending scopes
 and commands returned by Core `internal_validation_candidate_inventory()`.
-That candidate inventory is currently empty after the 2026-07-17 promotion.
+That candidate inventory is currently empty.
 Product mode remains fail-closed, and validation never mutates Product metadata.
 
 `RuntimeOptions.support_policy_mode` defaults to `product`. After Core reads
@@ -65,7 +65,7 @@ Exact policy evaluation is feature-aware for `sequence_action` and
 normalized action before its first step; host-only `wait` and `log` actions do
 not require live feature entries. `trigger-step` and `trigger-list` validate
 their effective BUS or Immediate source before trigger setup. A validated
-command scope does not open an unregistered future action/source. Missing,
+command scope does not open an unregistered action/source. Missing,
 unknown, unsupported, and Product-mode pending feature entries fail closed;
 Validation mode accepts only explicitly registered `feature_pending` entries.
 A validated transport/backend parent may mix validated and pending command
@@ -134,8 +134,8 @@ are never reported as Product-open exact live commands.
   planning-profile metadata projections.
 - `powers_tool_core.support_policy`: exact live-support enforcement metadata
   and safe public display projections.
-- `powers_tool_core.support_evidence`: immutable accepted historical evidence
-  identities and non-sensitive migration metadata.
+- `powers_tool_core.support_evidence`: immutable accepted evidence metadata
+  identities and non-sensitive support metadata.
 - `powers_tool_core.model_resolution`: centralized runtime identity validation
   for dry-run/simulator planning and live expected-model guards.
 - `powers_tool_core.model_enablement`: injectable consistency validation for
@@ -203,8 +203,8 @@ and records target/connection/suite/case candidate-evidence artifacts under
 `.tmp_tests`; passing artifacts do not automatically promote product support.
 See [Contributing](../CONTRIBUTING.md) for the contributor workflow. For each
 active model, `-Suite full` is the complete validation gate for all currently
-project-supported LIVE features of that model. With a passing expanded
-full-suite record for the approved model and connection, the model's currently
+project-supported LIVE features of that model. With a passing full-suite record
+for the approved model and connection, the model's currently
 project-supported LIVE features may be opened. Disabled, unimplemented,
 out-of-scope, or factory-only features are not implied by the pass. A passing
 suite validates only the selected model, connection, suite, and recorded cases;
@@ -212,13 +212,12 @@ it does not validate other connection types or every factory instrument
 function. Commands, state-changing behavior, and report locations are
 documented in the [CLI README scripted validation section](../cli/README.md#scripted-validation).
 
-The independently reviewed 2026-07-17 full-suite evidence opens E36312A `output-on`, `log`,
+The Product command inventories include E36312A `output-on`, `log`,
 resource-backed `doctor`, `measure-all`, and real `restore-from-snapshot` on
 USB/TCPIP + system VISA; EDU36311A `output-on`, `log`, and resource-backed
 `doctor` on USB/TCPIP + system VISA; and E3646A `output-on` plus
-resource-backed `doctor` on ASRL + system VISA. These exact scopes are now in
-the accepted Product command inventories. Historical evidence remains
-unchanged, and passing future wrapper artifacts does not promote them automatically.
+resource-backed `doctor` on ASRL + system VISA. These are exact Product
+scopes; passing validation evidence does not promote another scope automatically.
 
 ## Docs
 
@@ -255,16 +254,14 @@ LIST execution belongs only to `trigger-list`; Ramp always uses software
 setpoint steps. Unsupported models, including EDU36311A, do not expose trigger
 dry-run or simulator behavior.
 
-The expanded Full suite requires external operator observation for
+The `full` suite requires external operator observation for
 `trigger-pulse`; passing a wrapper run still does not automatically promote a
 command. Existing Product-open
 E36312A `trigger-status`, `trigger-step`, `trigger-list`, and `trigger-abort`
 scopes are unchanged.
 
-Historical 2026-07-09 and verified 2026-07-17 full-suite records exist for
-E36312A USB/LAN, EDU36311A USB/LAN, and E3646A ASRL / RS-232. Current records
-hold promotion-time paths and checksums without making ignored artifacts a
-runtime dependency. E3646A USB and LAN remain outside the current scope.
+E36312A USB/LAN, EDU36311A USB/LAN, and E3646A ASRL / RS-232 are the current
+connection scopes. E3646A USB and LAN remain outside the current scope.
 
 E3646A product LIVE support is ASRL / RS-232 + system VISA and only the exact
 commands listed in [Supported Models](supported-models.md), including

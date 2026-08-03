@@ -117,16 +117,16 @@ catalog-only model
 → extend the maintained wrapper where appropriate
 → attach complete redacted artifacts
 → maintainer review
-→ explicit later promotion
+→ explicit evidence-backed Product policy decision
 ```
 
 Catalog recognition is not a candidate, a candidate is not Product-open, and
 a model with missing prerequisites is not pending support. Contributors must
 not mark a model candidate until every candidate prerequisite is present. A
 new model must not use `GenericScpiPowerSupply` for model-aware output merely
-because its SCPI looks similar to an existing model. Promotion requires
-accepted exact evidence plus an explicit later policy change; changing only a
-stage or attaching a passing artifact does not promote support.
+because its SCPI looks similar to an existing model. Product support requires
+accepted exact evidence and an explicit policy decision; changing only a stage
+or attaching a passing artifact does not promote support.
 
 Exact command support is also feature-aware. The first feature kinds are
 normalized sequence actions and real trigger sources. Adding a new sequence
@@ -151,8 +151,8 @@ channel limits, official ratings and setpoint safety, E3646A range
 combinations, confirmation, OVP/OCP, trigger restrictions, sequence
 restrictions, cleanup, or session close. Missing metadata is not pending support.
 
-For a bounded bootstrap case that is not yet represented by the wrapper, use
-the hidden option only after Core recognizes the model, the command is
+For a bounded bootstrap case without a wrapper entry, use the hidden option
+only after Core recognizes the model, the command is
 implemented, ratings/hard limits and request validation exist, the exact
 pending scope is registered, and simulator or fake coverage exists:
 
@@ -191,16 +191,13 @@ Skipped or incomplete cleanup is not cleanup-verified evidence. Required
 state-changing evidence cannot pass unless safe-off succeeds, outputs are
 confirmed OFF, and the final error queue is clean.
 
-Accepted historical support is referenced from Core policy by an immutable,
-non-sensitive evidence ID. Each accepted record remains exact to canonical
-physical `model_id`, transport, backend, command, and required feature; an
-artifact for another vendor, model, transport, or backend cannot be inherited.
-The original artifact directory remains immutable. Registering or migrating an
-evidence identity does not constitute new hardware validation, and a passing
-candidate artifact does not update Product support automatically. A policy
-promotion remains a separate evidence-backed P9 review. In particular,
-system-VISA evidence may be cited as a non-promoting basis for a pending
-pyvisa-py scope, but it never validates that backend.
+Product-open support is referenced from Core policy by exact, non-sensitive
+evidence metadata. Each accepted record remains exact to canonical physical
+`model_id`, transport, backend, command, and required feature; an artifact for
+another vendor, model, transport, or backend cannot be inherited. A passing
+candidate artifact does not update Product support automatically. System-VISA
+evidence may be cited as a non-promoting basis for a pending pyvisa-py scope,
+but it never validates that backend.
 
 ## Power-supply safety and privacy
 

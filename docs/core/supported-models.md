@@ -38,23 +38,14 @@ diagnostic exemptions. Their success proves only that diagnostic operation; it
 does not open a model, feature family, transport/backend scope, or another
 command.
 
-The 2026-07-17 records were accepted only after an explicit independent review
-of the five system-VISA full-suite bundles. They promote these exact commands:
-
-| Canonical model | Exact Product connections | Added Product-open commands |
-| --- | --- | --- |
-| `keysight-e36312a` | USB + system VISA; TCPIP + system VISA | `output-on`, `log`, resource-backed `doctor`, `measure-all`, real `restore-from-snapshot`, `trigger-fire`, `trigger-pulse` |
-| `keysight-edu36311a` | USB + system VISA; TCPIP + system VISA | `output-on`, `log`, resource-backed `doctor` |
-| `keysight-e3646a` | ASRL + system VISA | `output-on`, resource-backed `doctor` |
-
-These are exact scopes, not transport/backend inheritance. The E36312A
-`trigger-pulse` evidence includes explicit external observation of one positive
-pulse. A wrapper pass still creates reviewable validation evidence only and
-does not automatically promote Product support.
+The Product-open command rows above are exact scopes, not transport/backend
+inheritance. A validation run produces reviewable evidence for its selected
+model, connection, suite, and cases; it does not automatically promote Product
+support.
 
 ## Feature-Aware Exact Scopes
 
-The Product-open command rows above are not wildcards for future command
+The Product-open command rows above are not wildcards for other command
 sub-features. Core additionally checks `sequence_action` for each normalized
 instrument-relevant Sequence step and `trigger_source` for Trigger Step/List.
 Sequence `wait` and `log` remain host-only and need no live feature entry.
@@ -94,76 +85,40 @@ artifacts do not make it Product-open.
 This table is the manually maintained source of truth for suite-based live
 validation records. For each active model, `-Suite full` is the complete
 validation gate for all currently project-supported LIVE features of that
-model. With a passing expanded full-suite record for the approved model and
+model. With a passing full-suite record for the approved model and
 connection, the model's currently project-supported LIVE features may be
 opened. Disabled, unimplemented, out-of-scope, or factory-only features are
 not implied by the pass. A passed `scripts/live-cli-check.ps1` run validates
 only the selected target model, connection, suite, and cases in that run's
-`.tmp_tests` artifacts. It does not validate unsupported suites, skipped
+evidence. It does not validate unsupported suites, skipped
 features, other connection types, every factory instrument function, or the
 whole model.
 
 | Target | Connection scope | Supported suites in `full` | Notes |
 | --- | --- | --- | --- |
-| E36312A | USB accepted evidence; LAN accepted evidence | `readonly`, `output`, `protection`, `snapshot`, `trigger-list`, `software-sequence` | The reviewed expanded suite covers Product-open `trigger-fire` and manually observed `trigger-pulse`. Suite names are evidence groupings, not command permissions. |
+| E36312A | USB accepted evidence; LAN accepted evidence | `readonly`, `output`, `protection`, `snapshot`, `trigger-list`, `software-sequence` | The full suite covers Product-open `trigger-fire` and manually observed `trigger-pulse`. Suite names are evidence groupings, not command permissions. |
 | EDU36311A | USB accepted evidence; LAN accepted evidence | `readonly`, `output`, `protection`, `software-sequence` | Suite names are evidence groupings, not command permissions. Trigger/native LIST, snapshot, and restore-from-snapshot remain unsupported. |
 | E3646A | RS-232 / ASRL only | `readonly`, `output`, `software-sequence` | CH1/CH2 only. `OUTP ON/OFF` is global. `ramp-list` and `sequence` are software workflows, not native LIST. |
 
-## Connection-scoped live validation status
+## Connection-Scoped Live Support Status
 
 Live validation/opening is scoped by model, connection, suite, and cases. A
-passed `scripts/live-cli-check.ps1` artifact only proves validation for the
+passed `scripts/live-cli-check.ps1` result only proves validation for the
 selected model and connection; it does not mean the same feature is validated
 on another connection type, another model, disabled workflows, or factory-only
 features.
 
-Current accepted evidence records:
+The current exact Product connections are E36312A USB and LAN, EDU36311A USB
+and LAN, and E3646A ASRL / RS-232. Each connection remains limited to the
+commands and feature entries listed in the Product matrix. E3646A USB and LAN
+are outside the current scope.
 
-- E36312A USB + system VISA
-- E36312A LAN + system VISA
-- EDU36311A USB + system VISA
-- EDU36311A LAN + system VISA
-- E3646A ASRL / RS-232 + system VISA
-
-Support policy refers to accepted bundles by immutable evidence ID rather than
-treating repeated artifact paths as authority:
-
-| Evidence ID | Canonical model ID | Exact connection | Artifact directory |
-| --- | --- | --- | --- |
-| `keysight-e36312a-usb-system-visa-20260709-full` | `keysight-e36312a` | USB + system VISA | `.tmp_tests/live_cli_check/20260709_153201_E36312A_USB_full` |
-| `keysight-e36312a-tcpip-system-visa-20260709-full` | `keysight-e36312a` | TCPIP + system VISA | `.tmp_tests/live_cli_check/20260709_201420_E36312A_LAN_full` |
-| `keysight-edu36311a-usb-system-visa-20260709-full` | `keysight-edu36311a` | USB + system VISA | `.tmp_tests/live_cli_check/20260709_151534_EDU36311A_USB_full` |
-| `keysight-edu36311a-tcpip-system-visa-20260709-full` | `keysight-edu36311a` | TCPIP + system VISA | `.tmp_tests/live_cli_check/20260709_200530_EDU36311A_LAN_full` |
-| `keysight-e3646a-asrl-system-visa-20260709-full` | `keysight-e3646a` | ASRL + system VISA | `.tmp_tests/live_cli_check/20260709_151205_E3646A_ASRL_full` |
-| `keysight-e36312a-usb-system-visa-20260717-full` | `keysight-e36312a` | USB + system VISA | `.tmp_tests/live_cli_check/20260717_111636_keysight-e36312a_USB_full/shareable` |
-| `keysight-e36312a-tcpip-system-visa-20260717-full` | `keysight-e36312a` | TCPIP + system VISA | `.tmp_tests/live_cli_check/20260717_110602_keysight-e36312a_LAN_full/shareable` |
-| `keysight-edu36311a-usb-system-visa-20260717-full` | `keysight-edu36311a` | USB + system VISA | `.tmp_tests/live_cli_check/20260717_104734_keysight-edu36311a_USB_full/shareable` |
-| `keysight-edu36311a-tcpip-system-visa-20260717-full` | `keysight-edu36311a` | TCPIP + system VISA | `.tmp_tests/live_cli_check/20260717_104008_keysight-edu36311a_LAN_full/shareable` |
-| `keysight-e3646a-asrl-system-visa-20260717-full` | `keysight-e3646a` | ASRL + system VISA | `.tmp_tests/live_cli_check/20260717_112310_keysight-e3646a_ASRL_full/shareable` |
-
-The original directories are immutable historical references. This identity
-migration is not new hardware validation. In a clean clone the ignored
-artifacts may be absent; such records remain explicitly
-`historical_reference_only` and do not claim a checksum. The historical
-wrapper used the default system-VISA resource-manager path, so these records
-do not validate pyvisa-py or a custom backend.
-
-The historical accepted command lists remain immutable. The five 2026-07-17
-records preserve reviewed paths, SHA-256 values, and `verified_local`
-promotion-time provenance. Runtime and clean CI do not read or require those
-ignored artifacts. A future wrapper pass still requires a separate evidence
-review, registration, and policy change before it can promote support.
-
-The E36312A and EDU36311A TCPIP + pyvisa-py scopes cite their corresponding
-TCPIP/system-VISA evidence only as a non-promoting candidate basis. They have
-no accepted pyvisa-py evidence, remain `transport_pending`, and remain closed
-in Product mode with `product_open=false`. Passing later artifacts never promotes support automatically;
-P9 remains a separate evidence-backed review and promotion phase.
-
-E36312A USB, E36312A LAN, EDU36311A USB, EDU36311A LAN, and E3646A ASRL /
-RS-232 are opened only by their own recorded full-suite artifacts. E3646A live
-validation is currently restricted to ASRL / RS-232; E3646A USB and LAN remain
-outside the current scope.
+The E36312A and EDU36311A TCPIP + pyvisa-py parent scopes remain registered as
+`transport_pending` with `product_open=false`. Their implemented command
+features remain `feature_pending`: contributor Validation mode may use only the
+registered exact pending entries, while Product mode rejects them. System-VISA
+evidence does not validate pyvisa-py or a custom backend, and passing evidence
+does not update Product support automatically.
 
 | Model | USB | LAN | ASRL / RS-232 |
 | --- | --- | --- | --- |
@@ -177,9 +132,10 @@ snapshot/restore, and completion-pulse remain disabled. E3646A `ramp-list` and
 `sequence` remain software workflows only, not native LIST.
 
 EDU36311A USB read-only, output/write, and protection commands are enabled for
-real execution after staged validation. Use `scripts/live-cli-check.ps1
+real execution within the exact Product scopes above. Use
+`scripts/live-cli-check.ps1
 -Target EDU36311A -Connection USB -Resource ... -Suite full` for current
-suite validation. The full suite now includes `software-sequence` for
+suite validation. The full suite includes `software-sequence` for
 project-supported software `ramp-list` and sequence read-only/output
 workflows. The legacy smoke wrapper remains available for bounded smoke
 checks only. EDU36311A `protection-set` and
@@ -248,10 +204,10 @@ At *RST, the E3646A low voltage range is selected.
 E36103B and E36232A are not active supported models. They are rejected as
 no-hardware planning identities, live expected-model guards, WebUI model selections,
 `scripts/live-cli-check.ps1` targets, and live `*IDN?`-detected model-aware
-operations. They must not fall back to `GenericScpiPowerSupply`. Additional
-Keysight E36xxx / E36000-series models may be evaluated later after
-programming-guide review, fake/simulator coverage, and real hardware
-validation.
+operations. They must not fall back to `GenericScpiPowerSupply`. Other Keysight
+E36xxx / E36000-series models are outside the current support matrix until the
+complete model metadata, simulator/fake coverage, and model-specific hardware
+evidence required by the contributor process exist.
 
 ## Command Support Notes
 

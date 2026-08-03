@@ -337,8 +337,7 @@ examples use `POWERS_TOOL_RESOURCE` or `POWERS_TOOL_ASRL_RESOURCE`;
 model-specific lab variables such as
 `E36312A_USB_RESOURCE` remain explicit operator inputs.
 
-The current `full` plans continue to record the commands promoted after the
-independent 2026-07-17 evidence review:
+The current `full` plans cover these exact Product connections and commands:
 
 | Target and exact Product connection | Added Product-open commands |
 | --- | --- |
@@ -373,26 +372,13 @@ A `Yes` records only one observed
 positive pulse; it does not validate pulse width, timing accuracy, or waveform
 quality.
 
-Historical 2026-07-09 and verified 2026-07-17 full-suite records exist for these exact connections:
-
-- E36312A USB + system VISA
-- E36312A LAN + system VISA
-- EDU36311A USB + system VISA
-- EDU36311A LAN + system VISA
-- E3646A ASRL / RS-232 + system VISA
-
-The historical records remain immutable. The 2026-07-17 records preserve the
-reviewed shareable paths, checksums, and promotion-time provenance without
-making ignored artifacts a runtime dependency. Future wrapper passes still
-require a separate evidence review and policy change before promotion.
-
 Only exact commands in the Core product matrix are opened for normal LIVE use
 on those connections. E3646A live validation remains restricted to ASRL /
 RS-232; E3646A USB and LAN remain outside the current scope.
 Sequence actions and Trigger Step/List sources are also exact feature-policy
 requirements. Missing or pending feature entries remain closed in normal CLI
-Product mode; a Product-open command does not imply that a future action or
-source is open. The CLI model list remains limited to Product-active models;
+Product mode; a Product-open command does not imply that an unregistered action
+or source is open. The CLI model list remains limited to Product-active models;
 there are currently no candidate models and no new model is enabled by this
 framework.
 
@@ -414,7 +400,7 @@ Supported suites are model-aware:
 | `keysight-e3646a` | `readonly`, `output`, `software-sequence` |
 
 For each active model, `-Suite full` is an evidence grouping. With a passing
-expanded full-suite record for the approved model and connection, only the
+full-suite record for the approved model and connection, only the
 commands recorded in the Core exact matrix may be opened. Disabled,
 unimplemented, out-of-scope, or factory-only features are not implied by the
 pass.
@@ -997,7 +983,7 @@ preview trigger SCPI without opening VISA. Trigger dry-run and simulator
 behavior is E36312A-only; unsupported models do not expose trigger
 no-hardware behavior. The final `*TRG` may also trigger any already armed
 BUS-triggered instrument behavior. `trigger-pulse` is Product-open only for
-E36312A USB/TCPIP + system VISA after the explicit 2026-07-17 review. Live trigger behavior
+E36312A USB/TCPIP + system VISA in the documented exact scope. Live trigger behavior
 for accepted commands remains IDN-driven; a live `--model` only requires the
 connected IDN model to match and never overrides connected hardware.
 
@@ -1022,7 +1008,7 @@ would abort it. Trigger Step keeps its existing non-wait behavior. For
 selects the output channel to abort if the instrument-wide completion wait
 times out or is interrupted. It does not limit the scope of `*TRG` or the
 completion wait. Both `trigger-fire` and `trigger-pulse` remain closed for any
-other model, transport, or backend. Future wrapper coverage does not promote
+other model, transport, or backend. Validation coverage does not promote
 support automatically.
 Canonical Trigger LIST files and flags accept per-step `bost_list` and
 `eost_list` plus `trigger_output_pins` and `trigger_output_polarity`. Enabled
@@ -1195,7 +1181,7 @@ stays parseable. Every JSON success and error envelope includes
 - Real product execution is limited to the exact commands and connections in
   the [Product LIVE exact-scope matrix](../core/supported-models.md#product-live-exact-scope-matrix).
   Feature-family, dry-run, simulator, or parser support does not widen it.
-- The reviewed `output-on`, `measure-all`, `trigger-pulse`, `trigger-fire`,
+- The documented `output-on`, `measure-all`, `trigger-pulse`, `trigger-fire`,
   `log`, resource-backed `doctor`, and `restore-from-snapshot` commands are
   Product-open only in their documented exact scopes. Wrapper validation is
   not a promotion mechanism or normal-use bypass.
