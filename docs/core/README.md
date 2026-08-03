@@ -203,9 +203,14 @@ and records target/connection/suite/case candidate-evidence artifacts under
 `.tmp_tests`; passing artifacts do not automatically promote product support.
 See [Contributing](../CONTRIBUTING.md) for the contributor workflow. For each
 active model, `-Suite full` is the complete validation gate for all currently
-project-supported LIVE features of that model. With a passing full-suite record
-for the approved model and connection, the model's currently
-project-supported LIVE features may be opened. Disabled, unimplemented,
+project-supported LIVE features of that model.
+
+A passing full-suite record applies only to the selected model and connection
+and is evidence for maintainer review. Product support changes only through an
+explicit evidence-backed policy decision; the record itself does not open any
+command or feature.
+
+Disabled, unimplemented,
 out-of-scope, or factory-only features are not implied by the pass. A passing
 suite validates only the selected model, connection, suite, and recorded cases;
 it does not validate other connection types or every factory instrument

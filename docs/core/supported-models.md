@@ -85,10 +85,16 @@ artifacts do not make it Product-open.
 This table is the manually maintained source of truth for suite-based live
 validation records. For each active model, `-Suite full` is the complete
 validation gate for all currently project-supported LIVE features of that
-model. With a passing full-suite record for the approved model and
-connection, the model's currently project-supported LIVE features may be
-opened. Disabled, unimplemented, out-of-scope, or factory-only features are
-not implied by the pass. A passed `scripts/live-cli-check.ps1` run validates
+model.
+
+A passing full-suite record applies only to the selected model and connection
+and is evidence for maintainer review. Product support changes only through an
+explicit evidence-backed policy decision; the record itself does not open any
+command or feature.
+
+Disabled, unimplemented, out-of-scope, or
+factory-only features are not implied by the pass. A passed
+`scripts/live-cli-check.ps1` run validates
 only the selected target model, connection, suite, and cases in that run's
 evidence. It does not validate unsupported suites, skipped
 features, other connection types, every factory instrument function, or the
@@ -205,9 +211,11 @@ E36103B and E36232A are not active supported models. They are rejected as
 no-hardware planning identities, live expected-model guards, WebUI model selections,
 `scripts/live-cli-check.ps1` targets, and live `*IDN?`-detected model-aware
 operations. They must not fall back to `GenericScpiPowerSupply`. Other Keysight
-E36xxx / E36000-series models are outside the current support matrix until the
-complete model metadata, simulator/fake coverage, and model-specific hardware
-evidence required by the contributor process exist.
+E36xxx / E36000-series models currently have neither Product nor
+contributor-Validation support. Adding a model requires the complete metadata,
+model-specific driver, simulator/fake coverage, safety coverage, and
+model-specific hardware evidence prerequisites defined by the contributor
+process.
 
 ## Command Support Notes
 

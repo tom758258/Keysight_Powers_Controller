@@ -201,8 +201,6 @@ before stopping the launcher-owned server. If job cleanup or server shutdown
 times out, the launcher stays open and reports that shutdown is incomplete.
 The compact/fallback presentation does not change port selection, startup
 failure classification, cleanup, or process exit-code behavior.
-It is a software-only launcher presentation change and does not require
-real-instrument validation.
 
 The standalone PyInstaller GUI artifact is a separate executable at
 `dist\powers-tool-webui.exe`; it is built from the same launcher implementation

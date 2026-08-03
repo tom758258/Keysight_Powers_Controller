@@ -337,15 +337,16 @@ examples use `POWERS_TOOL_RESOURCE` or `POWERS_TOOL_ASRL_RESOURCE`;
 model-specific lab variables such as
 `E36312A_USB_RESOURCE` remain explicit operator inputs.
 
-The current `full` plans cover these exact Product connections and commands:
+The current `full` plans include dedicated bounded cases for these exact
+Product scopes:
 
-| Target and exact Product connection | Added Product-open commands |
+| Target and exact Product connection | Product-open commands with dedicated bounded cases |
 | --- | --- |
 | E36312A USB or TCPIP + system VISA | `output-on`, `log`, resource-backed `doctor`, `measure-all`, real `restore-from-snapshot`, `trigger-fire`, `trigger-pulse` |
 | EDU36311A USB or TCPIP + system VISA | `output-on`, `log`, resource-backed `doctor` |
 | E3646A ASRL + system VISA | `output-on`, resource-backed `doctor` |
 
-The new cases are deliberately bounded. Logging collects one all-channel
+These cases are deliberately bounded. Logging collects one all-channel
 sample at 0.1 seconds into private CSV/JSONL files, validates the exact header,
 channel inventory, telemetry fields, per-row empty error fields, and completed
 summary, then writes only redacted shareable copies. Resource-backed `doctor`
@@ -372,8 +373,10 @@ A `Yes` records only one observed
 positive pulse; it does not validate pulse width, timing accuracy, or waveform
 quality.
 
-Only exact commands in the Core product matrix are opened for normal LIVE use
-on those connections. E3646A live validation remains restricted to ASRL /
+The complete Product-open command inventory remains the
+[Product LIVE exact-scope matrix](../core/supported-models.md#product-live-exact-scope-matrix).
+Only exact commands in that matrix are opened for normal LIVE use on those
+connections. E3646A live validation remains restricted to ASRL /
 RS-232; E3646A USB and LAN remain outside the current scope.
 Sequence actions and Trigger Step/List sources are also exact feature-policy
 requirements. Missing or pending feature entries remain closed in normal CLI
@@ -399,9 +402,14 @@ Supported suites are model-aware:
 | `keysight-edu36311a` | `readonly`, `output`, `protection`, `software-sequence` |
 | `keysight-e3646a` | `readonly`, `output`, `software-sequence` |
 
-For each active model, `-Suite full` is an evidence grouping. With a passing
-full-suite record for the approved model and connection, only the
-commands recorded in the Core exact matrix may be opened. Disabled,
+For each active model, `-Suite full` is an evidence grouping.
+
+A passing full-suite record applies only to the selected model and connection
+and is evidence for maintainer review. Product support changes only through an
+explicit evidence-backed policy decision; the record itself does not open any
+command or feature.
+
+Disabled,
 unimplemented, out-of-scope, or factory-only features are not implied by the
 pass.
 
