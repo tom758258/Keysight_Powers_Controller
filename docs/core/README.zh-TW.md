@@ -12,8 +12,8 @@ alias 衝突、boolean-as-number 與 numeric string 都會被拒絕。詳情請�
 Core 內建於單一 `powers-tool` 發行套件中，同時保留了 `powers_tool_core` 的 import 邊界。它負責處理與硬體互動的行為，並由 CLI 與 WebUI 轉接器共用。
 
 這是用於安全控制支援之直流電源供應器的 vendor-neutral Core library 與 driver
-layer。當前 Product-active 且已完成硬體驗證的 driver 以文件所述 Keysight models
-為準；未知 live hardware 會保持 closed。
+layer。Product-active 與 hardware-validated 支援由文件化的 exact scope 決定；
+未知 live hardware 會保持 closed。目前公開支援的型號矩陣請參閱[支援型號](supported-models.md)。
 
 ## 用途
 
@@ -125,19 +125,14 @@ Pytest 預設使用已忽略的 repository-local `.tmp_pytest` 目錄，因此�
 
 ## 狀態
 
-活躍中的套件。E36312A、EDU36311A 與 E3646A 是目前的特定型號目標，並且是
-Product-active models；目前沒有 candidate models。E36313A、E36233A、E36441A
-與 E36155A 僅為 catalog-only，E36103B 與 E36232A 為 de-scoped。`generic-scpi`
-是 no-hardware planning profile，不是 physical model lifecycle stage。基於有效的
-`*IDN?` 回應來選擇特定型號的驅動基礎。channel-list SCPI、快照/讀回解析、保護
+`generic-scpi` 是 no-hardware planning profile，不是 physical model lifecycle
+stage。基於有效的 `*IDN?` 回應來選擇特定型號的驅動基礎。channel-list SCPI、快照/讀回解析、保護
 狀態處理、序列載入/計畫、安全驗證、模擬器行為以及輸出操作計畫，皆涵蓋於無硬體測試中。
 
 E36312A 與 EDU36311A 的保護觸發讀取使用 channel-list 查詢。共用的 Core 保護狀態會保留總和旗標 (aggregate flags)，同時從所選的通道計算它們；WebUI 的 live-panel 讀取則回傳已解析的型號身分及通道本身的 OVP/OCP 觸發狀態。
 
-E36312A 的原生觸發/LIST 行為具備無硬體測試涵蓋範圍；Product LIVE 執行仍限於
-accepted exact scopes。原生 LIST 執行僅限於 `trigger-list`；Ramp 一律使用軟體
-設定點步進。Trigger workflows 僅限 E36312A；EDU36311A 與 E3646A 在 real、
-simulate 與 dry-run 都不支援 trigger。`generic-scpi` 是 nonphysical no-hardware
+原生 LIST 執行僅限於 `trigger-list`；Ramp 一律使用軟體
+設定點步進。`generic-scpi` 是 nonphysical no-hardware
 planning profile，不是 physical trigger planning model。影響硬體的行為保持明確
 且需主動啟用 (opt-in)。
 

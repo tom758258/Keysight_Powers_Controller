@@ -11,8 +11,9 @@ explicitly nullable, and aliases may not be supplied together. See the
 [command parameter contract](../contracts/commands-parameter-contract.md).
 
 Vendor-neutral Core library and driver layer for controlling supported DC
-power supplies safely. Current Product-active and hardware-validated drivers
-are for the documented Keysight models; unknown live hardware remains closed.
+power supplies safely. Product-active and hardware-validated support is governed
+by documented exact scopes; unknown live hardware remains closed. For the current
+product-supported model matrix, see [Supported Models](supported-models.md).
 
 Core ships inside the single `powers-tool` distribution while preserving
 the `powers_tool_core` import boundary. It owns hardware-facing behavior
@@ -50,7 +51,6 @@ setpoint-range metadata.
 
 The contributor-validation policy mode admits only registered pending scopes
 and commands returned by Core `internal_validation_candidate_inventory()`.
-That candidate inventory is currently empty.
 Product mode remains fail-closed, and validation never mutates Product metadata.
 
 `RuntimeOptions.support_policy_mode` defaults to `product`. After Core reads
@@ -202,7 +202,7 @@ Live suite checks and hardware pytest are explicit, opt-in hardware checks.
 and records target/connection/suite/case candidate-evidence artifacts under
 `.tmp_tests`; passing artifacts do not automatically promote product support.
 See [Contributing](../CONTRIBUTING.md) for the contributor workflow. For each
-active model, `-Suite full` is the complete validation gate for all currently
+active model, `-Suite full` is the complete validation gate for all
 project-supported LIVE features of that model.
 
 A passing full-suite record applies only to the selected model and connection
@@ -217,13 +217,6 @@ it does not validate other connection types or every factory instrument
 function. Commands, state-changing behavior, and report locations are
 documented in the [CLI README scripted validation section](../cli/README.md#scripted-validation).
 
-The Product command inventories include E36312A `output-on`, `log`,
-resource-backed `doctor`, `measure-all`, and real `restore-from-snapshot` on
-USB/TCPIP + system VISA; EDU36311A `output-on`, `log`, and resource-backed
-`doctor` on USB/TCPIP + system VISA; and E3646A `output-on` plus
-resource-backed `doctor` on ASRL + system VISA. These are exact Product
-scopes; passing validation evidence does not promote another scope automatically.
-
 ## Docs
 
 - Core integration guide: `integration.md`
@@ -235,43 +228,28 @@ scopes; passing validation evidence does not promote another scope automatically
 
 ## Status
 
-Active package. E36312A, EDU36311A, and E3646A are the current model-specific
-targets. Model-specific driver foundations are selected from valid `*IDN?`
-responses.
-They are the Product-active models. There are currently no candidate models;
-E36313A, E36233A, E36441A, and E36155A remain catalog-only, while E36103B and
-E36232A remain de-scoped. `generic-scpi` is a no-hardware planning profile, not a
-physical-model lifecycle stage.
+Model-specific driver foundations are selected from valid `*IDN?` responses.
 Channel-list SCPI, snapshot/readback parsing, protection state handling,
 sequence loading/planning, safety validation, simulator behavior, and
 output-operation planning are covered by no-hardware tests.
+
+`generic-scpi` is a no-hardware planning profile, not a physical-model lifecycle
+stage.
 
 E36312A and EDU36311A protection trip reads use channel-list queries. Shared
 Core protection status preserves aggregate flags while calculating them from
 the selected channels, and the WebUI live-panel read returns parsed model
 identity plus channel-local OVP/OCP trip state.
 
-E36312A native trigger/LIST behavior has no-hardware coverage, while product
-LIVE execution is limited to exact commands with accepted scopes. Direct
-`trigger-fire` and `trigger-pulse` are Product-open only for E36312A USB/TCPIP
-with system VISA. Native
 LIST execution belongs only to `trigger-list`; Ramp always uses software
-setpoint steps. Unsupported models, including EDU36311A, do not expose trigger
-dry-run or simulator behavior.
+setpoint steps. `generic-scpi` is a nonphysical no-hardware planning profile,
+not a physical trigger planning model.
 
 The `full` suite requires external operator observation for
 `trigger-pulse`; passing a wrapper run still does not automatically promote a
-command. Existing Product-open
-E36312A `trigger-status`, `trigger-step`, `trigger-list`, and `trigger-abort`
-scopes are unchanged.
+command.
 
-E36312A USB/LAN, EDU36311A USB/LAN, and E3646A ASRL / RS-232 are the current
-connection scopes. E3646A USB and LAN remain outside the current scope.
-
-E3646A product LIVE support is ASRL / RS-232 + system VISA and only the exact
-commands listed in [Supported Models](supported-models.md), including
-`output-on` and resource-backed `doctor`. A feature family does not open other
-commands. Software `ramp-list` and step-limited
+A feature family does not open other commands. Software `ramp-list` and step-limited
 `sequence` are not native LIST support.
 
 For output workflows, `voltage` is the output voltage setpoint and `current`
