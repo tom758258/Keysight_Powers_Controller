@@ -240,7 +240,7 @@
 <main>
 <h1>Powers Tool WebUI</h1>
 <p>Powers Tool 的 FastAPI 與靜態資源 WebUI adapter。</p>
-<p>WebUI 是不綁定特定廠牌的產品介面；目前 Product-active 且完成硬體驗證的型號，以專案文件列出的 Keysight 型號為準，未知的實機硬體會在 Core 中 fail closed。</p>
+<p>WebUI 是不綁定特定廠牌的產品介面；目前 Product support 僅限 <a href="../core/supported-models.md">Supported Models</a> 所記載的 Product-active exact scopes；未知或未註冊的 live hardware 會在 Core 中 fail closed。</p>
 <p>本 README 說明 WebUI 行為、API、驗證與維護者邊界。一般操作員工作流程請參閱 <a href="USER_GUIDE.zh-TW.html">WebUI 使用者指南</a>；開發人員與 agent 的 UI 變更規則請參閱 <a href="web-ui-change-rules.md" rel="noopener noreferrer" target="_blank">WebUI 變更規則</a>。</p>
 <p>WebUI 與 CLI 是建立在共用 Core runtime 之上的平行產品介面。</p>
 <p>WebUI 內建於單一 <code>powers-tool</code> 發行套件中，同時保留 <code>powers_tool_webui</code> 的 import 邊界。前端由靜態 HTML/CSS 與以 <code>app.js</code> 為 composition root 的原生 JavaScript modules 組成，不需要 bundler 或 npm build pipeline；各功能則分散到 API、execution context、state、device/resource、command form、results、jobs、Live Data、JSON files、workflow editors、i18n 與 locale UI 等聚焦模組。</p>

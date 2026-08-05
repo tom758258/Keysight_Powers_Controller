@@ -2,10 +2,10 @@
 
 This guide is for operators who receive the built WebUI launcher and use it to
 inspect and control supported DC power supplies. The framework is
-vendor-neutral, while the currently validated hardware is the documented
-Keysight model set. This guide avoids developer details and focuses on normal
-local WebUI workflows. Developer setup, API behavior, validation, and UI change
-boundaries are documented in the
+vendor-neutral, while current hardware support is defined by the documented
+[Product scopes](../core/supported-models.md). This guide avoids developer
+details and focuses on normal local WebUI workflows. Developer setup, API behavior,
+validation, and UI change boundaries are documented in the
 [WebUI README](README.md) and [WebUI Change Rules](web-ui-change-rules.md).
 
 ## Start The WebUI
@@ -159,11 +159,12 @@ driver. The Device / Resource summary shows the detected live model and
 expected model selection separately, for example `live E3646A / Auto-detect`
 or `live E3646A / Require E36312A`.
 
-The normal model dropdown intentionally shows only active supported models:
-E36312A, EDU36311A, and E3646A. Unsupported direct model submissions are still
-rejected by the WebUI backend and Core. Auto-detect may still use detected
-live model metadata when available, but frontend state never overrides the
-Core IDN-selected live driver.
+The normal model dropdown is generated from Core Product-active metadata.
+Current supported models and exact connection/backend scopes are defined by
+[Supported Models](../core/supported-models.md). Unsupported direct model
+submissions are still rejected by the WebUI backend and Core. Auto-detect may
+still use detected live model metadata when available, but frontend state
+never overrides the Core IDN-selected live driver.
 
 After the read-only identity evaluation succeeds on a Product-open scope, the
 Device / Resource summary shows the detected transport/backend scope without
@@ -253,7 +254,7 @@ VISA only, and its software `ramp-list` and step-limited `sequence` are not
 native LIST.
 
 Sequence actions and Trigger Step/List sources also have exact feature status.
-A command shown as live validated does not automatically open a future action
+A Product-open command does not automatically open a future action
 or source that lacks metadata. The browser may display this additive inventory,
 but Core validates the actual request and keeps missing or pending features
 closed in normal Product mode.

@@ -3182,20 +3182,34 @@ def test_english_docs_describe_contributor_validation_workflow():
 
 
 def test_english_docs_describe_cli_suite_scope():
-    docs = "\n".join(
-        Path(path).read_text(encoding="utf-8")
-        for path in (
-            "README.md",
-            "docs/cli/README.md",
-            "docs/core/README.md",
-            "docs/webui/README.md",
-        )
-    )
+    cli_readme = Path("docs/cli/README.md").read_text(encoding="utf-8")
+    contributor = Path("docs/CONTRIBUTING.md").read_text(encoding="utf-8")
 
-    normalized = " ".join(docs.split())
-    assert "validates only the selected" in normalized
-    assert "does not validate the entire model" in normalized
-    assert "preflight-cli.ps1" in docs
+    cli_normalized = " ".join(cli_readme.split())
+    artifact_requirements = contributor.split("## Artifact requirements", 1)[1]
+    evidence_scope = artifact_requirements.split(
+        "## Power-supply safety and privacy", 1
+    )[0]
+    evidence_scope_normalized = " ".join(evidence_scope.split())
+
+    assert "does not validate the entire model" in cli_normalized
+    assert "broaden Product support" in cli_normalized
+    assert "preflight-cli.ps1" in cli_readme
+
+    for token in (
+        "model_id",
+        "transport",
+        "backend",
+        "command",
+        "required feature",
+    ):
+        assert token in evidence_scope
+
+    assert "cannot be inherited" in evidence_scope_normalized
+    assert (
+        "does not update Product support automatically"
+        in evidence_scope_normalized
+    )
 
 
 def test_english_docs_describe_supported_e3646a_product_boundaries():

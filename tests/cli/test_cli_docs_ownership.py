@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 
@@ -13,6 +14,20 @@ def read_cli_doc(*parts: str) -> str:
 
 def read_contract(name: str) -> str:
     return (REPO_ROOT / "docs" / "contracts" / name).read_text(encoding="utf-8")
+
+
+def read_markdown_section(text: str, heading: str) -> str:
+    marker = f"## {heading}"
+    assert marker in text
+    section = text.split(marker, 1)[1]
+    return section.split("\n## ", 1)[0]
+
+
+def read_html_section(text: str, heading_id: str) -> str:
+    marker = f'<h2 id="{heading_id}">'
+    assert marker in text
+    section = text.split(marker, 1)[1]
+    return section.split("\n<h2 ", 1)[0]
 
 
 def test_cli_docs_are_root_local_and_contracts_are_root_level():
@@ -74,3 +89,52 @@ def test_common_contracts_stay_instrument_neutral():
     )
 
     assert "acquisition" not in common_text.lower()
+
+
+def test_cli_user_guides_defer_e3646a_command_inventory_to_supported_models():
+    paths = (
+        "USER_GUIDE.md",
+        "USER_GUIDE.zh-TW.md",
+        "USER_GUIDE.zh-TW.html",
+    )
+    texts = {path: read_cli_doc(path) for path in paths}
+
+    forbidden_inventory_phrases = (
+        "product-open model-aware commands are `measure`",
+        "Product-open model-aware commands 是 `measure`",
+        "Product-open model-aware commands 是 <code>measure</code>",
+    )
+    inline_command = re.compile(
+        r"`[a-z][a-z0-9-]*`|<code>[a-z][a-z0-9-]*</code>",
+        re.IGNORECASE,
+    )
+
+    for path, text in texts.items():
+        for phrase in forbidden_inventory_phrases:
+            assert phrase not in text
+        assert "supported-models.md#product-live-exact-scope-matrix" in text
+        for stable_token in ("INST:NSEL", "OUTP ON/OFF", "native LIST"):
+            assert stable_token in text
+
+        if path.endswith(".html"):
+            intro = read_html_section(text, "e3646a-rs-232-asrl").split(
+                '<div class="code-wrapper">', 1
+            )[0]
+        else:
+            intro = read_markdown_section(text, "E3646A RS-232 / ASRL").split(
+                "```", 1
+            )[0]
+
+        # Stable operator prose may name a few commands, but a dense inventory
+        # belongs only in the canonical Product LIVE exact-scope matrix.
+        assert len(inline_command.findall(intro)) < 8
+
+
+def test_cli_readme_defers_physical_planning_inventory_to_core_metadata():
+    text = read_cli_doc("README.md")
+    section = read_markdown_section(
+        text, "Planning Identities And Live Expected-Model Guards"
+    )
+
+    assert "../core/supported-models.md" in section
+    assert "Accepted physical planning IDs are `keysight-e36312a`" not in section

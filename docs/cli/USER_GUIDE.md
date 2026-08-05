@@ -2,7 +2,7 @@
 
 This guide is for operators who receive the built CLI executable or an
 already-installed `powers-tool` command to control supported DC power
-supplies. The framework is vendor-neutral, while the currently validated
+supplies. The framework is vendor-neutral, while the currently supported
 hardware is the documented Keysight model set. It focuses on normal live
 workflows, resource selection, and safe first checks. For developer setup,
 detailed command reference, and automation details, see the
@@ -24,7 +24,7 @@ powers-tool-<version>.exe
 
 Use that file name in the commands below if your release folder uses a
 versioned executable. Developers or source-checkout users should use the
-[CLI README](README.md) for virtual environment, module, validation, and build
+[CLI README](README.md) for virtual environment, module, build, and developer
 commands.
 
 For an already-installed command, replace `.\powers-tool.exe` with
@@ -126,20 +126,17 @@ does not add a top-level completion pulse.
 
 ## E3646A RS-232 / ASRL
 
-E3646A product LIVE support is ASRL/RS-232 + system VISA only. Its exact
-product-open model-aware commands are `measure`, `readback`, `read-status`,
-`output-state`, `capabilities`, `set`, `apply`, `output-off`,
-`safe-off`, `cycle-output`, `smoke-output`, `ramp`, `ramp-list`, `sequence`,
-`output-on`, and resource-backed `doctor`. `identify` and `verify` are explicit
-diagnostics and do not open another command. Protection, trigger,
-snapshot/restore, completion pulses, and native LIST are not product-open for
-E3646A.
+E3646A Product LIVE support is limited to ASRL / RS-232 with a system VISA
+backend. Consult the [Product LIVE exact-scope matrix](../core/supported-models.md#product-live-exact-scope-matrix)
+for the current command inventory. `identify` and `verify` are diagnostics only
+and do not open another command. Protection, trigger, snapshot/restore,
+completion pulses, and native LIST are not Product-open for E3646A.
 
 E3646A uses `INST:NSEL` channel preselection for setpoint writes and readbacks.
 `OUTP ON/OFF` is a global output enable/disable on this model, so output
 enable/disable actions can affect the instrument output state globally.
 E3646A `ramp-list` and `sequence` are software workflows, not native LIST.
-Sequence accepts only validated read-only/output steps; protection, trigger,
+Sequence accepts only supported read-only/output steps; protection, trigger,
 snapshot, restore, native LIST, and completion-pulse steps are rejected.
 
 Set the ASRL resource once per PowerShell session:
@@ -271,7 +268,7 @@ existing support matrix permits Generic planning. It cannot be combined with
 
 Do not use fake or live-looking resource strings to imply a model in
 no-hardware mode. For example, `USB0::FAKE::E36312A::INSTR` is a placeholder,
-not model evidence.
+not a model identity.
 
 For live commands, `--model` accepts a canonical ID such as
 `keysight-e36312a` and is an expected-model guard. The CLI still queries
@@ -286,12 +283,11 @@ SCPI:
 This requires the connected model to be E36312A and does not force the E36312A
 driver.
 
-`--model` is not a feature unlock. Unsupported model, command, and mode
-failures are intentional feature-lock behavior. Product LIVE support is exact
-by detected model, command, transport, and backend; missing or pending scopes
-fail closed. System-VISA evidence does not validate pyvisa-py or a custom
-backend. A feature family or no-hardware plan does not imply that every command
-in that family is product-open. See the
+`--model` is not a feature unlock. Unsupported model, command, mode, connection,
+backend, or feature combinations fail closed. Product LIVE support is exact by
+detected model, command, transport, backend, and required feature; missing or
+pending scopes fail closed. A feature family or no-hardware plan does not imply
+that every command in that family is product-open. See the
 [exact matrix](../core/supported-models.md#product-live-exact-scope-matrix).
 
 ## Common Problems
@@ -310,18 +306,18 @@ CLI intentionally rejects unsupported models, channels, unsafe setpoints, and
 missing confirmations before performing risky actions.
 If the message says a workflow is disabled for a model, choose a supported
 command for that model or use hardware that supports that workflow. Retrying
-with `--model` does not enable unvalidated features.
+with `--model` does not enable unsupported features.
 
 If JSON output is needed for logs or automation, add `--json`. Diagnostic SCPI
 logs from `--log-scpi` are written separately so JSON stdout remains parseable.
 
 ## More CLI Documentation
 
-- [CLI README](README.md): engineering setup, validation scripts, full command
-  reference, JSON behavior, worker details, and maintainer notes.
+- [CLI README](README.md): engineering setup, full command reference, JSON
+  behavior, worker details, and build information.
 - [Power CLI JSON / JSONL Contract](../contracts/power-cli-jsonl-contract.md):
   structured command-line output rules.
 - [Power Worker Contract](../contracts/power-worker-contract.md): local worker
   REST, JSONL, and artifact contract.
-- [Supported Models](../core/supported-models.md): model-specific support
-  status and validation notes.
+- [Supported Models](../core/supported-models.md): the current Product support
+  matrix and model-specific limits.

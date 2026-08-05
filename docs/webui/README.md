@@ -3,8 +3,9 @@
 FastAPI and static-asset WebUI adapter for Powers Tool.
 
 The WebUI is a vendor-neutral product adapter for supported DC power supplies.
-Current Product-active and hardware-validated models are the documented
-Keysight models; unknown live hardware remains fail closed in Core.
+Current Product support is limited to the Product-active scopes documented in
+[Supported Models](../core/supported-models.md); unknown live hardware remains
+fail closed in Core.
 
 This README is the WebUI behavior, API, validation, and maintainer guide. For
 normal operator workflows, use the [WebUI User Guide](USER_GUIDE.md). For

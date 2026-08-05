@@ -1,8 +1,9 @@
 # Core Integration
 
 `powers_tool_core` owns the vendor-neutral hardware-facing runtime for
-supported DC power supplies. Current validated drivers target the documented
-Keysight models. Adapter packages should build parser-neutral request objects
+supported DC power supplies. Current Product support is defined by
+[Supported Models](supported-models.md). Adapter packages should build
+parser-neutral request objects
 and call the shared command runners instead of constructing SCPI directly.
 
 `powers_tool_core` ships as part of the single `powers-tool`

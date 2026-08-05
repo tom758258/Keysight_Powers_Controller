@@ -6,10 +6,11 @@ Powers Tool 是用於支援之直流電源供應器的 vendor-neutral Python 控
 2.0.0 版本提供單一可安裝發行套件 `powers-tool`，並保留三個獨立的
 import package：`powers_tool_core`、`powers_tool_cli` 與 `powers_tool_webui`。
 
-本架構是 vendor-neutral，但目前 Product-active 且已完成硬體驗證的型號為
-`keysight-e36312a`、`keysight-edu36311a` 與 `keysight-e3646a`。Vendor-neutral
-架構不代表任意或未知電源供應器都受支援；未註冊或無法解析的 live hardware
-會 fail closed。Vendor-specific driver、alias、手冊、SCPI 行為、evidence
+本架構是 vendor-neutral，但目前 Product support 僅限
+[Supported Models](docs/core/supported-models.md) 所記載、已註冊且文件化的
+model scope。Vendor-neutral 架構不代表任意或未知電源供應器都受支援；
+未註冊或無法解析的 live hardware 會 fail closed。Vendor-specific driver、alias、
+手冊、SCPI 行為、evidence
 與 support table 保留正確的 vendor 名稱。
 
 共用 Core runtime 負責 identity resolution、driver、SCPI 行為、安全性與 exact

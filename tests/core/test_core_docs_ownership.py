@@ -54,8 +54,34 @@ def test_public_identity_docs_keep_machine_readable_ownership_tokens():
     root = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
     core = read_core_doc("README.md")
     assert "powers_tool_core" in root
-    assert "keysight-e36312a" in root
+    assert "docs/core/supported-models.md" in root
     assert "powers_tool_core" in core
+
+
+def test_core_overviews_do_not_freeze_validation_status_or_harness_details():
+    core_docs = (
+        read_core_doc("README.md"),
+        read_core_doc("README.zh-TW.md"),
+    )
+    for text in core_docs:
+        assert "hardware-validated support" not in text
+        assert "hardware-validated 支援" not in text
+        assert "candidate-evidence" not in text
+        assert ".tmp_tests" not in text
+        assert "-Suite full" not in text
+
+    english = core_docs[0]
+    assert "automatically promote product support" not in english
+    assert "../CONTRIBUTING.md" in english
+    assert "supported-models.md" in english
+
+    supported = read_core_doc("supported-models.md")
+    contributor = (REPO_ROOT / "docs" / "CONTRIBUTING.md").read_text(
+        encoding="utf-8"
+    )
+    assert "## Product LIVE Exact-Scope Matrix" in supported
+    assert "candidate evidence" in contributor.lower()
+    assert "promotion" in contributor.lower()
 
 
 def test_root_testing_guidelines_are_linked_and_structural():

@@ -11,9 +11,9 @@ explicitly nullable, and aliases may not be supplied together. See the
 [command parameter contract](../contracts/commands-parameter-contract.md).
 
 Vendor-neutral Core library and driver layer for controlling supported DC
-power supplies safely. Product-active and hardware-validated support is governed
-by documented exact scopes; unknown live hardware remains closed. For the current
-product-supported model matrix, see [Supported Models](supported-models.md).
+power supplies safely. Product support is governed by documented exact scopes;
+unknown live hardware remains closed. For the current product-supported model
+matrix, see [Supported Models](supported-models.md).
 
 Core ships inside the single `powers-tool` distribution while preserving
 the `powers_tool_core` import boundary. It owns hardware-facing behavior
@@ -49,9 +49,9 @@ setpoint-range metadata.
 
 ## Live Support Policy Modes
 
-The contributor-validation policy mode admits only registered pending scopes
-and commands returned by Core `internal_validation_candidate_inventory()`.
-Product mode remains fail-closed, and validation never mutates Product metadata.
+Product mode is the default and remains fail-closed. Contributor Validation mode
+is for explicitly registered validation scopes; its workflow is maintained in
+[Contributing](../CONTRIBUTING.md). Validation never mutates Product metadata.
 
 `RuntimeOptions.support_policy_mode` defaults to `product`. After Core reads
 `*IDN?`, it resolves the reported manufacturer plus model to a canonical
@@ -106,8 +106,7 @@ are never reported as Product-open exact live commands.
   `set`, `apply`, `output-on`, `output-off`, `safe-off`, `ramp`, `ramp-list`, and
   readback/snapshot helpers.
 - `powers_tool_core.readonly`: read-only `status`, `readback`,
-  `measure-all`, log, and validation flows, including dry-run plans that do
-  not open VISA.
+  `measure-all`, log, and dry-run plans that do not open VISA.
 - `powers_tool_core.trigger`: E36312A trigger, STEP, native LIST, fire, and
   abort support.
 - `powers_tool_core.sequence`: parser-neutral sequence document loading,
@@ -130,16 +129,12 @@ are never reported as Product-open exact live commands.
   output current limit programming-range metadata from model programming
   manuals.
 - `powers_tool_core.capabilities`: command and model capability reporting.
-- `powers_tool_core.model_metadata`: public physical-model and nonphysical
-  planning-profile metadata projections.
-- `powers_tool_core.support_policy`: exact live-support enforcement metadata
-  and safe public display projections.
-- `powers_tool_core.support_evidence`: immutable accepted evidence metadata
-  identities and non-sensitive support metadata.
+- `powers_tool_core.model_metadata` and `support_policy`: public physical-model
+  projections and exact live-support metadata.
 - `powers_tool_core.model_resolution`: centralized runtime identity validation
   for dry-run/simulator planning and live expected-model guards.
-- `powers_tool_core.model_enablement`: injectable consistency validation for
-  Product-active, candidate, catalog-only, and de-scoped model inventories.
+- `powers_tool_core.model_enablement`: consistency validation for model
+  metadata projections.
 - `powers_tool_core.testing`: no-hardware simulator used by tests and CLI
   simulation mode.
 
@@ -184,38 +179,12 @@ Focused suites are useful when changing specific layers:
 
 Pytest uses the ignored repository-local `.tmp_pytest` directory by default,
 so tests do not depend on access to the Windows system temporary directory.
-Run pytest from the repository root. For an intentional per-run override, use
-`--basetemp .tmp_tests/<purpose>`. Do not use `Local/` for pytest temporary
+Run pytest from the repository root. Do not use `Local/` for pytest temporary
 data or generated test artifacts.
 
-The repository-level validation scripts also exercise Core through the CLI
-adapter. Run the model-aware no-hardware preflight before a plan-only live
-wrapper check:
-
-```powershell
-.\scripts\preflight-cli.ps1 -Target all -Suite smoke
-.\scripts\live-cli-check.ps1 -Target keysight-e36312a -Connection USB -Resource SIM::E36312A -Suite readonly -PlanOnly
-```
-
-Live suite checks and hardware pytest are explicit, opt-in hardware checks.
-`scripts\live-cli-check.ps1` is the maintained contributor validation harness
-and records target/connection/suite/case candidate-evidence artifacts under
-`.tmp_tests`; passing artifacts do not automatically promote product support.
-See [Contributing](../CONTRIBUTING.md) for the contributor workflow. For each
-active model, `-Suite full` is the complete validation gate for all
-project-supported LIVE features of that model.
-
-A passing full-suite record applies only to the selected model and connection
-and is evidence for maintainer review. Product support changes only through an
-explicit evidence-backed policy decision; the record itself does not open any
-command or feature.
-
-Disabled, unimplemented,
-out-of-scope, or factory-only features are not implied by the pass. A passing
-suite validates only the selected model, connection, suite, and recorded cases;
-it does not validate other connection types or every factory instrument
-function. Commands, state-changing behavior, and report locations are
-documented in the [CLI README scripted validation section](../cli/README.md#scripted-validation).
+Contributor validation and opt-in hardware workflows are maintained in
+[Contributing](../CONTRIBUTING.md). Run the no-hardware Core tests above before
+any hardware validation.
 
 ## Docs
 
@@ -223,15 +192,10 @@ documented in the [CLI README scripted validation section](../cli/README.md#scri
 - Supported models: `supported-models.md`
 - CLI JSON contract that consumes core envelopes: `../contracts/power-cli-jsonl-contract.md`
 - Root workspace README: `../../README.md`
-- CLI validation scripts: `../cli/README.md#scripted-validation`
+- Contributor validation workflow: `../CONTRIBUTING.md`
 - Commands parameter contract: `../contracts/commands-parameter-contract.md`
 
-## Status
-
-Model-specific driver foundations are selected from valid `*IDN?` responses.
-Channel-list SCPI, snapshot/readback parsing, protection state handling,
-sequence loading/planning, safety validation, simulator behavior, and
-output-operation planning are covered by no-hardware tests.
+## Runtime, Planning, And Safety Notes
 
 `generic-scpi` is a no-hardware planning profile, not a physical-model lifecycle
 stage.
@@ -244,10 +208,6 @@ identity plus channel-local OVP/OCP trip state.
 LIST execution belongs only to `trigger-list`; Ramp always uses software
 setpoint steps. `generic-scpi` is a nonphysical no-hardware planning profile,
 not a physical trigger planning model.
-
-The `full` suite requires external operator observation for
-`trigger-pulse`; passing a wrapper run still does not automatically promote a
-command.
 
 A feature family does not open other commands. Software `ramp-list` and step-limited
 `sequence` are not native LIST support.
@@ -279,11 +239,12 @@ detected canonical `model_id` to match
 before setup/write SCPI. The selected model never overrides the IDN-selected
 driver.
 
-After that guard, Core enforces exact product support using the resolved
-canonical `model_id`, effective command, VISA resource transport, runtime
-backend, and required feature. Missing or pending scopes fail closed before
-command-specific I/O. This applies equally to direct Core callers and adapter
-requests; no validation-mode bypass exists.
+After that guard, Product mode enforces exact Product support using the
+resolved canonical `model_id`, effective command, VISA resource transport,
+runtime backend, and required feature. Missing or pending scopes fail closed
+in Product mode before command-specific I/O. Contributor Validation mode admits
+only explicitly registered validation scopes and does not bypass identity,
+request, safety, confirmation, cleanup, or exact-scope enforcement.
 
 ## Output Workflow Pulses
 
