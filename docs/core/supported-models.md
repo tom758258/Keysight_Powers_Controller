@@ -1,29 +1,28 @@
 # Supported Models
 
-## Product And Contributor-Validation Boundary
+## Product Live Support Boundary
 
-Normal product LIVE execution uses the exact product matrix below. The two
-TCPIP + pyvisa-py entries remain registered pending scopes, not
-product-open support: system-VISA evidence does not validate pyvisa-py or a
-custom backend. An internal contributor-validation policy mode can evaluate
-registered pending scopes; it
-does not promote them, change public status metadata, or bypass physical
-identity, model/profile, transport/backend, safety, confirmation, and request
-validation. E3646A remains ASRL / RS-232 + system VISA only.
+Normal Product LIVE execution uses the exact Product matrix below. Core
+resolves the reported manufacturer plus model to one canonical physical
+`model_id`, applies any expected-model guard, and requires an exact
+`model_id + command + transport + backend + required feature` match. Missing,
+unsupported, or non-Product-open scopes fail closed. A Product-open system VISA
+scope does not inherit to pyvisa-py or a custom backend. E3646A remains ASRL /
+RS-232 + system VISA only.
 
-This document summarizes the checked-in Core live-support policy. The
-authoritative command/transport/backend decisions are in
-`src/powers_tool_core/support_policy.py`; the CLI contract documents
-request and response shapes, not live-support promotion.
+The `live_validated_full_suite` status identifies current Product-open exact
+command scopes in the public support projection. For the machine-readable
+policy-mode and status contract, see [Core support-policy contract](integration.md#support-policy-contract).
+Contributor validation and evidence workflow is maintained in
+[Contributing](../CONTRIBUTING.md).
 
 ## Product LIVE Exact-Scope Matrix
 
 Core parses `*IDN?` and resolves reported manufacturer plus model to one
 canonical physical `model_id`, checks any expected-model guard, and then
 requires an exact `model_id + command + transport + backend + required
-feature` match. Missing and pending scopes fail closed. System-VISA evidence
-does not validate pyvisa-py or a custom backend, and no public validation
-bypass exists.
+feature` match. Missing or non-Product-open scopes fail closed. A system VISA
+scope does not extend to pyvisa-py or a custom backend.
 
 The current `live_validated_full_suite` command inventories are:
 
@@ -39,9 +38,8 @@ does not open a model, feature family, transport/backend scope, or another
 command.
 
 The Product-open command rows above are exact scopes, not transport/backend
-inheritance. A validation run produces reviewable evidence for its selected
-model, connection, suite, and cases; it does not automatically promote Product
-support.
+inheritance. A command or feature not listed is not opened by another model,
+connection, backend, or command family.
 
 ## Feature-Aware Exact Scopes
 
@@ -52,79 +50,38 @@ Sequence `wait` and `log` remain host-only and need no live feature entry.
 Current real trigger-source values are `bus` and `immediate` (`imm` normalizes
 to `immediate`); PIN/EXT inputs remain rejected by request/profile validation.
 
-On an accepted Product connection, currently supported actions/sources retain
-`live_validated_full_suite`. On the registered E36312A and EDU36311A
-TCPIP/pyvisa-py pending parent scopes, implemented features remain
-`feature_pending`. Product mode rejects those parent/feature scopes;
-contributor Validation mode may use only the exact registered pending entries.
-Missing feature metadata is not pending and fails closed in both modes.
-A validated connection may contain both `live_validated_full_suite` and
-`feature_pending` command features; Product mode opens only the validated
-feature entries. A transport-pending connection cannot contain a validated
-feature.
+On a Product-open connection, currently supported actions and sources are
+Product-open. A pending connection or feature is not currently supported for
+Product use; missing feature metadata is not an implicit pending approval.
+Only Product-open feature entries are available to Product callers.
 
-## Model Enablement Lifecycle
+## Models Not Currently Available For Product Use
 
-| Stage | Current models | Runtime meaning |
-| --- | --- | --- |
-| Product-active | `keysight-e36312a` (Keysight E36312A), `keysight-edu36311a` (Keysight EDU36311A), `keysight-e3646a` (Keysight E3646A) | Model-specific profiles/drivers with accepted exact Product scopes. |
-| Candidate | None | Complete contributor model eligible only for explicitly pending Validation-mode scopes. |
-| Catalog-only | `keysight-e36313a`, `keysight-e36233a`, `keysight-e36441a`, `keysight-e36155a` | Identity/catalog metadata only; not an active planning or live expected-model identity. |
-| De-scoped | `keysight-e36103b`, `keysight-e36232a` | Blocked from Product, Validation, driver fallback, and live metadata. |
+The following catalog-known model IDs are not active Product planning or live
+expected-model identities: `keysight-e36313a`, `keysight-e36233a`,
+`keysight-e36441a`, and `keysight-e36155a`.
 
-`generic-scpi` remains no-hardware/fallback-only and is not a physical model stage.
-Adding the candidate lifecycle does not enable a new model. A candidate must
-have complete driver, channel, simulator, capability, safety, electrical
-rating, setpoint range/limit, test, and exact pending policy metadata before
-entering that set. Feature-aware commands require a complete pending feature
-inventory in every applicable exact scope; candidate status and validation
-artifacts do not make it Product-open.
+`keysight-e36103b` and `keysight-e36232a` are de-scoped. They are rejected as
+no-hardware planning identities, live expected-model guards, WebUI model
+selections, and live model-aware operations. They must not fall back to
+`GenericScpiPowerSupply`.
 
-## Live Suite Validation Matrix
+Other Keysight E36xxx / E36000-series models currently have no Product support.
+`generic-scpi` remains a conservative no-hardware planning profile and is not a
+physical live model.
 
-This table is the manually maintained source of truth for suite-based live
-validation records. For each active model, `-Suite full` is the complete
-validation gate for all currently project-supported LIVE features of that
-model.
+## Connection-Scoped Product Support
 
-A passing full-suite record applies only to the selected model and connection
-and is evidence for maintainer review. Product support changes only through an
-explicit evidence-backed policy decision; the record itself does not open any
-command or feature.
-
-Disabled, unimplemented, out-of-scope, or
-factory-only features are not implied by the pass. A passed
-`scripts/live-cli-check.ps1` run validates
-only the selected target model, connection, suite, and cases in that run's
-evidence. It does not validate unsupported suites, skipped
-features, other connection types, every factory instrument function, or the
-whole model.
-
-| Target | Connection scope | Supported suites in `full` | Notes |
-| --- | --- | --- | --- |
-| E36312A | USB accepted evidence; LAN accepted evidence | `readonly`, `output`, `protection`, `snapshot`, `trigger-list`, `software-sequence` | The full suite covers Product-open `trigger-fire` and manually observed `trigger-pulse`. Suite names are evidence groupings, not command permissions. |
-| EDU36311A | USB accepted evidence; LAN accepted evidence | `readonly`, `output`, `protection`, `software-sequence` | Suite names are evidence groupings, not command permissions. Trigger/native LIST, snapshot, and restore-from-snapshot remain unsupported. |
-| E3646A | RS-232 / ASRL only | `readonly`, `output`, `software-sequence` | CH1/CH2 only. `OUTP ON/OFF` is global. `ramp-list` and `sequence` are software workflows, not native LIST. |
-
-## Connection-Scoped Live Support Status
-
-Live validation/opening is scoped by model, connection, suite, and cases. A
-passed `scripts/live-cli-check.ps1` result only proves validation for the
-selected model and connection; it does not mean the same feature is validated
-on another connection type, another model, disabled workflows, or factory-only
-features.
+Product support is scoped by model, connection, backend, command, and feature.
 
 The current exact Product connections are E36312A USB and LAN, EDU36311A USB
 and LAN, and E3646A ASRL / RS-232. Each connection remains limited to the
 commands and feature entries listed in the Product matrix. E3646A USB and LAN
 are outside the current scope.
 
-The E36312A and EDU36311A TCPIP + pyvisa-py parent scopes remain registered as
-`transport_pending` with `product_open=false`. Their implemented command
-features remain `feature_pending`: contributor Validation mode may use only the
-registered exact pending entries, while Product mode rejects them. System-VISA
-evidence does not validate pyvisa-py or a custom backend, and passing evidence
-does not update Product support automatically.
+The E36312A and EDU36311A TCPIP + pyvisa-py connections are not currently
+available for Product use. System VISA support does not extend to pyvisa-py or
+a custom backend.
 
 | Model | USB | LAN | ASRL / RS-232 |
 | --- | --- | --- | --- |
@@ -138,15 +95,9 @@ snapshot/restore, and completion-pulse remain disabled. E3646A `ramp-list` and
 `sequence` remain software workflows only, not native LIST.
 
 EDU36311A USB read-only, output/write, and protection commands are enabled for
-real execution within the exact Product scopes above. Use
-`scripts/live-cli-check.ps1
--Target EDU36311A -Connection USB -Resource ... -Suite full` for current
-suite validation. The full suite includes `software-sequence` for
-project-supported software `ramp-list` and sequence read-only/output
-workflows. The legacy smoke wrapper remains available for bounded smoke
-checks only. EDU36311A `protection-set` and
-`clear-protection` require `--confirm` for real execution and report
-`hardware_validation=validated`.
+real execution within the exact Product scopes above. EDU36311A
+`protection-set` and `clear-protection` require `--confirm` for real execution
+and report `hardware_validation=validated`.
 
 Trigger workflows are E36312A-only. EDU36311A, E3646A, and `generic-scpi` do not
 expose trigger dry-run or simulator behavior; their trigger commands report
@@ -161,9 +112,9 @@ placeholders and must not imply a model.
 
 | Planning identity | Deterministic SIM resource | No-hardware channels | Output control scope | Trigger / LIST / protection notes |
 | --- | --- | --- | --- | --- |
-| `keysight-e36312a` | `USB0::SIM::E36312A::INSTR` | CH1, CH2, CH3 | Per-channel output control; `all` expands to CH1-CH3 | Trigger workflows and native LIST are E36312A-only and validated for live E36312A paths. Protection read/write paths are supported. |
+| `keysight-e36312a` | `USB0::SIM::E36312A::INSTR` | CH1, CH2, CH3 | Per-channel output control; `all` expands to CH1-CH3 | Trigger workflows and native LIST are E36312A-only and Product-open on supported live E36312A paths. Protection read/write paths are supported. |
 | `keysight-edu36311a` | `USB0::SIM::EDU36311A::INSTR` | CH1, CH2, CH3 | Per-channel output control; `all` expands to CH1-CH3 | Protection read/write paths are supported. Trigger workflows and native LIST are not exposed in dry-run, simulate, or real mode. |
-| `keysight-e3646a` | `ASRL1::SIM::E3646A::INSTR` | CH1, CH2 | Global output enable/disable; channel selection is used for setpoints and readback | RS-232 / ASRL output workflows are live validated. Protection writes, trigger workflows, snapshot restore, completion pulses, and native LIST are disabled. |
+| `keysight-e3646a` | `ASRL1::SIM::E3646A::INSTR` | CH1, CH2 | Global output enable/disable; channel selection is used for setpoints and readback | RS-232 / ASRL output workflows are Product-open within the exact scope. Protection writes, trigger workflows, snapshot restore, completion pulses, and native LIST are disabled. |
 | `generic-scpi` planning profile | None; use explicit `--profile generic-scpi` in dry-run | CH1 | Unknown | Conservative no-hardware planning only. Trigger workflows, native LIST, and protection writes are not exposed. |
 
 Live hardware uses manufacturer-plus-model IDN resolution. In live mode,
@@ -172,10 +123,10 @@ detected canonical identity to match and fails before command-specific SCPI on
 mismatch. The guard never overrides the IDN-selected driver. `generic-scpi`
 is a conservative nonphysical dry-run profile and is not a live expected model.
 
-For model-aware live execution, Core makes the final product decision using the
+For model-aware live execution, Core makes the final Product decision using the
 detected `*IDN?` model plus the exact command, transport, and VISA backend.
-Pending TCPIP/pyvisa-py and missing scopes reject in normal product use;
-identity diagnostics do not imply model or feature support.
+Missing and non-Product-open scopes reject in normal Product use; identity
+diagnostics do not imply model or feature support.
 
 ## Output Setpoint Programming Ranges
 
@@ -207,16 +158,6 @@ E3646-90001, printed pages 82, 83, 84, and 91. E3646A ranges are
 range-dependent and are not flattened into a single voltage/current maximum.
 At *RST, the E3646A low voltage range is selected.
 
-E36103B and E36232A are not active supported models. They are rejected as
-no-hardware planning identities, live expected-model guards, WebUI model selections,
-`scripts/live-cli-check.ps1` targets, and live `*IDN?`-detected model-aware
-operations. They must not fall back to `GenericScpiPowerSupply`. Other Keysight
-E36xxx / E36000-series models currently have neither Product nor
-contributor-Validation support. Adding a model requires the complete metadata,
-model-specific driver, simulator/fake coverage, safety coverage, and
-model-specific hardware evidence prerequisites defined by the contributor
-process.
-
 ## Command Support Notes
 
 `capabilities --json` includes a `command_support` map, and
@@ -232,16 +173,13 @@ command-level facts:
   `expected_model_id`; driver selection always follows manufacturer-plus-model
   IDN resolution. `generic-scpi` uses the separate dry-run planning-profile
   field and is never a live expected model.
-- E36312A full-suite artifacts provide evidence only for the exact commands
-  listed in the product matrix above. A suite or feature-family label does not
-  open every command in that family.
 - E36312A native trigger/LIST support is exposed through `trigger-status`,
   `trigger-step`, `trigger-list`, and `trigger-abort`. The
   trigger dry-run and simulator paths are also E36312A-only. Native LIST
   execution is limited to 100 steps, dwell values from 0.01 to 3600 seconds,
   and count values from 1 to 256. Real native trigger sources are currently
-  limited to BUS and immediate; rear pin and external input sources remain
-  dry-run/simulator only until hardware validation.
+  limited to BUS and immediate; rear pin and external input sources are not
+  Product-open.
 - Ramp always uses software setpoint steps. Native LIST execution is confined
   to `trigger-list`.
 - EDU36311A USB and LAN product execution is limited to the exact commands in

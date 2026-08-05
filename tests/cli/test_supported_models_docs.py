@@ -63,6 +63,7 @@ def test_public_docs_preserve_machine_schema_and_support_tokens() -> None:
     paths = (
         "README.md",
         "docs/core/README.md",
+        "docs/core/integration.md",
         "docs/core/supported-models.md",
         "docs/cli/README.md",
         "docs/cli/USER_GUIDE.md",
@@ -82,7 +83,6 @@ def test_public_docs_preserve_machine_schema_and_support_tokens() -> None:
         "version: 2",
         "Product-active",
         "Candidate",
-        "Catalog-only",
         "live_validated_full_suite",
         "feature_pending",
         "not_supported_by_model",
@@ -96,16 +96,10 @@ def test_public_docs_preserve_machine_schema_and_support_tokens() -> None:
         assert legacy_token not in combined
 
 
-def test_hidden_validation_flag_is_contributor_only() -> None:
+def test_hidden_validation_flag_stays_in_contributing_for_core_support_docs() -> None:
     public_paths = (
-        "README.md",
-        "docs/core/README.md",
         "docs/core/supported-models.md",
-        "docs/cli/README.md",
-        "docs/cli/USER_GUIDE.md",
-        "docs/contracts/power-worker-contract.md",
-        "docs/webui/README.md",
-        "docs/webui/USER_GUIDE.md",
+        "docs/core/integration.md",
     )
     public_docs = "\n".join(
         Path(path).read_text(encoding="utf-8") for path in public_paths
@@ -115,6 +109,45 @@ def test_hidden_validation_flag_is_contributor_only() -> None:
 
     assert hidden_flag in contributor
     assert hidden_flag not in public_docs
+
+
+def test_core_support_document_ownership_is_explicit() -> None:
+    supported = Path("docs/core/supported-models.md").read_text(encoding="utf-8")
+    integration = Path("docs/core/integration.md").read_text(encoding="utf-8")
+    contributor = Path("docs/CONTRIBUTING.md").read_text(encoding="utf-8")
+
+    for token in (
+        "--validation-allow-pending-live-support",
+        "internal_validation_candidate_inventory",
+        "transport_pending",
+        "feature_pending",
+        "live-cli-check.ps1",
+        ".tmp_tests",
+        "private/",
+        "shareable/",
+        "## Live Suite Validation Matrix",
+        "## Model Enablement Lifecycle",
+        "Candidate |",
+        "candidate prerequisites",
+    ):
+        assert token not in supported
+
+    for token in (
+        "## Support-Policy Contract",
+        "profile_validated",
+        "not_supported_by_model",
+        "live_validated_full_suite",
+        "transport_pending",
+        "feature_pending",
+        "product_open",
+        "internal_validation_candidate_inventory",
+    ):
+        assert token in integration
+
+    assert "integration.md#support-policy-contract" in supported
+    assert "core/integration.md#support-policy-contract" in contributor
+    assert "supported-models.md" in integration
+    assert "../CONTRIBUTING.md" in integration
 
 
 def test_contributor_docs_preserve_safety_and_privacy_keywords() -> None:

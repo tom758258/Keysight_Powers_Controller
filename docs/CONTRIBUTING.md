@@ -128,6 +128,9 @@ because its SCPI looks similar to an existing model. Product support requires
 accepted exact evidence and an explicit policy decision; changing only a stage
 or attaching a passing artifact does not promote support.
 
+The machine-readable Core support-policy contract is defined in
+[Core Integration](core/integration.md#support-policy-contract).
+
 Exact command support is also feature-aware. The first feature kinds are
 normalized sequence actions and real trigger sources. Adding a new sequence
 action or trigger source requires profile/request validation and an exact

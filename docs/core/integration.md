@@ -38,8 +38,88 @@ third-party APIs. Underscore-prefixed helpers, including `_run_*_admitted`, are
 Core-internal handoffs for already admitted requests and are not stable adapter
 APIs.
 
+## Support-Policy Contract
+
+This section documents the status, reason, and feature-state values currently
+implemented by Core support-policy projections and enforcement. The values
+remain layer-specific; they are not a new unified state taxonomy.
+
+`RuntimeOptions.support_policy_mode` defaults to Product mode. Product mode is
+the normal user-facing path and requires an exact Product-open scope for
+model-aware live commands; documented diagnostic exemptions keep their limited
+diagnostic boundary. Contributor Validation mode is an internal validation
+role: it uses the same exact gate, keeps existing Product-open scopes
+available, and admits pending exact entries only when they are explicitly
+registered. It does not bypass physical identity, expected-model checks,
+request validation, safety, confirmation, or cleanup rules.
+
+The exact support key is:
+
+```text
+canonical detected model_id + effective command + transport + backend + required feature
+```
+
+Core resolves the canonical physical `model_id` from reported manufacturer and
+model before applying the expected-model guard. Transport and backend are
+normalized independently; current machine values include `usb`, `tcpip`,
+`asrl`, `gpib`, `system_visa`, `pyvisa_py`, and `custom_visa`.
+
+The currently implemented values have these existing field-level meanings:
+
+- `profile_validated` is a command/profile classification. It does not by
+  itself authorize an exact live transport/backend scope.
+- `not_supported_by_model` identifies a command or feature that the current
+  model/profile does not support and is rejected in both policy modes.
+- `live_validated_full_suite` identifies an exact Product-open scope. A
+  validated scope is allowed in both Product and Validation mode.
+- `transport_pending` identifies an explicitly registered exact parent scope
+  that is not Product-open and is eligible only for Validation mode.
+- `feature_pending` identifies an explicitly registered exact feature entry
+  that is not Product-open and is eligible only for Validation mode.
+
+Missing or unknown command, scope, or feature metadata is not pending. The
+runtime gate fails closed for missing metadata, including missing exact feature
+metadata; it does not infer support from a profile, a catalog identity, another
+transport, another backend, or a sibling feature.
+
+Feature-aware commands use exact normalized `sequence_action` and
+`trigger_source` entries. A validated transport/backend parent may contain
+both validated and pending feature entries: Product mode opens only the
+validated features, while Validation mode may use an explicitly registered
+pending feature. A `transport_pending` parent may contain only pending or
+explicitly unsupported feature entries; it must not contain a Product-validated
+feature.
+
+`live_support_policy_metadata()` and `exact_live_support_metadata()` are safe
+schema-v2 display projections. They expose the current Product-facing
+classification, including fields such as `validation_status`, `product_open`,
+`pending`, `disabled_reason`, and `support_reason` where applicable.
+For a model-aware exact scope, a non-Product-open result is reported as
+`product_open=false`; a Product-open exact result is reported as
+`product_open=true`.
+
+Policy-exempt diagnostics (`list-resources`, `verify`, `identify`, `error`, and
+`clear`) do not require an exact model feature scope and do not open another
+scope; offline-only commands are not live authorization. These projections do
+not replace the enforcing runtime gate: `ensure_live_scope_supported()` and
+the live-support enforcement path apply the exact policy before
+command-specific SCPI I/O.
+
+Validation mode does not modify Product support metadata. Passing a validation
+run does not automatically promote a Product scope. The
+`internal_validation_candidate_inventory()` contract returns only explicitly
+registered pending validation candidates and does not derive candidates from
+catalog recognition, missing metadata, or Product support. It is an exact
+allowlist for internal validation admission; its current contents and count
+are not documented here. Contributor execution, artifacts, review, and
+promotion workflow remain in [Contributing](../CONTRIBUTING.md).
+
+The current Product truth is maintained in
+[Supported Models](supported-models.md).
+
 Core documentation is package-local:
 
 - `supported-models.md`
+- `integration.md`
 
 The cross-adapter JSONL and worker contracts remain under `../contracts/`.

@@ -3170,25 +3170,45 @@ def test_live_cli_check_noncanonical_or_inactive_targets_fail_before_live(target
     assert "Running no-hardware preflight" not in result.stdout
 
 
-def test_english_docs_describe_suite_scoped_validation_and_e3646a_boundaries():
+def test_english_docs_describe_contributor_validation_workflow():
+    contributor = Path("docs/CONTRIBUTING.md").read_text(encoding="utf-8")
+    normalized = " ".join(contributor.split())
+
+    assert "live-cli-check.ps1" in contributor
+    assert "-PlanOnly" in contributor
+    assert "private/" in contributor
+    assert "shareable/" in contributor
+    assert "Passing artifacts are candidate evidence only." in normalized
+
+
+def test_english_docs_describe_cli_suite_scope():
     docs = "\n".join(
         Path(path).read_text(encoding="utf-8")
         for path in (
             "README.md",
             "docs/cli/README.md",
             "docs/core/README.md",
-            "docs/core/supported-models.md",
             "docs/webui/README.md",
         )
     )
 
     normalized = " ".join(docs.split())
-    assert "live-cli-check.ps1" in docs
     assert "validates only the selected" in normalized
     assert "does not validate the entire model" in normalized
     assert "preflight-cli.ps1" in docs
-    assert "software workflows, not native LIST" in normalized
-    assert "OUTP ON/OFF" in docs
+
+
+def test_english_docs_describe_supported_e3646a_product_boundaries():
+    supported = Path("docs/core/supported-models.md").read_text(encoding="utf-8")
+    normalized = " ".join(supported.split())
+
+    assert "E3646A product execution is limited to ASRL / RS-232 + system VISA" in normalized
+    assert "E3646A `ramp-list` is software setpoint stepping" in normalized
+    assert "E3646A `sequence` is a software workflow" in normalized
+    assert "native instrument LIST support" in normalized
+    assert "OUTP ON/OFF" in supported
+    assert "Trigger workflows are E36312A-only" in normalized
+    assert "EDU36311A trigger commands remain disabled" in normalized
 
 
 def _tcpip_session_fixture_cli_path(tmp_path: Path) -> Path:
