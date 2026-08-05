@@ -16,7 +16,7 @@
 powers-tool-<version>.exe
 ```
 
-如果您的發佈資料夾使用的是帶有版本號的執行檔，請在以下的命令中使用該檔名。開發人員或簽出原始碼的使用者請參閱 [CLI README](README.zh-TW.md) 以了解虛擬環境、模組、驗證與建置命令。
+如果您的發佈資料夾使用的是帶有版本號的執行檔，請在以下的命令中使用該檔名。開發人員或簽出原始碼的使用者請參閱 [CLI README](README.zh-TW.md) 以了解虛擬環境、模組、建置與 developer commands。
 
 若為已安裝的命令，請將 `.\powers-tool.exe` 替換為 `powers-tool`：
 
@@ -118,7 +118,7 @@ command 或 feature family。E3646A 使用 `INST:NSEL` 做通道預選；`OUTP O
 儀器整體輸出狀態。
 
 E3646A 的 `ramp-list` 與 `sequence` 是 software workflows，不是 native LIST。
-Sequence 只允許目前已驗證的 read-only/output steps；Protection、Trigger、
+Sequence 只允許目前支援的 read-only/output steps；Protection、Trigger、
 Snapshot、Restore、native LIST 與 completion-pulse steps 不支援。
 
 每個 PowerShell 工作階段設定一次 ASRL 資源：
@@ -230,6 +230,13 @@ uv run powers-tool doctor --simulate --json
 不會送出 SCPI、不會修改實體儀器狀態，也不會啟用輸出；不需要實體儀器或 vendor
 VISA runtime。
 
+`--model` 不是 feature unlock；live mode 仍以實際 `*IDN?` 偵測出的 model 選擇 driver。
+Unsupported model、command、mode、connection、backend 或 feature combinations 會 fail closed。
+Product LIVE support 是 detected model、command、transport、backend 與 required feature 的 exact
+scope；missing 或 pending scopes 也會 fail closed。No-hardware plan 或 feature family 不代表其中
+所有 commands 都是 Product-open。請參閱 [Supported Models](../core/supported-models.md#product-live-exact-scope-matrix)
+確認目前支援組合。
+
 ## 常見問題
 
 如果找不到 `powers-tool.exe`，請確認您位於包含 CLI 執行檔的資料夾中，並使用該資料夾中實際的檔名。
@@ -238,13 +245,13 @@ VISA runtime。
 
 如果單純的 `list-resources` 顯示舊項目，請在常規操作流程改用 `--live-only` 重新執行，或使用 `--verify` 來診斷過時的 VISA 快取項目。
 
-如果命令拒絕執行，請在重試前閱讀驗證訊息。CLI 會在執行風險動作前，刻意拒絕不支援的型號、通道、不安全的設定點，以及缺少確認的操作。
+如果命令拒絕執行，請將其視為安全與 support policy 的結果；CLI 會在執行風險動作前，刻意拒絕不支援的型號、通道、不安全的設定點，以及缺少確認的操作。重試或加入 `--model` 不會啟用不支援的功能。
 
 如果日誌或自動化需要 JSON 輸出，請加上 `--json`。來自 `--log-scpi` 的診斷 SCPI 日誌會分開寫入 (stderr)，讓 JSON stdout 保持可解析狀態。
 
 ## 更多 CLI 文件
 
-- [CLI README](README.zh-TW.md)：工程建置、驗證腳本、完整指令參考、JSON 行為、worker 細節與維護者筆記。
+- [CLI README](README.zh-TW.md)：工程建置、完整指令參考、JSON 行為、worker 細節與建置資訊。
 - [Power CLI JSON / JSONL 契約](../contracts/power-cli-jsonl-contract.md)：結構化的命令列輸出規則。
 - [Power Worker 契約](../contracts/power-worker-contract.md)：本機 worker REST、JSONL 與產物 (artifact) 契約。
-- [支援型號](../core/supported-models.md)：特定型號的支援狀態與驗證筆記。
+- [支援型號](../core/supported-models.md)：目前 Product support matrix 與型號特定限制。

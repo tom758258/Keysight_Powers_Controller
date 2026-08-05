@@ -9,8 +9,8 @@ together, explicit nulls unless documented nullable, and coercible strings or
 numbers used in place of exact booleans, integers, or finite numeric fields.
 
 Vendor-neutral CLI adapter for controlling supported DC power supplies.
-Current Product-active and hardware-validated models are the documented
-Keysight models; unknown live hardware remains fail closed.
+Current Product-active models are the documented Keysight models; unknown live
+hardware remains fail closed.
 
 The CLI ships inside the single `powers-tool` distribution while
 preserving the `powers_tool_cli` import boundary. It exposes the
@@ -189,30 +189,19 @@ data or generated test artifacts.
 
 ### Scripted Validation
 
-The following table lists the supported standalone validation entry points,
-not a complete inventory of the `scripts/` directory. Run these scripts from
-the repository root in PowerShell. Each validation entry point writes a
-machine-readable `report.json` and a human-readable `summary.md` under
-`.tmp_tests`.
+The following table lists the supported standalone validation entry points.
+Run these scripts from the repository root in PowerShell.
+Each validation result is limited to the models, connections, suites, and
+checks actually exercised; it does not validate the entire model or broaden
+Product support. See
+[Contributing](../CONTRIBUTING.md) for contributor workflow details.
 
 | Script | Hardware use | Purpose |
 | --- | --- | --- |
-| `scripts\preflight-cli.ps1` | No hardware | Runs `smoke`, `deep`, or compatibility `full` model-aware CLI validation, parses every JSON result, and enforces `hardware_touched=false`. |
-| `scripts\live-cli-check.ps1` | Plan-only or explicit live hardware | Runs `preflight-cli.ps1`, then generates the exact selected-suite plans before optional interactive live validation. Formal release acceptance may skip only the redundant external preflight for its subsequent `PlanOnly` check. Use this for candidate feature-validation records. |
-| `scripts\release-acceptance.ps1` | No hardware | Validates clean committed HEAD with the existing `.venv`, runs the full suite once, builds one final versioned release, checks its package/install/entry-point/standalone artifacts and checksums, then runs all-model CLI smoke, representative deep preflight, and simulator `-PlanOnly`. |
-| `scripts\batch-validation.ps1` | Selected by switches | Runs only the selected simulated or live validation tasks and writes one batch report. |
-
-Run formal release acceptance from the repository root with:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\release-acceptance.ps1
-```
-
-Each recorded command prints `[start]`, then `[passed]` or `[failed]`, with a
-`duration=<seconds>s` value. Child-process stdout/stderr is still collected
-after command completion and printed or written to the acceptance output; it is
-not streamed line by line. See the root [README](../../README.md) for the
-detailed release acceptance scope.
+| `scripts\preflight-cli.ps1` | No hardware | Runs model-aware CLI smoke and deep checks for supported planning and simulator paths. |
+| `scripts\live-cli-check.ps1` | Plan-only or explicit live hardware | Runs a selected model-aware CLI validation suite. |
+| `scripts\release-acceptance.ps1` | No hardware plus build checks | Runs the release validation workflow. |
+| `scripts\batch-validation.ps1` | Selected by switches | Runs selected simulated or live validation tasks. |
 
 #### Build entry points
 
@@ -234,258 +223,15 @@ entries:
   for whitespace errors. It depends on CI event SHA environment variables and
   is not a general local standalone command.
 
-#### Internal helpers
-
-These files are called by other scripts and are not general user entry points;
-do not execute them directly:
-
-- `scripts/_validation_helpers.ps1`
-- `scripts/e36312a_trigger_validation.py`
-
-The live wrapper uses the Product CLI and loads the Core-owned candidate inventory directly in memory. It creates no intermediate inventory, manifest, or capability files.
-
-If the current Windows execution policy blocks `.ps1` files, use a
-process-local bypass for the selected script:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\preflight-cli.ps1 -Target all -Suite smoke
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\live-cli-check.ps1 -Target keysight-e36312a -Connection USB -Resource "SIM::E36312A" -Suite readonly -PlanOnly
-```
-
-`preflight-cli.ps1` validates actual public CLI no-hardware paths and writes
-timestamped aggregate and per-model reports under
-`.tmp_tests\cli_preflight`. Use `smoke` to check identity, simulator mapping,
-capabilities, representative read-only behavior, model-aware planning, and
-model-specific topology or support policy for every Product-active model:
-
-```powershell
-.\scripts\preflight-cli.ps1 -Target all -Suite smoke
-```
-
-Output-control scope is owned by Core model metadata and is tested there:
-E36312A and EDU36311A are `per_channel`, while E3646A is `global`. The CLI
-capabilities smoke does not treat `output_control_scope` as a capabilities
-payload field.
-
-Use `deep` for capability-representative models. With `-Target all`, the
-current representatives are `keysight-e36312a` for three-channel Protection,
-Snapshot, Trigger List, and complete workflow coverage, and
-`keysight-e3646a` for two-channel ASRL/RS-232 and global-output behavior.
-`keysight-edu36311a` remains covered by all-model smoke without duplicating
-E36312A deep workflows. Add another deep representative only when a new model
-introduces a capability family or hardware structure not already represented:
-
-```powershell
-.\scripts\preflight-cli.ps1 -Target all -Suite deep
-```
-
-The default `full` suite retains the prior broad per-target preflight for
-explicit validation and compatibility with existing wrapper workflows.
-Smoke, deep, and full are all no-hardware paths.
-
-Suite live validation uses an explicit target, connection, resource, and
-suite. By default, every run, including `-PlanOnly`, first calls the broad
-model-level `preflight-cli.ps1` and then generates the selected suite's exact
-simulator, dry-run, lint, and expected-failure cases. Formal release acceptance
-uses its internal skip switch only after all-model smoke and representative deep
-preflight have passed; the selected-suite PlanOnly cases still run. `-PlanOnly`
-stops there and does not open the supplied resource. Without `-PlanOnly`,
-interactive Enter confirmation
-is required before opening VISA. If stdin is redirected, live execution is
-refused with a confirmation-required report.
-
-Live LAN validation waits 500 ms between independent TCPIP/VXI-11 subprocess
-sessions. The first live TCPIP subprocess does not wait. A command may be run
-once more only when its first schema-2 failure proves that `open_resource`
-failed before any SCPI or functional output artifact was produced. USB, ASRL,
-preflight, simulator, dry-run, and PlanOnly flows do not use this delay or
-recovery. Trigger validation helpers share the LAN session delay but are never
-retried by the CLI-envelope recovery rule.
-
-Each standard live TCPIP command stores its first result as an `attempt-1`
-artifact and creates `attempt-2` only for that bounded recovery. The command
-record points its normal artifact paths at the final attempt while retaining
-`attempts`, `attempt_count`, `recovery_attempted`,
-`recovered_after_open_failure`, `final_attempt`, first-error diagnostics, and
-the configured settle delay. Recovery means only that the second CLI execution
-succeeded; identity, output-state, error-queue, and cleanup assertions can
-still fail the case. CSV, JSONL, snapshot, and other command-generated files
-keep their functional names, and any first-attempt change to such a file blocks
-automatic recovery.
-
-`live-cli-check.ps1` is the maintained contributor validation harness, not the
-same thing as declaring a connection opened for normal use. Its artifacts are
-candidate evidence only: a passed validation run is scoped to the selected
-model, connection, suite, and cases and does not automatically promote product
-support. It does not prove every feature, every connection type, or every
-model, and it does not mean USB validation covers LAN validation. See
-[Contributing](../CONTRIBUTING.md) for the contributor workflow.
-
-Wrapper targets are exact canonical physical `model_id` values; bare model
-names are rejected. New shareable reports use string `schema_version: "2.0"`,
-`kind: "powers-tool-live-validation"`, `vendor_id`, and `model_id`. Plan-only
-reports record `planning_model_id`; live reports record `expected_model_id`.
-The wrapper passes the canonical expected-model guard to identity-bearing and
-model-aware commands that accept it. `verify` and `identify` validate the
-manufacturer-plus-model identity detected by `*IDN?` against that guard;
-`error` and `clear` remain raw diagnostic/status operations without a model
-guard, and `list-resources` has no target-model override. The wrapper invokes
-`powers-tool` and never treats a passing report as support promotion. Failed or
-incomplete cleanup evidence is not accepted. Passing artifacts remain
-candidate-only and cannot promote Product support automatically. Generic
-examples use `POWERS_TOOL_RESOURCE` or `POWERS_TOOL_ASRL_RESOURCE`;
-model-specific lab variables such as
-`E36312A_USB_RESOURCE` remain explicit operator inputs.
-
-The current `full` plans include dedicated bounded cases for these exact
-Product scopes:
-
-| Target and exact Product connection | Product-open commands with dedicated bounded cases |
-| --- | --- |
-| E36312A USB or TCPIP + system VISA | `output-on`, `log`, resource-backed `doctor`, `measure-all`, real `restore-from-snapshot`, `trigger-fire`, `trigger-pulse` |
-| EDU36311A USB or TCPIP + system VISA | `output-on`, `log`, resource-backed `doctor` |
-| E3646A ASRL + system VISA | `output-on`, resource-backed `doctor` |
-
-These cases are deliberately bounded. Logging collects one all-channel
-sample at 0.1 seconds into private CSV/JSONL files, validates the exact header,
-channel inventory, telemetry fields, per-row empty error fields, and completed
-summary, then writes only redacted shareable copies. Resource-backed `doctor`
-must complete the resource-manager/backend check, open the selected resource,
-identify the expected model, and emit no state-changing SCPI; offline `doctor`
-is unchanged. E36312A `measure-all` requires exactly CH1-CH3 numeric voltage
-and current results. Its two real restore paths separately prove settings with
-outputs kept OFF and one bounded CH1 ON snapshot restored with
-`--restore-output-state --confirm`; both paths retain the canonical snapshot
-guards and require best-effort safe-off, final output-state, and error-queue
-evidence even after failure.
-
-The E36312A trigger evidence cases remain in the contributor Full suite.
-`trigger-fire` uses a private snapshot/arm helper, invokes the standalone CLI
-command to fire the armed BUS trigger, and restores all three channels
-afterward. `trigger-pulse` pauses before any case-specific VISA or SCPI, then
-asks the operator to connect rear Pin 1 as the signal and rear Pin 4 Common as
-the digital signal reference, arm the oscilloscope or logic analyzer, and
-press Enter. After the command restores Trigger/LIST and rear digital state,
-the wrapper performs safe-off, output-state, and error-queue cleanup before
-asking for an explicit `Yes` or `No` observation. This wiring follows the
-[Keysight E36300 Series User's Guide](https://www.keysight.com/us/en/assets/9018-04576/user-manuals/9018-04576.pdf).
-A `Yes` records only one observed
-positive pulse; it does not validate pulse width, timing accuracy, or waveform
-quality.
-
 The complete Product-open command inventory remains the
 [Product LIVE exact-scope matrix](../core/supported-models.md#product-live-exact-scope-matrix).
 Only exact commands in that matrix are opened for normal LIVE use on those
-connections. E3646A live validation remains restricted to ASRL /
+connections. E3646A live use remains restricted to ASRL /
 RS-232; E3646A USB and LAN remain outside the current scope.
 Sequence actions and Trigger Step/List sources are also exact feature-policy
 requirements. Missing or pending feature entries remain closed in normal CLI
 Product mode; a Product-open command does not imply that an unregistered action
-or source is open. The CLI model list remains limited to Product-active models;
-there are currently no candidate models and no new model is enabled by this
-framework.
-
-```powershell
-.\scripts\live-cli-check.ps1 -Target keysight-e36312a -Connection USB -Resource $env:E36312A_USB_RESOURCE -Suite full
-.\scripts\live-cli-check.ps1 -Target keysight-e36312a -Connection LAN -Resource $env:E36312A_LAN_RESOURCE -Suite full
-.\scripts\live-cli-check.ps1 -Target keysight-edu36311a -Connection USB -Resource $env:EDU36311A_USB_RESOURCE -Suite full
-.\scripts\live-cli-check.ps1 -Target keysight-edu36311a -Connection LAN -Resource $env:EDU36311A_LAN_RESOURCE -Suite full
-.\scripts\live-cli-check.ps1 -Target keysight-e3646a -Connection ASRL -Resource $env:E3646A_ASRL_RESOURCE -Suite full
-.\scripts\live-cli-check.ps1 -Target keysight-e36312a -Connection USB -Resource $env:E36312A_USB_RESOURCE -Suite output -PlanOnly
-```
-
-Supported suites are model-aware:
-
-| Target | `full` suite composition |
-| --- | --- |
-| `keysight-e36312a` | `readonly`, `output`, `protection`, `snapshot`, `trigger-list`, `software-sequence` |
-| `keysight-edu36311a` | `readonly`, `output`, `protection`, `software-sequence` |
-| `keysight-e3646a` | `readonly`, `output`, `software-sequence` |
-
-For each active model, `-Suite full` is an evidence grouping.
-
-A passing full-suite record applies only to the selected model and connection
-and is evidence for maintainer review. Product support changes only through an
-explicit evidence-backed policy decision; the record itself does not open any
-command or feature.
-
-Disabled,
-unimplemented, out-of-scope, or factory-only features are not implied by the
-pass.
-
-A passed suite means the target model matched, the selected connection type
-was used, the selected suite/cases passed, and artifacts were recorded under
-`.tmp_tests`. It does not imply untested features, skipped suites, other
-models, other connection types, disabled features, out-of-scope factory
-features, or every instrument function are validated. It does not validate
-the entire model. Explicit unsupported suite requests fail before live
-execution instead of silently skipping everything.
-
-| Model | USB | LAN | ASRL / RS-232 |
-| --- | --- | --- | --- |
-| E36312A | accepted exact commands | accepted exact commands | N/A |
-| EDU36311A | accepted exact commands | accepted exact commands | N/A |
-| E3646A | not current scope | not current scope | accepted exact commands |
-
-E3646A suite validation is ASRL/RS-232 focused. It uses CH1/CH2, records that
-`OUTP ON/OFF` is global, and treats `ramp-list` and `sequence` as software
-workflows only, not native LIST. E3646A protection, trigger/native LIST,
-snapshot/restore, completion-pulse, and unsupported sequence steps remain
-disabled in live, simulate, and dry-run paths.
-
-EDU36311A `software-sequence` validation covers only project-supported
-software `ramp-list` and sequence read-only/output workflows. It does not
-enable trigger/native LIST, snapshot, or restore-from-snapshot.
-
-CLI preflight uses only `--dry-run` and `--simulate`; it does not scan for or
-open VISA resources. It uses deterministic SIM resources and supports one
-canonical model or all applicable models for the selected preflight suite:
-
-```powershell
-.\scripts\preflight-cli.ps1 -Target all -Suite smoke
-.\scripts\preflight-cli.ps1 -Target all -Suite deep
-.\scripts\preflight-cli.ps1 -Target keysight-e3646a -Suite full
-```
-
-Live validation requires an explicit `-Resource`. The script does not scan for
-resources, guess a resource, or read an environment default. Discover a live
-resource separately, copy the exact value, then pass it explicitly:
-
-```powershell
-.\.venv\Scripts\powers-tool.exe list-resources --live-only --json
-```
-
-Use `list-resources --verify --json` instead when you need to diagnose stale
-VISA cache entries. After choosing the intended live resource, run the
-maintained live script. It pauses for confirmation before opening VISA:
-
-```powershell
-$env:E36312A_USB_RESOURCE = "USB0::...::INSTR"
-$env:EDU36311A_USB_RESOURCE = "USB0::...::INSTR"
-
-.\scripts\live-cli-check.ps1 -Target keysight-e36312a -Connection USB -Resource $env:E36312A_USB_RESOURCE -Suite full
-.\scripts\live-cli-check.ps1 -Target keysight-edu36311a -Connection USB -Resource $env:EDU36311A_USB_RESOURCE -Suite full
-```
-
-Suite success is a bounded validation result, not a complete
-feature-validation suite result. For enabling or recording a model-specific
-feature, use the corresponding `live-cli-check.ps1` suite/case result.
-
-Batch validation runs only the checks selected by switches. Simulated
-resources are useful for checking the batch/report workflow without hardware:
-
-```powershell
-.\scripts\batch-validation.ps1 `
-  -RunE36312AOutput `
-  -E36312AUsbResource "USB0::SIM::E36312A::INSTR" `
-  -RunEDUReadOnly `
-  -EDU36311AUsbResource "USB0::SIM::EDU36311A::INSTR"
-```
-
-For real hardware, replace the simulated resources with explicit VISA
-resources. `-RunE36312AOutput` is state-changing; `-RunEDUReadOnly` is
-read-only. The current `-RunIntegrationPytest` batch switch records a skipped
-task only, so run hardware pytest directly when required.
+or source is open. The CLI model list remains limited to Product-active models.
 
 ### Optional Hardware Pytest
 
@@ -586,11 +332,10 @@ the resolved planning identity: E3646A expands `all` to CH1 and CH2 and
 rejects CH3; E36312A and EDU36311A expand to CH1, CH2, and CH3;
 `generic-scpi` conservatively allows CH1 only.
 
-Trigger/native LIST workflows are E36312A-only. EDU36311A supports validated
+Trigger/native LIST workflows are E36312A-only. EDU36311A supports
 read-only, output, and protection workflows, but trigger/native LIST,
 `snapshot`, and `restore-from-snapshot` are disabled in live, simulate, and
-dry-run until separately implemented and hardware validated. E3646A supports
-validated RS-232 read-only/output workflows plus software `ramp-list` and
+dry-run. E3646A supports RS-232 read-only/output workflows plus software `ramp-list` and
 step-limited software `sequence`; those workflows are not native LIST support
 and reject unsupported protection, trigger, snapshot, restore, native LIST,
 and completion-pulse sequence steps. E36103B and E36232A are not active
@@ -602,7 +347,7 @@ instrument instead of falling back to `GenericScpiPowerSupply`; `verify` and
 Real CLI measurement keeps generic instruments on channel 1. E36312A and
 EDU36311A channels 2 and 3 use IDN-selected channel-list measurement queries.
 Real CLI `set` is supported for E36312A and EDU36311A channels 1, 2, and 3,
-and for live-validated E3646A RS-232 / ASRL channels 1 and 2. It accepts
+and for E3646A RS-232 / ASRL channels 1 and 2. It accepts
 `--voltage`, `--current`, or both. Omitted setpoints are left unchanged; when
 both are supplied, it writes the current limit before voltage. It does not
 enable output.
@@ -617,7 +362,7 @@ not implement hard decimal-place rejection.
 
 Product LIVE support is command-exact, not feature-family-wide. See the
 [Product LIVE exact-scope matrix](../core/supported-models.md#product-live-exact-scope-matrix).
-The reviewed `output-on`, `measure-all`, `trigger-pulse`, `trigger-fire`, `log`,
+The `output-on`, `measure-all`, `trigger-pulse`, `trigger-fire`, `log`,
 resource-backed `doctor`, and `restore-from-snapshot` scopes are Product-open
 only for the exact model/transport/system-VISA combinations in that matrix.
 Other combinations remain fail-closed. Accepted commands
@@ -626,12 +371,11 @@ read/protection/trigger commands still require an exact accepted
 model/transport/backend scope.
 
 Normal CLI operation always uses the product live-support policy. Pending
-transport/backend evidence is not normal product support, and no public force
-or validation bypass is available. The Core has a contributor-validation mode
-for controlled evidence work, but its invocation is intentionally outside the
-normal CLI help, examples, and operator workflow documentation. That mode does
-not bypass IDN selection, expected-model checks, request validation, safety
-limits, confirmations, or model feature locks.
+transport/backend or feature scopes are not normal product support, and no
+public force option is available. Unsupported model, command, connection,
+backend, or feature combinations fail closed. The CLI does not bypass IDN
+selection, expected-model checks, request validation, safety limits,
+confirmations, or model feature locks.
 
 `list-resources`, `verify`, `clear`, `error`, `measure`, `identify`,
 `protection-status`, `protection-set`, `clear-protection`, and `snapshot` now
@@ -827,14 +571,14 @@ product-open model-aware commands are `measure`, `readback`, `read-status`,
 are diagnostics only. Protection, trigger, snapshot/restore, completion pulses,
 and native LIST are not product-open.
 `ramp-list` is software setpoint stepping, and `sequence` is a step-limited
-software workflow for validated output/read-only steps; neither is native LIST.
+software workflow for supported output/read-only steps; neither is native LIST.
 
 E3646A uses `INST:NSEL` channel preselection for setpoint writes and readbacks.
 `OUTP ON/OFF` is a global output enable/disable on this model, so accepted
 commands such as `output-off`, `safe-off`, `cycle-output`, and
 `smoke-output` can affect the instrument output state globally even when a
 command accepts a channel.
-E3646A `sequence` accepts only validated read-only/output steps; protection,
+E3646A `sequence` accepts only supported read-only/output steps; protection,
 trigger, snapshot, restore, native LIST, and completion-pulse step types are
 rejected by the current feature-lock policy.
 
@@ -889,7 +633,7 @@ uv run powers-tool measure --resource "$env:POWERS_TOOL_ASRL_RESOURCE" --channel
 uv run powers-tool output-state --resource "$env:POWERS_TOOL_ASRL_RESOURCE" --channel 1 --serial-remote --serial-local-on-close
 ```
 
-Validated output examples:
+Supported output examples:
 
 ```powershell
 uv run powers-tool set @Base @Remote --channel 1 --voltage 1 --current 0.05 --json --log-scpi
@@ -1016,8 +760,7 @@ would abort it. Trigger Step keeps its existing non-wait behavior. For
 selects the output channel to abort if the instrument-wide completion wait
 times out or is interrupted. It does not limit the scope of `*TRG` or the
 completion wait. Both `trigger-fire` and `trigger-pulse` remain closed for any
-other model, transport, or backend. Validation coverage does not promote
-support automatically.
+other model, transport, or backend.
 Canonical Trigger LIST files and flags accept per-step `bost_list` and
 `eost_list` plus `trigger_output_pins` and `trigger_output_polarity`. Enabled
 pulses require explicit output pins. Legacy `--completion-pulse-pins` remains
@@ -1051,11 +794,9 @@ uv run powers-tool output-on --simulate --json --resource USB0::SIM::E36312A::IN
 ```
 
 `output-on` is Product-open only for E36312A and EDU36311A USB/TCPIP + system
-VISA and E3646A ASRL + system VISA. Other scopes fail closed. The full suite
-uses bounded 1 V / 0.05 A setpoints, confirms actual ON/OFF readback, and
-requires final safe-off/error-queue cleanup. E3646A uses one global output
-switch case after programming both channels; it is not tested as independent
-per-channel output relays.
+VISA and E3646A ASRL + system VISA. Other scopes fail closed. E3646A uses one
+global output switch after programming both channels; it is not an independent
+per-channel output relay.
 
 Read back and cycle output state:
 
@@ -1191,8 +932,8 @@ stays parseable. Every JSON success and error envelope includes
   Feature-family, dry-run, simulator, or parser support does not widen it.
 - The documented `output-on`, `measure-all`, `trigger-pulse`, `trigger-fire`,
   `log`, resource-backed `doctor`, and `restore-from-snapshot` commands are
-  Product-open only in their documented exact scopes. Wrapper validation is
-  not a promotion mechanism or normal-use bypass.
+  Product-open only in their documented exact scopes; unsupported model,
+  connection, backend, or feature combinations fail closed.
 - Real `clear`, `error`, and `measure` are safe I/O commands: `clear` sends
   `*CLS` and clears status/error state, while `error` and `measure` only query.
 - `--safety-config` is explicit only and applies local plan validation limits;
@@ -1203,9 +944,3 @@ stays parseable. Every JSON success and error envelope includes
 - Hardware tests must require a user-provided resource.
 - Examples that enable output must set current limit before voltage and turn
   output off in cleanup.
-
-## Status
-
-Active package. Live E36312A validation covers read-only CLI flows,
-output-safe setpoint flows, worker dry-run/read-only behavior, and native
-trigger-list flows documented in the hardware test guide.

@@ -7,11 +7,11 @@ power supplies. Version 2.0.0 provides one installable distribution,
 `powers-tool`, with three import packages: `powers_tool_core`,
 `powers_tool_cli`, and `powers_tool_webui`.
 
-The framework is vendor-neutral, but current Product-active and
-hardware-validated models are `keysight-e36312a` (Keysight E36312A),
-`keysight-edu36311a` (Keysight EDU36311A), and `keysight-e3646a` (Keysight
-E3646A). Vendor-neutral architecture does not mean arbitrary or unknown power
-supplies are supported: unregistered or unresolved live hardware fails closed.
+The framework is vendor-neutral, but current Product support is limited to
+the registered and documented model scopes in
+[Supported Models](docs/core/supported-models.md). Vendor-neutral architecture
+does not mean arbitrary or unknown power supplies are supported: unregistered
+or unresolved live hardware fails closed.
 Vendor-specific drivers, aliases, manuals, SCPI behavior, evidence, and support
 tables retain their correct vendor names.
 

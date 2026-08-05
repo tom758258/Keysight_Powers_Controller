@@ -103,7 +103,7 @@ pre code { color: var(--text-code); background: transparent; padding: 0; }
 <p>發佈資料夾可能包含帶有版本號的執行檔名稱，例如：</p>
 <div class="code-wrapper"><pre><code class="language-text">powers-tool-&lt;version&gt;.exe
 </code></pre></div>
-<p>如果您的發佈資料夾使用的是帶有版本號的執行檔，請在以下的命令中使用該檔名。開發人員或簽出原始碼的使用者請參閱 <a href="README.zh-TW.html">CLI README</a> 以了解虛擬環境、模組、驗證與建置命令。</p>
+<p>如果您的發佈資料夾使用的是帶有版本號的執行檔，請在以下的命令中使用該檔名。開發人員或簽出原始碼的使用者請參閱 <a href="README.zh-TW.html">CLI README</a> 以了解虛擬環境、模組、建置與 developer commands。</p>
 <p>若為已安裝的命令，請將 <code>.\powers-tool.exe</code> 替換為 <code>powers-tool</code>：</p>
 <div class="code-wrapper"><pre><code class="language-powershell">powers-tool --version
 </code></pre></div>
@@ -174,7 +174,7 @@ command 或 feature family。E3646A 使用 <code>INST:NSEL</code> 做通道預�
 是全域輸出啟用/停用行為，即使命令接受通道參數，啟用或停用輸出仍可能影響
 儀器整體輸出狀態。</p>
 <p>E3646A 的 <code>ramp-list</code> 與 <code>sequence</code> 是 software workflows，不是 native LIST。
-Sequence 只允許目前已驗證的 read-only/output steps；Protection、Trigger、
+Sequence 只允許目前支援的 read-only/output steps；Protection、Trigger、
 Snapshot、Restore、native LIST 與 completion-pulse steps 不支援。</p>
 <p>每個 PowerShell 工作階段設定一次 ASRL 資源：</p>
 <div class="code-wrapper"><pre><code class="language-powershell">$env:POWERS_TOOL_ASRL_RESOURCE = "ASRL1::INSTR"
@@ -282,18 +282,24 @@ uv run powers-tool doctor --simulate --json
 <p>這些命令不會進行 live 或 system-VISA resource discovery、不會開啟 VISA resource、
 不會送出 SCPI、不會修改實體儀器狀態，也不會啟用輸出；不需要實體儀器或 vendor
 VISA runtime。</p>
+<p><code>--model</code> 不是 feature unlock；live mode 仍以實際 <code>*IDN?</code> 偵測出的 model 選擇 driver。
+Unsupported model、command、mode、connection、backend 或 feature combinations 會 fail closed。
+Product LIVE support 是 detected model、command、transport、backend 與 required feature 的 exact
+scope；missing 或 pending scopes 也會 fail closed。No-hardware plan 或 feature family 不代表其中
+所有 commands 都是 Product-open。請參閱 <a href="../core/supported-models.md#product-live-exact-scope-matrix" rel="noopener noreferrer" target="_blank">Supported Models</a>
+確認目前支援組合。</p>
 <h2 id="常見問題">常見問題</h2>
 <p>如果找不到 <code>powers-tool.exe</code>，請確認您位於包含 CLI 執行檔的資料夾中，並使用該資料夾中實際的檔名。</p>
 <p>如果找不到實機存活的資源，請檢查儀器電源、USB/LAN 纜線、VISA 驅動程式可見度，以及是否有其他程式佔用了該儀器。</p>
 <p>如果單純的 <code>list-resources</code> 顯示舊項目，請在常規操作流程改用 <code>--live-only</code> 重新執行，或使用 <code>--verify</code> 來診斷過時的 VISA 快取項目。</p>
-<p>如果命令拒絕執行，請在重試前閱讀驗證訊息。CLI 會在執行風險動作前，刻意拒絕不支援的型號、通道、不安全的設定點，以及缺少確認的操作。</p>
+<p>如果命令拒絕執行，請將其視為安全與 support policy 的結果；CLI 會在執行風險動作前，刻意拒絕不支援的型號、通道、不安全的設定點，以及缺少確認的操作。重試或加入 <code>--model</code> 不會啟用不支援的功能。</p>
 <p>如果日誌或自動化需要 JSON 輸出，請加上 <code>--json</code>。來自 <code>--log-scpi</code> 的診斷 SCPI 日誌會分開寫入 (stderr)，讓 JSON stdout 保持可解析狀態。</p>
 <h2 id="更多-cli-文件">更多 CLI 文件</h2>
 <ul>
-<li><a href="README.zh-TW.html">CLI README</a>：工程建置、驗證腳本、完整指令參考、JSON 行為、worker 細節與維護者筆記。</li>
+<li><a href="README.zh-TW.html">CLI README</a>：工程建置、完整指令參考、JSON 行為、worker 細節與建置資訊。</li>
 <li><a href="../contracts/power-cli-jsonl-contract.md" rel="noopener noreferrer" target="_blank">Power CLI JSON / JSONL 契約</a>：結構化的命令列輸出規則。</li>
 <li><a href="../contracts/power-worker-contract.md" rel="noopener noreferrer" target="_blank">Power Worker 契約</a>：本機 worker REST、JSONL 與產物 (artifact) 契約。</li>
-<li><a href="../core/supported-models.md" rel="noopener noreferrer" target="_blank">支援型號</a>：特定型號的支援狀態與驗證筆記。</li>
+<li><a href="../core/supported-models.md" rel="noopener noreferrer" target="_blank">支援型號</a>：目前 Product support matrix 與型號特定限制。</li>
 </ul>
 
   </main>

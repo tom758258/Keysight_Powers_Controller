@@ -9,7 +9,7 @@ null，以及用來代替 exact boolean、integer 或 finite numeric field 的�
 字串或數字。
 
 這是用於控制支援之直流電源供應器的 vendor-neutral CLI adapter。目前
-Product-active 且已完成硬體驗證的型號以文件所述 Keysight models 為準；未知
+Product-active 型號以文件所述 Keysight models 為準；未知
 live hardware 會 fail closed。
 
 CLI 包含在單一 `powers-tool` distribution 中，保留 `powers_tool_cli` import
@@ -126,6 +126,8 @@ resource、不會送出 SCPI、不會修改實體儀器狀態，也不會啟用�
 
 實際 live availability 仍由 model、command、transport、backend 與 required feature
 的 exact Product scope 決定。
+Product-open command 不代表整個 feature family 開放；missing 或 pending feature
+scopes 仍會 fail closed。CLI model list 僅包含 Product-active models。
 
 ## 測試
 
@@ -141,35 +143,17 @@ Windows system temporary directory。請從 repository 根目錄執行 pytest；
 
 ### Scripted Validation
 
-以下是支援的 standalone validation entry points，不是 `scripts/` 的完整清單。
-每個 entry point 都會在 `.tmp_tests` 下寫入 machine-readable `report.json` 與
-human-readable `summary.md`。
+以下是支援的 standalone validation entry points。請從 repository 根目錄在
+PowerShell 執行這些腳本。每個 validation result 僅涵蓋實際執行的 models、
+connections、suites 與 checks；執行 validation entry point 不會擴大 Product
+support。請參閱 [Contributing](../CONTRIBUTING.md) 了解 contributor workflow。
 
 | Script | Hardware use | Purpose |
 | --- | --- | --- |
-| `scripts\preflight-cli.ps1` | No hardware | 執行 smoke、deep 或 compatibility full model-aware CLI validation，解析每個 JSON 結果並強制 `hardware_touched=false`。 |
-| `scripts\live-cli-check.ps1` | Plan-only 或明確 live hardware | 先執行 preflight，再產生指定 suite 的 exact plan；只有非 `-PlanOnly` 且明確確認後才進入 live validation。 |
-| `scripts\release-acceptance.ps1` | No hardware 加上受控 release workflow | 驗證 clean committed HEAD、套件、entry point、standalone artifact 與 checksums，並執行指定的 no-hardware checks。 |
-| `scripts\batch-validation.ps1` | 依 switches 選定 | 只執行選定的 simulated 或 live validation task，並產生一份 batch report。 |
-
-從 repository 根目錄執行正式 release acceptance：
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\release-acceptance.ps1
-```
-
-每個 recorded command 都會顯示 `[start]`，接著顯示 `[passed]` 或 `[failed]`，
-並包含 `duration=<seconds>s`。child-process stdout/stderr 仍會在命令完成後收集，
-再印出或寫入 acceptance output，不會逐行即時串流。詳細 release acceptance
-範圍請參閱根目錄 [README](../../README.md)。
-
-Build entry points、CI quality utilities 與 internal helpers 的完整用途請參閱
-英文 CLI README；本文件不把它們誤列為一般 operator command。`preflight-cli.ps1`
-的 smoke、deep 與 full suite 是 no-hardware 路徑。`live-cli-check.ps1` 的
-PlanOnly 不會開啟 resource；沒有 `-PlanOnly` 時仍需明確互動確認。
-
-Validation artifact 只證明選定的 model、connection、suite 與 cases，不會自動
-提升 Product support，也不代表其他 model、connection、feature 或整個儀器。
+| `scripts\preflight-cli.ps1` | No hardware | 執行 model-aware CLI smoke/deep no-hardware checks。 |
+| `scripts\live-cli-check.ps1` | Plan-only 或明確 live hardware | 執行選定的 model-aware CLI validation suite。 |
+| `scripts\release-acceptance.ps1` | No hardware 加上 build checks | 執行 release validation workflow。 |
+| `scripts\batch-validation.ps1` | 依 switches 選定 | 執行選定的 simulated 或 live validation tasks。 |
 
 ## 命令狀態
 
@@ -225,7 +209,7 @@ uv run powers-tool verify --resource "$env:POWERS_TOOL_RESOURCE" --log-scpi
 
 ### E3646A RS-232 / ASRL 範例
 
-E3646A 在 RS-232/ASRL 上支援已實機驗證的唯讀/狀態查詢與輸出工作流程。執行任何 E3646A 實機輸出命令前，請確認實體接線已檢查完成，且要求的電壓/電流限制對連接負載是安全的。
+E3646A 在 RS-232/ASRL 上支援唯讀/狀態查詢與輸出工作流程。執行任何 E3646A 實機輸出命令前，請確認實體接線已檢查完成，且要求的電壓/電流限制對連接負載是安全的。
 
 型號支援的命令包括 `identify`、`measure`、`readback`、`read-status`、`output-state`、`capabilities`、`set`、`apply`、`output-on`、`output-off`、`safe-off`、`cycle-output`、`smoke-output`、`ramp`、`ramp-list` 與影響輸出的 `sequence` 步驟。`verify` 也可作為與型號無關的連線診斷。E3646A 使用 `INST:NSEL` 做通道預選；`OUTP ON/OFF` 是全域輸出啟用/停用行為，即使命令接受通道參數，啟用或停用輸出仍可能影響儀器整體輸出狀態。E3646A 的保護寫入、trigger 工作流程、snapshot restore、completion pulse 與 native LIST 仍維持停用。
 
@@ -265,7 +249,7 @@ uv run powers-tool measure --resource "$env:POWERS_TOOL_ASRL_RESOURCE" --channel
 uv run powers-tool output-state --resource "$env:POWERS_TOOL_ASRL_RESOURCE" --channel 1 --serial-remote --serial-local-on-close
 ```
 
-已驗證的輸出範例：
+支援的輸出範例：
 
 ```powershell
 uv run powers-tool set @Base @Remote --channel 1 --voltage 1 --current 0.05 --json --log-scpi
@@ -311,7 +295,7 @@ uv run powers-tool trigger-status --json --resource "$env:POWERS_TOOL_RESOURCE" 
 
 ### 會影響輸出的範例
 
-影響輸出的命令必須明確要求，且使用前需確認型號、通道、DUT 接線、電壓、電流限制與保護設定。E3646A RS-232 / ASRL 輸出工作流程已實機驗證；執行前請確認實體接線已檢查完成，且要求的電壓/電流限制對連接負載是安全的。詳細範例請參考英文 README 與 CLI 使用者指南。
+影響輸出的命令必須明確要求，且使用前需確認型號、通道、DUT 接線、電壓、電流限制與保護設定。E3646A RS-232 / ASRL 的輸出工作流程屬於目前支援範圍；執行前請確認實體接線已檢查完成，且要求的電壓/電流限制對連接負載是安全的。詳細範例請參考英文 README 與 CLI 使用者指南。
 
 ### Ramp、Sequence 與模擬器範例
 
@@ -328,14 +312,8 @@ uv run powers-tool safety inspect --json --explain --safety-config examples/safe
 ## Safety Defaults
 
 - 影響輸出的行為必須明確要求。
-- E3646A 在 RS-232 / ASRL 上保留唯讀與狀態查詢工作流程，並加入已實機驗證的輸出工作流程。
+- E3646A 在 RS-232 / ASRL 上保留唯讀與狀態查詢工作流程，並支援輸出工作流程。
 - `--safety-config` 只會套用本機 plan validation 限制；它不會自動啟用硬體輸出。
 - 真實 VISA resource 不應硬編碼在提交的檔案中。
 - 硬體測試必須要求使用者提供 resource。
 - 啟用輸出的範例必須設定安全的 current limit，並在清理時關閉輸出。
-
-## 狀態
-
-Active package。E36312A live validation 涵蓋 hardware test guide 所記載的唯讀 CLI
-流程、安全 setpoint 流程、Worker dry-run／read-only 行為與 native trigger-list
-流程。

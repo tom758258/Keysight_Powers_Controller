@@ -239,7 +239,7 @@
 </aside>
 <main>
 <h1>Powers Tool WebUI 使用者指南</h1>
-<p>本指南供取得已建置 WebUI 啟動器的操作員使用，說明如何檢查與控制支援的直流電源供應器。Powers Tool 的架構不綁定特定廠牌；目前完成產品級實機驗證的硬體，則以專案文件列出的 Keysight 型號為準。本文聚焦一般本機 WebUI 操作，不涵蓋開發環境細節。API、驗證與 UI 變更邊界請參閱 <a href="README.zh-TW.html">WebUI README</a> 與 <a href="web-ui-change-rules.md" rel="noopener noreferrer" target="_blank">WebUI 變更規則</a>。</p>
+<p>本指南供取得已建置 WebUI 啟動器的操作員使用，說明如何檢查與控制支援的直流電源供應器。Powers Tool 的架構不綁定特定廠牌；目前硬體支援範圍以 <a href="../core/supported-models.md">Supported Models</a> 所記載的 Product scopes 為準；未知或未註冊的 live hardware 會 fail closed。本文聚焦一般本機 WebUI 操作，不涵蓋開發環境細節。API、驗證與 UI 變更邊界請參閱 <a href="README.zh-TW.html">WebUI README</a> 與 <a href="web-ui-change-rules.md" rel="noopener noreferrer" target="_blank">WebUI 變更規則</a>。</p>
 <h2 id="section-1">啟動 WebUI</h2>
 <p>一般使用時，請雙擊 release 或本機建置所提供的 WebUI 啟動器：</p>
 <div class="code-wrapper"><pre><code class="language-text">powers-tool-webui.exe</code></pre></div>
@@ -301,7 +301,7 @@
 <p><code>Scan Device</code> 會執行啟用實機篩選的資源探索，只顯示目前可回應的資源，而不是過時的 VISA 快取項目。</p>
 <p>第一個有效結果會自動選取並複製到 <code>VISA resource</code>，同時執行一次唯讀身分辨識，以評估精確的產品級實機支援範圍。改選其他資源時也會重新評估。這個流程不會啟用輸出、不會修改儀器設定，也不需要實機寫入授權。您仍可手動輸入操作員已知的 VISA 資源。</p>
 <p>Device options 包含執行模式；在 Real 模式還會顯示 <code>Expected model</code>。一般實機操作請保留 <code>Auto-detect</code>，由連線儀器的 <code>*IDN?</code> 決定實際型號。選擇 <code>Require &lt;model&gt;</code> 時，它只用於前端規劃與預期型號安全護欄：若連線儀器不符，Core 會在設定或寫入 SCPI 前拒絕；它不會強制選用該型號的驅動程式。</p>
-<p>一般型號選單只列出目前 Product-active 的 E36312A、EDU36311A 與 E3646A。未知、已移出範圍或未完成精確連線／後端驗證的組合會維持 fail closed。WebUI 使用正常 Product policy 與預設 system-VISA 後端，沒有後端選擇器或 validation mode。</p>
+<p>一般型號選單由 Core 的 Product-active metadata 產生；目前支援的型號與 exact connection／backend scopes 以 <a href="../core/supported-models.md">Supported Models</a> 為準。未知、已移出範圍、missing 或 pending scopes 會維持 fail closed。WebUI 使用正常 Product policy 與預設 system-VISA 後端，沒有後端選擇器或 validation mode。</p>
 <p>若掃描不到可用資源，請檢查儀器電源、纜線、VISA 驅動程式可見度，以及是否有其他程式占用儀器。</p>
 <h2 id="section-6">即時資料 (Live Data)</h2>
 <p><code>Live Data</code> 是一個唯讀監控器。它會定期讀取所選資源，更新通道卡片，並顯示 WebUI、命令與即時監控狀態。</p>

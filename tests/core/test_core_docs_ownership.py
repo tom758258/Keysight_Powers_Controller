@@ -54,7 +54,7 @@ def test_public_identity_docs_keep_machine_readable_ownership_tokens():
     root = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
     core = read_core_doc("README.md")
     assert "powers_tool_core" in root
-    assert "keysight-e36312a" in root
+    assert "docs/core/supported-models.md" in root
     assert "powers_tool_core" in core
 
 
