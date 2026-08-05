@@ -48,10 +48,15 @@ remain layer-specific; they are not a new unified state taxonomy.
 the normal user-facing path and requires an exact Product-open scope for
 model-aware live commands; documented diagnostic exemptions keep their limited
 diagnostic boundary. Contributor Validation mode is an internal validation
-role: it uses the same exact gate, keeps existing Product-open scopes
-available, and admits pending exact entries only when they are explicitly
-registered. It does not bypass physical identity, expected-model checks,
-request validation, safety, confirmation, or cleanup rules.
+role: it keeps existing Product-open scopes available and may additionally
+admit either explicitly registered pending policy entries or separately
+registered internal validation-candidate allowlist entries. Internal
+validation-candidate entries require explicit command and exact connection
+allowlists. They are not published through the current Product support
+projections and do not modify Product metadata. Validation mode preserves the
+same physical identity, expected-model, request, safety, confirmation, and
+cleanup boundaries. Registered policy scopes remain subject to exact command,
+transport, backend, and required-feature enforcement.
 
 The exact support key is:
 
@@ -114,8 +119,9 @@ allowlist for internal validation admission; its current contents and count
 are not documented here. Contributor execution, artifacts, review, and
 promotion workflow remain in [Contributing](../CONTRIBUTING.md).
 
-The current Product truth is maintained in
-[Supported Models](supported-models.md).
+The current public Product support matrix is documented in
+[Supported Models](supported-models.md). Core support-policy metadata and the
+enforcing runtime gate remain authoritative for actual admission decisions.
 
 Core documentation is package-local:
 
