@@ -126,14 +126,11 @@ does not add a top-level completion pulse.
 
 ## E3646A RS-232 / ASRL
 
-E3646A product LIVE support is ASRL/RS-232 + system VISA only. Its exact
-product-open model-aware commands are `measure`, `readback`, `read-status`,
-`output-state`, `capabilities`, `set`, `apply`, `output-off`,
-`safe-off`, `cycle-output`, `smoke-output`, `ramp`, `ramp-list`, `sequence`,
-`output-on`, and resource-backed `doctor`. `identify` and `verify` are explicit
-diagnostics and do not open another command. Protection, trigger,
-snapshot/restore, completion pulses, and native LIST are not product-open for
-E3646A.
+E3646A Product LIVE support is limited to ASRL / RS-232 with a system VISA
+backend. Consult the [Product LIVE exact-scope matrix](../core/supported-models.md#product-live-exact-scope-matrix)
+for the current command inventory. `identify` and `verify` are diagnostics only
+and do not open another command. Protection, trigger, snapshot/restore,
+completion pulses, and native LIST are not Product-open for E3646A.
 
 E3646A uses `INST:NSEL` channel preselection for setpoint writes and readbacks.
 `OUTP ON/OFF` is a global output enable/disable on this model, so output

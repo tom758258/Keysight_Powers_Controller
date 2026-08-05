@@ -106,14 +106,12 @@ Ramp、Ramp List 與 Sequence 接受 `--loop-count N`。這個值代表完整執
 
 ## E3646A RS-232 / ASRL
 
-E3646A 的 Product LIVE 支援僅限 ASRL／RS-232 transport 與 system VISA backend。執行任何 E3646A 實機輸出命令前，請確認實體接線已檢查完成，且要求的電壓/電流限制對連接負載是安全的。
-
-E3646A 的 Product-open model-aware commands 是 `measure`、`output-state`、
-`read-status`、`readback`、`capabilities`、`set`、`output-on`、`output-off`、
-`safe-off`、`cycle-output`、`apply`、`ramp`、`smoke-output`、`ramp-list`、
-`sequence` 與 resource-backed `doctor`。`identify` 與 `verify` 是明確的
-diagnostic exemptions；成功只證明各自的 diagnostic operation，不會開啟其他
-command 或 feature family。E3646A 使用 `INST:NSEL` 做通道預選；`OUTP ON/OFF`
+E3646A 的 Product LIVE 支援僅限 ASRL／RS-232 transport 與 system VISA backend；目前
+可用的 command inventory 請以 [Product LIVE exact-scope matrix](../core/supported-models.md#product-live-exact-scope-matrix)
+為準。`identify` 與 `verify` 僅是 diagnostic，不會開啟其他 command。Protection、
+Trigger、Snapshot、Restore、completion pulses 與 native LIST 不屬於 E3646A 的
+Product-open scope。執行任何 E3646A 實機輸出命令前，請確認實體接線已檢查完成，且要求的
+電壓/電流限制對連接負載是安全的。E3646A 使用 `INST:NSEL` 做通道預選；`OUTP ON/OFF`
 是全域輸出啟用/停用行為，即使命令接受通道參數，啟用或停用輸出仍可能影響
 儀器整體輸出狀態。
 

@@ -259,14 +259,7 @@ Add `--backend "@ivi"` when needed. Before any output-affecting run, confirm
 the expected instrument, disconnect unknown DUTs, and verify the requested
 voltage/current are safe.
 
-## Command Status
-
-E36312A and EDU36311A have model-specific driver foundations selected from
-valid `*IDN?` responses. Their channel-list SCPI is covered by no-hardware
-tests. Simulated CLI measurement supports channels 1, 2, and 3 for these
-models.
-
-### Planning Identities And Live Expected-Model Guards
+## Planning Identities And Live Expected-Model Guards
 
 Output-family commands, `ramp-list`, `sequence`, `protection-set`,
 `clear-protection`, and trigger workflows use strict model resolution in
@@ -318,11 +311,11 @@ uv run powers-tool set --model keysight-e36312a --resource "$env:POWER_USB_RESOU
 
 This requires the connected `*IDN?` model to be `E36312A`.
 
-Accepted physical planning IDs are `keysight-e36312a`,
-`keysight-edu36311a`, and `keysight-e3646a`. In `--simulate` mode, `--model`
-can derive the matching deterministic simulator resource. The separate
-`generic-scpi` profile is dry-run-only and is not a live expected model. If
-both `--model` and a SIM resource are provided, their models must match.
+Accepted physical planning IDs are defined by Core Product-active metadata and
+documented in [Supported Models](../core/supported-models.md). In `--simulate`
+mode, `--model` can derive the matching deterministic simulator resource. The
+separate `generic-scpi` profile is dry-run-only and is not a live expected model.
+If both `--model` and a SIM resource are provided, their models must match.
 Unsupported models, including EDU36311A, do not expose trigger
 dry-run or simulator behavior.
 

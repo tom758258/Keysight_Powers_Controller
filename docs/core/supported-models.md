@@ -52,7 +52,7 @@ to `immediate`); PIN/EXT inputs remain rejected by request/profile validation.
 
 On a Product-open connection, currently supported actions and sources are
 Product-open. A pending connection or feature is not currently supported for
-Product use; missing feature metadata is not an implicit pending approval.
+Product use; missing feature metadata does not open the scope.
 Only Product-open feature entries are available to Product callers.
 
 ## Models Not Currently Available For Product Use
@@ -166,7 +166,7 @@ for one map entry. The matrix above must stay consistent with these
 command-level facts:
 
 - Unsupported model, command, and mode combinations fail intentionally. These
-  feature-lock failures mean the workflow is not enabled for that model yet,
+  feature-lock failures mean the workflow is not supported for that model,
   not that `--model` or the WebUI selector can unlock it.
 - CLI `--model` and WebUI `runtime.planning_model_id` select canonical physical
   planning models in dry-run/simulate mode. Live requests instead use
@@ -190,8 +190,8 @@ command-level facts:
 - EDU36311A trigger commands remain disabled. `capabilities --json` reports
   all trigger commands with `hardware_validation=not_supported_by_model` and
   does not expose trigger dry-run or simulator behavior.
-- EDU36311A snapshot and restore-from-snapshot are not enabled. They remain
-  E36312A-only until separately implemented and hardware validated.
+- EDU36311A snapshot and restore-from-snapshot are not Product-open for
+  EDU36311A.
 - EDU36311A `sequence` must not bypass disabled trigger/native LIST,
   snapshot, or restore workflows; unsupported sequence step types stay
   rejected in live, simulate, and dry-run paths.
@@ -209,7 +209,7 @@ command-level facts:
   instrument output state globally. Protection changes, trigger workflows,
   snapshot, restore, completion pulses, and native LIST remain disabled.
   E3646A `ramp-list` is software setpoint stepping, and E3646A `sequence` is a
-  software workflow limited to validated output/read-only steps. Neither is
+  software workflow limited to supported output/read-only steps. Neither is
   native instrument LIST support. E3646A sequence rejects unsupported step
   types such as protection, trigger, snapshot, restore, native LIST, and
   completion-pulse steps.

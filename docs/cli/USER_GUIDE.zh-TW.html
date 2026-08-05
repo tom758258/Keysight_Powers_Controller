@@ -164,13 +164,13 @@ $env:POWERS_TOOL_ASRL_RESOURCE = "ASRL1::INSTR"
 大於 <code>10,000</code> 或不是嚴格整數的值都會被拒絕。對 Ramp List 與 Sequence 文件，
 明確提供的 CLI 值優先；否則使用文件值，再以舊版支援文件的預設值 <code>1</code> 收尾。</p>
 <h2 id="e3646a-rs-232-asrl">E3646A RS-232 / ASRL</h2>
-<p>E3646A 的 Product LIVE 支援僅限 ASRL／RS-232 transport 與 system VISA backend。執行任何 E3646A 實機輸出命令前，請確認實體接線已檢查完成，且要求的電壓/電流限制對連接負載是安全的。</p>
-<p>E3646A 的 Product-open model-aware commands 是 <code>measure</code>、<code>output-state</code>、
-<code>read-status</code>、<code>readback</code>、<code>capabilities</code>、<code>set</code>、<code>output-on</code>、<code>output-off</code>、
-<code>safe-off</code>、<code>cycle-output</code>、<code>apply</code>、<code>ramp</code>、<code>smoke-output</code>、<code>ramp-list</code>、
-<code>sequence</code> 與 resource-backed <code>doctor</code>。<code>identify</code> 與 <code>verify</code> 是明確的
-diagnostic exemptions；成功只證明各自的 diagnostic operation，不會開啟其他
-command 或 feature family。E3646A 使用 <code>INST:NSEL</code> 做通道預選；<code>OUTP ON/OFF</code>
+<p>E3646A 的 Product LIVE 支援僅限 ASRL／RS-232 transport 與 system VISA backend；目前
+可用的 command inventory 請以 <a href="../core/supported-models.md#product-live-exact-scope-matrix" rel="noopener noreferrer" target="_blank">Product LIVE exact-scope matrix</a>
+為準。<code>identify</code> 與 <code>verify</code> 僅是 diagnostic，不會開啟其他 command。Protection、
+Trigger、Snapshot、Restore、completion pulses 與 native LIST 不屬於 E3646A 的
+Product-open scope。執行任何 E3646A 實機輸出命令前，請確認實體接線已檢查完成，且要求的
+電壓/電流限制對連接負載是安全的。</p>
+<p>E3646A 使用 <code>INST:NSEL</code> 做通道預選；<code>OUTP ON/OFF</code>
 是全域輸出啟用/停用行為，即使命令接受通道參數，啟用或停用輸出仍可能影響
 儀器整體輸出狀態。</p>
 <p>E3646A 的 <code>ramp-list</code> 與 <code>sequence</code> 是 software workflows，不是 native LIST。

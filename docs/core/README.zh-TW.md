@@ -12,8 +12,8 @@ alias 衝突、boolean-as-number 與 numeric string 都會被拒絕。詳情請�
 Core 內建於單一 `powers-tool` 發行套件中，同時保留了 `powers_tool_core` 的 import 邊界。它負責處理與硬體互動的行為，並由 CLI 與 WebUI 轉接器共用。
 
 這是用於安全控制支援之直流電源供應器的 vendor-neutral Core library 與 driver
-layer。Product-active 與 hardware-validated 支援由文件化的 exact scope 決定；
-未知 live hardware 會保持 closed。目前公開支援的型號矩陣請參閱[支援型號](supported-models.md)。
+layer。Product support 由文件化的 exact scope 決定；未知 live hardware 會保持
+closed。目前公開支援的型號矩陣請參閱[支援型號](supported-models.md)。
 
 ## 用途
 
@@ -39,14 +39,14 @@ ID，例如 `keysight-e36312a`。Vendor-specific driver class name 保持不變�
 Product execution 必須通過 exact `model_id + command + transport + backend +
 required feature` scope；缺少、未知或 pending scope 都會 fail closed。`expected_model_id`
 只作 live mismatch guard，不會選擇 driver 或解鎖 command。No-hardware capability、
-candidate、validation evidence、另一種 transport/backend 或另一個 feature 都不代表
-Product-open。
+另一種 transport/backend 或另一個 feature 都不代表 Product-open。
 
 `list-resources`、`verify`、`identify`、`error` 與 `clear` 是明確的 diagnostic
 exemptions。它們的成功只證明該 diagnostic operation，不會開放 model、feature
 family、transport/backend scope 或其他 command。Exact Product matrix 請以
-[Supported Models](supported-models.md) 為準；system-VISA evidence 不會驗證
-pending 的 pyvisa-py 或 custom backend scope。
+[Supported Models](supported-models.md) 為準；不同 transport/backend scope 不會互相繼承。
+Contributor validation workflow 請參閱 [Contributing](../CONTRIBUTING.md)；驗證不會修改
+Product metadata。
 
 ## 套件內容
 
@@ -54,7 +54,7 @@ pending 的 pyvisa-py 或 custom backend scope。
 - `powers_tool_core.factory`: 基於 IDN 的驅動程式選擇，適用於通用 SCPI、E36312A、EDU36311A 與 E3646A 儀器。
 - `powers_tool_core.drivers`: 特定型號的驅動程式實作與共用的 SCPI 通道策略。
 - `powers_tool_core.operations`: 輸出與設定點操作，例如 `set`、`apply`、`output-on`、`output-off`、`safe-off`、`ramp`、`ramp-list`，以及 readback/snapshot 輔助工具。
-- `powers_tool_core.readonly`: 唯讀的 `status`、`readback`、`measure-all`、log 與驗證流程，包含不會開啟 VISA 的 dry-run 計畫。
+- `powers_tool_core.readonly`: 唯讀的 `status`、`readback`、`measure-all`、log 與不會開啟 VISA 的 dry-run 計畫。
 - `powers_tool_core.trigger`: E36312A 觸發 (trigger)、STEP、原生 LIST、fire 與 abort 支援。
 - `powers_tool_core.sequence`: 與解析器無關的序列文件載入、語法檢查 (linting)、dry-run 計畫與執行。
 - `powers_tool_core.ramp_list`: 版本化的 JSON Ramp List 載入、完整的預先驗證、計畫與有序的軟體設定點執行。
@@ -64,9 +64,9 @@ pending 的 pyvisa-py 或 custom backend scope。
 - `powers_tool_core.safety`: 明確的本機安全設定檔載入與計畫驗證。
 - `powers_tool_core.electrical_ratings` 與 `setpoint_limits`: 已驗證的獨立通道直流輸出額定值與有效的安全限制。
 - `powers_tool_core.capabilities`: 指令與型號的能力 (capability) 報告。
-- `powers_tool_core.model_metadata`、`support_policy`、`support_evidence`、
-  `model_resolution` 與 `model_enablement`：公開的 model projection、exact
-  live-support metadata、immutable evidence、身分驗證與一致性檢查。
+- `powers_tool_core.model_metadata`、`support_policy`、`model_resolution` 與
+  `model_enablement`：公開的 model projection、exact live-support metadata、
+  身分驗證與 metadata 一致性檢查。
 - `powers_tool_core.testing`: 供測試與 CLI 模擬模式使用的無硬體模擬器。
 
 ## 安裝
@@ -103,16 +103,11 @@ Runtime 會解析 `pyvisa`、PyYAML 與 Python 版本所需的 TOML fallback。�
 .\.venv\Scripts\python.exe -m pytest tests\core\test_operations.py -q -p no:cacheprovider
 ```
 
-Pytest 預設使用已忽略的 repository-local `.tmp_pytest` 目錄，因此測試不依賴 Windows 系統暫存目錄權限。請從 repository 根目錄執行 pytest。若單次執行需要獨立覆寫 basetemp，請使用 `--basetemp .tmp_tests/<purpose>`。不要把 pytest 暫存資料或產生的測試產物寫到 `Local/`。
+Pytest 預設使用已忽略的 repository-local `.tmp_pytest` 目錄，因此測試不依賴 Windows 系統暫存目錄權限。請從 repository 根目錄執行 pytest。不要把 pytest 暫存資料或產生的測試產物寫到 `Local/`。
 
-儲存庫層級的驗證腳本也會透過 CLI adapter 執行 Core 行為。在進行實機驗證前，
-請先執行無硬體測試閘口：
-
-```powershell
-.\scripts\preflight-cli.ps1 -Target all -Suite smoke
-```
-
-實機快速測試 (Live smoke) 與硬體 pytest 是明確且需主動啟用 (opt-in) 的硬體檢查。它們的指令、改變狀態的行為與報告位置，記錄在 [CLI README 的腳本化驗證章節](../cli/README.zh-TW.md#scripted-validation)。
+Contributor validation 與需主動啟用 (opt-in) 的硬體工作流程由
+[Contributing](../CONTRIBUTING.md) 維護。進行任何硬體驗證前，請先執行上方的
+Core 無硬體測試。
 
 ## 文件
 
@@ -120,14 +115,12 @@ Pytest 預設使用已忽略的 repository-local `.tmp_pytest` 目錄，因此�
 - 支援型號：`supported-models.md`
 - 接收 core 封裝的 CLI JSON 契約：`../contracts/power-cli-jsonl-contract.md`
 - 根目錄工作區 README：`../../README.zh-TW.md`
-- CLI 驗證腳本：`../cli/README.zh-TW.md#scripted-validation`
+- Contributor validation workflow：`../CONTRIBUTING.md`
 - 命令參數契約：`../contracts/commands-parameter-contract.md`
 
-## 狀態
+## Runtime、Planning 與 Safety Notes
 
-`generic-scpi` 是 no-hardware planning profile，不是 physical model lifecycle
-stage。基於有效的 `*IDN?` 回應來選擇特定型號的驅動基礎。channel-list SCPI、快照/讀回解析、保護
-狀態處理、序列載入/計畫、安全驗證、模擬器行為以及輸出操作計畫，皆涵蓋於無硬體測試中。
+`generic-scpi` 是 no-hardware planning profile，不是 physical model lifecycle stage。
 
 E36312A 與 EDU36311A 的保護觸發讀取使用 channel-list 查詢。共用的 Core 保護狀態會保留總和旗標 (aggregate flags)，同時從所選的通道計算它們；WebUI 的 live-panel 讀取則回傳已解析的型號身分及通道本身的 OVP/OCP 觸發狀態。
 

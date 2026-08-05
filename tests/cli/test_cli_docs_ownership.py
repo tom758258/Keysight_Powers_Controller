@@ -74,3 +74,32 @@ def test_common_contracts_stay_instrument_neutral():
     )
 
     assert "acquisition" not in common_text.lower()
+
+
+def test_cli_user_guides_defer_e3646a_command_inventory_to_supported_models():
+    paths = (
+        "USER_GUIDE.md",
+        "USER_GUIDE.zh-TW.md",
+        "USER_GUIDE.zh-TW.html",
+    )
+    texts = {path: read_cli_doc(path) for path in paths}
+
+    forbidden_inventory_phrases = (
+        "product-open model-aware commands are `measure`",
+        "Product-open model-aware commands 是 `measure`",
+        "Product-open model-aware commands 是 <code>measure</code>",
+    )
+    for text in texts.values():
+        for phrase in forbidden_inventory_phrases:
+            assert phrase not in text
+        assert "supported-models.md#product-live-exact-scope-matrix" in text
+        for stable_token in ("INST:NSEL", "OUTP ON/OFF", "native LIST"):
+            assert stable_token in text
+
+
+def test_cli_readme_defers_physical_planning_inventory_to_core_metadata():
+    text = read_cli_doc("README.md")
+
+    assert "Accepted physical planning IDs are defined by Core Product-active metadata" in text
+    assert "../core/supported-models.md" in text
+    assert "Accepted physical planning IDs are `keysight-e36312a`" not in text
