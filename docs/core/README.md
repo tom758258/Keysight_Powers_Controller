@@ -239,11 +239,12 @@ detected canonical `model_id` to match
 before setup/write SCPI. The selected model never overrides the IDN-selected
 driver.
 
-After that guard, Core enforces exact product support using the resolved
-canonical `model_id`, effective command, VISA resource transport, runtime
-backend, and required feature. Missing or pending scopes fail closed before
-command-specific I/O. This applies equally to direct Core callers and adapter
-requests; no validation-mode bypass exists.
+After that guard, Product mode enforces exact Product support using the
+resolved canonical `model_id`, effective command, VISA resource transport,
+runtime backend, and required feature. Missing or pending scopes fail closed
+in Product mode before command-specific I/O. Contributor Validation mode admits
+only explicitly registered validation scopes and does not bypass identity,
+request, safety, confirmation, cleanup, or exact-scope enforcement.
 
 ## Output Workflow Pulses
 
