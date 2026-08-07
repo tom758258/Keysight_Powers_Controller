@@ -727,6 +727,13 @@ function Get-BackendArtifactFields {
             backend_argument = $Value
         }
     }
+    if ($Value.Trim().ToLowerInvariant() -eq "@bt") {
+        return [pscustomobject]@{
+            backend = $Value
+            backend_scope = "pyvisa_bt"
+            backend_argument = $Value
+        }
+    }
     return [pscustomobject]@{
         backend = $Value
         backend_scope = "custom_visa"

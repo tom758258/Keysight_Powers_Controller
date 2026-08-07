@@ -75,7 +75,12 @@ canonical detected model_id + effective command + transport + backend + required
 Core resolves the canonical physical `model_id` from reported manufacturer and
 model before applying the expected-model guard. Transport and backend are
 normalized independently; current machine values include `usb`, `tcpip`,
-`asrl`, `gpib`, `system_visa`, `pyvisa_py`, and `custom_visa`.
+`asrl`, `gpib`, `system_visa`, `pyvisa_py`, `pyvisa_bt`, and `custom_visa`.
+Backend selectors normalize as follows: unset or blank to `system_visa`, `@py`
+to `pyvisa_py`, `@bt` to `pyvisa_bt`, and any other selector to `custom_visa`.
+Backend identity does not itself grant Product support. No current Product-open
+exact scope uses `pyvisa_bt`, so model-aware Product execution with `@bt` fails
+closed.
 
 The currently implemented values have these existing field-level meanings:
 

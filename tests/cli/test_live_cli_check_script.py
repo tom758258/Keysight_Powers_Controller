@@ -2211,6 +2211,7 @@ $records | ConvertTo-Json -Depth 12 -Compress
     [
         (None, "system_visa", "system_visa", None),
         ("@py", "@py", "pyvisa_py", "@py"),
+        ("@bt", "@bt", "pyvisa_bt", "@bt"),
         ("@ivi", "@ivi", "custom_visa", "@ivi"),
     ],
 )

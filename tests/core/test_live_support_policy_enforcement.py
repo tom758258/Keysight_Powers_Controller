@@ -381,6 +381,7 @@ def test_e3646a_log_is_product_open_only_for_asrl_system_visa() -> None:
         ("USB0::1::INSTR", None),
         ("TCPIP0::192.0.2.1::INSTR", None),
         ("ASRL1::INSTR", "@py"),
+        ("ASRL1::INSTR", "@bt"),
         ("ASRL1::INSTR", "@ivi"),
     ):
         with pytest.raises(CoreValidationError):

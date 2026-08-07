@@ -54,6 +54,7 @@ TRANSPORT_UNKNOWN = "unknown"
 
 BACKEND_SYSTEM_VISA = "system_visa"
 BACKEND_PYVISA_PY = "pyvisa_py"
+BACKEND_PYVISA_BT = "pyvisa_bt"
 BACKEND_CUSTOM_VISA = "custom_visa"
 
 PRODUCT_ACTIVE_POLICY_MODEL_IDS = PRODUCT_ACTIVE_MODEL_IDS
@@ -92,7 +93,12 @@ _TRANSPORTS = frozenset(
     {TRANSPORT_USB, TRANSPORT_TCPIP, TRANSPORT_ASRL, TRANSPORT_GPIB, TRANSPORT_UNKNOWN}
 )
 _BACKENDS = frozenset(
-    {BACKEND_SYSTEM_VISA, BACKEND_PYVISA_PY, BACKEND_CUSTOM_VISA}
+    {
+        BACKEND_SYSTEM_VISA,
+        BACKEND_PYVISA_PY,
+        BACKEND_PYVISA_BT,
+        BACKEND_CUSTOM_VISA,
+    }
 )
 _ALLOW_PRODUCT = frozenset({VALIDATION_STATUS_LIVE_VALIDATED_FULL_SUITE})
 _ALLOW_VALIDATION = _ALLOW_PRODUCT | {
@@ -187,6 +193,8 @@ def normalize_backend(backend: str | None) -> str:
         return BACKEND_SYSTEM_VISA
     if normalized in {"@py", BACKEND_PYVISA_PY}:
         return BACKEND_PYVISA_PY
+    if normalized in {"@bt", BACKEND_PYVISA_BT}:
+        return BACKEND_PYVISA_BT
     if normalized == BACKEND_SYSTEM_VISA:
         return BACKEND_SYSTEM_VISA
     if normalized == BACKEND_CUSTOM_VISA:
@@ -1443,6 +1451,7 @@ def _backend_display(backend: str) -> str:
     return {
         BACKEND_SYSTEM_VISA: "system VISA",
         BACKEND_PYVISA_PY: "pyvisa-py",
+        BACKEND_PYVISA_BT: "pyvisa-bt",
         BACKEND_CUSTOM_VISA: "custom VISA",
     }.get(backend, backend)
 

@@ -8,6 +8,7 @@ from powers_tool_core.support_features import supported_sequence_actions_for_mod
 from powers_tool_core.support_policy import (
     ACTIVE_LIVE_POLICY_MODEL_IDS,
     BACKEND_CUSTOM_VISA,
+    BACKEND_PYVISA_BT,
     BACKEND_PYVISA_PY,
     BACKEND_SYSTEM_VISA,
     EXEMPT_LIVE_DIAGNOSTIC_COMMANDS,
@@ -196,6 +197,8 @@ def test_transport_normalization(value: str | None, expected: str) -> None:
         ("", BACKEND_SYSTEM_VISA),
         ("   ", BACKEND_SYSTEM_VISA),
         (" @PY ", BACKEND_PYVISA_PY),
+        ("@bt", BACKEND_PYVISA_BT),
+        (" @BT ", BACKEND_PYVISA_BT),
         ("@ivi", BACKEND_CUSTOM_VISA),
     ],
 )
@@ -208,6 +211,7 @@ def test_backend_normalization(value: str | None, expected: str) -> None:
     [
         ("system_visa", BACKEND_SYSTEM_VISA),
         ("pyvisa_py", BACKEND_PYVISA_PY),
+        ("pyvisa_bt", BACKEND_PYVISA_BT),
         ("custom_visa", BACKEND_CUSTOM_VISA),
     ],
 )
@@ -217,7 +221,16 @@ def test_canonical_backend_labels_remain_canonical(value: str, expected: str) ->
 
 @pytest.mark.parametrize(
     "value",
-    [None, "@py", "@ivi", "system_visa", "pyvisa_py", "custom_visa"],
+    [
+        None,
+        "@py",
+        "@bt",
+        "@ivi",
+        "system_visa",
+        "pyvisa_py",
+        "pyvisa_bt",
+        "custom_visa",
+    ],
 )
 def test_backend_normalization_is_idempotent(value: str | None) -> None:
     normalized = normalize_backend(value)

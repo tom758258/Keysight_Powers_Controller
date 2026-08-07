@@ -60,6 +60,12 @@ then requires an exact `model_id + command + transport + backend + required
 feature` scope before command-specific SCPI. Missing, unsupported, and pending
 scopes fail closed.
 
+Backend selectors normalize independently of Product support: unset or blank
+means `system_visa`, `@py` means `pyvisa_py`, `@bt` means `pyvisa_bt`, and any
+other selector means `custom_visa`. Backend identity does not itself grant
+Product support. No current Product-open exact scope uses `pyvisa_bt`, so
+model-aware Product execution with `@bt` fails closed.
+
 Exact policy evaluation is feature-aware for `sequence_action` and
 `trigger_source`. Sequence validates every distinct instrument-relevant
 normalized action before its first step; host-only `wait` and `log` actions do

@@ -41,6 +41,12 @@ required feature` scope；缺少、未知或 pending scope 都會 fail closed。
 只作 live mismatch guard，不會選擇 driver 或解鎖 command。No-hardware capability、
 另一種 transport/backend 或另一個 feature 都不代表 Product-open。
 
+Backend selector 與 Product support 分開正規化：未設定或空白代表
+`system_visa`，`@py` 代表 `pyvisa_py`，`@bt` 代表 `pyvisa_bt`，其他 selector
+代表 `custom_visa`。Backend identity 本身不授予 Product support。目前沒有使用
+`pyvisa_bt` 的 Product-open exact scope，因此 model-aware Product execution 搭配
+`@bt` 時會 fail closed。
+
 `list-resources`、`verify`、`identify`、`error` 與 `clear` 是明確的 diagnostic
 exemptions。它們的成功只證明該 diagnostic operation，不會開放 model、feature
 family、transport/backend scope 或其他 command。Exact Product matrix 請以

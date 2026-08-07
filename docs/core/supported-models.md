@@ -7,8 +7,9 @@ resolves the reported manufacturer plus model to one canonical physical
 `model_id`, applies any expected-model guard, and requires an exact
 `model_id + command + transport + backend + required feature` match. Missing,
 unsupported, or non-Product-open scopes fail closed. A Product-open system VISA
-scope does not inherit to pyvisa-py or a custom backend. E3646A remains ASRL /
-RS-232 + system VISA only.
+scope does not inherit to pyvisa-py, pyvisa-bt, or a custom backend. No current
+Product-open exact scope uses `pyvisa_bt`. E3646A remains ASRL / RS-232 + system
+VISA only.
 
 The `live_validated_full_suite` status identifies current Product-open exact
 command scopes in the public support projection. For the machine-readable
@@ -22,7 +23,7 @@ Core parses `*IDN?` and resolves reported manufacturer plus model to one
 canonical physical `model_id`, checks any expected-model guard, and then
 requires an exact `model_id + command + transport + backend + required
 feature` match. Missing or non-Product-open scopes fail closed. A system VISA
-scope does not extend to pyvisa-py or a custom backend.
+scope does not extend to pyvisa-py, pyvisa-bt, or a custom backend.
 
 The current `live_validated_full_suite` command inventories are:
 
@@ -81,7 +82,7 @@ are outside the current scope.
 
 The E36312A and EDU36311A TCPIP + pyvisa-py connections are not currently
 available for Product use. System VISA support does not extend to pyvisa-py or
-a custom backend.
+pyvisa-bt or a custom backend.
 
 | Model | USB | LAN | ASRL / RS-232 |
 | --- | --- | --- | --- |
