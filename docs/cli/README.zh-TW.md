@@ -221,7 +221,7 @@ uv run powers-tool verify --resource "$env:POWERS_TOOL_RESOURCE" --log-scpi
 
 E3646A 在 RS-232/ASRL 上支援唯讀/狀態查詢與輸出工作流程。執行任何 E3646A 實機輸出命令前，請確認實體接線已檢查完成，且要求的電壓/電流限制對連接負載是安全的。
 
-型號支援的命令包括 `identify`、`measure`、`readback`、`read-status`、`output-state`、`capabilities`、`set`、`apply`、`output-on`、`output-off`、`safe-off`、`cycle-output`、`smoke-output`、`ramp`、`ramp-list` 與影響輸出的 `sequence` 步驟。`verify` 也可作為與型號無關的連線診斷。E3646A 使用 `INST:NSEL` 做通道預選；`OUTP ON/OFF` 是全域輸出啟用/停用行為，即使命令接受通道參數，啟用或停用輸出仍可能影響儀器整體輸出狀態。E3646A 的保護寫入、trigger 工作流程、snapshot restore、completion pulse 與 native LIST 仍維持停用。
+型號支援的命令包括 `identify`、`measure`、`readback`、`read-status`、`output-state`、`capabilities`、`log`、`set`、`apply`、`output-on`、`output-off`、`safe-off`、`cycle-output`、`smoke-output`、`ramp`、`ramp-list` 與影響輸出的 `sequence` 步驟。`verify` 也可作為與型號無關的連線診斷。E3646A 使用 `INST:NSEL` 做通道預選；`OUTP ON/OFF` 是全域輸出啟用/停用行為，即使命令接受通道參數，啟用或停用輸出仍可能影響儀器整體輸出狀態。E3646A 的保護寫入、trigger 工作流程、snapshot restore、completion pulse 與 native LIST 仍維持停用。
 
 每個 PowerShell 工作階段設定一次 ASRL 資源：
 

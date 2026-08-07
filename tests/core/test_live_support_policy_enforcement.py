@@ -365,27 +365,23 @@ def test_promoted_commands_fail_closed_outside_exact_inventory(
         )
 
 
-def test_e3646a_log_is_validation_only_for_asrl_system_visa() -> None:
-    with pytest.raises(CoreValidationError):
-        enforce_live_support(
-            _request("log", "ASRL1::INSTR"),
+def test_e3646a_log_is_product_open_only_for_asrl_system_visa() -> None:
+    for mode in (SUPPORT_POLICY_MODE_PRODUCT, SUPPORT_POLICY_MODE_VALIDATION):
+        scope = enforce_live_support(
+            _request("log", "ASRL1::INSTR", support_policy_mode=mode),
             "keysight-e3646a",
         )
-
-    scope = enforce_live_support(
-        _request(
-            "log",
-            "ASRL1::INSTR",
-            support_policy_mode=SUPPORT_POLICY_MODE_VALIDATION,
-        ),
-        "keysight-e3646a",
-    )
-    assert scope.admission_kind == "validation_candidate"
+        assert scope.validation_status == "live_validated_full_suite"
+        assert scope.admission_kind == "product"
+        assert scope.accepted_evidence_ids == (
+            "keysight-e3646a-asrl-system-visa-20260807-full",
+        )
 
     for resource, backend in (
         ("USB0::1::INSTR", None),
         ("TCPIP0::192.0.2.1::INSTR", None),
         ("ASRL1::INSTR", "@py"),
+        ("ASRL1::INSTR", "@ivi"),
     ):
         with pytest.raises(CoreValidationError):
             enforce_live_support(
@@ -393,7 +389,6 @@ def test_e3646a_log_is_validation_only_for_asrl_system_visa() -> None:
                     "log",
                     resource,
                     backend=backend,
-                    support_policy_mode=SUPPORT_POLICY_MODE_VALIDATION,
                 ),
                 "keysight-e3646a",
             )

@@ -13,10 +13,6 @@ from powers_tool_core.core import (
     UnsupportedChannelError,
 )
 from powers_tool_core.testing.simulator import SimulatedResourceManager
-from powers_tool_core.support_policy import (
-    LiveSupportPolicyError,
-    SUPPORT_POLICY_MODE_VALIDATION,
-)
 
 
 def _request(parameters: dict) -> OperationRequest:
@@ -100,9 +96,9 @@ def test_cancellation_finishes_the_active_cycle_before_stopping() -> None:
     assert raised.value.data["stop_reason"] == "cancelled"
 
 
-def test_e3646a_log_executes_only_through_the_exact_validation_candidate() -> None:
+def test_e3646a_log_executes_through_the_exact_product_scope() -> None:
     manager = SimulatedResourceManager()
-    validation_session = manager.open_resource("ASRL1::SIM::E3646A::INSTR")
+    session = manager.open_resource("ASRL1::SIM::E3646A::INSTR")
     rows: list[dict] = []
     parameters = {"channel": "all", "interval_sec": 0.1, "samples": 1}
 
@@ -112,28 +108,12 @@ def test_e3646a_log_executes_only_through_the_exact_validation_candidate() -> No
             RuntimeOptions(
                 resource="ASRL1::INSTR",
                 expected_model_id="keysight-e3646a",
-                support_policy_mode=SUPPORT_POLICY_MODE_VALIDATION,
             ),
             parameters,
         ),
-        opener=lambda *args, **kwargs: closing(validation_session),
+        opener=lambda *args, **kwargs: closing(session),
         sample_reporter=rows.append,
     )
 
     assert result["channels"] == [1, 2]
     assert [row["channel"] for row in rows] == [1, 2]
-
-    product_session = manager.open_resource("ASRL1::SIM::E3646A::INSTR")
-    with pytest.raises(LiveSupportPolicyError):
-        run_core_command(
-            OperationRequest(
-                "log",
-                RuntimeOptions(
-                    resource="ASRL1::INSTR",
-                    expected_model_id="keysight-e3646a",
-                ),
-                parameters,
-            ),
-            opener=lambda *args, **kwargs: closing(product_session),
-        )
-    assert product_session.commands == ["*IDN?"]

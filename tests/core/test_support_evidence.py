@@ -83,6 +83,7 @@ EXPECTED_VERIFIED_EVIDENCE = {
         "e9df449f532f6759161eeb1cfcf643c700d937ffc3078d8515280a267c3ae9e3",
     ),
 }
+NEW_E3646A_LOG_EVIDENCE_ID = "keysight-e3646a-asrl-system-visa-20260807-full"
 
 EXPECTED_COMMAND_COUNTS = {
     "keysight-e36312a": 23,
@@ -123,7 +124,7 @@ EXPECTED_PROMOTED_COMMANDS = {
         {"output-on", "log", "doctor", "measure-all", "restore-from-snapshot", "trigger-fire", "trigger-pulse"}
     ),
     "keysight-edu36311a": frozenset({"output-on", "log", "doctor"}),
-    "keysight-e3646a": frozenset({"output-on", "doctor"}),
+    "keysight-e3646a": frozenset({"output-on", "doctor", "log"}),
 }
 
 EXPECTED_FEATURES_BY_MODEL = {
@@ -211,10 +212,14 @@ def test_evidence_manifest_and_registry_cannot_drift() -> None:
         assert SUPPORT_EVIDENCE_BY_ID[record.evidence_id] is record
 
 
-def test_exactly_five_immutable_historical_evidence_identities_exist() -> None:
-    assert len(SUPPORT_EVIDENCE_RECORDS) == 10
-    assert len(SUPPORT_EVIDENCE_BY_ID) == 10
-    assert set(SUPPORT_EVIDENCE_BY_ID) == set(EXPECTED_EVIDENCE) | set(EXPECTED_VERIFIED_EVIDENCE)
+def test_registered_evidence_identities_are_exact() -> None:
+    assert len(SUPPORT_EVIDENCE_RECORDS) == 11
+    assert len(SUPPORT_EVIDENCE_BY_ID) == 11
+    assert set(SUPPORT_EVIDENCE_BY_ID) == (
+        set(EXPECTED_EVIDENCE)
+        | set(EXPECTED_VERIFIED_EVIDENCE)
+        | {NEW_E3646A_LOG_EVIDENCE_ID}
+    )
     for evidence_id, (model_id, transport, artifact_directory) in EXPECTED_EVIDENCE.items():
         record = SUPPORT_EVIDENCE_BY_ID[evidence_id]
         assert (record.model_id, record.transport_scope, record.backend_scope) == (
@@ -278,6 +283,39 @@ def test_verified_evidence_records_are_exact_and_immutable() -> None:
                 {("trigger_source", "bus")}
             )
         assert isinstance(record.accepted_features_by_command, MappingProxyType)
+
+
+def test_new_e3646a_log_evidence_is_exact_and_historical_record_is_unchanged() -> None:
+    record = SUPPORT_EVIDENCE_BY_ID[NEW_E3646A_LOG_EVIDENCE_ID]
+    assert (record.model_id, record.transport_scope, record.backend_scope) == (
+        "keysight-e3646a",
+        "asrl",
+        "system_visa",
+    )
+    assert record.evidence_date == "2026-08-07"
+    assert record.evidence_kind == EVIDENCE_KIND_VERIFIED_FULL_SUITE
+    assert record.artifact_directory == (
+        ".tmp_tests/live_cli_check/"
+        "20260807_154408_keysight-e3646a_ASRL_full/shareable"
+    )
+    assert record.report_path == f"{record.artifact_directory}/report.json"
+    assert record.summary_path == f"{record.artifact_directory}/summary.md"
+    assert record.artifact_schema_version == "2.0"
+    assert record.report_sha256 == (
+        "ea75f78c8fb8c95fdbd91fed87becb3e41a786220440b3a9c48d0815ae249c2d"
+    )
+    assert re.fullmatch(r"[0-9a-f]{64}", record.report_sha256)
+    assert record.source_availability == SOURCE_AVAILABILITY_VERIFIED_LOCAL
+    assert record.migration_note is None
+    assert record.accepted_commands == frozenset({"log"})
+    assert record.accepted_features_by_command == {}
+    assert isinstance(record.accepted_features_by_command, MappingProxyType)
+
+    historical = SUPPORT_EVIDENCE_BY_ID[
+        "keysight-e3646a-asrl-system-visa-20260717-full"
+    ]
+    assert historical.evidence_date == "2026-07-17"
+    assert "log" not in historical.accepted_commands
 
 
 def test_evidence_registry_alias_is_rejected() -> None:
@@ -452,7 +490,12 @@ def test_each_promoted_command_references_its_exact_verified_evidence() -> None:
                 if scope.validation_status != VALIDATION_STATUS_LIVE_VALIDATED_FULL_SUITE:
                     continue
                 expected_id = (
-                    f"{model_policy.model_id}-{scope.transport_scope}-system-visa-20260717-full"
+                    NEW_E3646A_LOG_EVIDENCE_ID
+                    if (
+                        model_policy.model_id == "keysight-e3646a"
+                        and command_policy.command == "log"
+                    )
+                    else f"{model_policy.model_id}-{scope.transport_scope}-system-visa-20260717-full"
                 )
                 assert scope.accepted_evidence_ids == (expected_id,)
 

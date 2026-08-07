@@ -119,6 +119,7 @@ E3646A_VALIDATED_COMMANDS = {
     "sequence",
     "output-on",
     "doctor",
+    "log",
 }
 
 
@@ -1257,10 +1258,7 @@ def test_public_projection_preserves_model_and_generic_boundaries() -> None:
 def test_internal_validation_candidate_inventory_is_exact_and_immutable() -> None:
     inventory = internal_validation_candidate_inventory()
 
-    assert dict(inventory["keysight-e3646a"]) == {
-        "commands": ("log",),
-        "connections": (("asrl", "system_visa"),),
-    }
+    assert dict(inventory) == {}
     with pytest.raises(TypeError):
         inventory["future-model"] = {}  # type: ignore[index]
 

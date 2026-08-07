@@ -140,7 +140,7 @@ def test_command_support_e3646a_rs232_read_only_boundary() -> None:
         "simulate": True,
         "dry_run": False,
         "requires_confirm": False,
-        "hardware_validation": "not_enabled",
+        "hardware_validation": "rs232_read_only",
     }
 
     validated_output_commands = (

@@ -7216,7 +7216,7 @@ def test_log_live_support_rejection_does_not_create_artifacts(
             "log",
             "--json",
             "--resource",
-            "ASRL1::INSTR",
+            "USB0::1::INSTR",
             "--channel",
             "all",
             "--interval-sec",

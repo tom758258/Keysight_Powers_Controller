@@ -30,7 +30,7 @@ The current `live_validated_full_suite` command inventories are:
 | --- | --- | --- |
 | `keysight-e36312a` (Keysight E36312A) | USB + system VISA; TCPIP + system VISA | `measure`, `output-state`, `read-status`, `readback`, `validate-readonly`, `capabilities`, `set`, `output-on`, `output-off`, `safe-off`, `cycle-output`, `apply`, `ramp`, `smoke-output`, `ramp-list`, `sequence`, `protection-status`, `protection-set`, `clear-protection`, `snapshot`, `restore-from-snapshot`, `measure-all`, `log`, `doctor`, `trigger-status`, `trigger-step`, `trigger-list`, `trigger-abort`, `trigger-fire`, `trigger-pulse` |
 | `keysight-edu36311a` (Keysight EDU36311A) | USB + system VISA; TCPIP + system VISA | `measure`, `output-state`, `read-status`, `readback`, `validate-readonly`, `capabilities`, `set`, `output-on`, `output-off`, `safe-off`, `cycle-output`, `apply`, `ramp`, `smoke-output`, `ramp-list`, `sequence`, `protection-status`, `protection-set`, `clear-protection`, `log`, `doctor` |
-| `keysight-e3646a` (Keysight E3646A) | ASRL / RS-232 + system VISA | `measure`, `output-state`, `read-status`, `readback`, `capabilities`, `set`, `output-on`, `output-off`, `safe-off`, `cycle-output`, `apply`, `ramp`, `smoke-output`, `ramp-list`, `sequence`, `doctor` |
+| `keysight-e3646a` (Keysight E3646A) | ASRL / RS-232 + system VISA | `measure`, `output-state`, `read-status`, `readback`, `capabilities`, `set`, `output-on`, `output-off`, `safe-off`, `cycle-output`, `apply`, `ramp`, `smoke-output`, `ramp-list`, `sequence`, `log`, `doctor` |
 
 `list-resources`, `verify`, `identify`, `error`, and `clear` are explicit
 diagnostic exemptions. Their success proves only that diagnostic operation; it

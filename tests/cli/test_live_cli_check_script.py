@@ -2346,6 +2346,24 @@ def test_live_cli_check_e3646a_full_plan_contains_software_sequence_not_native_l
     assert "sequence-unsupported-completion-pulse-dry-run" in case_names
 
 
+def test_live_cli_check_e3646a_log_no_longer_requires_candidate_admission() -> None:
+    command = r'''
+$env:POWERS_TOOL_LIVE_CLI_CHECK_IMPORT_ONLY = "1"
+. .\scripts\live-cli-check.ps1
+$script:NormalizedTarget = "keysight-e3646a"
+$script:TransportScope = "asrl"
+$script:BackendArtifact = Get-BackendArtifactFields -Value $null
+Load-CoreCandidateInventory
+[pscustomobject]@{
+    candidate = Test-CurrentConnectionSupportsCandidates -Command "log"
+} | ConvertTo-Json -Compress
+'''
+    result = _run_powershell_command(command)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert json.loads(result.stdout) == {"candidate": False}
+
+
 def test_live_cli_check_full_suite_composition_is_model_aware():
     script = (Path("scripts") / "_validation_helpers.ps1").read_text(encoding="utf-8")
 

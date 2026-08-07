@@ -567,7 +567,7 @@ uv run powers-tool error --resource "$env:POWERS_TOOL_RESOURCE" --max-reads 20 -
 
 E3646A product LIVE support is ASRL/RS-232 + system VISA only. Its exact
 product-open model-aware commands are `measure`, `readback`, `read-status`,
-`output-state`, `capabilities`, `set`, `apply`, `output-off`,
+`output-state`, `capabilities`, `log`, `set`, `apply`, `output-off`,
 `safe-off`, `cycle-output`, `smoke-output`, `ramp`, `ramp-list`, and
 `sequence`, `output-on`, and resource-backed `doctor`. `identify` and `verify`
 are diagnostics only. Protection, trigger, snapshot/restore, completion pulses,

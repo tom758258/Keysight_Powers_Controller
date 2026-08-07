@@ -218,6 +218,7 @@ def command_support(model_id: str | None) -> dict[str, dict[str, Any]]:
                 entry["real"] = True
                 entry["simulate"] = True
                 entry["dry_run"] = False
+                entry["hardware_validation"] = "rs232_read_only"
             if command in e3646a_real and command not in e3646a_output:
                 entry["real"] = True
                 entry["simulate"] = True

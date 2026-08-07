@@ -84,6 +84,7 @@ _EDU36311A_VERIFIED_COMMANDS = _EDU36311A_ACCEPTED_COMMANDS | {
     "doctor", "log", "output-on",
 }
 _E3646A_VERIFIED_COMMANDS = _E3646A_ACCEPTED_COMMANDS | {"doctor", "output-on"}
+_E3646A_20260807_VERIFIED_COMMANDS = frozenset({"log"})
 
 _E36312A_ACCEPTED_FEATURES = {
     "sequence": frozenset(
@@ -223,13 +224,15 @@ def _verified_record(
     report_sha256: str,
     accepted_commands: frozenset[str],
     accepted_features_by_command: Mapping[str, frozenset[tuple[str, str]]],
+    *,
+    evidence_date: str,
 ) -> SupportEvidenceRecord:
     return SupportEvidenceRecord(
         evidence_id=evidence_id,
         model_id=model_id,
         transport_scope=transport_scope,
         backend_scope="system_visa",
-        evidence_date="2026-07-17",
+        evidence_date=evidence_date,
         evidence_kind=EVIDENCE_KIND_VERIFIED_FULL_SUITE,
         artifact_directory=artifact_directory,
         report_path=f"{artifact_directory}/report.json",
@@ -294,6 +297,7 @@ SUPPORT_EVIDENCE_RECORDS = (
         "784087da966a141aab0c859580f0e85b5856f7b3cf319d889790b6f1751b6048",
         _E36312A_VERIFIED_COMMANDS,
         _E36312A_VERIFIED_FEATURES,
+        evidence_date="2026-07-17",
     ),
     _verified_record(
         "keysight-e36312a-tcpip-system-visa-20260717-full",
@@ -303,6 +307,7 @@ SUPPORT_EVIDENCE_RECORDS = (
         "17c4f2d5c5a7e618f0d216cfab1c38b769b123a1fc157b4a0ee9e3acac5c4927",
         _E36312A_VERIFIED_COMMANDS,
         _E36312A_VERIFIED_FEATURES,
+        evidence_date="2026-07-17",
     ),
     _verified_record(
         "keysight-edu36311a-usb-system-visa-20260717-full",
@@ -312,6 +317,7 @@ SUPPORT_EVIDENCE_RECORDS = (
         "b613f9eb40cb08df805ed00cb6668c79ef41b5225526874e78daf1a3f5d77b66",
         _EDU36311A_VERIFIED_COMMANDS,
         _EDU36311A_VERIFIED_FEATURES,
+        evidence_date="2026-07-17",
     ),
     _verified_record(
         "keysight-edu36311a-tcpip-system-visa-20260717-full",
@@ -321,6 +327,7 @@ SUPPORT_EVIDENCE_RECORDS = (
         "591f4415ebcc5f63d4f42b4a57a81ca9be3586854a9f1fe453c59802591e9ef9",
         _EDU36311A_VERIFIED_COMMANDS,
         _EDU36311A_VERIFIED_FEATURES,
+        evidence_date="2026-07-17",
     ),
     _verified_record(
         "keysight-e3646a-asrl-system-visa-20260717-full",
@@ -330,6 +337,17 @@ SUPPORT_EVIDENCE_RECORDS = (
         "e9df449f532f6759161eeb1cfcf643c700d937ffc3078d8515280a267c3ae9e3",
         _E3646A_VERIFIED_COMMANDS,
         _E3646A_VERIFIED_FEATURES,
+        evidence_date="2026-07-17",
+    ),
+    _verified_record(
+        "keysight-e3646a-asrl-system-visa-20260807-full",
+        "keysight-e3646a",
+        "asrl",
+        ".tmp_tests/live_cli_check/20260807_154408_keysight-e3646a_ASRL_full/shareable",
+        "ea75f78c8fb8c95fdbd91fed87becb3e41a786220440b3a9c48d0815ae249c2d",
+        _E3646A_20260807_VERIFIED_COMMANDS,
+        {},
+        evidence_date="2026-08-07",
     ),
 )
 
@@ -402,8 +420,6 @@ def validate_support_evidence_metadata(
             if not isinstance(record.migration_note, str) or not record.migration_note.strip():
                 raise ValueError(f"evidence migration note is required: {record.evidence_id}")
         else:
-            if record.evidence_date != "2026-07-17":
-                raise ValueError(f"verified evidence date mismatch: {record.evidence_id}")
             if record.artifact_schema_version != "2.0":
                 raise ValueError(f"verified evidence schema mismatch: {record.evidence_id}")
             if record.source_availability != SOURCE_AVAILABILITY_VERIFIED_LOCAL:

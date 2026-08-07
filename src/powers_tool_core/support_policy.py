@@ -102,14 +102,10 @@ _PENDING_STATUSES = frozenset({VALIDATION_STATUS_TRANSPORT_PENDING})
 
 # Internal-only admission for exact live-validation candidates. These entries
 # are deliberately absent from public support metadata and accepted evidence.
-_VALIDATION_ONLY_COMMAND_CANDIDATES: Mapping[str, frozenset[str]] = {
-    "keysight-e3646a": frozenset({"log"}),
-}
+_VALIDATION_ONLY_COMMAND_CANDIDATES: Mapping[str, frozenset[str]] = {}
 _VALIDATION_ONLY_EXACT_CONNECTIONS: Mapping[
     str, frozenset[tuple[str, str]]
-] = {
-    "keysight-e3646a": frozenset({(TRANSPORT_ASRL, BACKEND_SYSTEM_VISA)}),
-}
+] = {}
 
 
 def internal_validation_candidate_inventory() -> Mapping[str, Mapping[str, tuple]]:
@@ -1039,6 +1035,10 @@ _VERIFIED_BACKEND_NOTE = (
     "Accepted after independent review of the 2026-07-17 system-VISA full-suite "
     "evidence; this does not validate pyvisa-py or a custom VISA backend."
 )
+_E3646A_LOG_VERIFIED_BACKEND_NOTE = (
+    "Accepted for the exact ASRL / RS-232 system-VISA scope; this does not "
+    "validate USB, TCPIP, pyvisa-py, or a custom VISA backend."
+)
 _PENDING_BACKEND_NOTE = (
     "The model and command are implemented and validated over TCPIP with the "
     "system VISA backend. The TCPIP/pyvisa-py exact backend scope remains pending "
@@ -1071,6 +1071,18 @@ _VERIFIED_EVIDENCE_IDS = {
     ("keysight-e3646a", TRANSPORT_ASRL): "keysight-e3646a-asrl-system-visa-20260717-full",
 }
 
+_VERIFIED_COMMAND_EVIDENCE_IDS = {
+    (
+        "keysight-e3646a",
+        TRANSPORT_ASRL,
+        "log",
+    ): "keysight-e3646a-asrl-system-visa-20260807-full",
+}
+
+_VERIFIED_COMMAND_NOTES = {
+    ("keysight-e3646a", TRANSPORT_ASRL, "log"): _E3646A_LOG_VERIFIED_BACKEND_NOTE,
+}
+
 _PROMOTED_COMMANDS = {
     "keysight-e36312a": frozenset(
         {
@@ -1079,7 +1091,7 @@ _PROMOTED_COMMANDS = {
         }
     ),
     "keysight-edu36311a": frozenset({"output-on", "log", "doctor"}),
-    "keysight-e3646a": frozenset({"output-on", "doctor"}),
+    "keysight-e3646a": frozenset({"output-on", "doctor", "log"}),
 }
 
 _VALIDATED_COMMANDS = {
@@ -1106,7 +1118,7 @@ _VALIDATED_COMMANDS = {
         {
             "measure", "output-state", "read-status", "readback", "capabilities", "set",
             "output-off", "safe-off", "cycle-output", "apply", "ramp", "smoke-output",
-            "ramp-list", "sequence", "output-on", "doctor",
+            "ramp-list", "sequence", "output-on", "doctor", "log",
         }
     ),
 }
@@ -1140,8 +1152,12 @@ def _build_registry() -> tuple[ModelSupportPolicy, ...]:
             if command in _VALIDATED_COMMANDS[model_id]:
                 for transport in _VALIDATED_TRANSPORTS[model_id]:
                     promoted = command in _PROMOTED_COMMANDS[model_id]
+                    command_scope_key = (model_id, transport, command)
                     evidence_id = (
-                        _VERIFIED_EVIDENCE_IDS[(model_id, transport)]
+                        _VERIFIED_COMMAND_EVIDENCE_IDS.get(
+                            command_scope_key,
+                            _VERIFIED_EVIDENCE_IDS[(model_id, transport)],
+                        )
                         if promoted
                         else _HISTORICAL_EVIDENCE_IDS[(model_id, transport)]
                     )
@@ -1152,7 +1168,10 @@ def _build_registry() -> tuple[ModelSupportPolicy, ...]:
                             backend_scope=BACKEND_SYSTEM_VISA,
                             accepted_evidence_ids=(evidence_id,),
                             note=(
-                                _VERIFIED_BACKEND_NOTE
+                                _VERIFIED_COMMAND_NOTES.get(
+                                    command_scope_key,
+                                    _VERIFIED_BACKEND_NOTE,
+                                )
                                 if promoted
                                 else _LEGACY_BACKEND_NOTE
                             ),
