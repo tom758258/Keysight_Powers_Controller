@@ -101,6 +101,21 @@ transport, or backend.
 | Product support | No-hardware availability does not imply live support. | Model-aware live commands follow the exact `model + command + transport + backend + required feature` scope in [Supported Models](../core/supported-models.md). Diagnostic exemptions remain limited to their documented diagnostic purpose. |
 | Safety | Preview and simulator paths do not enable real output. | Output-affecting commands remain subject to the existing confirmation gates and safety limits. |
 
+Omitting `--backend` uses the default System VISA path through
+`pyvisa.ResourceManager()`. In a source checkout, virtual environment, or
+installed Python environment, the CLI can pass an optional PyVISA selector such
+as `--backend "@py"` or `--backend "@bt"`. The corresponding backend package
+must be installed in that environment and loadable by PyVISA.
+
+`@bt` maps to the distinct `pyvisa_bt` support-policy identity. Backend package
+installation and PyVISA loadability do not themselves grant Product support;
+model-aware live execution still requires an exact Product-open `model +
+command + transport + backend + required feature` scope. No current
+Product-open exact scope uses `pyvisa_bt`, so model-aware Product live execution
+with `--backend "@bt"` fails closed. The current official standalone
+`powers-tool.exe` does not bundle optional Python backend packages such as
+pyvisa-py or `pyvisa_bt`, and it does not include a BT runtime or service.
+
 ## Install
 
 The root [README Install guide](../../README.md#install) is the canonical

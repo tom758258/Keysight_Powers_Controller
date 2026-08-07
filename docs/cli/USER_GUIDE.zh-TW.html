@@ -107,6 +107,15 @@ pre code { color: var(--text-code); background: transparent; padding: 0; }
 <p>若為已安裝的命令，請將 <code>.\powers-tool.exe</code> 替換為 <code>powers-tool</code>：</p>
 <div class="code-wrapper"><pre><code class="language-powershell">powers-tool --version
 </code></pre></div>
+<p>正常 Product 使用不設定 <code>--backend</code>，並採用預設的 System VISA 路徑。Source
+checkout 或 installed Python environment 可在對應 backend package 已安裝且可由
+PyVISA 載入時，透過現有的 <code>--backend "@py"</code> 或 <code>--backend "@bt"</code> 傳遞 optional
+PyVISA selector。<code>@bt</code> 會辨識為 <code>pyvisa_bt</code> backend identity，但目前沒有使用該
+backend 的 Powers Product-open exact live scope；因此 model-aware Product live
+command 搭配 <code>--backend "@bt"</code> 時會 fail closed。Backend 可載入不代表已取得
+Product support。</p>
+<p>目前官方 standalone <code>powers-tool.exe</code> 不會 bundle <code>pyvisa_bt</code>。本指南中的
+standalone commands 使用正常的 System VISA 路徑。</p>
 <h2 id="首次實機檢查-first-live-check">首次實機檢查 (First Live Check)</h2>
 <p>在檢查新電腦、VISA runtime、連線或電源供應器設定時，請使用此流程。</p>
 <ol>

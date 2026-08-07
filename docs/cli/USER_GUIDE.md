@@ -34,6 +34,18 @@ For an already-installed command, replace `.\powers-tool.exe` with
 powers-tool --version
 ```
 
+Normal Product use leaves `--backend` unset and uses the default System VISA
+path. A source checkout or installed Python environment can pass an optional
+PyVISA selector such as `--backend "@py"` or `--backend "@bt"` when the
+corresponding backend package is installed and loadable. `@bt` is recognized as
+the `pyvisa_bt` backend identity, but no current Powers Product-open exact live
+scope uses that backend; model-aware Product live commands therefore fail
+closed with `--backend "@bt"`. Backend loadability does not grant Product
+support.
+
+The current official standalone `powers-tool.exe` does not bundle `pyvisa_bt`.
+The standalone commands in this guide use the normal System VISA path.
+
 ## First Live Check
 
 Use this flow when checking a new computer, VISA runtime, connection, or power

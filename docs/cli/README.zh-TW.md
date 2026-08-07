@@ -65,6 +65,19 @@ support matrix；本節不會為其他 model、transport 或 backend 增加支�
 | Product support | No-hardware 可用不代表 live 支援。 | Model-aware live commands 遵循 [Supported Models](../core/supported-models.md) 中 exact `model + command + transport + backend + required feature` scope。Diagnostic exemptions 僅限其文件化的 diagnostic purpose。 |
 | Safety | Preview 與 simulator 路徑不會啟用真實輸出。 | 影響輸出的命令仍受既有 confirmation gate 與 safety limit 約束。 |
 
+省略 `--backend` 時，CLI 會透過 `pyvisa.ResourceManager()` 使用預設的 System
+VISA 路徑。在 source checkout、virtual environment 或 installed Python
+environment 中，CLI 可以傳遞 `--backend "@py"` 或 `--backend "@bt"` 等 optional
+PyVISA selector；對應的 backend package 必須安裝在同一環境中，且 PyVISA 必須能載入。
+
+`@bt` 會對應到獨立的 `pyvisa_bt` support-policy identity。Backend package 已安裝
+或 PyVISA 可載入都不會自行授予 Product support；model-aware live execution 仍須符合
+exact Product-open `model + command + transport + backend + required feature`
+scope。目前沒有使用 `pyvisa_bt` 的 Product-open exact scope，因此搭配
+`--backend "@bt"` 的 model-aware Product live execution 會 fail closed。目前官方
+standalone `powers-tool.exe` 不會 bundle pyvisa-py、`pyvisa_bt` 等 optional Python
+backend package，也不包含 BT runtime 或 service。
+
 ## 安裝
 
 根目錄的 [README 安裝指南](../../README.zh-TW.md#安裝) 是 canonical setup

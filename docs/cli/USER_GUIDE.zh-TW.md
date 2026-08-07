@@ -24,6 +24,17 @@ powers-tool-<version>.exe
 powers-tool --version
 ```
 
+正常 Product 使用不設定 `--backend`，並採用預設的 System VISA 路徑。Source
+checkout 或 installed Python environment 可在對應 backend package 已安裝且可由
+PyVISA 載入時，透過現有的 `--backend "@py"` 或 `--backend "@bt"` 傳遞 optional
+PyVISA selector。`@bt` 會辨識為 `pyvisa_bt` backend identity，但目前沒有使用該
+backend 的 Powers Product-open exact live scope；因此 model-aware Product live
+command 搭配 `--backend "@bt"` 時會 fail closed。Backend 可載入不代表已取得
+Product support。
+
+目前官方 standalone `powers-tool.exe` 不會 bundle `pyvisa_bt`。本指南中的
+standalone commands 使用正常的 System VISA 路徑。
+
 ## 首次實機檢查 (First Live Check)
 
 在檢查新電腦、VISA runtime、連線或電源供應器設定時，請使用此流程。

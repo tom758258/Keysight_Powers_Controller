@@ -182,6 +182,17 @@ support matrix；本節不會為其他 model、transport 或 backend 增加支�
 </tr>
 </tbody>
 </table>
+<p>省略 <code>--backend</code> 時，CLI 會透過 <code>pyvisa.ResourceManager()</code> 使用預設的 System
+VISA 路徑。在 source checkout、virtual environment 或 installed Python
+environment 中，CLI 可以傳遞 <code>--backend "@py"</code> 或 <code>--backend "@bt"</code> 等 optional
+PyVISA selector；對應的 backend package 必須安裝在同一環境中，且 PyVISA 必須能載入。</p>
+<p><code>@bt</code> 會對應到獨立的 <code>pyvisa_bt</code> support-policy identity。Backend package 已安裝
+或 PyVISA 可載入都不會自行授予 Product support；model-aware live execution 仍須符合
+exact Product-open <code>model + command + transport + backend + required feature</code>
+scope。目前沒有使用 <code>pyvisa_bt</code> 的 Product-open exact scope，因此搭配
+<code>--backend "@bt"</code> 的 model-aware Product live execution 會 fail closed。目前官方
+standalone <code>powers-tool.exe</code> 不會 bundle pyvisa-py、<code>pyvisa_bt</code> 等 optional Python
+backend package，也不包含 BT runtime 或 service。</p>
 <h2 id="安裝">安裝</h2>
 <p>根目錄的 <a href="../../README.zh-TW.md#安裝" rel="noopener noreferrer" target="_blank">README 安裝指南</a> 是 canonical setup
 reference。從 repository 根目錄先同步 locked development/test environment：</p>
