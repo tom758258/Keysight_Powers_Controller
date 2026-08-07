@@ -169,6 +169,20 @@ powers-tool output-state --resource "$env:POWERS_TOOL_ASRL_RESOURCE" --channel 1
 
 這些命令會查詢身分、程式設定點、測量值、狀態或保護狀態。它們不會刻意啟用輸出。
 
+## Telemetry Logging
+
+CLI `log` 執行有界的唯讀 telemetry，並寫入呼叫者選擇的路徑：
+
+```powershell
+.\powers-tool.exe log --simulate --model keysight-e36312a --channel all --interval-sec 1 --samples 5 --csv telemetry.csv --jsonl telemetry.jsonl
+```
+
+Worker `log` 則必須提供 sample 或 duration bound，並在自己的 job directory 擁有
+`telemetry.csv`／`telemetry.jsonl`。它可取消、不會 safe-off output、取消或失敗後
+保留已完成 cycles、不接受呼叫者 artifact path，也不會和另一個 Worker job 並行。
+Sequence `log` 只是 message/note action；`--log-scpi` 是 SCPI traffic tracing，
+不是 telemetry。目前 E3646A telemetry `log` 尚未 Product-open。
+
 ## 影響輸出的工作流程
 
 影響輸出的命令需要明確指定。使用前，請確認儀器型號、通道、DUT 接線、電壓、電流限制與保護設定。
@@ -211,6 +225,7 @@ powers-tool output-state --resource "$env:POWERS_TOOL_ASRL_RESOURCE" --channel 1
 | `readback` | 讀取程式設定點與測量值。 |
 | `protection-status` | 讀取保護狀態。 |
 | `validate-readonly` | 執行一次唯讀診斷。 |
+| `log` | 將有界的唯讀 telemetry 寫入 CLI-owned CSV/JSONL files。 |
 | `set` | 設定電壓/電流而不啟用輸出。 |
 | `output-on` / `output-off` | 明確啟用或停用輸出。 |
 | `safe-off` | 使用支援的安全路徑關閉輸出。 |

@@ -198,6 +198,23 @@ Use read-only commands first when validating an instrument:
 These commands query identity, programmed setpoints, measured values, status,
 or protection state. They do not intentionally enable outputs.
 
+## Telemetry Logging
+
+CLI `log` performs bounded read-only telemetry and writes paths selected by the
+caller:
+
+```powershell
+.\powers-tool.exe log --simulate --model keysight-e36312a --channel all --interval-sec 1 --samples 5 --csv telemetry.csv --jsonl telemetry.jsonl
+```
+
+Worker `log` instead requires a sample or duration bound and owns
+`telemetry.csv`/`telemetry.jsonl` inside its job directory. It is cancellable,
+does not safe-off outputs, preserves completed cycles after cancellation or
+failure, accepts no caller artifact paths, and does not run concurrently with
+another Worker job. Sequence `log` is only a message/note action;
+`--log-scpi` traces SCPI traffic and is not telemetry. E3646A telemetry `log`
+is not currently Product-open.
+
 ## Output-Affecting Workflow
 
 Output-affecting commands are explicit. Before using them, confirm the
@@ -244,6 +261,7 @@ against an unknown resource.
 | `readback` | Read programmed setpoints and measured values. |
 | `protection-status` | Read protection state. |
 | `validate-readonly` | Run a read-only diagnostic pass. |
+| `log` | Collect bounded read-only telemetry into CLI-owned CSV/JSONL files. |
 | `set` | Set voltage/current without enabling output. |
 | `output-on` / `output-off` | Enable or disable output on an accepted exact LIVE scope; dry-run and simulator previews remain available. |
 | `safe-off` | Turn output off using the supported safety path. |

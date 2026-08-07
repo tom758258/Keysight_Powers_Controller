@@ -345,7 +345,6 @@ def test_product_mode_opens_promoted_exact_scopes(
         ("keysight-e36312a", "output-on", "USB0::1::INSTR", "@ivi"),
         ("keysight-e36312a", "output-on", "", None),
         ("keysight-edu36311a", "measure-all", "USB0::1::INSTR", None),
-        ("keysight-e3646a", "log", "ASRL1::INSTR", None),
         ("keysight-e3646a", "doctor", "TCPIP0::192.0.2.1::INSTR", None),
         ("keysight-e36312a", "trigger-pulse", "ASRL1::INSTR", None),
         ("keysight-e36312a", "trigger-fire", "USB0::1::INSTR", "@py"),
@@ -364,6 +363,40 @@ def test_promoted_commands_fail_closed_outside_exact_inventory(
             ),
             model_id,
         )
+
+
+def test_e3646a_log_is_validation_only_for_asrl_system_visa() -> None:
+    with pytest.raises(CoreValidationError):
+        enforce_live_support(
+            _request("log", "ASRL1::INSTR"),
+            "keysight-e3646a",
+        )
+
+    scope = enforce_live_support(
+        _request(
+            "log",
+            "ASRL1::INSTR",
+            support_policy_mode=SUPPORT_POLICY_MODE_VALIDATION,
+        ),
+        "keysight-e3646a",
+    )
+    assert scope.admission_kind == "validation_candidate"
+
+    for resource, backend in (
+        ("USB0::1::INSTR", None),
+        ("TCPIP0::192.0.2.1::INSTR", None),
+        ("ASRL1::INSTR", "@py"),
+    ):
+        with pytest.raises(CoreValidationError):
+            enforce_live_support(
+                _request(
+                    "log",
+                    resource,
+                    backend=backend,
+                    support_policy_mode=SUPPORT_POLICY_MODE_VALIDATION,
+                ),
+                "keysight-e3646a",
+            )
 
 
 def test_promoted_command_changes_only_exact_public_product_metadata() -> None:

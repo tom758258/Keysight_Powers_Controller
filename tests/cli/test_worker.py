@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import json
 import time
 import urllib.request
@@ -921,6 +922,164 @@ def test_worker_command_execution(running_worker):
     ]
     assert events
     assert all(event["schema_version"] == 2 for event in events)
+
+
+def test_worker_simulated_log_writes_worker_owned_telemetry(running_worker) -> None:
+    port = running_worker["port"]
+    artifacts_dir = running_worker["artifacts_dir"]
+    request = urllib.request.Request(
+        f"http://127.0.0.1:{port}/command",
+        data=json.dumps(
+            {
+                "schema_version": 2,
+                "command": "log",
+                "arguments": {
+                    "channels": [1, 3],
+                    "interval_sec": 0.01,
+                    "samples": 2,
+                },
+                "context": SIMULATE_CONTEXT,
+            }
+        ).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(request) as response:
+        accepted = json.loads(response.read().decode("utf-8"))
+
+    job_dir = artifacts_dir / "jobs" / accepted["worker_job_id"]
+    result = _wait_for_json_file(job_dir / "result.json")
+    assert (job_dir / "request.json").exists()
+    assert result["ok"] is True
+    assert result["data"] == {
+        "channels": [1, 3],
+        "duration_sec": None,
+        "interval_sec": 0.01,
+        "samples_requested": 2,
+        "samples_written": 2,
+        "stop_reason": "completed",
+    }
+
+    with (job_dir / "telemetry.csv").open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    assert [int(row["channel"]) for row in rows] == [1, 3, 1, 3]
+    events = [
+        json.loads(line)
+        for line in (job_dir / "telemetry.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert [event["event"] for event in events] == [
+        "sample",
+        "sample",
+        "sample",
+        "sample",
+        "summary",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("arguments", "context"),
+    [
+        ({"channel": 1, "interval_sec": 1.0}, SIMULATE_CONTEXT),
+        (
+            {"channel": 1, "interval_sec": 1.0, "samples": 1, "csv": "x.csv"},
+            SIMULATE_CONTEXT,
+        ),
+        (
+            {"channel": 1, "interval_sec": 1.0, "samples": 1, "jsonl": "x.jsonl"},
+            SIMULATE_CONTEXT,
+        ),
+        (
+            {"channel": 1, "interval_sec": 1.0, "samples": 1, "append": True},
+            SIMULATE_CONTEXT,
+        ),
+        (
+            {"channel": 1, "interval_sec": 1.0, "samples": 1},
+            DRY_RUN_CONTEXT,
+        ),
+    ],
+)
+def test_worker_rejects_invalid_log_before_artifacts(
+    tmp_path: Path, arguments: dict, context: dict
+) -> None:
+    state = _worker_validation_state(tmp_path)
+
+    status, payload = worker_mod._validate_command_body(
+        {
+            "schema_version": 2,
+            "command": "log",
+            "arguments": arguments,
+            "context": context,
+        },
+        state,
+    )
+
+    assert status == 400
+    assert payload["error"]["code"] == "argument_error"
+    assert not (tmp_path / "jobs").exists()
+
+
+def test_worker_log_cancel_preserves_complete_cycles_without_safe_off(
+    running_worker,
+) -> None:
+    port = running_worker["port"]
+    artifacts_dir = running_worker["artifacts_dir"]
+    command_request = urllib.request.Request(
+        f"http://127.0.0.1:{port}/command",
+        data=json.dumps(
+            {
+                "schema_version": 2,
+                "command": "log",
+                "arguments": {
+                    "channel": "all",
+                    "interval_sec": 0.2,
+                    "samples": 100,
+                },
+                "context": SIMULATE_CONTEXT,
+            }
+        ).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(command_request) as response:
+        accepted = json.loads(response.read().decode("utf-8"))
+
+    worker_job_id = accepted["worker_job_id"]
+    job_dir = artifacts_dir / "jobs" / worker_job_id
+    deadline = time.monotonic() + 5.0
+    while time.monotonic() < deadline:
+        telemetry_csv = job_dir / "telemetry.csv"
+        if telemetry_csv.exists() and len(
+            telemetry_csv.read_text(encoding="utf-8").splitlines()
+        ) >= 4:
+            break
+        time.sleep(0.02)
+    else:
+        raise AssertionError("log did not write its first complete cycle")
+
+    cancel_request = urllib.request.Request(
+        f"http://127.0.0.1:{port}/cancel",
+        data=json.dumps(
+            {"schema_version": 2, "worker_job_id": worker_job_id}
+        ).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(cancel_request) as response:
+        assert response.status == 202
+
+    result = _wait_for_json_file(job_dir / "result.json")
+    assert result["status"] == "cancelled"
+    assert result["data"]["stop_reason"] == "cancelled"
+    assert result["metadata"]["cleanup"] == []
+
+    with (job_dir / "telemetry.csv").open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    assert rows
+    assert len(rows) == result["data"]["samples_written"] * 3
+    assert len(rows) % 3 == 0
+    jsonl_events = [
+        json.loads(line)
+        for line in (job_dir / "telemetry.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert sum(event["event"] == "sample" for event in jsonl_events) == len(rows)
+    assert jsonl_events[-1]["event"] == "summary"
 
 
 def test_worker_trigger_endpoint_removed(running_worker):

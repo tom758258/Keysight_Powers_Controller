@@ -102,10 +102,14 @@ _PENDING_STATUSES = frozenset({VALIDATION_STATUS_TRANSPORT_PENDING})
 
 # Internal-only admission for exact live-validation candidates. These entries
 # are deliberately absent from public support metadata and accepted evidence.
-_VALIDATION_ONLY_COMMAND_CANDIDATES: Mapping[str, frozenset[str]] = {}
+_VALIDATION_ONLY_COMMAND_CANDIDATES: Mapping[str, frozenset[str]] = {
+    "keysight-e3646a": frozenset({"log"}),
+}
 _VALIDATION_ONLY_EXACT_CONNECTIONS: Mapping[
     str, frozenset[tuple[str, str]]
-] = {}
+] = {
+    "keysight-e3646a": frozenset({(TRANSPORT_ASRL, BACKEND_SYSTEM_VISA)}),
+}
 
 
 def internal_validation_candidate_inventory() -> Mapping[str, Mapping[str, tuple]]:

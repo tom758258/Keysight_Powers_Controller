@@ -135,6 +135,14 @@ def test_command_support_e3646a_rs232_read_only_boundary() -> None:
         assert support[command]["real"] is True
         assert support[command]["hardware_validation"] == "rs232_read_only"
 
+    assert support["log"] == {
+        "real": True,
+        "simulate": True,
+        "dry_run": False,
+        "requires_confirm": False,
+        "hardware_validation": "not_enabled",
+    }
+
     validated_output_commands = (
         "set",
         "output-off",

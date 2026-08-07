@@ -105,8 +105,11 @@ are never reported as Product-open exact live commands.
 - `powers_tool_core.operations`: output and setpoint operations such as
   `set`, `apply`, `output-on`, `output-off`, `safe-off`, `ramp`, `ramp-list`, and
   readback/snapshot helpers.
-- `powers_tool_core.readonly`: read-only `status`, `readback`,
-  `measure-all`, log, and dry-run plans that do not open VISA.
+- `powers_tool_core.readonly`: read-only `status`, `readback`, `measure-all`,
+  and dry-run plans that do not open VISA.
+- `powers_tool_core.telemetry`: bounded top-level telemetry `log` acquisition,
+  complete-cycle cancellation, and adapter-owned row reporting. It is separate
+  from the host-only Sequence `log` note action and has no dry-run execution.
 - `powers_tool_core.trigger`: E36312A trigger, STEP, native LIST, fire, and
   abort support.
 - `powers_tool_core.sequence`: parser-neutral sequence document loading,

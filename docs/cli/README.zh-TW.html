@@ -227,8 +227,8 @@ VISA runtime。
 </tr>
 <tr>
 <td>唯讀與狀態</td>
-<td>measurement、readback、output state、capabilities 與儀器狀態。</td>
-<td><code>measure</code>、<code>measure-all</code>、<code>read-status</code>、<code>readback</code>、<code>output-state</code>、<code>capabilities</code></td>
+<td>measurement、readback、output state、capabilities、儀器狀態與有界 telemetry。</td>
+<td><code>measure</code>、<code>measure-all</code>、<code>read-status</code>、<code>readback</code>、<code>output-state</code>、<code>capabilities</code>、<code>log</code></td>
 <td><a href="README.md#read-only-command-examples" rel="noopener noreferrer" target="_blank">唯讀指令範例</a>；<code>read-status</code> 是儀器命令。</td>
 </tr>
 <tr>
@@ -239,8 +239,8 @@ VISA runtime。
 </tr>
 <tr>
 <td>Output workflows</td>
-<td>ramp、ramp-list、software sequence 與 telemetry logging。</td>
-<td><code>ramp</code>、<code>ramp-list</code>、<code>sequence</code>、<code>log</code></td>
+<td>ramp、ramp-list 與 software sequence。</td>
+<td><code>ramp</code>、<code>ramp-list</code>、<code>sequence</code></td>
 <td><a href="README.md#ramp-and-sequence-examples" rel="noopener noreferrer" target="_blank">Ramp、Sequence 與模擬器範例</a>；<a href="README.md#safety-defaults" rel="noopener noreferrer" target="_blank">Safety Defaults</a></td>
 </tr>
 <tr>
@@ -338,6 +338,14 @@ request 已持久化。<code>POST /stop</code> acknowledgment 只代表 cooperat
 <a href="../contracts/power-worker-contract.md" rel="noopener noreferrer" target="_blank">Power Worker 契約</a> 與
 <a href="../contracts/power-orchestrator-workflows.md" rel="noopener noreferrer" target="_blank">Power Orchestrator 工作流程</a> 觀察
 完整生命週期。</p>
+<p><code>POST /cancel</code> 可取消 Ramp、Ramp List、Sequence 與有界 Worker <code>log</code>。前三種
+workflow 依既有安全清理執行 safe-off；<code>log</code> 會完成已開始的 sample cycle、保留
+telemetry，正常關閉 session，且不會單純因取消而送出 output OFF。</p>
+<p>CLI <code>powers-tool log</code> 使用呼叫者指定的 CSV/JSONL 路徑。Worker <code>log</code> 是有界、
+唯讀、非 output-affecting 的非同步 job，只能在自己的 job directory 寫入
+<code>telemetry.csv</code> 與 <code>telemetry.jsonl</code>；取消或失敗後會保留已寫資料。它不是
+background telemetry，也不能和另一個 active Worker job 並行。Sequence action
+<code>log</code> 仍是 host-side message，<code>--log-scpi</code> 則仍是 SCPI traffic tracing。</p>
 <h2 id="範例">範例</h2>
 <h3 id="資源搜尋與實機資源設定">資源搜尋與實機資源設定</h3>
 <p>僅列出可以被開啟並透過 <code>*IDN?</code> 查詢的 VISA 資源：</p>

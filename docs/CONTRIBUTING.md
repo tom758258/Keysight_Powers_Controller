@@ -86,6 +86,12 @@ artifacts below `.tmp_tests\live_cli_check`. `-Backend "@py"` is an optional
 advanced contributor-validation choice when the exact pending scope is
 registered; it is not normal product support.
 
+The maintained Full-suite read-only cases include bounded `log-one-sample`.
+For E3646A it expects CH1 and CH2 and uses only the registered validation-only
+ASRL + system-VISA candidate path. This prepares new evidence collection; it
+does not claim that evidence exists and does not make E3646A `log`
+Product-open.
+
 The wrapper applies the canonical target as an expected-model guard only to
 identity-bearing commands and model-aware commands that own that CLI contract.
 `verify` and `identify` query `*IDN?` and compare the manufacturer-plus-model

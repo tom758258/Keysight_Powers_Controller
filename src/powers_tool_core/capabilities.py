@@ -214,6 +214,10 @@ def command_support(model_id: str | None) -> dict[str, dict[str, Any]]:
             if command in {"snapshot", "restore-from-snapshot"}:
                 entry["hardware_validation"] = "not_supported_by_model"
         elif normalized == E3646A_MODEL_ID:
+            if command == "log":
+                entry["real"] = True
+                entry["simulate"] = True
+                entry["dry_run"] = False
             if command in e3646a_real and command not in e3646a_output:
                 entry["real"] = True
                 entry["simulate"] = True
@@ -245,6 +249,8 @@ def command_support(model_id: str | None) -> dict[str, dict[str, Any]]:
                     "hardware_validation": "not_enabled",
                 }
             )
+        if command == "log":
+            entry["dry_run"] = False
         support[command] = entry
     return support
 

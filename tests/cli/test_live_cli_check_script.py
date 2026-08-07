@@ -1,3 +1,4 @@
+import csv
 import json
 import os
 import shutil
@@ -2333,6 +2334,10 @@ def test_live_cli_check_e3646a_full_plan_contains_software_sequence_not_native_l
     report = json.loads(_report_path(result.stdout, result.stderr).read_text(encoding="utf-8"))
     assert report["suites"] == ["readonly", "output", "software-sequence"]
     case_names = {case["name"] for case in report["cases"]}
+    assert any(case["name"] == "log-one-sample" for case in report["cases"])
+    private_log = _report_path(result.stdout, result.stderr).parent.parent / "private" / "preflight-log.csv"
+    with private_log.open(newline="", encoding="utf-8") as handle:
+        assert [int(row["channel"]) for row in csv.DictReader(handle)] == [1, 2]
     assert "sequence-unsupported-protection-dry-run" in case_names
     assert "sequence-unsupported-trigger-dry-run" in case_names
     assert "sequence-unsupported-snapshot-dry-run" in case_names
@@ -2468,7 +2473,7 @@ $TargetMetadata | ConvertTo-Json -Depth 8 -Compress
             "ASRL",
             "ASRL1::SIM::E3646A::INSTR",
             ["readonly", "output", "software-sequence"],
-            {"output-on", "doctor"},
+            {"output-on", "doctor", "log"},
         ),
     ],
 )
@@ -2519,7 +2524,9 @@ def test_live_cli_check_full_plan_reports_expanded_software_sequence_suites(
         assert not any(case["command"] == "restore-from-snapshot" for case in planned)
         assert not any(case["command"] == "measure-all" for case in planned)
     if target == "keysight-e3646a":
-        assert not any(case["command"] == "log" for case in planned)
+        log_case = next(case for case in planned if case["command"] == "log")
+        assert log_case["name"] == "log-one-sample"
+        assert log_case["arguments"][log_case["arguments"].index("--channel") + 1] == "all"
         global_on = next(case for case in planned if case["name"] == "output-on-global")
         assert global_on["arguments"][global_on["arguments"].index("--channel") + 1] == "1"
         assert sum(case["command"] == "output-on" for case in planned) == 1

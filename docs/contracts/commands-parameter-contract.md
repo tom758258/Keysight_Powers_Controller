@@ -37,6 +37,15 @@ all-channel selector and is an admission failure. `protection-status` and
 supplied at all. `clear-protection` always requires an explicit `channel` or
 `all: true` selector.
 
+Top-level telemetry `log` is separate from the Sequence action named `log`.
+The top-level command accepts only Core execution semantics: exactly one of
+`channel` (positive integer or `"all"`) and `channels` (non-empty positive
+integer list), exactly one of positive integer `samples` and positive numeric
+`duration_sec`, plus positive numeric `interval_sec`. Channel-list order and
+duplicates are preserved. Adapter fields such as `csv`, `jsonl`, and `append`
+are not Core parameters. The Sequence `log` action remains a host-side
+message/note action with `message`; it does not collect telemetry.
+
 ## Fixed Limits
 
 - Public Core and raw JSON `channel` values are type-strict: an accepted

@@ -196,6 +196,15 @@ Selected data mappings:
   observed Core `idn_raw`. This sanitized object contains only `manufacturer`,
   `model`, `serial`, `firmware`, and `parse_ok`; it never contains the raw IDN
   string. Dry-run plans do not contain observed identity.
+- `log`: bounded telemetry collection delegated to Core. CLI-owned CSV fields
+  remain `timestamp`, `resource`, `resource_alias`, `model`, `serial`,
+  `channel`, `programmed_voltage`, `programmed_current`, `measured_voltage`,
+  `measured_current`, `output_enabled`, and `errors`, in that order. CLI JSONL
+  uses `sample` events carrying those rows and a collection `summary`; CLI
+  retains ownership of `--csv`, `--jsonl`, and `--append`. Worker `log` instead
+  writes fixed job-local telemetry artifacts. The Sequence `log` action is a
+  host-side note, while `--log-scpi` traces SCPI traffic to diagnostics rather
+  than collecting telemetry.
 - `set`: request arguments contain `channel` plus `voltage`, `current`, or
   both. Omitted setpoints are left unchanged, not defaulted. Successful results
   include `updated_setpoints` with only the setpoints actually written; full

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 from copy import deepcopy
 import datetime
 import json
@@ -34,6 +35,7 @@ from powers_tool_core.command_runner import run_core_command, validate_request_a
 from powers_tool_core.sequence import load_sequence_document, sequence_plan
 from powers_tool_core.stop_cleanup import StopCleanupResult
 from powers_tool_core.support_policy import LiveSupportPolicyError
+from powers_tool_core.telemetry import TELEMETRY_ROW_FIELDS
 
 READ_ONLY_COMMANDS = {
     "identify",
@@ -45,6 +47,7 @@ READ_ONLY_COMMANDS = {
     "protection-status",
     "error",
     "snapshot",
+    "log",
 }
 OUTPUT_COMMANDS = {
     "set",
@@ -526,7 +529,7 @@ class WorkerHTTPHandler(BaseHTTPRequestHandler):
                     state.status != "busy"
                     or active is None
                     or active.get("worker_job_id") != worker_job_id
-                    or active.get("command") not in {"ramp", "ramp-list", "sequence"}
+                    or active.get("command") not in {"ramp", "ramp-list", "sequence", "log"}
                 ):
                     self._send_json(409, {
                         "schema_version": WORKER_SCHEMA_VERSION,
@@ -552,7 +555,11 @@ class WorkerHTTPHandler(BaseHTTPRequestHandler):
                     "worker_job_id": worker_job_id,
                     "command": active.get("command"),
                     "reason": reason,
-                    "message": "Waiting for safe-off and cleanup",
+                    "message": (
+                        "Waiting for telemetry sampling to stop"
+                        if active.get("command") == "log"
+                        else "Waiting for safe-off and cleanup"
+                    ),
                 })
             self._send_json(202, {
                 "schema_version": WORKER_SCHEMA_VERSION,
@@ -835,6 +842,11 @@ def _run_job_impl(state: WorkerState, job: dict[str, Any]) -> None:
     exc_obj: Exception | None = None
     final_status = "succeeded"
     cleanup_results: list[dict[str, str]] = []
+    telemetry_csv_file: Any = None
+    telemetry_jsonl_file: Any = None
+    telemetry_writer: csv.DictWriter | None = None
+    telemetry_rows_written = 0
+    telemetry_channels_seen: list[int] = []
 
     def report_cleanup(result: StopCleanupResult) -> None:
         payload = result.to_dict()
@@ -843,7 +855,42 @@ def _run_job_impl(state: WorkerState, job: dict[str, Any]) -> None:
         if result.status == "unsupported":
             warnings.append({"code": "cleanup_unsupported", "message": result.message})
 
+    def report_progress(progress: dict[str, int | float]) -> None:
+        with state.lock:
+            if (
+                state.active_job is not None
+                and state.active_job.get("worker_job_id") == worker_job_id
+            ):
+                state.active_job = {**state.active_job, "progress": dict(progress)}
+
+    def report_sample(row: dict[str, Any]) -> None:
+        nonlocal telemetry_rows_written
+        if telemetry_writer is None or telemetry_csv_file is None or telemetry_jsonl_file is None:
+            raise RuntimeError("worker telemetry artifacts are not open")
+        telemetry_writer.writerow(row)
+        telemetry_csv_file.flush()
+        telemetry_jsonl_file.write(
+            json.dumps({"event": "sample", "sample": row}, sort_keys=True) + "\n"
+        )
+        telemetry_jsonl_file.flush()
+        telemetry_rows_written += 1
+        channel = int(row["channel"])
+        if channel not in telemetry_channels_seen:
+            telemetry_channels_seen.append(channel)
+
     try:
+        if cmd == "log":
+            telemetry_csv_file = (job_dir / "telemetry.csv").open(
+                "w", newline="", encoding="utf-8"
+            )
+            telemetry_writer = csv.DictWriter(
+                telemetry_csv_file, fieldnames=TELEMETRY_ROW_FIELDS
+            )
+            telemetry_writer.writeheader()
+            telemetry_csv_file.flush()
+            telemetry_jsonl_file = (job_dir / "telemetry.jsonl").open(
+                "w", encoding="utf-8"
+            )
         if cmd == "sequence":
             doc = params.get("document")
             if not isinstance(doc, dict):
@@ -872,6 +919,8 @@ def _run_job_impl(state: WorkerState, job: dict[str, Any]) -> None:
             opener=opener,
             stop_requested=lambda: state.stop_event.is_set() or state.job_cancel_event.is_set(),
             cleanup_reporter=report_cleanup,
+            progress_reporter=report_progress if cmd == "log" else None,
+            sample_reporter=report_sample if cmd == "log" else None,
         )
         if state.job_cancel_event.is_set() and cmd in {"ramp", "ramp-list", "sequence"}:
             if config["mode"] == "simulate" or runtime.dry_run:
@@ -956,7 +1005,7 @@ def _run_job_impl(state: WorkerState, job: dict[str, Any]) -> None:
             retryable = True
         elif isinstance(exc, (CommandCancelled, KeyboardInterrupt)) or exc.__class__.__name__ in {"TriggerInterrupted", "SequenceStopped"} or state.stop_event.is_set() or state.job_cancel_event.is_set():
             err_type = "execution"
-            code = "cancelled" if state.job_cancel_event.is_set() and cmd in {"ramp", "ramp-list", "sequence"} else "stopped"
+            code = "cancelled" if state.job_cancel_event.is_set() and cmd in {"ramp", "ramp-list", "sequence", "log"} else "stopped"
             retryable = True
 
         error_payload = {
@@ -971,6 +1020,67 @@ def _run_job_impl(state: WorkerState, job: dict[str, Any]) -> None:
             if isinstance(exc, CoreExecutionError) and exc.trigger is not None:
                 result_data.setdefault("trigger", exc.trigger)
 
+    if cmd == "log":
+        try:
+            if telemetry_jsonl_file is not None:
+                summary_data = result_data or {}
+                telemetry_jsonl_file.write(
+                    json.dumps(
+                        {
+                            "event": "summary",
+                            "samples_written": summary_data.get("samples_written"),
+                            "channels": summary_data.get(
+                                "channels", telemetry_channels_seen
+                            ),
+                            "stopped": final_status == "cancelled",
+                            "stop_reason": summary_data.get(
+                                "stop_reason",
+                                "completed" if ok else final_status,
+                            ),
+                        },
+                        sort_keys=True,
+                    )
+                    + "\n"
+                )
+                telemetry_jsonl_file.flush()
+        except Exception as exc:
+            ok = False
+            final_status = "failed"
+            error_payload = {
+                "type": "io",
+                "code": "artifact_error",
+                "message": f"Could not finalize telemetry artifact: {exc}",
+                "retryable": False,
+            }
+        finally:
+            for telemetry_file in (telemetry_csv_file, telemetry_jsonl_file):
+                if telemetry_file is None:
+                    continue
+                try:
+                    telemetry_file.close()
+                except Exception as exc:
+                    ok = False
+                    final_status = "failed"
+                    error_payload = {
+                        "type": "io",
+                        "code": "artifact_error",
+                        "message": f"Could not close telemetry artifact: {exc}",
+                        "retryable": False,
+                    }
+
+        if result_data is not None:
+            result_data = {
+                key: result_data.get(key)
+                for key in (
+                    "samples_written",
+                    "samples_requested",
+                    "duration_sec",
+                    "interval_sec",
+                    "channels",
+                    "stop_reason",
+                )
+            }
+
     duration_ms = round((time.perf_counter() - start_perf) * 1000, 3)
 
     # Determine hardware_touched
@@ -979,6 +1089,8 @@ def _run_job_impl(state: WorkerState, job: dict[str, Any]) -> None:
         if ok:
             hardware_touched = True
         elif cmd == "ramp-list" and result_data is not None:
+            hardware_touched = True
+        elif cmd == "log" and (telemetry_rows_written > 0 or result_data is not None):
             hardware_touched = True
         elif exc_obj is not None:
             # Touched hardware only if we opened the VISA connection successfully
@@ -999,7 +1111,7 @@ def _run_job_impl(state: WorkerState, job: dict[str, Any]) -> None:
             "hardware_touched": hardware_touched,
         },
         "request": {"command": cmd, "arguments": arguments},
-        "data": result_data if ok else None,
+        "data": result_data if ok or (cmd == "log" and final_status == "cancelled") else None,
         "warnings": warnings,
         "error": error_payload,
         "metadata": {

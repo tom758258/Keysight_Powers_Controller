@@ -26,6 +26,13 @@ CLI (including the Worker) and WebUI are parallel adapters: they map their
 transport inputs to parser-neutral Core request objects, then own their own
 serialization and presentation.
 
+Bounded telemetry follows the same boundary. Core owns the top-level `log`
+contract, session/identity/support/channel validation, instrument reads,
+complete-cycle cadence, and cooperative cancellation. It reports the existing
+flat telemetry rows through a callback. CLI and Worker own CSV/JSONL
+serialization and artifact paths; paths and append behavior never enter Core.
+This top-level command is unrelated to the host-only Sequence `log` action.
+
 For generic command routing, `validate_request_admission()` and
 `run_core_command()` are the adapter-facing Core integration entry points used
 by those bundled adapters. Admission performs canonicalization without

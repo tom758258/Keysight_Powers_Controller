@@ -54,7 +54,8 @@ Product metadata。
 - `powers_tool_core.factory`: 基於 IDN 的驅動程式選擇，適用於通用 SCPI、E36312A、EDU36311A 與 E3646A 儀器。
 - `powers_tool_core.drivers`: 特定型號的驅動程式實作與共用的 SCPI 通道策略。
 - `powers_tool_core.operations`: 輸出與設定點操作，例如 `set`、`apply`、`output-on`、`output-off`、`safe-off`、`ramp`、`ramp-list`，以及 readback/snapshot 輔助工具。
-- `powers_tool_core.readonly`: 唯讀的 `status`、`readback`、`measure-all`、log 與不會開啟 VISA 的 dry-run 計畫。
+- `powers_tool_core.readonly`: 唯讀的 `status`、`readback`、`measure-all` 與不會開啟 VISA 的 dry-run 計畫。
+- `powers_tool_core.telemetry`: 有界的 top-level telemetry `log` 採樣、完整 cycle 取消與 adapter-owned row 回報。它與 host-only Sequence `log` 註記 action 分離，且不提供 dry-run execution。
 - `powers_tool_core.trigger`: E36312A 觸發 (trigger)、STEP、原生 LIST、fire 與 abort 支援。
 - `powers_tool_core.sequence`: 與解析器無關的序列文件載入、語法檢查 (linting)、dry-run 計畫與執行。
 - `powers_tool_core.ramp_list`: 版本化的 JSON Ramp List 載入、完整的預先驗證、計畫與有序的軟體設定點執行。

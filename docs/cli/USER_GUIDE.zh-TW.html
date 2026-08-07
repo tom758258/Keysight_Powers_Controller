@@ -204,6 +204,15 @@ powers-tool output-state --resource "$env:POWERS_TOOL_ASRL_RESOURCE" --channel 1
 .\powers-tool.exe validate-readonly --resource "$env:POWERS_TOOL_RESOURCE" --json --log-scpi
 </code></pre></div>
 <p>這些命令會查詢身分、程式設定點、測量值、狀態或保護狀態。它們不會刻意啟用輸出。</p>
+<h2 id="telemetry-logging">Telemetry Logging</h2>
+<p>CLI <code>log</code> 執行有界的唯讀 telemetry，並寫入呼叫者選擇的路徑：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe log --simulate --model keysight-e36312a --channel all --interval-sec 1 --samples 5 --csv telemetry.csv --jsonl telemetry.jsonl
+</code></pre></div>
+<p>Worker <code>log</code> 則必須提供 sample 或 duration bound，並在自己的 job directory 擁有
+<code>telemetry.csv</code>／<code>telemetry.jsonl</code>。它可取消、不會 safe-off output、取消或失敗後
+保留已完成 cycles、不接受呼叫者 artifact path，也不會和另一個 Worker job 並行。
+Sequence <code>log</code> 只是 message/note action；<code>--log-scpi</code> 是 SCPI traffic tracing，
+不是 telemetry。目前 E3646A telemetry <code>log</code> 尚未 Product-open。</p>
 <h2 id="影響輸出的工作流程">影響輸出的工作流程</h2>
 <p>影響輸出的命令需要明確指定。使用前，請確認儀器型號、通道、DUT 接線、電壓、電流限制與保護設定。</p>
 <p>在不啟用輸出的情況下設定較低的設定點：</p>
@@ -259,6 +268,10 @@ powers-tool output-state --resource "$env:POWERS_TOOL_ASRL_RESOURCE" --channel 1
 <tr>
 <td><code>validate-readonly</code></td>
 <td>執行一次唯讀診斷。</td>
+</tr>
+<tr>
+<td><code>log</code></td>
+<td>將有界的唯讀 telemetry 寫入 CLI-owned CSV/JSONL files。</td>
 </tr>
 <tr>
 <td><code>set</code></td>

@@ -169,6 +169,7 @@ from powers_tool_core.support_policy import (
     SUPPORT_POLICY_MODE_PRODUCT,
     SUPPORT_POLICY_MODE_VALIDATION,
 )
+from powers_tool_core.telemetry import TELEMETRY_ROW_FIELDS
 from powers_tool_core.model_resolution import validate_live_expected_model
 from powers_tool_core.models import parse_idn, resource_interface
 from powers_tool_core.safety import (
@@ -240,20 +241,7 @@ COMMAND_NAMES = frozenset(
     }
 )
 
-LOG_CSV_FIELDS = (
-    "timestamp",
-    "resource",
-    "resource_alias",
-    "model",
-    "serial",
-    "channel",
-    "programmed_voltage",
-    "programmed_current",
-    "measured_voltage",
-    "measured_current",
-    "output_enabled",
-    "errors",
-)
+LOG_CSV_FIELDS = TELEMETRY_ROW_FIELDS
 
 
 OUTPUT_WRITE_POWER_SUPPLY_TYPES = (E36312APowerSupply, EDU36311APowerSupply)
@@ -2986,8 +2974,7 @@ def _run_log(args: argparse.Namespace) -> int:
     try:
         _resolve_optional_resource_alias(args)
         request = _request_for_args(args)
-        _validate_log_request(args)
-    except (SafetyConfigError, ValueError) as exc:
+    except (SafetyConfigError, ValueError, CoreValidationError) as exc:
         return _emit_cli_error(
             args,
             request=request,
@@ -2999,37 +2986,21 @@ def _run_log(args: argparse.Namespace) -> int:
 
     try:
         result = _collect_log_samples(args, manager, backend=args.backend, timeout_ms=args.timeout_ms)
-    except _ReadOnlyModelError as exc:
-        return _emit_cli_error(
-            args,
-            request=request,
-            error_type="validation",
-            code="unsupported_model_for_log",
-            message=str(exc),
-            retryable=False,
-            hardware_intent=True,
-        )
-    except _ReadOnlyChannelError as exc:
-        return _emit_cli_error(
-            args,
-            request=request,
-            error_type="validation",
-            code="argument_error",
-            message=str(exc),
-            retryable=False,
-            hardware_intent=True,
-        )
     except CoreValidationError as exc:
         return _emit_cli_error(
             args,
             request=request,
             error_type="validation",
-            code=_core_validation_code(exc),
+            code=(
+                "unsupported_model_for_log"
+                if isinstance(exc, UnsupportedModelError)
+                else _core_validation_code(exc)
+            ),
             message=str(exc),
             retryable=False,
             hardware_intent=True,
         )
-    except (OSError, VisaConnectionError, ValueError) as exc:
+    except (CoreIoError, OSError, VisaConnectionError, ValueError) as exc:
         return _emit_safe_io_error(
             args,
             request=request,
@@ -4282,114 +4253,94 @@ def _collect_log_samples(
     backend: str | None,
     timeout_ms: int,
 ) -> dict[str, Any]:
-    samples_written = 0
-    idn_raw: str | None = None
-    interrupted = False
-    with _open_resource(
-        args.resource,
-        resource_manager,
-        backend=backend,
-        timeout_ms=timeout_ms,
-    ) as instrument:
-        session: Any = _ScpiLoggingSession(args.resource, instrument) if args.log_scpi else instrument
-        idn_raw = session.query(IDN_QUERY)
-        _enforce_live_cli_scope(args, idn_raw, command="log")
-        idn = parse_idn(idn_raw)
-        power_supply = create_power_supply(session, idn_raw)
-        channels = _log_channels_for_power_supply(args, power_supply)
+    request = validate_request_admission(_target_core_request_for_args(args))
+    csv_path = Path(args.csv)
+    if csv_path.parent != Path("."):
+        csv_path.parent.mkdir(parents=True, exist_ok=True)
+    jsonl_file = _open_jsonl_log(args)
+    mode = "a" if args.append else "w"
+    write_header = (not args.append) or (not csv_path.exists()) or csv_path.stat().st_size == 0
+    result: dict[str, Any] | None = None
 
-        csv_path = Path(args.csv)
-        if csv_path.parent != Path("."):
-            csv_path.parent.mkdir(parents=True, exist_ok=True)
-        jsonl_file = _open_jsonl_log(args)
-        mode = "a" if args.append else "w"
-        write_header = (not args.append) or (not csv_path.exists()) or csv_path.stat().st_size == 0
+    def opener(
+        resource: str,
+        manager: Any = None,
+        *,
+        backend: str | None,
+        timeout_ms: int,
+        serial_options: SerialOptions | None = None,
+        serial_remote: bool = False,
+        serial_local_on_close: bool = False,
+    ) -> Any:
+        return _open_resource(
+            resource,
+            manager if manager is not None else resource_manager,
+            backend=backend,
+            timeout_ms=timeout_ms,
+            serial_options=serial_options,
+            serial_remote=serial_remote,
+            serial_local_on_close=serial_local_on_close,
+            scpi_logger=_connection_scpi_logger_for_args(args),
+        )
+
+    try:
         with csv_path.open(mode, newline="", encoding="utf-8") as csv_file:
             writer = csv.DictWriter(csv_file, fieldnames=LOG_CSV_FIELDS)
             if write_header:
                 writer.writeheader()
-            start = time.monotonic()
-            try:
-                while True:
-                    if not _should_collect_log_sample(args, samples_written, start):
-                        break
-                    try:
-                        for channel in channels:
-                            row = _read_log_row(args, power_supply, idn, channel=channel)
-                            writer.writerow(row)
-                            if jsonl_file is not None:
-                                jsonl_file.write(json.dumps({"event": "sample", "sample": row}, sort_keys=True) + "\n")
-                        csv_file.flush()
-                        if jsonl_file is not None:
-                            jsonl_file.flush()
-                        samples_written += 1
-                        if not _should_collect_log_sample(args, samples_written, start):
-                            break
-                        time.sleep(args.interval_sec)
-                    except KeyboardInterrupt:
-                        interrupted = True
-                        break
-            finally:
+                csv_file.flush()
+
+            def report_sample(row: dict[str, Any]) -> None:
+                writer.writerow(row)
+                csv_file.flush()
                 if jsonl_file is not None:
                     jsonl_file.write(
-                        json.dumps(
-                            {
-                                "event": "summary",
-                                "samples_written": samples_written,
-                                "channels": list(channels),
-                                "stopped": interrupted,
-                                "stop_reason": "interrupted" if interrupted else "completed",
-                            },
-                            sort_keys=True,
-                        )
+                        json.dumps({"event": "sample", "sample": row}, sort_keys=True)
                         + "\n"
                     )
-                    jsonl_file.close()
+                    jsonl_file.flush()
 
+            with _cooperative_workflow_interrupt() as stop_event:
+                try:
+                    result = run_core_command(
+                        request,
+                        opener=opener,
+                        stop_requested=stop_event.is_set,
+                        sleep=time.sleep,
+                        scpi_logger=_log_scpi if args.log_scpi else None,
+                        sample_reporter=report_sample,
+                    )
+                except CommandCancelled as exc:
+                    result = dict(exc.data)
+                    result["stopped"] = True
+                    result["stop_reason"] = "interrupted"
+    finally:
+        if jsonl_file is not None:
+            if result is not None:
+                jsonl_file.write(
+                    json.dumps(
+                        {
+                            "event": "summary",
+                            "samples_written": result["samples_written"],
+                            "channels": result["channels"],
+                            "stopped": result["stopped"],
+                            "stop_reason": result["stop_reason"],
+                        },
+                        sort_keys=True,
+                    )
+                    + "\n"
+                )
+                jsonl_file.flush()
+            jsonl_file.close()
+
+    if result is None:
+        raise CoreIoError("log failed without a collection result")
     return {
-        "resource": _resource_payload(
-            args.resource,
-            simulated=args.simulate,
-            reachable=True,
-            idn_raw=idn_raw,
-        ),
-        "resource_alias": args.resource_alias,
+        **result,
         "csv": args.csv,
         "jsonl": args.jsonl,
         "append": args.append,
-        "channel": args.channel,
-        "channels": list(channels),
-        "samples_requested": args.samples,
-        "duration_sec": args.duration_sec,
-        "interval_sec": args.interval_sec,
-        "samples_written": samples_written,
-        "stopped": interrupted,
-        "stop_reason": "interrupted" if interrupted else "completed",
     }
-
-
-def _should_collect_log_sample(args: argparse.Namespace, samples_written: int, start: float) -> bool:
-    if args.samples is not None and samples_written >= args.samples:
-        return False
-    if args.duration_sec is not None and samples_written > 0:
-        return (time.monotonic() - start) < args.duration_sec
-    return True
-
-
-def _log_channels_for_power_supply(
-    args: argparse.Namespace,
-    power_supply: GenericScpiPowerSupply,
-) -> tuple[int, ...]:
-    requested = args.channels if args.channels is not None else args.channel
-    if requested == "all":
-        channels = power_supply.capabilities.channels
-    elif isinstance(requested, tuple):
-        channels = requested
-    else:
-        channels = (requested,)
-    for channel in channels:
-        _validate_read_only_channel(power_supply, channel, command_label="log")
-    return tuple(int(channel) for channel in channels)
 
 
 def _open_jsonl_log(args: argparse.Namespace):
@@ -4400,30 +4351,6 @@ def _open_jsonl_log(args: argparse.Namespace):
         path.parent.mkdir(parents=True, exist_ok=True)
     mode = "a" if args.append else "w"
     return path.open(mode, encoding="utf-8")
-
-
-def _read_log_row(
-    args: argparse.Namespace,
-    power_supply: GenericScpiPowerSupply,
-    idn: Any,
-    *,
-    channel: int,
-) -> dict[str, Any]:
-    errors = power_supply.check_errors(20)
-    return {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "resource": args.resource,
-        "resource_alias": args.resource_alias or "",
-        "model": idn.model or "",
-        "serial": idn.serial or "",
-        "channel": channel,
-        "programmed_voltage": power_supply.programmed_voltage(channel=channel),
-        "programmed_current": power_supply.programmed_current(channel=channel),
-        "measured_voltage": power_supply.measure_voltage(channel=channel),
-        "measured_current": power_supply.measure_current(channel=channel),
-        "output_enabled": power_supply.output_state(channel=channel),
-        "errors": "; ".join(errors),
-    }
 
 
 def _measure_voltage_current(
@@ -4507,13 +4434,6 @@ def _measure_voltage_current_with_driver(
         "voltage": power_supply.measure_voltage(channel=channel),
         "current": power_supply.measure_current(channel=channel),
     }
-
-
-def _validate_log_request(args: argparse.Namespace) -> None:
-    if args.samples is None and args.duration_sec is None:
-        raise ValueError("log requires --samples or --duration-sec")
-    if args.samples is not None and args.duration_sec is not None:
-        raise ValueError("log accepts either --samples or --duration-sec, not both")
 
 
 def _validate_read_only_channel(
@@ -6680,6 +6600,10 @@ def _target_core_request_for_args(args: argparse.Namespace) -> OperationRequest:
         "ocp": getattr(args, "ocp", None),
         "ocp_delay": getattr(args, "ocp_delay", None),
         "ocp_delay_trigger": getattr(args, "ocp_delay_trigger", None),
+        "channels": getattr(args, "channels", None),
+        "interval_sec": getattr(args, "interval_sec", None),
+        "samples": getattr(args, "samples", None),
+        "duration_sec": getattr(args, "duration_sec", None),
     }
     return OperationRequest(
         command=args.command,

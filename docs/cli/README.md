@@ -155,9 +155,9 @@ This is a quick orientation index, not a replacement for
 | Family | Purpose | Representative commands | Details |
 | --- | --- | --- | --- |
 | Setup and diagnostics | Installation, discovery, identity, error, and safety checks. | `powers-tool --version`, `doctor`, `list-resources`, `verify`, `identify`, `error`, `clear` | [Resource Discovery And Live Resource Setup](#resource-discovery-and-live-resource-setup); `powers-tool --help` |
-| Read-only and state | Measurements, readback, output state, capabilities, and instrument status. | `measure`, `measure-all`, `read-status`, `readback`, `output-state`, `capabilities` | [Read-Only Command Examples](#read-only-command-examples); `read-status` is the instrument command. |
+| Read-only and state | Measurements, readback, output state, capabilities, instrument status, and bounded telemetry. | `measure`, `measure-all`, `read-status`, `readback`, `output-state`, `capabilities`, `log` | [Read-Only Command Examples](#read-only-command-examples); `read-status` is the instrument command. |
 | Setpoint and output control | Setpoints, output transitions, safe-off, and guarded output actions. | `set`, `apply`, `output-on`, `output-off`, `safe-off`, `cycle-output`, `smoke-output` | [Output-Affecting Examples](#output-affecting-examples); [Safety Defaults](#safety-defaults) |
-| Output workflows | Ramps, ramp lists, software sequences, and telemetry logging. | `ramp`, `ramp-list`, `sequence`, `log` | [Ramp And Sequence Examples](#ramp-and-sequence-examples); [Safety Defaults](#safety-defaults) |
+| Output workflows | Ramps, ramp lists, and software sequences. | `ramp`, `ramp-list`, `sequence` | [Ramp And Sequence Examples](#ramp-and-sequence-examples); [Safety Defaults](#safety-defaults) |
 | Protection | Protection status, configuration, and clearing. | `protection-status`, `protection-set`, `clear-protection` | [Protection And Trigger Examples](#protection-and-trigger-examples); `powers-tool --help` |
 | Trigger | Trigger status, setup, firing, abort, pulse, and LIST workflows. | `trigger-status`, `trigger-step`, `trigger-list`, `trigger-fire`, `trigger-abort`, `trigger-pulse` | [Protection And Trigger Examples](#protection-and-trigger-examples); exact feature scope still applies. |
 | Snapshot and restore | Capture, compare, report, and restore saved instrument state. | `snapshot`, `snapshot-diff`, `hardware-report`, `restore-from-snapshot` | [Snapshot And Restore Examples](#snapshot-and-restore-examples); [Power CLI JSON / JSONL Contract](../contracts/power-cli-jsonl-contract.md) |
@@ -489,10 +489,19 @@ emit its final `summary` or stop the HTTP server until runner cleanup finishes.
 
 `POST /cancel` is the fixed job-specific cancellation endpoint. It requires
 schema 2 and the exact active `worker_job_id`; missing, stale, or mismatched
-identity fails closed. It safely cancels Ramp, Ramp List, or Sequence without
-shutting down the Worker. `/stop` keeps its existing whole-Worker shutdown
+identity fails closed. It safely cancels Ramp, Ramp List, Sequence, or bounded
+Worker `log` without shutting down the Worker. Workflow cancellation performs
+safe-off; `log` instead finishes its active sample cycle, preserves telemetry,
+and closes normally without issuing output OFF. `/stop` keeps its existing whole-Worker shutdown
 meaning. Direct CLI Ctrl+C for those three workflows requests the same
 cooperative cleanup; it cannot force-interrupt blocking VISA I/O.
+
+CLI `powers-tool log` writes caller-selected CSV/JSONL paths. Worker `log` is a
+bounded, read-only asynchronous job and writes `telemetry.csv` and
+`telemetry.jsonl` only in its own job directory; partial data remains after
+cancellation or failure. It is not background telemetry and cannot run beside
+another active Worker job. The Sequence action named `log` remains a host-side
+message, and `--log-scpi` remains SCPI traffic tracing.
 
 When started, it outputs a `ready` event on stdout containing the dynamically
 assigned control endpoints.

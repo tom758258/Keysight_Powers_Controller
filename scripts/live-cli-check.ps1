@@ -1244,7 +1244,7 @@ function Get-ReadOnlyCases {
             $cases.Add((New-CommandCase -Name "readonly-error-queue-checkpoint" -Suite "readonly" -Phase $phase -Args @("error", "--json", "--resource", $resource, "--max-reads", "20", "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "empty-errors"))
         }
     }
-    if ($Model -in @("keysight-e36312a", "keysight-edu36311a")) {
+    if ($Model -in @("keysight-e36312a", "keysight-edu36311a", "keysight-e3646a")) {
         $logCsv = Join-Path $script:PrivateArtifactDir ($phase + "-log.csv")
         $logJsonl = Join-Path $script:PrivateArtifactDir ($phase + "-log.jsonl")
         $cases.Add((New-CommandCase -Name "log-one-sample" -Suite "readonly" -Phase $phase -Args (@("log") + $modeFlag + @("--channel", "all", "--interval-sec", "0.1", "--samples", "1", "--csv", $logCsv, "--jsonl", $logJsonl, "--json", "--resource", $resource, "--log-scpi")) -LiveHardwareExpected:$Live -ValidationKind "log" -ExpectedChannels $channels -GeneratedArtifacts @($logCsv, $logJsonl) -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "log"))))

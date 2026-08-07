@@ -28,6 +28,7 @@ from powers_tool_core.readonly import run_readonly
 from powers_tool_core.restore import run_restore
 from powers_tool_core.sequence import run_sequence
 from powers_tool_core.snapshot import run_snapshot
+from powers_tool_core.telemetry import SampleReporter, run_telemetry
 from powers_tool_core.trigger import run_trigger
 from powers_tool_core.stop_cleanup import CleanupReporter, stop_aware_opener
 from powers_tool_core.workflow_validation import ProgressReporter, validate_general_workflow_parameters
@@ -178,6 +179,7 @@ def run_core_command(
     scpi_logger: Callable[[str, str, str], None] | None = None,
     cleanup_reporter: CleanupReporter | None = None,
     progress_reporter: ProgressReporter | None = None,
+    sample_reporter: SampleReporter | None = None,
 ) -> dict[str, Any]:
     """Admit and execute a parser-neutral request for bundled adapters.
 
@@ -188,7 +190,7 @@ def run_core_command(
 
     request = validate_request_admission(request)
     command = request.command
-    if stop_requested is not None:
+    if stop_requested is not None and command != "log":
         opener = stop_aware_opener(
             opener or _default_opener,
             stop_requested=stop_requested,
@@ -265,6 +267,18 @@ def run_core_command(
         if opener is not None:
             kwargs["opener"] = opener
         return run_readonly(request, **kwargs)
+    if command == "log":
+        kwargs = {
+            "stop_requested": stop_requested,
+            "scpi_logger": scpi_logger,
+            "sample_reporter": sample_reporter,
+            "progress_reporter": progress_reporter,
+        }
+        if opener is not None:
+            kwargs["opener"] = opener
+        if sleep is not None:
+            kwargs["sleep"] = sleep
+        return run_telemetry(request, **kwargs)
     if command in {"set", "apply", "output-on", "output-off", "safe-off", "output-state", "cycle-output", "ramp", "smoke-output"}:
         kwargs = {
             "scpi_logger": scpi_logger,

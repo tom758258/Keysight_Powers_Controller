@@ -7140,6 +7140,39 @@ def test_log_simulate_all_channels_jsonl_and_append(tmp_path, capsys) -> None:
     assert jsonl_lines[-1]["channels"] == [1, 2, 3]
 
 
+def test_log_simulate_explicit_channels_and_duration_preserve_order(
+    tmp_path, capsys, monkeypatch
+) -> None:
+    csv_path = tmp_path / "duration-log.csv"
+    clock = iter((0.0, 0.0, 1.0))
+    monkeypatch.setattr(cli.time, "monotonic", lambda: next(clock, 1.0))
+
+    assert cli.main(
+        [
+            "log",
+            "--simulate",
+            "--json",
+            "--resource",
+            "USB0::SIM::E36312A::INSTR",
+            "--channels",
+            "3,1,3",
+            "--interval-sec",
+            "0.1",
+            "--duration-sec",
+            "0.5",
+            "--csv",
+            str(csv_path),
+        ]
+    ) == 0
+
+    payload = json.loads(capsys.readouterr().out)
+    with csv_path.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    assert payload["data"]["samples_written"] == 1
+    assert payload["data"]["channels"] == [3, 1, 3]
+    assert [int(row["channel"]) for row in rows] == [3, 1, 3]
+
+
 def test_sequence_dry_run_does_not_open_resource(monkeypatch, capsys) -> None:
     def fail_open_resource(*args, **kwargs):
         raise AssertionError("VISA resource should not be opened for sequence dry-run")

@@ -83,6 +83,16 @@ COMMAND_CONTRACTS: dict[str, CommandContract] = {
     "error": CommandContract(_fields(max_reads=Field("positive_int", default=20))),
     "measure": CommandContract(_fields(channel=Field("channel", required=True))),
     "measure-all": CommandContract({}),
+    "log": CommandContract(
+        _fields(
+            channel=Field("channel", allow_all=True),
+            channels=Field("channel_list"),
+            interval_sec=Field("positive_number", required=True),
+            samples=Field("positive_int"),
+            duration_sec=Field("positive_number"),
+        ),
+        exactly_one_of=(("channel", "channels"), ("samples", "duration_sec")),
+    ),
     "read-status": CommandContract(_fields(channel=Field("channel", allow_all=True, default="all"), max_errors=Field("positive_int", default=20))),
     "readback": CommandContract(_fields(channel=Field("channel", allow_all=True, default="all"))),
     "identify": CommandContract({}),
@@ -348,6 +358,12 @@ def _normalize_field(name: str, value: Any, field: Field) -> Any:
             raise CoreValidationError(f"{name} must be a non-empty list of rear pins")
         if any(type(pin) is not int or pin not in {1, 2, 3} for pin in value) or len(set(value)) != len(value):
             raise CoreValidationError(f"{name} must contain unique rear pins 1, 2, or 3")
+        return tuple(value)
+    if kind == "channel_list":
+        if not isinstance(value, (list, tuple)) or not value:
+            raise CoreValidationError(f"{name} must be a non-empty list of channels")
+        if any(type(channel) is not int or channel < 1 for channel in value):
+            raise CoreValidationError(f"{name} must contain positive integer channels")
         return tuple(value)
     if kind in {"number_list", "bool_list"}:
         if not isinstance(value, (list, tuple)):

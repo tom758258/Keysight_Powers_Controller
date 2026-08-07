@@ -116,9 +116,9 @@ resource、不會送出 SCPI、不會修改實體儀器狀態，也不會啟用�
 | Family | Purpose | Representative commands | Details |
 | --- | --- | --- | --- |
 | 安裝與診斷 | 安裝、探索、身分、錯誤與安全檢查。 | `powers-tool --version`、`doctor`、`list-resources`、`verify`、`identify`、`error`、`clear` | [資源探索與實機資源設定](README.md#resource-discovery-and-live-resource-setup)；`powers-tool --help` |
-| 唯讀與狀態 | measurement、readback、output state、capabilities 與儀器狀態。 | `measure`、`measure-all`、`read-status`、`readback`、`output-state`、`capabilities` | [唯讀指令範例](README.md#read-only-command-examples)；`read-status` 是儀器命令。 |
+| 唯讀與狀態 | measurement、readback、output state、capabilities、儀器狀態與有界 telemetry。 | `measure`、`measure-all`、`read-status`、`readback`、`output-state`、`capabilities`、`log` | [唯讀指令範例](README.md#read-only-command-examples)；`read-status` 是儀器命令。 |
 | Setpoint 與 output control | 設定點、輸出切換、safe-off 與受保護的輸出操作。 | `set`、`apply`、`output-on`、`output-off`、`safe-off`、`cycle-output`、`smoke-output` | [會影響輸出的範例](README.md#output-affecting-examples)；[Safety Defaults](README.md#safety-defaults) |
-| Output workflows | ramp、ramp-list、software sequence 與 telemetry logging。 | `ramp`、`ramp-list`、`sequence`、`log` | [Ramp、Sequence 與模擬器範例](README.md#ramp-and-sequence-examples)；[Safety Defaults](README.md#safety-defaults) |
+| Output workflows | ramp、ramp-list 與 software sequence。 | `ramp`、`ramp-list`、`sequence` | [Ramp、Sequence 與模擬器範例](README.md#ramp-and-sequence-examples)；[Safety Defaults](README.md#safety-defaults) |
 | Protection | protection status、設定與清除。 | `protection-status`、`protection-set`、`clear-protection` | [Protection 與 Trigger 範例](README.md#protection-and-trigger-examples)；`powers-tool --help` |
 | Trigger | trigger status、setup、fire、abort、pulse 與 LIST workflow。 | `trigger-status`、`trigger-step`、`trigger-list`、`trigger-fire`、`trigger-abort`、`trigger-pulse` | [Protection 與 Trigger 範例](README.md#protection-and-trigger-examples)；仍受 exact feature scope 約束。 |
 | Snapshot 與 restore | 擷取、比較、報告與還原儲存的儀器狀態。 | `snapshot`、`snapshot-diff`、`hardware-report`、`restore-from-snapshot` | [Snapshot 與 Restore 範例](README.md#snapshot-and-restore-examples)；[Power CLI JSON / JSONL 契約](../contracts/power-cli-jsonl-contract.md) |
@@ -183,6 +183,16 @@ request 已持久化。`POST /stop` acknowledgment 只代表 cooperative stop �
 [Power Worker 契約](../contracts/power-worker-contract.md) 與
 [Power Orchestrator 工作流程](../contracts/power-orchestrator-workflows.md) 觀察
 完整生命週期。
+
+`POST /cancel` 可取消 Ramp、Ramp List、Sequence 與有界 Worker `log`。前三種
+workflow 依既有安全清理執行 safe-off；`log` 會完成已開始的 sample cycle、保留
+telemetry，正常關閉 session，且不會單純因取消而送出 output OFF。
+
+CLI `powers-tool log` 使用呼叫者指定的 CSV/JSONL 路徑。Worker `log` 是有界、
+唯讀、非 output-affecting 的非同步 job，只能在自己的 job directory 寫入
+`telemetry.csv` 與 `telemetry.jsonl`；取消或失敗後會保留已寫資料。它不是
+background telemetry，也不能和另一個 active Worker job 並行。Sequence action
+`log` 仍是 host-side message，`--log-scpi` 則仍是 SCPI traffic tracing。
 
 ## 範例
 

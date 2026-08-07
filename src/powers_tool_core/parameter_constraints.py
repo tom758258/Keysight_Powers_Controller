@@ -52,6 +52,7 @@ ALL_CHANNEL_COMMANDS = frozenset(
         "restore-from-snapshot",
         "trigger-status",
         "trigger-abort",
+        "log",
     }
 )
 CHANNEL_FORBIDDEN_COMMANDS = frozenset({"measure-all"})

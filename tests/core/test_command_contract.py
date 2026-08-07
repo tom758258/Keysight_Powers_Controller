@@ -9,6 +9,59 @@ def test_trigger_step_string_fire_is_rejected() -> None:
         validate_request_admission(TriggerRequest("trigger-step", RuntimeOptions(dry_run=True, planning_model_id="keysight-e36312a"), {"channel": 1, "fire": "false"}))
 
 
+def test_log_contract_normalizes_explicit_channels_and_bounds() -> None:
+    admitted = validate_request_admission(
+        OperationRequest(
+            "log",
+            RuntimeOptions(simulate=True, planning_model_id="keysight-e36312a"),
+            {"channels": [3, 1, 3], "interval_sec": 0.5, "samples": 2},
+        )
+    )
+
+    assert admitted.parameters == {
+        "channels": (3, 1, 3),
+        "interval_sec": 0.5,
+        "samples": 2,
+    }
+
+
+@pytest.mark.parametrize(
+    "parameters",
+    [
+        {"interval_sec": 1.0, "samples": 1},
+        {"channel": 1, "channels": [1], "interval_sec": 1.0, "samples": 1},
+        {"channel": 1, "interval_sec": 1.0},
+        {"channel": 1, "interval_sec": 1.0, "samples": 1, "duration_sec": 1.0},
+        {"channel": 1, "interval_sec": 0, "samples": 1},
+        {"channel": 1, "interval_sec": 1.0, "samples": 0},
+        {"channel": 1, "interval_sec": 1.0, "duration_sec": 0},
+        {"channels": [], "interval_sec": 1.0, "samples": 1},
+        {"channels": [0], "interval_sec": 1.0, "samples": 1},
+    ],
+)
+def test_log_contract_rejects_invalid_selectors_and_bounds(parameters: dict) -> None:
+    with pytest.raises(CoreValidationError):
+        validate_request_admission(
+            OperationRequest(
+                "log",
+                RuntimeOptions(simulate=True, planning_model_id="keysight-e36312a"),
+                parameters,
+            )
+        )
+
+
+@pytest.mark.parametrize("field", ["csv", "jsonl", "append"])
+def test_log_contract_rejects_adapter_owned_fields(field: str) -> None:
+    with pytest.raises(CoreValidationError, match=field):
+        validate_request_admission(
+            OperationRequest(
+                "log",
+                RuntimeOptions(simulate=True, planning_model_id="keysight-e36312a"),
+                {"channel": 1, "interval_sec": 1.0, "samples": 1, field: True},
+            )
+        )
+
+
 def test_trigger_list_alias_conflict_is_rejected() -> None:
     with pytest.raises(CoreValidationError, match="alias conflict"):
         validate_request_admission(TriggerRequest("trigger-list", RuntimeOptions(dry_run=True, planning_model_id="keysight-e36312a"), {"channel": 1, "voltages": [1.0], "voltage_list": [1.0]}))

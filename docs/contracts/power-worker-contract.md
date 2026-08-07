@@ -8,15 +8,16 @@ This contract extends `common-worker-protocol.md` for Powers Tool power-supply o
 
 - `GET /status`: lifecycle status only. It is non-mutating and never opens VISA.
 - `POST /command`: asynchronous Power command submission.
-- `POST /cancel`: cooperative cancellation of the exact active workflow job.
+- `POST /cancel`: cooperative cancellation of the exact active cancellable job.
 - `POST /stop`: priority cooperative stop request.
 
 `/trigger`, `trigger_url`, `--default-action`, and default-action config are not supported.
 
 `POST /cancel` requires exactly schema version 2 and the active
 `worker_job_id` (plus an optional string reason). Wrong, stale, completed, or
-non-workflow identity fails closed. Ramp, Ramp List, and Sequence cancellation
-does not shut down the Worker; successful cleanup returns it to `ready`.
+non-cancellable identity fails closed. Ramp, Ramp List, Sequence, and bounded
+telemetry `log` cancellation does not shut down the Worker; successful cleanup
+or normal log session close returns it to `ready`.
 `GET /status` does not need a `cancel_url` because the route is fixed.
 
 ## Power Stop Cleanup
@@ -46,6 +47,13 @@ hardware-lock release follow. Terminal `cancelled` is allowed only when every
 stage succeeds; otherwise terminal status is `failed`, error code is
 `cleanup_failed`, and result diagnostics preserve `original_reason:
 user_cancelled`. Blocking VISA I/O is not forcibly interrupted.
+
+Telemetry `log` is read-only and uses different cancellation semantics. A
+cycle that has started finishes every requested channel and flushes its rows;
+cancellation is observed before the next cycle or during the interval wait.
+The session then closes normally and collected telemetry remains available.
+Log cancellation does not issue output OFF or run workflow safe-off/error-queue
+cleanup. Blocking VISA queries are not forcibly interrupted.
 
 Each result is emitted as a structured `power_cleanup` JSONL event.
 Unsupported cleanup is a warning. Any failed release, close, or post-cleanup
@@ -146,6 +154,7 @@ Read-only/status:
 - `protection-status`
 - `error`
 - `snapshot`
+- `log`
 
 Output/setpoint:
 
@@ -233,6 +242,16 @@ The following fields are rejected inside `arguments`:
 Common `arguments` keys:
 
 - `confirm_output`: optional boolean, default `false`. Required with Worker config `settings.allow_output_writes: true` for live output-affecting commands.
+
+`log` requires exactly one of `channel` or `channels`, exactly one of `samples`
+or `duration_sec`, and a positive `interval_sec`. `channel` is a positive
+integer or exact `"all"`; `channels` is a non-empty array of positive integers.
+All bounds must be positive. Worker `log` is read-only and does not require
+output-write settings or confirmation. It supports `live` within exact Product
+policy and `simulate`; `dry_run` is rejected because Worker does not fabricate
+telemetry. `csv`, `jsonl`, and `append` are rejected. A caller cannot select an
+artifact path, and `log` is one exclusive Worker job rather than background
+telemetry concurrent with another command.
 
 Command-specific fields match the CLI/core names, including `channel`,
 `voltage`, `current`, `loop_count`, `max_errors`, `max_reads`, `file`, `document`,
@@ -359,6 +378,14 @@ Accepted jobs create:
   `command`, `execution`, `request`, `data`, `warnings`, `error`, and
   `metadata`.
 
+A `log` runner additionally creates `telemetry.csv` and `telemetry.jsonl` in
+its existing job directory when execution starts. CSV uses the CLI telemetry
+field order; JSONL contains the same sample rows and a terminal collection
+summary. Both files are flushed as rows are reported and are retained on
+cancellation or failure. The HTTP handler creates only the job directory and
+`request.json` before `202`; it does not pre-create telemetry files or
+`result.json`. Callers cannot provide alternate paths.
+
 `artifact_path` is the job artifact directory, not the `result.json` path.
 The final `result.json.command` field keeps the existing CLI result command
 object shape, for example `{"name": "read-status"}`. This differs from the
@@ -369,3 +396,9 @@ terminal result artifact when the artifact directory is writable.
 
 Terminal artifact `status` is one of `succeeded`, `failed`, or `cancelled`.
 `ok` is `true` only for `succeeded`.
+
+Successful and cancelled `log` result data uses the existing result schema and
+contains only `samples_written`, `samples_requested`, `duration_sec`,
+`interval_sec`, `channels`, and `stop_reason`. `samples_written` counts complete
+multi-channel cycles, not individual rows. Artifact/session/query/reporter
+failure is terminal `failed`, never partial success.
