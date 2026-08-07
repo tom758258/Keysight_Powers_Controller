@@ -7173,6 +7173,68 @@ def test_log_simulate_explicit_channels_and_duration_preserve_order(
     assert [int(row["channel"]) for row in rows] == [3, 1, 3]
 
 
+def test_log_unsupported_channel_does_not_create_artifacts(tmp_path, capsys) -> None:
+    csv_path = tmp_path / "rejected.csv"
+    jsonl_path = tmp_path / "rejected.jsonl"
+
+    assert cli.main(
+        [
+            "log",
+            "--simulate",
+            "--json",
+            "--resource",
+            "USB0::SIM::EDU36311A::INSTR",
+            "--channel",
+            "4",
+            "--interval-sec",
+            "0.01",
+            "--samples",
+            "1",
+            "--csv",
+            str(csv_path),
+            "--jsonl",
+            str(jsonl_path),
+        ]
+    ) == 2
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error"]["type"] == "validation"
+    assert not csv_path.exists()
+    assert not jsonl_path.exists()
+
+
+def test_log_live_support_rejection_does_not_create_artifacts(
+    monkeypatch, tmp_path, capsys
+) -> None:
+    session = FakeSession(idn="KEYSIGHT,E3646A,SERIAL0000,1.0")
+    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    csv_path = tmp_path / "rejected.csv"
+    jsonl_path = tmp_path / "rejected.jsonl"
+
+    assert cli.main(
+        [
+            "log",
+            "--json",
+            "--resource",
+            "ASRL1::INSTR",
+            "--channel",
+            "all",
+            "--interval-sec",
+            "0.01",
+            "--samples",
+            "1",
+            "--csv",
+            str(csv_path),
+            "--jsonl",
+            str(jsonl_path),
+        ]
+    ) == 2
+
+    assert_live_scope_rejected(json.loads(capsys.readouterr().out), session)
+    assert not csv_path.exists()
+    assert not jsonl_path.exists()
+
+
 def test_sequence_dry_run_does_not_open_resource(monkeypatch, capsys) -> None:
     def fail_open_resource(*args, **kwargs):
         raise AssertionError("VISA resource should not be opened for sequence dry-run")

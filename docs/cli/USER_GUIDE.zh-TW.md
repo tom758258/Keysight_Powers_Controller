@@ -181,7 +181,7 @@ Worker `log` 則必須提供 sample 或 duration bound，並在自己的 job dir
 `telemetry.csv`／`telemetry.jsonl`。它可取消、不會 safe-off output、取消或失敗後
 保留已完成 cycles、不接受呼叫者 artifact path，也不會和另一個 Worker job 並行。
 Sequence `log` 只是 message/note action；`--log-scpi` 是 SCPI traffic tracing，
-不是 telemetry。目前 E3646A telemetry `log` 尚未 Product-open。
+不是 telemetry。
 
 ## 影響輸出的工作流程
 

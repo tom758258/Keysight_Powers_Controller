@@ -212,8 +212,7 @@ Worker `log` instead requires a sample or duration bound and owns
 does not safe-off outputs, preserves completed cycles after cancellation or
 failure, accepts no caller artifact paths, and does not run concurrently with
 another Worker job. Sequence `log` is only a message/note action;
-`--log-scpi` traces SCPI traffic and is not telemetry. E3646A telemetry `log`
-is not currently Product-open.
+`--log-scpi` traces SCPI traffic and is not telemetry.
 
 ## Output-Affecting Workflow
 

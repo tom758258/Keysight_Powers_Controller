@@ -94,9 +94,6 @@ simulate, and dry-run. E3646A protection, trigger/native LIST,
 snapshot/restore, and completion-pulse remain disabled. E3646A `ramp-list` and
 `sequence` remain software workflows only, not native LIST.
 
-E3646A top-level telemetry `log` is not Product-open and is intentionally
-absent from the Product command matrix.
-
 EDU36311A USB read-only, output/write, and protection commands are enabled for
 real execution within the exact Product scopes above. EDU36311A
 `protection-set` and `clear-protection` require `--confirm` for real execution

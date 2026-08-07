@@ -4255,12 +4255,10 @@ def _collect_log_samples(
 ) -> dict[str, Any]:
     request = validate_request_admission(_target_core_request_for_args(args))
     csv_path = Path(args.csv)
-    if csv_path.parent != Path("."):
-        csv_path.parent.mkdir(parents=True, exist_ok=True)
-    jsonl_file = _open_jsonl_log(args)
-    mode = "a" if args.append else "w"
-    write_header = (not args.append) or (not csv_path.exists()) or csv_path.stat().st_size == 0
     result: dict[str, Any] | None = None
+    csv_file: Any = None
+    jsonl_file: Any = None
+    writer: csv.DictWriter | None = None
 
     def opener(
         resource: str,
@@ -4283,37 +4281,53 @@ def _collect_log_samples(
             scpi_logger=_connection_scpi_logger_for_args(args),
         )
 
+    def open_writers() -> None:
+        nonlocal csv_file, jsonl_file, writer
+        if writer is not None:
+            return
+        if csv_path.parent != Path("."):
+            csv_path.parent.mkdir(parents=True, exist_ok=True)
+        mode = "a" if args.append else "w"
+        write_header = (
+            (not args.append)
+            or (not csv_path.exists())
+            or csv_path.stat().st_size == 0
+        )
+        csv_file = csv_path.open(mode, newline="", encoding="utf-8")
+        writer = csv.DictWriter(csv_file, fieldnames=LOG_CSV_FIELDS)
+        if write_header:
+            writer.writeheader()
+            csv_file.flush()
+        jsonl_file = _open_jsonl_log(args)
+
+    def report_sample(row: dict[str, Any]) -> None:
+        open_writers()
+        if writer is None or csv_file is None:
+            raise CoreIoError("log telemetry writer did not initialize")
+        writer.writerow(row)
+        csv_file.flush()
+        if jsonl_file is not None:
+            jsonl_file.write(
+                json.dumps({"event": "sample", "sample": row}, sort_keys=True)
+                + "\n"
+            )
+            jsonl_file.flush()
+
     try:
-        with csv_path.open(mode, newline="", encoding="utf-8") as csv_file:
-            writer = csv.DictWriter(csv_file, fieldnames=LOG_CSV_FIELDS)
-            if write_header:
-                writer.writeheader()
-                csv_file.flush()
-
-            def report_sample(row: dict[str, Any]) -> None:
-                writer.writerow(row)
-                csv_file.flush()
-                if jsonl_file is not None:
-                    jsonl_file.write(
-                        json.dumps({"event": "sample", "sample": row}, sort_keys=True)
-                        + "\n"
-                    )
-                    jsonl_file.flush()
-
-            with _cooperative_workflow_interrupt() as stop_event:
-                try:
-                    result = run_core_command(
-                        request,
-                        opener=opener,
-                        stop_requested=stop_event.is_set,
-                        sleep=time.sleep,
-                        scpi_logger=_log_scpi if args.log_scpi else None,
-                        sample_reporter=report_sample,
-                    )
-                except CommandCancelled as exc:
-                    result = dict(exc.data)
-                    result["stopped"] = True
-                    result["stop_reason"] = "interrupted"
+        with _cooperative_workflow_interrupt() as stop_event:
+            try:
+                result = run_core_command(
+                    request,
+                    opener=opener,
+                    stop_requested=stop_event.is_set,
+                    sleep=time.sleep,
+                    scpi_logger=_log_scpi if args.log_scpi else None,
+                    sample_reporter=report_sample,
+                )
+            except CommandCancelled as exc:
+                result = dict(exc.data)
+                result["stopped"] = True
+                result["stop_reason"] = "interrupted"
     finally:
         if jsonl_file is not None:
             if result is not None:
@@ -4332,6 +4346,8 @@ def _collect_log_samples(
                 )
                 jsonl_file.flush()
             jsonl_file.close()
+        if csv_file is not None:
+            csv_file.close()
 
     if result is None:
         raise CoreIoError("log failed without a collection result")
