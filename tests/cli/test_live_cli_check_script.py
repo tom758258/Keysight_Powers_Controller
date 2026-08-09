@@ -1636,6 +1636,207 @@ def test_live_cli_check_readonly_plan_only_succeeds_without_hardware(
     assert "hardware_touched" not in json.dumps(report)
 
 
+def test_live_cli_check_psm2010_suite_composition_and_candidate_marking() -> None:
+    command = r'''
+$env:POWERS_TOOL_LIVE_CLI_CHECK_IMPORT_ONLY = "1"
+. .\scripts\live-cli-check.ps1
+$script:NormalizedTarget = "gw-instek-psm-2010"
+$script:TransportScope = "asrl"
+$script:BackendArtifact = Get-BackendArtifactFields -Value $null
+$script:RawResource = "ASRL1::SIM::PSM2010::INSTR"
+Load-CoreCandidateInventory
+$readonly = @(Get-ReadOnlyCases -Model $script:NormalizedTarget -Live:$true | ForEach-Object {
+    [pscustomobject]@{
+        name = $_.name
+        command = $_.args[0]
+        candidate = [bool]$_.candidate_scope_required
+    }
+})
+$safeState = @(Get-SafeStateCases -Model $script:NormalizedTarget -Live:$true | ForEach-Object {
+    [pscustomobject]@{
+        name = $_.name
+        command = $_.args[0]
+        candidate = [bool]$_.candidate_scope_required
+        state_changing = [bool]$_.state_changing
+        validation_kind = $_.validation_kind
+        expected_output_enabled = $_.expected_output_enabled
+    }
+})
+$script:TransportScope = "usb"
+$nonmatchingCandidateCount = @(
+    @(Get-ReadOnlyCases -Model $script:NormalizedTarget -Live:$true) +
+    @(Get-SafeStateCases -Model $script:NormalizedTarget -Live:$true) |
+    Where-Object { [bool]$_.candidate_scope_required }
+).Count
+[pscustomobject]@{
+    inventory = $script:CandidateInventory
+    readonly = $readonly
+    safe_state = $safeState
+    nonmatching_candidate_count = $nonmatchingCandidateCount
+} | ConvertTo-Json -Depth 10 -Compress
+'''
+    result = _run_powershell_command(command)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    composition = json.loads(result.stdout)
+    assert composition["inventory"] == {
+        "gw-instek-psm-2010": {
+            "commands": [
+                "capabilities",
+                "measure",
+                "output-off",
+                "output-state",
+                "read-status",
+                "readback",
+                "safe-off",
+            ],
+            "connections": [["asrl", "system_visa"]],
+        }
+    }
+    assert composition["nonmatching_candidate_count"] == 0
+
+    readonly = composition["readonly"]
+    assert [case["name"] for case in readonly] == [
+        "verify",
+        "identify",
+        "clear",
+        "error",
+        "measure-ch1",
+        "output-state-ch1",
+        "read-status",
+        "readback",
+        "capabilities",
+    ]
+    candidate_commands = {
+        "measure",
+        "output-state",
+        "read-status",
+        "readback",
+        "capabilities",
+    }
+    assert all(
+        case["candidate"] is (case["command"] in candidate_commands)
+        for case in readonly
+    )
+    assert all(case["command"] != "doctor" for case in readonly)
+
+    safe_state = composition["safe_state"]
+    assert [case["name"] for case in safe_state] == [
+        "output-state-before",
+        "output-off-all",
+        "output-state-after-output-off",
+        "safe-off-all",
+        "output-state-after-safe-off",
+    ]
+    assert [case["command"] for case in safe_state] == [
+        "output-state",
+        "output-off",
+        "output-state",
+        "safe-off",
+        "output-state",
+    ]
+    assert all(case["candidate"] is True for case in safe_state)
+    assert {
+        case["name"] for case in safe_state if case["state_changing"]
+    } == {"output-off-all", "safe-off-all"}
+    after_cases = [
+        case
+        for case in safe_state
+        if case["name"].startswith("output-state-after-")
+    ]
+    assert all(case["validation_kind"] == "output-state" for case in after_cases)
+    assert all(case["expected_output_enabled"] is False for case in after_cases)
+
+
+def test_live_cli_check_psm2010_full_plan_only_covers_exact_pending_commands() -> None:
+    result = _run_live_cli_check(
+        "-Target",
+        "gw-instek-psm-2010",
+        "-Connection",
+        "ASRL",
+        "-Resource",
+        "ASRL1::SIM::PSM2010::INSTR",
+        "-Suite",
+        "full",
+        "-PlanOnly",
+        "-SkipExternalPreflight",
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    report_path = _report_path(result.stdout, result.stderr)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["suites"] == ["readonly", "safe-state"]
+    assert report["state_changing"] is True
+    assert report["plan_only"] is True
+    assert report["live_executed"] is False
+    assert report["failures"] == []
+
+    expected_names = {
+        "verify",
+        "identify",
+        "clear",
+        "error",
+        "measure-ch1",
+        "output-state-ch1",
+        "read-status",
+        "readback",
+        "capabilities",
+        "output-state-before",
+        "output-off-all",
+        "output-state-after-output-off",
+        "safe-off-all",
+        "output-state-after-safe-off",
+    }
+    assert {case["name"] for case in report["cases"]} == expected_names
+    assert {case["name"] for case in report["planned_live_cases"]} == expected_names
+
+    expected_candidates = {
+        "measure",
+        "output-state",
+        "readback",
+        "read-status",
+        "capabilities",
+        "output-off",
+        "safe-off",
+    }
+    planned_commands = {case["command"] for case in report["planned_live_cases"]}
+    assert planned_commands & expected_candidates == expected_candidates
+    assert planned_commands.isdisjoint(
+        {
+            "doctor",
+            "set",
+            "apply",
+            "output-on",
+            "cycle-output",
+            "smoke-output",
+            "ramp",
+            "ramp-list",
+            "sequence",
+            "protection-status",
+            "protection-set",
+            "clear-protection",
+            "snapshot",
+            "restore-from-snapshot",
+            "trigger-status",
+            "trigger-step",
+            "trigger-list",
+            "trigger-fire",
+            "trigger-abort",
+            "trigger-pulse",
+        }
+    )
+    assert "hardware_touched" not in json.dumps(report)
+    private_payloads = list(
+        (report_path.parent.parent / "private").glob("preflight-*.json")
+    )
+    assert len(private_payloads) == len(expected_names)
+    assert all(
+        json.loads(path.read_text(encoding="utf-8"))["execution"]["hardware_touched"]
+        is False
+        for path in private_payloads
+    )
+
+
 def test_live_cli_check_skip_external_preflight_requires_plan_only() -> None:
     result = _run_live_cli_check("-SkipExternalPreflight")
 

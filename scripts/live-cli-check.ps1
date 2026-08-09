@@ -8,7 +8,7 @@ param(
 
     [string]$Backend,
 
-    [ValidateSet("readonly", "output", "protection", "snapshot", "trigger-list", "software-sequence", "full")]
+    [ValidateSet("readonly", "safe-state", "output", "protection", "snapshot", "trigger-list", "software-sequence", "full")]
     [string]$Suite = "readonly",
 
     [switch]$PlanOnly,
@@ -572,7 +572,44 @@ function Test-CurrentConnectionSupportsCandidates {
 }
 
 function Load-CoreCandidateInventory {
-    $code = "import json; from powers_tool_core.support_policy import internal_validation_candidate_inventory as inventory; data=inventory(); print(json.dumps({model: {'commands': list(entry['commands']), 'connections': [list(value) for value in entry['connections']]} for model, entry in data.items()}))"
+    $code = @'
+import json
+from powers_tool_core.models import CANDIDATE_MODEL_IDS
+from powers_tool_core.support_policy import (
+    VALIDATION_STATUS_TRANSPORT_PENDING,
+    internal_validation_candidate_inventory,
+    live_support_policy_metadata,
+)
+
+data = {
+    model: {
+        'commands': set(entry['commands']),
+        'connections': set(entry['connections']),
+    }
+    for model, entry in internal_validation_candidate_inventory().items()
+}
+for model in CANDIDATE_MODEL_IDS:
+    projected = data.setdefault(model, {'commands': set(), 'connections': set()})
+    for command, entry in live_support_policy_metadata(model)['commands'].items():
+        pending_scopes = [
+            scope
+            for scope in entry['scopes']
+            if scope['validation_status'] == VALIDATION_STATUS_TRANSPORT_PENDING
+        ]
+        if pending_scopes:
+            projected['commands'].add(command)
+            projected['connections'].update(
+                (scope['transport_scope'], scope['backend_scope'])
+                for scope in pending_scopes
+            )
+print(json.dumps({
+    model: {
+        'commands': sorted(entry['commands']),
+        'connections': [list(value) for value in sorted(entry['connections'])],
+    }
+    for model, entry in data.items()
+}))
+'@
     $hadPythonPath = $null -ne [Environment]::GetEnvironmentVariable("PYTHONPATH", "Process")
     $oldPythonPath = [Environment]::GetEnvironmentVariable("PYTHONPATH", "Process")
     try {
@@ -1229,21 +1266,23 @@ function Get-ReadOnlyCases {
     $cases.Add((New-CommandCase -Name "clear" -Suite "readonly" -Phase $phase -Args (@("clear") + $modeFlag + @("--json", "--resource", $resource, "--log-scpi")) -LiveHardwareExpected:$Live))
     $cases.Add((New-CommandCase -Name "error" -Suite "readonly" -Phase $phase -Args (@("error") + $modeFlag + @("--json", "--resource", $resource, "--max-reads", "20", "--log-scpi")) -LiveHardwareExpected:$Live -ValidationKind "empty-errors"))
     foreach ($channel in Get-TargetChannels -Model $Model) {
-        $cases.Add((New-CommandCase -Name ("measure-ch" + $channel) -Suite "readonly" -Phase $phase -Args (@("measure") + $modeFlag + @("--json", "--resource", $resource, "--channel", [string]$channel, "--log-scpi")) -LiveHardwareExpected:$Live))
-        $cases.Add((New-CommandCase -Name ("output-state-ch" + $channel) -Suite "readonly" -Phase $phase -Args (@("output-state") + $modeFlag + @("--json", "--resource", $resource, "--channel", [string]$channel, "--log-scpi")) -LiveHardwareExpected:$Live -ExpectedChannels @($channel)))
+        $cases.Add((New-CommandCase -Name ("measure-ch" + $channel) -Suite "readonly" -Phase $phase -Args (@("measure") + $modeFlag + @("--json", "--resource", $resource, "--channel", [string]$channel, "--log-scpi")) -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "measure"))))
+        $cases.Add((New-CommandCase -Name ("output-state-ch" + $channel) -Suite "readonly" -Phase $phase -Args (@("output-state") + $modeFlag + @("--json", "--resource", $resource, "--channel", [string]$channel, "--log-scpi")) -LiveHardwareExpected:$Live -ExpectedChannels @($channel) -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "output-state"))))
     }
-    $cases.Add((New-CommandCase -Name "read-status" -Suite "readonly" -Phase $phase -Args (@("read-status") + $modeFlag + @("--json", "--resource", $resource, "--all", "--log-scpi")) -LiveHardwareExpected:$Live))
-    $cases.Add((New-CommandCase -Name "readback" -Suite "readonly" -Phase $phase -Args (@("readback") + $modeFlag + @("--json", "--resource", $resource, "--all", "--log-scpi")) -LiveHardwareExpected:$Live))
+    $cases.Add((New-CommandCase -Name "read-status" -Suite "readonly" -Phase $phase -Args (@("read-status") + $modeFlag + @("--json", "--resource", $resource, "--all", "--log-scpi")) -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "read-status"))))
+    $cases.Add((New-CommandCase -Name "readback" -Suite "readonly" -Phase $phase -Args (@("readback") + $modeFlag + @("--json", "--resource", $resource, "--all", "--log-scpi")) -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "readback"))))
     if ($Model -in @("keysight-e36312a", "keysight-edu36311a")) {
         $cases.Add((New-CommandCase -Name "validate-readonly" -Suite "readonly" -Phase $phase -Args (@("validate-readonly") + $modeFlag + @("--json", "--resource", $resource, "--log-scpi")) -LiveHardwareExpected:$Live))
         $cases.Add((New-CommandCase -Name "protection-status" -Suite "readonly" -Phase $phase -Args (@("protection-status") + $modeFlag + @("--json", "--resource", $resource, "--all", "--log-scpi")) -LiveHardwareExpected:$Live))
     }
-    $cases.Add((New-CommandCase -Name "capabilities" -Suite "readonly" -Phase $phase -Args (@("capabilities") + $modeFlag + @("--json", "--resource", $resource, "--log-scpi")) -LiveHardwareExpected:$Live))
-    if ($Live) {
-        $cases.Add((New-CommandCase -Name "doctor-resource" -Suite "readonly" -Phase $phase -Args @("doctor", "--json", "--resource", $resource, "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "doctor" -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "doctor"))))
-    }
-    else {
-        $cases.Add((New-CommandCase -Name "doctor-environment" -Suite "readonly" -Phase $phase -Args @("doctor", "--simulate", "--json") -ValidationKind "doctor-offline"))
+    $cases.Add((New-CommandCase -Name "capabilities" -Suite "readonly" -Phase $phase -Args (@("capabilities") + $modeFlag + @("--json", "--resource", $resource, "--log-scpi")) -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "capabilities"))))
+    if ($Model -ne "gw-instek-psm-2010") {
+        if ($Live) {
+            $cases.Add((New-CommandCase -Name "doctor-resource" -Suite "readonly" -Phase $phase -Args @("doctor", "--json", "--resource", $resource, "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "doctor" -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "doctor"))))
+        }
+        else {
+            $cases.Add((New-CommandCase -Name "doctor-environment" -Suite "readonly" -Phase $phase -Args @("doctor", "--simulate", "--json") -ValidationKind "doctor-offline"))
+        }
     }
     if ($Model -eq "keysight-e36312a") {
         $cases.Add((New-CommandCase -Name "measure-all" -Suite "readonly" -Phase $phase -Args (@("measure-all") + $modeFlag + @("--json", "--resource", $resource, "--log-scpi")) -LiveHardwareExpected:$Live -ValidationKind "measure-all" -ExpectedChannels $channels -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "measure-all"))))
@@ -1257,6 +1296,30 @@ function Get-ReadOnlyCases {
         $cases.Add((New-CommandCase -Name "log-one-sample" -Suite "readonly" -Phase $phase -Args (@("log") + $modeFlag + @("--channel", "all", "--interval-sec", "0.1", "--samples", "1", "--csv", $logCsv, "--jsonl", $logJsonl, "--json", "--resource", $resource, "--log-scpi")) -LiveHardwareExpected:$Live -ValidationKind "log" -ExpectedChannels $channels -GeneratedArtifacts @($logCsv, $logJsonl) -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "log"))))
     }
     return $cases.ToArray()
+}
+
+function Get-SafeStateCases {
+    param([string]$Model, [bool]$Live)
+
+    $resource = if ($Live) { $script:RawResource } else { $TargetMetadata[$Model].simulator_resource }
+    $phase = if ($Live) { "live" } else { "preflight" }
+    $channels = @(Get-TargetChannels -Model $Model)
+    $stateModeFlag = if ($Live) { @() } else { @("--simulate") }
+    $stateArgs = @("output-state") + $stateModeFlag + @("--json", "--resource", $resource, "--channel", "all", "--log-scpi")
+    $offArgs = if ($Live) {
+        @("--json", "--resource", $resource, "--channel", "all", "--log-scpi")
+    }
+    else {
+        @("--dry-run", "--json", "--model", $Model, "--channel", "all")
+    }
+    $stateValidation = if ($Live) { "output-state" } else { $null }
+    return @(
+        (New-CommandCase -Name "output-state-before" -Suite "safe-state" -Phase $phase -Args $stateArgs -LiveHardwareExpected:$Live -ExpectedChannels $channels -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "output-state"))),
+        (New-CommandCase -Name "output-off-all" -Suite "safe-state" -Phase $phase -Args (@("output-off") + $offArgs) -StateChanging:$Live -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "output-off"))),
+        (New-CommandCase -Name "output-state-after-output-off" -Suite "safe-state" -Phase $phase -Args $stateArgs -LiveHardwareExpected:$Live -ValidationKind $stateValidation -ExpectedChannels $channels -ExpectedOutputEnabled $false -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "output-state"))),
+        (New-CommandCase -Name "safe-off-all" -Suite "safe-state" -Phase $phase -Args (@("safe-off") + $offArgs) -StateChanging:$Live -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "safe-off"))),
+        (New-CommandCase -Name "output-state-after-safe-off" -Suite "safe-state" -Phase $phase -Args $stateArgs -LiveHardwareExpected:$Live -ValidationKind $stateValidation -ExpectedChannels $channels -ExpectedOutputEnabled $false -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "output-state")))
+    )
 }
 
 function Get-OutputCases {
@@ -1466,6 +1529,9 @@ function Get-SuiteCases {
     foreach ($suiteName in $Suites) {
         if ($suiteName -eq "readonly") {
             $cases.AddRange((Get-ReadOnlyCases -Model $Model -Live:$Live))
+        }
+        elseif ($suiteName -eq "safe-state") {
+            $cases.AddRange((Get-SafeStateCases -Model $Model -Live:$Live))
         }
         elseif ($suiteName -eq "output") {
             $cases.AddRange((Get-OutputCases -Model $Model -Live:$Live))
@@ -2563,7 +2629,7 @@ function Invoke-TriggerPulseCandidateCase {
 function Write-LiveConfirmationWarnings {
     param([Parameter(Mandatory = $true)][string[]]$SuitesToRun)
 
-    if (@($SuitesToRun | Where-Object { $_ -in @("output", "protection", "snapshot", "trigger-list", "software-sequence") }).Count -gt 0) {
+    if (@($SuitesToRun | Where-Object { $_ -in @("safe-state", "output", "protection", "snapshot", "trigger-list", "software-sequence") }).Count -gt 0) {
         Write-Host "Possible state changes:"
         $outputAffectingSuites = @(@("output", "snapshot", "trigger-list", "software-sequence") | Where-Object { $_ -in $SuitesToRun })
         if (@($outputAffectingSuites).Count -gt 0) {
@@ -2579,6 +2645,9 @@ function Write-LiveConfirmationWarnings {
             }
             Write-Host "- Low-power setpoints may be written: 1 V / 0.05 A."
             Write-Host "- Outputs may briefly turn on for $outputCaseText."
+        }
+        if ("safe-state" -in $SuitesToRun) {
+            Write-Host "- Safe-state cases may turn outputs OFF but never enable outputs or write setpoints."
         }
         if ("protection" -in $SuitesToRun) {
             Write-Host "- Protection suite writes OVP/OCP settings and clears protection state."
@@ -2871,7 +2940,7 @@ $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $OutputDir = Join-Path (Join-Path $TmpRoot "live_cli_check") ($timestamp + "_" + $NormalizedTarget + "_" + $ConnectionLabel + "_" + $Suite)
 $script:OutputDir = Reset-OutputDirectory -Path $OutputDir -Root $TmpRoot
 $script:SuitesToRun = @($SuitesToRun)
-$script:StateChanging = @($SuitesToRun | Where-Object { $_ -in @("output", "protection", "snapshot", "trigger-list", "software-sequence") }).Count -gt 0
+$script:StateChanging = @($SuitesToRun | Where-Object { $_ -in @("safe-state", "output", "protection", "snapshot", "trigger-list", "software-sequence") }).Count -gt 0
 $script:CommandRecords = New-Object System.Collections.Generic.List[object]
 $script:Failures = New-Object System.Collections.Generic.List[string]
 $script:CleanupEvidence = New-CleanupEvidence -ValidationMode "planned"

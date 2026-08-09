@@ -142,7 +142,7 @@ def test_shared_helper_owns_all_model_and_suite_boundaries() -> None:
         "canonical_display_name": "GW Instek PSM-2010",
         "channels": [1],
         "simulator_resource": "ASRL1::SIM::PSM2010::INSTR",
-        "suites": ["readonly"],
+        "suites": ["readonly", "safe-state"],
     }
     assert inventory["suites"] == ["smoke", "deep", "full"]
     assert inventory["smoke_targets"] == [
@@ -214,7 +214,7 @@ def test_psm2010_preflight_executes_maintained_no_hardware_cases(
     assert target_report["model_id"] == "gw-instek-psm-2010"
     assert target_report["expected_model"] == "PSM-2010"
     assert target_report["simulator_resource"] == "ASRL1::SIM::PSM2010::INSTR"
-    assert target_report["suites"] == ["readonly"]
+    assert target_report["suites"] == ["readonly", "safe-state"]
     assert target_report["visa_io_performed"] is False
     assert target_report["resource_scan_performed"] is False
     assert target_report["resource_guess_performed"] is False
