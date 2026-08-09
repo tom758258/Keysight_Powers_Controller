@@ -8,19 +8,42 @@ from typing import Mapping
 
 
 @dataclass(frozen=True)
+class ElectricalOperatingRange:
+    """Official voltage/current operating range for one output channel."""
+
+    name: str
+    max_voltage: float
+    max_current: float
+
+    def to_dict(self) -> dict[str, float | str]:
+        return {
+            "name": self.name,
+            "max_voltage": self.max_voltage,
+            "max_current": self.max_current,
+        }
+
+
+@dataclass(frozen=True)
 class ChannelElectricalRating:
     """Official DC output rating for one independent output channel."""
 
     channel: int
     max_voltage: float
     max_current: float
+    operating_ranges: tuple[ElectricalOperatingRange, ...] = ()
 
-    def to_dict(self) -> dict[str, float | int]:
-        return {
+    def to_dict(self) -> dict[str, object]:
+        rating: dict[str, object] = {
             "channel": self.channel,
             "max_voltage": self.max_voltage,
             "max_current": self.max_current,
         }
+        if self.operating_ranges:
+            rating["operating_ranges"] = [
+                operating_range.to_dict()
+                for operating_range in self.operating_ranges
+            ]
+        return rating
 
 
 @dataclass(frozen=True)

@@ -152,6 +152,13 @@ Sources are Keysight `E36300 Series Triple Output Bench Power Supply`,
 publication `5992-2124EN`, dated `2023-08-25`, and `EDU36311A Triple-Output
 Bench Power Supply`, publication `3121-1003.ZHTW`, dated `2021-01-11`.
 
+An official electrical rating may define multiple operating ranges for one
+channel. Its maximum voltage and maximum current then describe the independent
+envelope, not permission to use every combination inside that envelope. When a
+request supplies both voltage and current, the pair must fit within at least one
+official operating range. A request that supplies only one value retains the
+independent scalar maximum check.
+
 Official ratings and safety config remain separate. The effective maximum is
 the smaller value. A more permissive safety config never widens an official
 rating. Confirmation thresholds remain safety-config policy only.

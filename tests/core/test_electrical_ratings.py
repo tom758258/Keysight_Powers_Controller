@@ -1,6 +1,9 @@
 import pytest
 
 from powers_tool_core.electrical_ratings import (
+    ChannelElectricalRating,
+    ElectricalOperatingRange,
+    ModelElectricalRatings,
     electrical_ratings_by_model_metadata,
     ratings_for_model_id,
 )
@@ -34,18 +37,25 @@ def test_verified_channel_ratings(model, channel, max_voltage, max_current) -> N
     )
 
 
-def test_official_rating_rejects_above_boundary_with_source() -> None:
+@pytest.mark.parametrize(
+    ("setpoint", "expected"),
+    [
+        ({"voltage": 6.01}, r"voltage 6\.01 exceeds effective maximum 6 V"),
+        ({"current": 5.01}, r"current 5\.01 exceeds effective maximum 5 A"),
+    ],
+)
+def test_official_rating_rejects_above_boundary_with_source(setpoint, expected) -> None:
     ratings = ratings_for_model_id("keysight-e36312a")
 
     with pytest.raises(
         SafetyValidationError,
-        match=r"voltage 6\.01 exceeds effective maximum 6 V for E36312A channel 1, limited by official DC output rating",
+        match=rf"{expected} for E36312A channel 1, limited by official DC output rating",
     ):
         validate_effective_setpoint(
             model="E36312A",
             channel=1,
             electrical_ratings=ratings,
-            voltage=6.01,
+            **setpoint,
         )
 
 
@@ -77,3 +87,77 @@ def test_unknown_model_has_no_invented_rating() -> None:
         "keysight-e36312a",
         "keysight-edu36311a",
     }
+
+
+DUAL_RANGE_RATINGS = ModelElectricalRatings(
+    model="TEST-DUAL-RANGE",
+    channels={
+        1: ChannelElectricalRating(
+            channel=1,
+            max_voltage=20.0,
+            max_current=20.0,
+            operating_ranges=(
+                ElectricalOperatingRange("LOW", max_voltage=8.0, max_current=20.0),
+                ElectricalOperatingRange("HIGH", max_voltage=20.0, max_current=10.0),
+            ),
+        )
+    },
+    rating_basis="test-only dual-range rating",
+    document_title="test-only",
+    publication_id="test-only",
+    publication_date="test-only",
+)
+
+
+@pytest.mark.parametrize(("voltage", "current"), [(5.0, 15.0), (15.0, 5.0)])
+def test_dual_range_rating_accepts_pair_in_any_operating_range(voltage, current) -> None:
+    validate_effective_setpoint(
+        model="TEST-DUAL-RANGE",
+        channel=1,
+        electrical_ratings=DUAL_RANGE_RATINGS,
+        voltage=voltage,
+        current=current,
+    )
+
+
+def test_dual_range_rating_rejects_pair_outside_all_operating_ranges() -> None:
+    with pytest.raises(
+        SafetyValidationError,
+        match=(
+            r"requested voltage 15 V and current 15 A do not fit any official "
+            r"electrical operating range for TEST-DUAL-RANGE channel 1"
+        ),
+    ):
+        validate_effective_setpoint(
+            model="TEST-DUAL-RANGE",
+            channel=1,
+            electrical_ratings=DUAL_RANGE_RATINGS,
+            safety_limits=SafetyLimits(max_voltage=50.0, max_current=50.0),
+            voltage=15.0,
+            current=15.0,
+        )
+
+
+def test_dual_range_rating_keeps_scalar_only_validation() -> None:
+    validate_effective_setpoint(
+        model="TEST-DUAL-RANGE",
+        channel=1,
+        electrical_ratings=DUAL_RANGE_RATINGS,
+        voltage=15.0,
+    )
+    validate_effective_setpoint(
+        model="TEST-DUAL-RANGE",
+        channel=1,
+        electrical_ratings=DUAL_RANGE_RATINGS,
+        current=15.0,
+    )
+
+
+def test_explicit_operating_ranges_are_serialized() -> None:
+    channel = DUAL_RANGE_RATINGS.channel(1)
+
+    assert channel is not None
+    assert channel.to_dict()["operating_ranges"] == [
+        {"name": "LOW", "max_voltage": 8.0, "max_current": 20.0},
+        {"name": "HIGH", "max_voltage": 20.0, "max_current": 10.0},
+    ]

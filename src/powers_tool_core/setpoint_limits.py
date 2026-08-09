@@ -76,6 +76,22 @@ def validate_effective_setpoint(
         raise SafetyValidationError(_message("voltage", voltage, limits.max_voltage, model, channel, limits.voltage_source))
     if current is not None and limits.max_current is not None and current > limits.max_current:
         raise SafetyValidationError(_message("current", current, limits.max_current, model, channel, limits.current_source))
+    if (
+        voltage is not None
+        and current is not None
+        and limits.official_rating is not None
+        and limits.official_rating.operating_ranges
+        and not any(
+            voltage <= operating_range.max_voltage
+            and current <= operating_range.max_current
+            for operating_range in limits.official_rating.operating_ranges
+        )
+    ):
+        model_name = model or "unknown model"
+        raise SafetyValidationError(
+            f"requested voltage {voltage:g} V and current {current:g} A do not fit "
+            f"any official electrical operating range for {model_name} channel {channel}"
+        )
     return limits
 
 

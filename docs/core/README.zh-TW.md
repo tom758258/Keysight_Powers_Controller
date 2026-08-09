@@ -69,7 +69,7 @@ Product metadata。
 - `powers_tool_core.command_runner`: 共用路由器，供提交 parser-neutral core 請求的轉接器使用。
 - `powers_tool_core.cancellation` 與 `stop_cleanup`: 協作取消、可中斷的等待、僅限 GPIB 的 local release，以及 Worker 與 WebUI 共用的結構化停止清理結果。
 - `powers_tool_core.safety`: 明確的本機安全設定檔載入與計畫驗證。
-- `powers_tool_core.electrical_ratings` 與 `setpoint_limits`: 已驗證的獨立通道直流輸出額定值與有效的安全限制。
+- `powers_tool_core.electrical_ratings` 與 `setpoint_limits`: 已驗證的獨立通道直流輸出額定值、可選的 range-dependent voltage/current 組合，以及有效的安全限制。
 - `powers_tool_core.capabilities`: 指令與型號的能力 (capability) 報告。
 - `powers_tool_core.model_metadata`、`support_policy`、`model_resolution` 與
   `model_enablement`：公開的 model projection、exact live-support metadata、
@@ -135,6 +135,12 @@ E36312A 與 EDU36311A 的保護觸發讀取使用 channel-list 查詢。共用�
 設定點步進。`generic-scpi` 是 nonphysical no-hardware
 planning profile，不是 physical trigger planning model。影響硬體的行為保持明確
 且需主動啟用 (opt-in)。
+
+官方 electrical rating 可為同一通道定義多個 operating ranges。此時獨立的最大
+voltage 與 current 只描述整體 envelope，不能單獨證明每一組 voltage/current
+組合都有效。當兩個值同時提供時，Core 要求該組合至少落在一個 official
+operating range 內。明確設定的 safety limits 仍與 official rating 分開，且只能
+讓有效限制更嚴格。
 
 轉接器邊界刻意設計為單向：core 包含驅動程式方法、SCPI 輔助工具、模擬器選擇與 dry-run 計畫；CLI 與 WebUI 建立 `RuntimeOptions`/`OperationRequest` 物件，並將回傳的 `data` 封裝在它們自己的傳輸封裝 (transport envelopes) 中。
 

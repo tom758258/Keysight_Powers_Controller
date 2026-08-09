@@ -133,7 +133,8 @@ are never reported as Product-open exact live commands.
 - `powers_tool_core.safety`: explicit local safety-config loading and plan
   validation.
 - `powers_tool_core.electrical_ratings` and `setpoint_limits`: verified
-  independent-channel DC output ratings and effective safety limits.
+  independent-channel DC output ratings, optional range-dependent voltage/current
+  combinations, and effective safety limits.
 - `powers_tool_core.setpoint_ranges`: official output voltage setpoint and
   output current limit programming-range metadata from model programming
   manuals.
@@ -227,6 +228,13 @@ E3646A. Core exposes official programming-range metadata separately from
 independent-channel DC output rating safety limits. The manuals document common
 SCPI numeric parameter handling, so this metadata does not introduce
 decimal-place rejection or silent rounding/truncation in Core.
+
+Official electrical ratings may define multiple operating ranges for one
+channel. In that case, the independent maximum voltage and current describe the
+overall envelope but do not by themselves make every voltage/current combination
+valid. When both values are supplied, Core requires the pair to fit within at
+least one official operating range. Explicit safety limits remain separate and
+can only make the effective limits more restrictive than the official rating.
 
 The adapter boundary is intentionally one-way: core contains driver methods,
 SCPI helpers, simulator selection, no-hardware model resolution, and dry-run
