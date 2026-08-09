@@ -2454,9 +2454,9 @@ $TargetMetadata | ConvertTo-Json -Depth 8 -Compress
         MODEL_CHANNELS_BY_ID,
         SIMULATED_RESOURCE_FOR_MODEL_ID,
     )
-    from powers_tool_core.models import PRODUCT_ACTIVE_MODEL_IDS
+    from powers_tool_core.model_enablement import NO_HARDWARE_COVERED_MODEL_IDS
 
-    assert set(metadata) == set(PRODUCT_ACTIVE_MODEL_IDS)
+    assert set(metadata) == set(NO_HARDWARE_COVERED_MODEL_IDS)
     for model_id, entry in metadata.items():
         assert entry["model_id"] == model_id
         assert entry["channels"] == list(MODEL_CHANNELS_BY_ID[model_id])
