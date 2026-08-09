@@ -225,13 +225,12 @@ def test_exact_inventory_mapping_rejects_swapped_same_vendor_model_ids() -> None
 
 def test_canonical_lifecycle_sets_preserve_assignments() -> None:
     assert PRODUCT_ACTIVE_MODEL_IDS == {"keysight-e36312a", "keysight-edu36311a", "keysight-e3646a"}
-    assert CANDIDATE_MODEL_IDS == frozenset()
+    assert CANDIDATE_MODEL_IDS == {"gw-instek-psm-2010"}
     assert CATALOG_ONLY_MODEL_IDS == {
         "keysight-e36313a",
         "keysight-e36233a",
         "keysight-e36441a",
         "keysight-e36155a",
-        "gw-instek-psm-2010",
     }
     assert DE_SCOPED_MODEL_IDS == {"keysight-e36103b", "keysight-e36232a"}
 
@@ -532,6 +531,7 @@ def test_same_vendor_level_and_model_specific_manufacturer_alias_may_coexist() -
         ("USB0::SIM::E36312A::INSTR", "keysight-e36312a"),
         ("USB0::SIM::EDU36311A::INSTR", "keysight-edu36311a"),
         ("ASRL1::SIM::E3646A::INSTR", "keysight-e3646a"),
+        ("ASRL1::SIM::PSM2010::INSTR", "gw-instek-psm-2010"),
     ],
 )
 def test_deterministic_sim_resources_infer_v2_model_ids(resource: str, expected: str) -> None:
@@ -568,6 +568,7 @@ def test_existing_sim_resolution_remains_legacy_planning_model_id() -> None:
     assert planning_model_id_from_sim_resource("USB0::SIM::E36312A::INSTR") == "keysight-e36312a"
     assert planning_model_id_from_sim_resource("USB0::SIM::EDU36311A::INSTR") == "keysight-edu36311a"
     assert planning_model_id_from_sim_resource("ASRL1::SIM::E3646A::INSTR") == "keysight-e3646a"
+    assert planning_model_id_from_sim_resource("ASRL1::SIM::PSM2010::INSTR") == "gw-instek-psm-2010"
 
 
 def test_existing_factory_selection_and_public_idn_json_are_unchanged() -> None:

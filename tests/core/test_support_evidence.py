@@ -19,6 +19,7 @@ from powers_tool_core.support_evidence import (
 )
 from powers_tool_core.support_policy import (
     BACKEND_PYVISA_PY,
+    BACKEND_SYSTEM_VISA,
     LIVE_SUPPORT_POLICY_REGISTRY,
     VALIDATION_STATUS_FEATURE_PENDING,
     VALIDATION_STATUS_LIVE_VALIDATED_FULL_SUITE,
@@ -125,6 +126,7 @@ EXPECTED_PROMOTED_COMMANDS = {
     ),
     "keysight-edu36311a": frozenset({"output-on", "log", "doctor"}),
     "keysight-e3646a": frozenset({"output-on", "doctor", "log"}),
+    "gw-instek-psm-2010": frozenset(),
 }
 
 EXPECTED_FEATURES_BY_MODEL = {
@@ -463,8 +465,13 @@ def test_policy_accepted_and_candidate_basis_references_are_exact() -> None:
                         assert evidence.backend_scope == scope.backend_scope
                 elif scope.validation_status == VALIDATION_STATUS_TRANSPORT_PENDING:
                     pending_count += 1
-                    assert scope.backend_scope == BACKEND_PYVISA_PY
                     assert scope.accepted_evidence_ids == ()
+                    if model_policy.model_id == "gw-instek-psm-2010":
+                        assert scope.backend_scope == BACKEND_SYSTEM_VISA
+                        assert scope.candidate_basis_evidence_ids == ()
+                        assert scope.feature_scopes == ()
+                        continue
+                    assert scope.backend_scope == BACKEND_PYVISA_PY
                     assert scope.candidate_basis_evidence_ids
                     for evidence_id in scope.candidate_basis_evidence_ids:
                         evidence = SUPPORT_EVIDENCE_BY_ID[evidence_id]

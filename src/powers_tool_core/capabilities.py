@@ -10,6 +10,7 @@ from powers_tool_core.identity import GENERIC_SCPI_PLANNING_PROFILE_ID
 E36312A_MODEL_ID = "keysight-e36312a"
 EDU36311A_MODEL_ID = "keysight-edu36311a"
 E3646A_MODEL_ID = "keysight-e3646a"
+PSM2010_MODEL_ID = "gw-instek-psm-2010"
 
 READ_ONLY_COMMANDS = frozenset(
     {
@@ -85,6 +86,18 @@ _DRY_RUN_TRIGGER_COMMANDS = frozenset(
         "trigger-abort",
     }
 )
+_PSM2010_ENABLED_COMMANDS = frozenset(
+    {
+        "identify",
+        "measure",
+        "output-state",
+        "readback",
+        "read-status",
+        "capabilities",
+        "output-off",
+        "safe-off",
+    }
+)
 
 
 def hardware_validation_status(model_id: str | None) -> dict[str, Any]:
@@ -113,6 +126,13 @@ def hardware_validation_status(model_id: str | None) -> dict[str, Any]:
         return {
             "read_only": "rs232_read_only",
             "output": "validated",
+            "protection": "not_enabled",
+            "trigger": "not_enabled",
+        }
+    if model_id == PSM2010_MODEL_ID:
+        return {
+            "read_only": "not_enabled",
+            "output": "not_enabled",
             "protection": "not_enabled",
             "trigger": "not_enabled",
         }
@@ -231,6 +251,12 @@ def command_support(model_id: str | None) -> dict[str, dict[str, Any]]:
                 entry["hardware_validation"] = "validated"
                 if command in {"apply", "output-on", "cycle-output", "smoke-output"}:
                     entry["hardware_validation"] = "validated_confirm_threshold_conditional"
+        elif normalized == PSM2010_MODEL_ID:
+            if command in _PSM2010_ENABLED_COMMANDS:
+                entry["real"] = True
+                entry["simulate"] = True
+                entry["dry_run"] = True
+                entry["hardware_validation"] = "not_enabled"
         else:
             if command in {"identify", "measure", "doctor", "capabilities"}:
                 entry["real"] = True
@@ -252,6 +278,16 @@ def command_support(model_id: str | None) -> dict[str, dict[str, Any]]:
             )
         if command == "log":
             entry["dry_run"] = False
+        if normalized == PSM2010_MODEL_ID and command == "doctor":
+            entry.update(
+                {
+                    "real": False,
+                    "simulate": False,
+                    "dry_run": False,
+                    "requires_confirm": False,
+                    "hardware_validation": "not_enabled",
+                }
+            )
         support[command] = entry
     return support
 

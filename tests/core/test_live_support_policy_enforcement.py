@@ -46,9 +46,13 @@ class FakeSession:
         return {
             "*IDN?": self.idn,
             "MEAS:VOLT?": "1.0",
+            "MEAS?": "1.0",
             "MEAS:CURR?": "0.1",
             "VOLT? (@1)": "1.0",
             "CURR? (@1)": "0.05",
+            "VOLT?": "1.0",
+            "CURR?": "0.05",
+            "OUTP?": "OFF",
         }.get(command, '0,"No error"')
 
     def write(self, command: str) -> None:
@@ -95,6 +99,76 @@ def test_identify_expected_model_mismatch_stops_after_idn() -> None:
     assert session.queries == ["*IDN?"]
     assert session.writes == []
     assert session.closed is True
+
+
+def test_psm2010_identify_does_not_send_unconfirmed_extended_queries() -> None:
+    session = FakeSession("GW.Inc,PSM-2010,SN,FW1.00")
+
+    data = run_instrument_io(
+        _request("identify", "ASRL1::INSTR", model="gw-instek-psm-2010"),
+        opener=lambda *args, **kwargs: session,
+    )
+
+    assert data["options"] is None
+    assert data["scpi_version"] is None
+    assert data["remote_lockout_state"] is None
+    assert session.queries == ["*IDN?"]
+
+
+def test_psm2010_measure_is_validation_only_and_uses_driver_queries() -> None:
+    product_session = FakeSession("GW.Inc,PSM-2010,SN,FW1.00")
+    with pytest.raises(LiveSupportPolicyError, match="transport_pending"):
+        run_instrument_io(
+            _request(
+                "measure",
+                "ASRL1::INSTR",
+                model="gw-instek-psm-2010",
+            ),
+            opener=lambda *args, **kwargs: product_session,
+        )
+    assert product_session.queries == ["*IDN?"]
+
+    validation_session = FakeSession("GW.Inc,PSM-2010,SN,FW1.00")
+    data = run_instrument_io(
+        _request(
+            "measure",
+            "ASRL1::INSTR",
+            model="gw-instek-psm-2010",
+            support_policy_mode=SUPPORT_POLICY_MODE_VALIDATION,
+        ),
+        opener=lambda *args, **kwargs: validation_session,
+    )
+    assert data["measurements"] == {"voltage": 1.0, "current": 0.1}
+    assert validation_session.queries == ["*IDN?", "MEAS?", "MEAS:CURR?"]
+
+
+@pytest.mark.parametrize(
+    ("command", "expected_queries"),
+    [
+        ("output-off", ["*IDN?", "SYST:ERR?"]),
+        ("safe-off", ["*IDN?", "OUTP?", "SYST:ERR?"]),
+        ("output-state", ["*IDN?", "OUTP?"]),
+    ],
+)
+def test_psm2010_candidate_output_commands_use_existing_core_path(
+    command: str, expected_queries: list[str]
+) -> None:
+    session = FakeSession("GW.Inc,PSM-2010,SN,FW1.00")
+    request = OperationRequest(
+        command,
+        RuntimeOptions(
+            resource="ASRL1::INSTR",
+            expected_model_id="gw-instek-psm-2010",
+            support_policy_mode=SUPPORT_POLICY_MODE_VALIDATION,
+        ),
+        {"channel": 1},
+    )
+
+    data = run_operation(request, opener=lambda *args, **kwargs: session)
+
+    assert data["idn"]["model"] == "PSM-2010"
+    assert session.queries == expected_queries
+    assert session.writes == ([] if command == "output-state" else ["OUTP OFF"])
 
 
 @pytest.mark.parametrize(

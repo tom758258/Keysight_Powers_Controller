@@ -181,6 +181,45 @@ def test_command_support_e3646a_rs232_read_only_boundary() -> None:
         assert support[command]["hardware_validation"] == "not_enabled"
 
 
+def test_command_support_psm2010_candidate_boundary() -> None:
+    support = capabilities.command_support("gw-instek-psm-2010")
+
+    for command in (
+        "identify",
+        "measure",
+        "output-state",
+        "readback",
+        "read-status",
+        "capabilities",
+        "output-off",
+        "safe-off",
+    ):
+        assert support[command]["real"] is True
+        assert support[command]["simulate"] is True
+        assert support[command]["dry_run"] is True
+        assert support[command]["hardware_validation"] == "not_enabled"
+
+    for command in (
+        "set",
+        "apply",
+        "output-on",
+        "cycle-output",
+        "ramp",
+        "ramp-list",
+        "sequence",
+        "log",
+        "doctor",
+        "protection-set",
+        "trigger-pulse",
+        "snapshot",
+        "restore-from-snapshot",
+    ):
+        assert support[command]["real"] is False
+        assert support[command]["simulate"] is False
+        assert support[command]["dry_run"] is False
+        assert support[command]["hardware_validation"] == "not_enabled"
+
+
 @pytest.mark.parametrize(
     "command",
     [

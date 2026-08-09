@@ -17,19 +17,20 @@ def test_simulator_lists_first_target_resources() -> None:
         "USB0::SIM::E36312A::INSTR",
         "USB0::SIM::EDU36311A::INSTR",
         "ASRL1::SIM::E3646A::INSTR",
+        "ASRL1::SIM::PSM2010::INSTR",
     )
     assert SimulatedResourceManager().list_resources() == SIMULATED_RESOURCES
 
 
 @pytest.mark.parametrize("resource", SIMULATED_RESOURCES)
-def test_simulator_idn_responses_are_parseable_keysight_idns(resource) -> None:
+def test_simulator_idn_responses_are_parseable_registered_idns(resource) -> None:
     session = SimulatedResourceManager().open_resource(resource)
 
     idn = parse_idn(session.query("*IDN?"))
 
     assert idn.parse_ok is True
-    assert idn.manufacturer == "KEYSIGHT"
     assert idn.raw == SIMULATED_IDN[resource]
+    assert select_driver(idn.raw).physical_identity is not None
 
 
 def test_deterministic_simulator_registry_uses_matching_canonical_identity() -> None:
@@ -37,13 +38,34 @@ def test_deterministic_simulator_registry_uses_matching_canonical_identity() -> 
         "keysight-e36312a",
         "keysight-edu36311a",
         "keysight-e3646a",
+        "gw-instek-psm-2010",
     }
     for model_id, resource in SIMULATED_RESOURCE_FOR_MODEL_ID.items():
         assert resource in SIMULATED_IDN
         assert planning_model_id_from_sim_resource(resource) == model_id
-        assert IDENTITY_INDEXES.models_by_id[model_id].vendor_id == "keysight"
         session = SimulatedResourceManager().open_resource(resource)
-        assert select_driver(session.query("*IDN?")).capabilities.channels == MODEL_CHANNELS_BY_ID[model_id]
+        selection = select_driver(session.query("*IDN?"))
+        assert selection.capabilities.channels == MODEL_CHANNELS_BY_ID[model_id]
+        assert selection.physical_identity is not None
+        assert selection.physical_identity.vendor_id == IDENTITY_INDEXES.models_by_id[model_id].vendor_id
+
+
+def test_psm2010_simulator_supports_candidate_read_and_safe_state_commands() -> None:
+    session = SimulatedResourceManager().open_resource("ASRL1::SIM::PSM2010::INSTR")
+
+    assert session.query("MEAS?") == "1.000"
+    assert session.query("MEAS:CURR?") == "0.050"
+    assert session.query("VOLT?") == "1.000"
+    assert session.query("CURR?") == "0.050"
+    assert session.query("OUTP?") == "OFF"
+    session.write("OUTP OFF")
+    assert session.query("OUTP?") == "OFF"
+    assert session.query("VOLT:RANG?") == "P8V"
+    session.write("VOLT:RANG HIGH")
+    assert session.query("VOLT:RANG?") == "P20V"
+    session.write("VOLT:RANG LOW")
+    assert session.query("VOLT:RANG?") == "P8V"
+    assert session.query("SYST:ERR?") == '0,"No error"'
 
 
 @pytest.mark.parametrize(

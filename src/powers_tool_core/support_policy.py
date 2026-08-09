@@ -1137,6 +1137,30 @@ _VALIDATED_TRANSPORTS = {
     "keysight-e3646a": (TRANSPORT_ASRL,),
 }
 
+_CANDIDATE_PENDING_COMMANDS = {
+    "gw-instek-psm-2010": frozenset(
+        {
+            "measure",
+            "output-state",
+            "readback",
+            "read-status",
+            "capabilities",
+            "output-off",
+            "safe-off",
+        }
+    ),
+}
+
+_CANDIDATE_PENDING_CONNECTIONS = {
+    "gw-instek-psm-2010": (
+        (TRANSPORT_ASRL, BACKEND_SYSTEM_VISA),
+    ),
+}
+
+_CANDIDATE_PENDING_NOTE = (
+    "The exact model, command, transport, and backend scope remains pending live validation."
+)
+
 
 def _build_registry() -> tuple[ModelSupportPolicy, ...]:
     commands = sorted(_policy_governed_command_inventory())
@@ -1213,6 +1237,40 @@ def _build_registry() -> tuple[ModelSupportPolicy, ...]:
                     command=command,
                     validation_status=VALIDATION_STATUS_PROFILE_VALIDATED,
                     scopes=tuple(scopes),
+                    note=None if scopes else _NO_EXACT_EVIDENCE_NOTE,
+                )
+            )
+        model_policies.append(ModelSupportPolicy(model_id=model_id, commands=tuple(policies)))
+    for model_id in sorted(CANDIDATE_POLICY_MODEL_IDS):
+        current_support = command_support(model_id)
+        policies = []
+        for command in commands:
+            capability = current_support.get(command)
+            profile_supported = capability is not None and capability.get("real") is True
+            if not profile_supported:
+                policies.append(
+                    CommandSupportPolicy(
+                        command=command,
+                        validation_status=VALIDATION_STATUS_NOT_SUPPORTED_BY_MODEL,
+                        note="The current project model/profile does not support this command.",
+                    )
+                )
+                continue
+            scopes = tuple(
+                CommandLiveSupportScope(
+                    validation_status=VALIDATION_STATUS_TRANSPORT_PENDING,
+                    transport_scope=transport,
+                    backend_scope=backend,
+                    note=_CANDIDATE_PENDING_NOTE,
+                )
+                for transport, backend in _CANDIDATE_PENDING_CONNECTIONS.get(model_id, ())
+                if command in _CANDIDATE_PENDING_COMMANDS.get(model_id, frozenset())
+            )
+            policies.append(
+                CommandSupportPolicy(
+                    command=command,
+                    validation_status=VALIDATION_STATUS_PROFILE_VALIDATED,
+                    scopes=scopes,
                     note=None if scopes else _NO_EXACT_EVIDENCE_NOTE,
                 )
             )

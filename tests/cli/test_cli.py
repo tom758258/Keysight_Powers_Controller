@@ -383,6 +383,7 @@ def expected_resource(
         "E36312A": ("keysight", "keysight-e36312a"),
         "EDU36311A": ("keysight", "keysight-edu36311a"),
         "E3646A": ("keysight", "keysight-e3646a"),
+        "PSM-2010": ("gw-instek", "gw-instek-psm-2010"),
     }
     reported_model = idn.split(",")[1] if idn is not None else None
     vendor_id, model_id = identity_by_model.get(reported_model, (None, None))
@@ -958,6 +959,7 @@ def test_list_resources_simulate_does_not_create_real_resource_manager(monkeypat
         "USB0::SIM::E36312A::INSTR\n"
         "USB0::SIM::EDU36311A::INSTR\n"
         "ASRL1::SIM::E3646A::INSTR\n"
+        "ASRL1::SIM::PSM2010::INSTR\n"
     )
     assert captured.err == ""
 
@@ -1006,8 +1008,15 @@ def test_list_resources_simulate_live_only_json_logs_scpi_to_stderr(monkeypatch,
                 reachable=True,
                 idn="KEYSIGHT,E3646A,SIM000005,1.0",
             ),
+            expected_resource(
+                "ASRL1::SIM::PSM2010::INSTR",
+                interface="ASRL",
+                simulated=True,
+                reachable=True,
+                idn="GW.Inc,PSM-2010,SIM000006,FW1.00",
+            ),
         ]
-    assert payload["data"]["count"] == 3
+    assert payload["data"]["count"] == 4
     assert payload["warnings"] == []
     assert payload["error"] is None
     assert payload["metadata"]["duration_ms"] >= 0

@@ -24,6 +24,7 @@ from powers_tool_core.core import (
 from powers_tool_core.drivers.e36312a import E36312APowerSupply
 from powers_tool_core.drivers.e3646a import E3646APowerSupply
 from powers_tool_core.drivers.edu36311a import EDU36311APowerSupply
+from powers_tool_core.drivers.psm2010 import PSM2010PowerSupply
 from powers_tool_core.errors import VisaConnectionError
 from powers_tool_core.factory import create_power_supply, select_driver
 from powers_tool_core.models import parse_idn
@@ -57,8 +58,13 @@ from powers_tool_core.workflow_validation import (
 )
 
 IDN_QUERY = "*IDN?"
-OUTPUT_WRITE_POWER_SUPPLY_TYPES = (E36312APowerSupply, E3646APowerSupply, EDU36311APowerSupply)
-OUTPUT_STATE_POWER_SUPPLY_TYPES = (E36312APowerSupply, E3646APowerSupply, EDU36311APowerSupply)
+OUTPUT_WRITE_POWER_SUPPLY_TYPES = (
+    E36312APowerSupply,
+    E3646APowerSupply,
+    EDU36311APowerSupply,
+    PSM2010PowerSupply,
+)
+OUTPUT_STATE_POWER_SUPPLY_TYPES = OUTPUT_WRITE_POWER_SUPPLY_TYPES
 EARLY_COMPLETION_PULSE_VALIDATION_COMMANDS = frozenset(
     {"set", "apply", "output-on", "cycle-output", "smoke-output"}
 )

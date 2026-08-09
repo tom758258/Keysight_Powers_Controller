@@ -21,6 +21,7 @@ MODEL_CHANNELS_BY_ID = {
     "keysight-e36312a": (1, 2, 3),
     "keysight-edu36311a": (1, 2, 3),
     "keysight-e3646a": (1, 2),
+    "gw-instek-psm-2010": (1,),
 }
 PLANNING_PROFILE_CHANNELS = {
     GENERIC_SCPI_PLANNING_PROFILE_ID: (1,),
@@ -30,6 +31,7 @@ SIMULATED_RESOURCE_FOR_MODEL_ID = {
     "keysight-e36312a": "USB0::SIM::E36312A::INSTR",
     "keysight-edu36311a": "USB0::SIM::EDU36311A::INSTR",
     "keysight-e3646a": "ASRL1::SIM::E3646A::INSTR",
+    "gw-instek-psm-2010": "ASRL1::SIM::PSM2010::INSTR",
 }
 
 

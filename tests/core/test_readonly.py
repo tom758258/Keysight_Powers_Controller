@@ -124,6 +124,18 @@ def test_readonly_simulate_readback():
     assert "current" in res["channels"][0]["setpoints"]
 
 
+@pytest.mark.parametrize("command", ["read-status", "readback"])
+def test_readonly_simulate_psm2010_single_channel(command: str):
+    runtime = RuntimeOptions(resource="ASRL1::SIM::PSM2010::INSTR", simulate=True)
+    req = OperationRequest(command=command, runtime=runtime, parameters={"channel": "all"})
+
+    res = run_readonly(req, opener=sim_opener)
+
+    assert "PSM-2010" in res["idn_raw"]
+    collection = res["outputs"] if command == "read-status" else res["channels"]
+    assert [item["channel"] for item in collection] == [1]
+
+
 def test_readonly_simulate_e3646a_readback_all_channels():
     runtime = RuntimeOptions(resource="ASRL1::SIM::E3646A::INSTR", simulate=True)
     req = OperationRequest(command="readback", runtime=runtime, parameters={"channel": "all"})

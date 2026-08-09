@@ -107,7 +107,7 @@ REGISTERED_MODELS: dict[str, ModelInfo] = {
     "gw-instek-psm-2010": ModelInfo(
         identity=IDENTITY_INDEXES.models_by_id["gw-instek-psm-2010"],
         target_group="psm-series",
-        enablement_stage=MODEL_ENABLEMENT_CATALOG_ONLY,
+        enablement_stage=MODEL_ENABLEMENT_CANDIDATE,
     ),
 }
 

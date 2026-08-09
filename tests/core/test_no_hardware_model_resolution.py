@@ -60,6 +60,51 @@ def test_simulate_derives_resource_from_model_and_rejects_generic() -> None:
         )
 
 
+def test_psm2010_simulate_measure_derives_deterministic_resource_and_identity() -> None:
+    opened: list[str] = []
+    manager = SimulatedResourceManager()
+
+    def opener(resource: str, resource_manager=None, **kwargs):
+        opened.append(resource)
+        return InstrumentSession(manager.open_resource(resource), resource_name=resource)
+
+    data = run_core_command(
+        OperationRequest(
+            command="measure",
+            runtime=RuntimeOptions(simulate=True, planning_model_id="gw-instek-psm-2010"),
+            parameters={"channel": 1},
+        ),
+        opener=opener,
+    )
+
+    assert opened == ["ASRL1::SIM::PSM2010::INSTR"]
+    assert data["measurements"] == {"voltage": 1.0, "current": 0.05}
+
+
+@pytest.mark.parametrize(
+    ("command", "parameters"),
+    [
+        ("set", {"channel": 1, "voltage": 1.0}),
+        ("apply", {"channel": 1, "voltage": 1.0, "current": 0.05}),
+        ("output-on", {"channel": 1}),
+    ],
+)
+def test_psm2010_no_hardware_mutating_commands_remain_disabled(
+    command: str, parameters: dict[str, object]
+) -> None:
+    with pytest.raises(CoreValidationError, match="not enabled|not supported"):
+        run_core_command(
+            OperationRequest(
+                command=command,
+                runtime=RuntimeOptions(
+                    simulate=True,
+                    planning_model_id="gw-instek-psm-2010",
+                ),
+                parameters=parameters,
+            )
+        )
+
+
 def test_simulate_rejects_explicit_non_sim_resource() -> None:
     with pytest.raises(CoreValidationError, match="requires a deterministic SIM resource"):
         output_plan(

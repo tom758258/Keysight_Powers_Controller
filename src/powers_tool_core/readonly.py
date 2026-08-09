@@ -18,6 +18,7 @@ from powers_tool_core.factory import create_power_supply, select_driver
 from powers_tool_core.drivers.e36312a import E36312APowerSupply
 from powers_tool_core.drivers.e3646a import E3646APowerSupply
 from powers_tool_core.drivers.edu36311a import EDU36311APowerSupply
+from powers_tool_core.drivers.psm2010 import PSM2010PowerSupply
 from powers_tool_core.errors import VisaConnectionError
 from powers_tool_core.models import parse_idn
 from powers_tool_core.live_support import enforce_live_support_for_idn
@@ -58,9 +59,12 @@ def run_readonly(
                 enforce_live_support_for_idn(request, idn_raw)
             power_supply = create_power_supply(instrument, idn_raw)
 
-            if not isinstance(power_supply, (E36312APowerSupply, E3646APowerSupply, EDU36311APowerSupply)):
+            if not isinstance(
+                power_supply,
+                (E36312APowerSupply, E3646APowerSupply, EDU36311APowerSupply, PSM2010PowerSupply),
+            ):
                 raise UnsupportedModelError(
-                    f"{request.command} is only supported for E36312A, E3646A, or EDU36311A; "
+                    f"{request.command} is only supported for E36312A, E3646A, EDU36311A, or PSM-2010; "
                     f"found {type(power_supply).__name__} from *IDN? response"
                 )
 

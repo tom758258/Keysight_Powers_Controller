@@ -29,8 +29,8 @@ capability、electrical-range 與 safety registry 使用 canonical vendor-qualif
 ID，例如 `keysight-e36312a`。Vendor-specific driver class name 保持不變。
 
 Physical catalog 將 GW Instek PSM-2010 登錄為
-`gw-instek-psm-2010`。這項 catalog identity 不代表該型號可用於
-Product planning 或 live support。
+`gw-instek-psm-2010`。Registry presence 本身不決定 Product availability；
+lifecycle、capabilities 與 exact live-support policy 仍是彼此分離的 authority。
 
 `RuntimeOptions` 將 physical 與 nonphysical identity domain 分開：
 `planning_model_id` 是 canonical physical planning identity，`expected_model_id`

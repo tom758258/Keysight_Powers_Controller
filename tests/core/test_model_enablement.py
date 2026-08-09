@@ -152,13 +152,12 @@ def _candidate_with_feature_command(
 
 def test_current_model_enablement_stage_sets_are_exact_and_disjoint() -> None:
     assert PRODUCT_ACTIVE_MODEL_IDS == {"keysight-e36312a", "keysight-edu36311a", "keysight-e3646a"}
-    assert CANDIDATE_MODEL_IDS == frozenset()
+    assert CANDIDATE_MODEL_IDS == {"gw-instek-psm-2010"}
     assert CATALOG_ONLY_MODEL_IDS == {
         "keysight-e36313a",
         "keysight-e36233a",
         "keysight-e36441a",
         "keysight-e36155a",
-        "gw-instek-psm-2010",
     }
     assert DE_SCOPED_MODEL_IDS == {"keysight-e36103b", "keysight-e36232a"}
     stage_sets = [PRODUCT_ACTIVE_MODEL_IDS, CANDIDATE_MODEL_IDS, CATALOG_ONLY_MODEL_IDS, DE_SCOPED_MODEL_IDS]
@@ -167,6 +166,11 @@ def test_current_model_enablement_stage_sets_are_exact_and_disjoint() -> None:
 
 def test_current_model_enablement_inventory_is_consistent() -> None:
     inventory = current_model_enablement_inventory()
+    assert inventory.candidate_model_ids == {"gw-instek-psm-2010"}
+    assert inventory.channels["gw-instek-psm-2010"] == (1,)
+    assert inventory.simulator_resources["gw-instek-psm-2010"] == "ASRL1::SIM::PSM2010::INSTR"
+    assert "gw-instek-psm-2010" in inventory.safety_validated_models
+    assert "gw-instek-psm-2010" in inventory.no_hardware_covered_models
     assert "keysight-e3646a" not in inventory.electrical_rating_models
     assert "keysight-e3646a" in inventory.setpoint_range_models
     assert inventory.product_rating_compatibility_models == {"keysight-e3646a"}

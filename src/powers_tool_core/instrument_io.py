@@ -180,7 +180,11 @@ def _run_identify(
 
 
 def _identity_queries_for_model_id(model_id: str | None) -> dict[str, str]:
-    if model_id in {"keysight-edu36311a", "keysight-e3646a"}:
+    if model_id in {
+        "keysight-edu36311a",
+        "keysight-e3646a",
+        "gw-instek-psm-2010",
+    }:
         return {}
     return EXTENDED_IDENTITY_QUERIES
 

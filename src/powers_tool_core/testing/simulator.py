@@ -11,12 +11,14 @@ SIMULATED_RESOURCES = (
     "USB0::SIM::E36312A::INSTR",
     "USB0::SIM::EDU36311A::INSTR",
     "ASRL1::SIM::E3646A::INSTR",
+    "ASRL1::SIM::PSM2010::INSTR",
 )
 
 SIMULATED_IDN = {
     "USB0::SIM::E36312A::INSTR": "KEYSIGHT,E36312A,SIM000003,1.0",
     "USB0::SIM::EDU36311A::INSTR": "KEYSIGHT,EDU36311A,SIM000004,1.0",
     "ASRL1::SIM::E3646A::INSTR": "KEYSIGHT,E3646A,SIM000005,1.0",
+    "ASRL1::SIM::PSM2010::INSTR": "GW.Inc,PSM-2010,SIM000006,FW1.00",
 }
 
 SIMULATED_MEASUREMENTS = {
@@ -34,12 +36,16 @@ SIMULATED_MEASUREMENTS = {
         1: {"voltage": "1.460", "current": "0.146"},
         2: {"voltage": "2.460", "current": "0.246"},
     },
+    "ASRL1::SIM::PSM2010::INSTR": {
+        1: {"voltage": "1.000", "current": "0.050"},
+    },
 }
 
 SIMULATED_OUTPUT_STATES = {
     "USB0::SIM::E36312A::INSTR": {1: False, 2: False, 3: False},
     "USB0::SIM::EDU36311A::INSTR": {1: False, 2: False, 3: False},
     "ASRL1::SIM::E3646A::INSTR": {1: False, 2: False},
+    "ASRL1::SIM::PSM2010::INSTR": {1: False},
 }
 
 SIMULATED_PROGRAMMED_SETPOINTS = {
@@ -57,6 +63,13 @@ SIMULATED_PROGRAMMED_SETPOINTS = {
         1: {"voltage": "1.000", "current": "0.050"},
         2: {"voltage": "2.000", "current": "0.100"},
     },
+    "ASRL1::SIM::PSM2010::INSTR": {
+        1: {"voltage": "1.000", "current": "0.050"},
+    },
+}
+
+SIMULATED_OUTPUT_RANGES = {
+    "ASRL1::SIM::PSM2010::INSTR": "P8V",
 }
 
 SIMULATED_OPTIONS = {
@@ -210,6 +223,7 @@ SIMULATED_STATUS_STATE = {
 
 _DEFAULT_OUTPUT_STATES = copy.deepcopy(SIMULATED_OUTPUT_STATES)
 _DEFAULT_PROGRAMMED_SETPOINTS = copy.deepcopy(SIMULATED_PROGRAMMED_SETPOINTS)
+_DEFAULT_OUTPUT_RANGES = copy.deepcopy(SIMULATED_OUTPUT_RANGES)
 _DEFAULT_PROTECTION_TRIPS = copy.deepcopy(SIMULATED_PROTECTION_TRIPS)
 _DEFAULT_PROTECTION_SETTINGS = copy.deepcopy(SIMULATED_PROTECTION_SETTINGS)
 _DEFAULT_DIGITAL_PINS = copy.deepcopy(SIMULATED_DIGITAL_PINS)
@@ -221,6 +235,7 @@ _DEFAULT_STATUS_STATE = copy.deepcopy(SIMULATED_STATUS_STATE)
 def _reset_simulated_state() -> None:
     global SIMULATED_OUTPUT_STATES
     global SIMULATED_PROGRAMMED_SETPOINTS
+    global SIMULATED_OUTPUT_RANGES
     global SIMULATED_PROTECTION_TRIPS
     global SIMULATED_PROTECTION_SETTINGS
     global SIMULATED_DIGITAL_PINS
@@ -230,6 +245,7 @@ def _reset_simulated_state() -> None:
 
     SIMULATED_OUTPUT_STATES = copy.deepcopy(_DEFAULT_OUTPUT_STATES)
     SIMULATED_PROGRAMMED_SETPOINTS = copy.deepcopy(_DEFAULT_PROGRAMMED_SETPOINTS)
+    SIMULATED_OUTPUT_RANGES = copy.deepcopy(_DEFAULT_OUTPUT_RANGES)
     SIMULATED_PROTECTION_TRIPS = copy.deepcopy(_DEFAULT_PROTECTION_TRIPS)
     SIMULATED_PROTECTION_SETTINGS = copy.deepcopy(_DEFAULT_PROTECTION_SETTINGS)
     SIMULATED_DIGITAL_PINS = copy.deepcopy(_DEFAULT_DIGITAL_PINS)
@@ -277,6 +293,13 @@ class SimulatedResource:
             return
         if command in {"SYST:REM", "SYST:LOC"}:
             return
+        if command in {"VOLT:RANG LOW", "VOLT:RANG HIGH"}:
+            if self.resource_name not in SIMULATED_OUTPUT_RANGES:
+                raise VisaConnectionError(f"No simulated response for {command!r}")
+            SIMULATED_OUTPUT_RANGES[self.resource_name] = (
+                "P8V" if command.endswith(" LOW") else "P20V"
+            )
+            return
         if _simulated_status_write(self.resource_name, command):
             return
         if _simulated_trigger_write(self.resource_name, command):
@@ -311,6 +334,13 @@ class SimulatedResource:
             return SIMULATED_IDN[self.resource_name]
         if command == "SYST:ERR?":
             return '0,"No error"'
+        if command == "VOLT:RANG?":
+            try:
+                return SIMULATED_OUTPUT_RANGES[self.resource_name]
+            except KeyError as exc:
+                raise VisaConnectionError(f"No simulated response for {command!r}") from exc
+        if command == "MEAS?" and self.resource_name in SIMULATED_OUTPUT_RANGES:
+            return SIMULATED_MEASUREMENTS[self.resource_name][1]["voltage"]
         if command == "INST:NSEL?":
             return str(self.selected_channel)
         if command == "*OPT?":

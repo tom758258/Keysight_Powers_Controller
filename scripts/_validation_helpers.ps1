@@ -211,7 +211,7 @@ function Get-ValidationPreflightCases {
     $model = $profile.model_id
     $resource = $profile.simulator_resource
     $cases = [System.Collections.Generic.List[object]]::new()
-    $cases.Add((New-PreflightCommandCase -Name "list-resources-simulate" -Suite "deep" -Category "resource-planning" -Command "list-resources" -Arguments @("list-resources", "--simulate", "--json") -Mode "simulate" -ExpectedPath "data.count" -ExpectedValue 3))
+    $cases.Add((New-PreflightCommandCase -Name "list-resources-simulate" -Suite "deep" -Category "resource-planning" -Command "list-resources" -Arguments @("list-resources", "--simulate", "--json") -Mode "simulate" -ExpectedPath "data.count" -ExpectedValue 4))
     $cases.Add((New-PreflightCommandCase -Name "identify-simulate" -Suite "smoke" -Category "identity" -Command "identify" -Arguments @("identify", "--simulate", "--json", "--resource", $resource) -Mode "simulate" -ExpectedPath "data.idn.model" -ExpectedValue $profile.model))
     $cases.Add((New-PreflightCommandCase -Name "verify-simulate" -Suite "deep" -Category "identity" -Command "verify" -Arguments @("verify", "--simulate", "--json", "--resource", $resource) -Mode "simulate"))
     $cases.Add((New-PreflightCommandCase -Name "capabilities-simulate" -Suite "smoke" -Category "metadata" -Command "capabilities" -Arguments @("capabilities", "--simulate", "--json", "--resource", $resource) -Mode "simulate" -ExpectedPath "data.resource.model_id" -ExpectedValue $model -ExpectedValues $profile.preflight_capability_expectations))
