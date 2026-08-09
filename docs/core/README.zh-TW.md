@@ -28,9 +28,9 @@ model-specific driver。physical catalog、lifecycle、driver、channel、simula
 capability、electrical-range 與 safety registry 使用 canonical vendor-qualified
 ID，例如 `keysight-e36312a`。Vendor-specific driver class name 保持不變。
 
-Physical catalog 將 GW Instek PSM-2010 以 `gw-instek-psm-2010` 登錄在
-catalog-only lifecycle stage。這項 identity 登錄不代表該型號可用於 Product
-planning 或 live support。
+Physical catalog 將 GW Instek PSM-2010 登錄為
+`gw-instek-psm-2010`。這項 catalog identity 不代表該型號可用於
+Product planning 或 live support。
 
 `RuntimeOptions` 將 physical 與 nonphysical identity domain 分開：
 `planning_model_id` 是 canonical physical planning identity，`expected_model_id`

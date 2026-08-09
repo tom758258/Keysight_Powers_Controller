@@ -38,7 +38,7 @@ registries use canonical vendor-qualified IDs such as
 `keysight-e36312a`. Vendor-specific driver class names remain unchanged.
 
 The physical catalog records GW Instek PSM-2010 as
-`gw-instek-psm-2010` at the catalog-only lifecycle stage. This identity record
+`gw-instek-psm-2010`. This catalog identity does not make the model
 does not make the model available for Product planning or live support.
 
 `RuntimeOptions` keeps the physical and nonphysical identity domains separate:

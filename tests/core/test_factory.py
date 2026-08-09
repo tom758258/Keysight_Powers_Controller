@@ -170,3 +170,16 @@ def test_create_power_supply_wraps_session_without_commands() -> None:
 
     assert isinstance(power_supply, E36312APowerSupply)
     assert session.commands == []
+
+def test_psm2010_catalog_identity_resolves_to_generic_fallback() -> None:
+    selection = select_driver("GW.Inc,PSM-2010,SERIAL0000,1.0")
+
+    assert selection.physical_identity is not None
+    assert selection.physical_identity.model_id == "gw-instek-psm-2010"
+
+    assert selection.model_info is not None
+    assert selection.model_info.vendor_id == "gw-instek"
+    assert selection.model_info.model == "PSM-2010"
+
+    assert selection.driver_class is GenericScpiPowerSupply
+    assert selection.reason == "known_model_generic_fallback"
