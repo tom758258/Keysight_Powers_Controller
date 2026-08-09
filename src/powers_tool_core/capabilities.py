@@ -98,6 +98,14 @@ _PSM2010_ENABLED_COMMANDS = frozenset(
         "safe-off",
     }
 )
+_PSM2010_DRY_RUN_COMMANDS = frozenset(
+    {
+        "identify",
+        "output-state",
+        "output-off",
+        "safe-off",
+    }
+)
 
 
 def hardware_validation_status(model_id: str | None) -> dict[str, Any]:
@@ -255,7 +263,7 @@ def command_support(model_id: str | None) -> dict[str, dict[str, Any]]:
             if command in _PSM2010_ENABLED_COMMANDS:
                 entry["real"] = True
                 entry["simulate"] = True
-                entry["dry_run"] = True
+                entry["dry_run"] = command in _PSM2010_DRY_RUN_COMMANDS
                 entry["hardware_validation"] = "not_enabled"
         else:
             if command in {"identify", "measure", "doctor", "capabilities"}:

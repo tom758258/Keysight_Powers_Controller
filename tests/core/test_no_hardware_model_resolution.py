@@ -84,6 +84,44 @@ def test_psm2010_simulate_measure_derives_deterministic_resource_and_identity() 
 @pytest.mark.parametrize(
     ("command", "parameters"),
     [
+        ("measure", {"channel": 1}),
+        ("read-status", {"channel": 1}),
+        ("readback", {"channel": 1}),
+        ("capabilities", {}),
+    ],
+)
+def test_psm2010_unsupported_dry_run_commands_fail_before_open(
+    command: str, parameters: dict[str, object]
+) -> None:
+    opened = False
+
+    def opener(*args, **kwargs):
+        nonlocal opened
+        opened = True
+        raise AssertionError("opener must not be called")
+
+    with pytest.raises(
+        CoreValidationError,
+        match="not supported.*dry-run|unsupported core command",
+    ):
+        run_core_command(
+            OperationRequest(
+                command=command,
+                runtime=RuntimeOptions(
+                    dry_run=True,
+                    planning_model_id="gw-instek-psm-2010",
+                ),
+                parameters=parameters,
+            ),
+            opener=opener,
+        )
+
+    assert opened is False
+
+
+@pytest.mark.parametrize(
+    ("command", "parameters"),
+    [
         ("set", {"channel": 1, "voltage": 1.0}),
         ("apply", {"channel": 1, "voltage": 1.0, "current": 0.05}),
         ("output-on", {"channel": 1}),

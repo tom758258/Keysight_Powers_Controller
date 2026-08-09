@@ -184,19 +184,20 @@ def test_command_support_e3646a_rs232_read_only_boundary() -> None:
 def test_command_support_psm2010_candidate_boundary() -> None:
     support = capabilities.command_support("gw-instek-psm-2010")
 
-    for command in (
-        "identify",
-        "measure",
-        "output-state",
-        "readback",
-        "read-status",
-        "capabilities",
-        "output-off",
-        "safe-off",
-    ):
+    expected_dry_run = {
+        "identify": True,
+        "measure": False,
+        "output-state": True,
+        "readback": False,
+        "read-status": False,
+        "capabilities": False,
+        "output-off": True,
+        "safe-off": True,
+    }
+    for command, dry_run in expected_dry_run.items():
         assert support[command]["real"] is True
         assert support[command]["simulate"] is True
-        assert support[command]["dry_run"] is True
+        assert support[command]["dry_run"] is dry_run
         assert support[command]["hardware_validation"] == "not_enabled"
 
     for command in (
