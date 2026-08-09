@@ -192,6 +192,7 @@ def test_live_cli_check_identity_metadata_matches_core_frozen_registry() -> None
         "keysight-e36312a",
         "keysight-edu36311a",
         "keysight-e3646a",
+        "gw-instek-psm-2010",
     }
     for model_id, profile in profiles.items():
         model = models[model_id]

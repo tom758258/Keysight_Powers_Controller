@@ -11,6 +11,24 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 POWERSHELL = shutil.which("powershell.exe")
+PSM2010_SMOKE_CASES = (
+    "identify-simulate",
+    "capabilities-simulate",
+    "measure-ch1-simulate",
+    "output-state-ch1-simulate",
+)
+PSM2010_DEEP_CASES = (
+    "list-resources-simulate",
+    "verify-simulate",
+    "readback-simulate",
+    "read-status-simulate",
+    "error-simulate",
+    "output-off-simulate",
+    "safe-off-simulate",
+    "output-state-dry-run",
+    "output-off-dry-run",
+    "safe-off-dry-run",
+)
 
 
 def _run(script: str, *args: str) -> subprocess.CompletedProcess[str]:
@@ -47,7 +65,10 @@ def test_shared_helper_owns_all_model_and_suite_boundaries() -> None:
         f". '{helper}'; "
         "$profiles = @(Get-ValidationTargetProfiles | ForEach-Object { "
         "[pscustomobject]@{ "
-        "model_id=$_.model_id; channels=@($_.channels); suites=@($_.suites) "
+        "model_id=$_.model_id; vendor_id=$_.vendor_id; model=$_.model; "
+        "model_name=$_.model_name; reported_manufacturer_aliases=@($_.reported_manufacturer_aliases); "
+        "canonical_display_name=$_.canonical_display_name; channels=@($_.channels); "
+        "simulator_resource=$_.simulator_resource; suites=@($_.suites) "
         "} }); "
         "$smokeCases = @(Get-ValidationPreflightCases -Target 'keysight-e36312a' "
         "-ArtifactDirectory '.' -SequencePath '.' -Suite 'smoke'); "
@@ -55,16 +76,26 @@ def test_shared_helper_owns_all_model_and_suite_boundaries() -> None:
         "-ArtifactDirectory '.' -SequencePath '.' -Suite 'deep'); "
         "$fullCases = @(Get-ValidationPreflightCases -Target 'keysight-e36312a' "
         "-ArtifactDirectory '.' -SequencePath '.' -Suite 'full'); "
+        "$psmSmokeCases = @(Get-ValidationPreflightCases -Target 'gw-instek-psm-2010' "
+        "-ArtifactDirectory '.' -SequencePath '.' -Suite 'smoke'); "
+        "$psmDeepCases = @(Get-ValidationPreflightCases -Target 'gw-instek-psm-2010' "
+        "-ArtifactDirectory '.' -SequencePath '.' -Suite 'deep'); "
+        "$psmFullCases = @(Get-ValidationPreflightCases -Target 'gw-instek-psm-2010' "
+        "-ArtifactDirectory '.' -SequencePath '.' -Suite 'full'); "
         "$result = [pscustomobject]@{ "
         "profiles=$profiles; "
         "suites=@((Resolve-ValidationSuite -Suite 'smoke'), "
         "(Resolve-ValidationSuite -Suite 'deep'), "
         "(Resolve-ValidationSuite -Suite 'full')); "
         "smoke_targets=@(Resolve-ValidationPreflightTargets -Target 'all' -Suite 'smoke'); "
+        "full_targets=@(Resolve-ValidationPreflightTargets -Target 'all' -Suite 'full'); "
         "deep_targets=@(Resolve-ValidationPreflightTargets -Target 'all' -Suite 'deep'); "
         "smoke_cases=@($smokeCases | ForEach-Object { $_.name }); "
         "deep_cases=@($deepCases | ForEach-Object { $_.name }); "
-        "full_cases=@($fullCases | ForEach-Object { $_.name }) "
+        "full_cases=@($fullCases | ForEach-Object { $_.name }); "
+        "psm_smoke_cases=@($psmSmokeCases | ForEach-Object { $_.name }); "
+        "psm_deep_cases=@($psmDeepCases | ForEach-Object { $_.name }); "
+        "psm_full_cases=@($psmFullCases | ForEach-Object { $_.name }) "
         "}; "
         "ConvertTo-Json -InputObject $result -Compress -Depth 6"
     )
@@ -91,6 +122,7 @@ def test_shared_helper_owns_all_model_and_suite_boundaries() -> None:
         "keysight-e36312a",
         "keysight-edu36311a",
         "keysight-e3646a",
+        "gw-instek-psm-2010",
     }
     assert profiles["keysight-e36312a"]["suites"] == [
         "readonly", "output", "protection", "snapshot", "trigger-list", "software-sequence"
@@ -101,12 +133,25 @@ def test_shared_helper_owns_all_model_and_suite_boundaries() -> None:
     assert profiles["keysight-e3646a"]["suites"] == [
         "readonly", "output", "software-sequence"
     ]
+    assert profiles["gw-instek-psm-2010"] == {
+        "model_id": "gw-instek-psm-2010",
+        "vendor_id": "gw-instek",
+        "model": "PSM-2010",
+        "model_name": "PSM-2010",
+        "reported_manufacturer_aliases": ["GW.Inc"],
+        "canonical_display_name": "GW Instek PSM-2010",
+        "channels": [1],
+        "simulator_resource": "ASRL1::SIM::PSM2010::INSTR",
+        "suites": ["readonly"],
+    }
     assert inventory["suites"] == ["smoke", "deep", "full"]
     assert inventory["smoke_targets"] == [
         "keysight-e36312a",
         "keysight-edu36311a",
         "keysight-e3646a",
+        "gw-instek-psm-2010",
     ]
+    assert inventory["full_targets"] == inventory["smoke_targets"]
     assert inventory["deep_targets"] == ["keysight-e36312a", "keysight-e3646a"]
     assert inventory["smoke_cases"] == [
         "identify-simulate",
@@ -119,6 +164,78 @@ def test_shared_helper_owns_all_model_and_suite_boundaries() -> None:
         *inventory["smoke_cases"],
         *inventory["deep_cases"],
     }
+    assert set(inventory["psm_smoke_cases"]) == set(PSM2010_SMOKE_CASES)
+    assert set(inventory["psm_deep_cases"]) == set(PSM2010_DEEP_CASES)
+    assert set(inventory["psm_full_cases"]) == {
+        *PSM2010_SMOKE_CASES,
+        *PSM2010_DEEP_CASES,
+    }
+    assert {
+        "set-dry-run",
+        "ramp-list-dry-run",
+        "sequence-dry-run",
+    }.isdisjoint(inventory["psm_full_cases"])
+
+
+@pytest.mark.parametrize(
+    ("suite", "expected_cases"),
+    [
+        ("smoke", set(PSM2010_SMOKE_CASES)),
+        ("full", {*PSM2010_SMOKE_CASES, *PSM2010_DEEP_CASES}),
+    ],
+)
+def test_psm2010_preflight_executes_maintained_no_hardware_cases(
+    suite: str, expected_cases: set[str]
+) -> None:
+    output = ROOT / ".tmp_tests" / "pytest_cli_preflight" / uuid4().hex
+    result = _run(
+        "scripts/preflight-cli.ps1",
+        "-Target", "gw-instek-psm-2010",
+        "-Suite", suite,
+        "-OutputRoot", str(output.relative_to(ROOT)),
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+    report_path = next(output.glob("run_*/report.json"))
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["status"] == "passed"
+    assert report["suite"] == suite
+    assert report["targets"] == ["gw-instek-psm-2010"]
+    assert report["hardware_touched"] is False
+    assert report["visa_io_performed"] is False
+    assert report["resource_scan_performed"] is False
+    assert report["resource_guess_performed"] is False
+
+    target_report = json.loads(
+        (report_path.parent / "gw-instek-psm-2010" / "report.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert target_report["model_id"] == "gw-instek-psm-2010"
+    assert target_report["expected_model"] == "PSM-2010"
+    assert target_report["simulator_resource"] == "ASRL1::SIM::PSM2010::INSTR"
+    assert target_report["suites"] == ["readonly"]
+    assert target_report["visa_io_performed"] is False
+    assert target_report["resource_scan_performed"] is False
+    assert target_report["resource_guess_performed"] is False
+
+    commands = {command["name"]: command for command in target_report["commands"]}
+    assert set(commands) == expected_cases
+    assert {
+        "set-dry-run",
+        "ramp-list-dry-run",
+        "sequence-dry-run",
+    }.isdisjoint(commands)
+    assert all(
+        command["passed"] is True and command["hardware_touched"] is False
+        for command in commands.values()
+    )
+    assert all(
+        command["dry_run"] is True
+        if name.endswith("-dry-run")
+        else command["mode"] == "simulate"
+        for name, command in commands.items()
+    )
 
 
 def test_representative_smoke_executes_required_no_hardware_cli() -> None:

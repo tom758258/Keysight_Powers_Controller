@@ -57,7 +57,7 @@ function Get-NestedValue {
         if ($null -eq $property) { throw "Missing JSON field '$Path'." }
         $value = $property.Value
     }
-    return $value
+    return ,$value
 }
 
 function Invoke-PreflightCase {

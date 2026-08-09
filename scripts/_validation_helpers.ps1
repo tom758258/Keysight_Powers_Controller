@@ -52,6 +52,23 @@ $script:ValidationTargetProfiles = [ordered]@{
             "data.command_support.protection-status.simulate" = $false
         }
     }
+    "gw-instek-psm-2010" = [pscustomobject]@{
+        model_id = "gw-instek-psm-2010"
+        vendor_id = "gw-instek"
+        model = "PSM-2010"
+        model_name = "PSM-2010"
+        reported_manufacturer_aliases = @("GW.Inc")
+        canonical_display_name = "GW Instek PSM-2010"
+        channels = @(1)
+        simulator_resource = "ASRL1::SIM::PSM2010::INSTR"
+        suites = @("readonly")
+        preflight_capability_expectations = [ordered]@{
+            "data.channels" = @(1)
+            "data.resource.interface" = "ASRL"
+            "data.command_support.output-off.dry_run" = $true
+            "data.command_support.set.simulate" = $false
+        }
+    }
 }
 
 $script:ValidationDeepRepresentativeTargets = @(
@@ -216,12 +233,30 @@ function Get-ValidationPreflightCases {
     $cases.Add((New-PreflightCommandCase -Name "verify-simulate" -Suite "deep" -Category "identity" -Command "verify" -Arguments @("verify", "--simulate", "--json", "--resource", $resource) -Mode "simulate"))
     $cases.Add((New-PreflightCommandCase -Name "capabilities-simulate" -Suite "smoke" -Category "metadata" -Command "capabilities" -Arguments @("capabilities", "--simulate", "--json", "--resource", $resource) -Mode "simulate" -ExpectedPath "data.resource.model_id" -ExpectedValue $model -ExpectedValues $profile.preflight_capability_expectations))
     $cases.Add((New-PreflightCommandCase -Name "measure-ch1-simulate" -Suite "smoke" -Category "readonly" -Command "measure" -Arguments @("measure", "--simulate", "--json", "--resource", $resource, "--channel", "1") -Mode "simulate"))
+    if ($model -eq "gw-instek-psm-2010") {
+        $cases.Add((New-PreflightCommandCase -Name "output-state-ch1-simulate" -Suite "smoke" -Category "readonly" -Command "output-state" -Arguments @("output-state", "--simulate", "--json", "--resource", $resource, "--channel", "1") -Mode "simulate" -ExpectedPath "data.plan.target.planning_model_id" -ExpectedValue $model))
+    }
     $cases.Add((New-PreflightCommandCase -Name "readback-simulate" -Suite "deep" -Category "readonly" -Command "readback" -Arguments @("readback", "--simulate", "--json", "--resource", $resource, "--all") -Mode "simulate"))
+    if ($model -eq "gw-instek-psm-2010") {
+        $cases.Add((New-PreflightCommandCase -Name "read-status-simulate" -Suite "deep" -Category "readonly" -Command "read-status" -Arguments @("read-status", "--simulate", "--json", "--resource", $resource, "--all") -Mode "simulate"))
+    }
     $cases.Add((New-PreflightCommandCase -Name "error-simulate" -Suite "deep" -Category "diagnostics" -Command "error" -Arguments @("error", "--simulate", "--json", "--resource", $resource, "--max-reads", "2") -Mode "simulate" -ExpectedPath "data.read_count" -ExpectedValue 1))
-    $cases.Add((New-PreflightCommandCase -Name "set-dry-run" -Suite "smoke" -Category "output" -Command "set" -Arguments @("set", "--dry-run", "--json", "--model", $model, "--channel", "1", "--voltage", "1", "--current", "0.05") -Mode "dry-run" -ExpectedPath "data.plan.target.planning_model_id" -ExpectedValue $model))
-    $cases.Add((New-PreflightCommandCase -Name "safe-off-dry-run" -Suite "deep" -Category "safe-off" -Command "safe-off" -Arguments @("safe-off", "--dry-run", "--json", "--model", $model, "--channel", "all") -Mode "dry-run" -ExpectedPath "data.plan.target.planning_model_id" -ExpectedValue $model))
-    $cases.Add((New-PreflightCommandCase -Name "ramp-list-dry-run" -Suite "deep" -Category "software-sequence" -Command "ramp-list" -Arguments @("ramp-list", "--dry-run", "--json", "--model", $model, "--segment", "1", "0.05", "0", "1", "0.25", "100", "0") -Mode "dry-run"))
-    $cases.Add((New-PreflightCommandCase -Name "sequence-dry-run" -Suite "deep" -Category "software-sequence" -Command "sequence" -Arguments @("sequence", "--dry-run", "--json", "--model", $model, "--resource", $resource, "--file", $SequencePath) -Mode "dry-run"))
+    if ("output" -in $profile.suites) {
+        $cases.Add((New-PreflightCommandCase -Name "set-dry-run" -Suite "smoke" -Category "output" -Command "set" -Arguments @("set", "--dry-run", "--json", "--model", $model, "--channel", "1", "--voltage", "1", "--current", "0.05") -Mode "dry-run" -ExpectedPath "data.plan.target.planning_model_id" -ExpectedValue $model))
+    }
+    if ($model -eq "gw-instek-psm-2010") {
+        $cases.Add((New-PreflightCommandCase -Name "output-off-simulate" -Suite "deep" -Category "safe-off" -Command "output-off" -Arguments @("output-off", "--simulate", "--json", "--resource", $resource, "--channel", "all") -Mode "simulate" -ExpectedPath "data.plan.target.planning_model_id" -ExpectedValue $model))
+        $cases.Add((New-PreflightCommandCase -Name "safe-off-simulate" -Suite "deep" -Category "safe-off" -Command "safe-off" -Arguments @("safe-off", "--simulate", "--json", "--resource", $resource, "--channel", "all") -Mode "simulate" -ExpectedPath "data.plan.target.planning_model_id" -ExpectedValue $model))
+        $cases.Add((New-PreflightCommandCase -Name "output-state-dry-run" -Suite "deep" -Category "readonly" -Command "output-state" -Arguments @("output-state", "--dry-run", "--json", "--model", $model, "--channel", "1") -Mode "dry-run" -ExpectedPath "data.plan.target.planning_model_id" -ExpectedValue $model))
+        $cases.Add((New-PreflightCommandCase -Name "output-off-dry-run" -Suite "deep" -Category "safe-off" -Command "output-off" -Arguments @("output-off", "--dry-run", "--json", "--model", $model, "--channel", "all") -Mode "dry-run" -ExpectedPath "data.plan.target.planning_model_id" -ExpectedValue $model))
+    }
+    if ("output" -in $profile.suites -or $model -eq "gw-instek-psm-2010") {
+        $cases.Add((New-PreflightCommandCase -Name "safe-off-dry-run" -Suite "deep" -Category "safe-off" -Command "safe-off" -Arguments @("safe-off", "--dry-run", "--json", "--model", $model, "--channel", "all") -Mode "dry-run" -ExpectedPath "data.plan.target.planning_model_id" -ExpectedValue $model))
+    }
+    if ("software-sequence" -in $profile.suites) {
+        $cases.Add((New-PreflightCommandCase -Name "ramp-list-dry-run" -Suite "deep" -Category "software-sequence" -Command "ramp-list" -Arguments @("ramp-list", "--dry-run", "--json", "--model", $model, "--segment", "1", "0.05", "0", "1", "0.25", "100", "0") -Mode "dry-run"))
+        $cases.Add((New-PreflightCommandCase -Name "sequence-dry-run" -Suite "deep" -Category "software-sequence" -Command "sequence" -Arguments @("sequence", "--dry-run", "--json", "--model", $model, "--resource", $resource, "--file", $SequencePath) -Mode "dry-run"))
+    }
 
     if ("protection" -in $profile.suites) {
         $cases.Add((New-PreflightCommandCase -Name "protection-status-simulate" -Suite "deep" -Category "protection" -Command "protection-status" -Arguments @("protection-status", "--simulate", "--json", "--resource", $resource, "--all") -Mode "simulate"))
