@@ -39,7 +39,7 @@ registries use canonical vendor-qualified IDs such as
 
 The physical catalog records GW Instek PSM-2010 as
 `gw-instek-psm-2010`. This catalog identity does not make the model
-does not make the model available for Product planning or live support.
+available for Product planning or live support.
 
 `RuntimeOptions` keeps the physical and nonphysical identity domains separate:
 `planning_model_id` is a canonical physical planning identity,
