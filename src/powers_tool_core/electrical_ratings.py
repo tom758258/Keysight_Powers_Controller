@@ -111,10 +111,32 @@ EDU36311A_ELECTRICAL_RATINGS = _ratings(
     publication_date="2021-01-11",
 )
 
+PSM2010_ELECTRICAL_RATINGS = ModelElectricalRatings(
+    model="PSM-2010",
+    channels=MappingProxyType(
+        {
+            1: ChannelElectricalRating(
+                channel=1,
+                max_voltage=20.0,
+                max_current=20.0,
+                operating_ranges=(
+                    ElectricalOperatingRange("LOW", max_voltage=8.0, max_current=20.0),
+                    ElectricalOperatingRange("HIGH", max_voltage=20.0, max_current=10.0),
+                ),
+            )
+        }
+    ),
+    rating_basis="official single-output dual-range DC output rating",
+    document_title="PSM-Series Programming Manual",
+    publication_id="82SM-60030IA",
+    publication_date="2018-01-09",
+)
+
 ELECTRICAL_RATINGS_BY_MODEL_ID: Mapping[str, ModelElectricalRatings] = MappingProxyType(
     {
         "keysight-e36312a": E36312A_ELECTRICAL_RATINGS,
         "keysight-edu36311a": EDU36311A_ELECTRICAL_RATINGS,
+        "gw-instek-psm-2010": PSM2010_ELECTRICAL_RATINGS,
     }
 )
 

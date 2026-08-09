@@ -5,6 +5,7 @@ from powers_tool_core.drivers.e36312a import E36312APowerSupply
 from powers_tool_core.drivers.e3646a import E3646APowerSupply
 from powers_tool_core.drivers.edu36311a import EDU36311APowerSupply
 from powers_tool_core.drivers.generic_scpi import GenericScpiPowerSupply
+from powers_tool_core.drivers.psm2010 import PSM2010PowerSupply
 from powers_tool_core.electrical_ratings import E36312A_ELECTRICAL_RATINGS, EDU36311A_ELECTRICAL_RATINGS
 from powers_tool_core.factory import create_power_supply, select_driver
 from powers_tool_core.core import UnsupportedModelError
@@ -171,7 +172,7 @@ def test_create_power_supply_wraps_session_without_commands() -> None:
     assert isinstance(power_supply, E36312APowerSupply)
     assert session.commands == []
 
-def test_psm2010_catalog_identity_resolves_to_generic_fallback() -> None:
+def test_psm2010_catalog_identity_selects_dedicated_driver() -> None:
     selection = select_driver("GW.Inc,PSM-2010,SERIAL0000,1.0")
 
     assert selection.physical_identity is not None
@@ -181,5 +182,14 @@ def test_psm2010_catalog_identity_resolves_to_generic_fallback() -> None:
     assert selection.model_info.vendor_id == "gw-instek"
     assert selection.model_info.model == "PSM-2010"
 
+    assert selection.driver_class is PSM2010PowerSupply
+    assert selection.reason == "model_specific_driver"
+
+
+def test_psm2010_driver_selection_keeps_vendor_identity_boundary() -> None:
+    selection = select_driver("KEYSIGHT,PSM-2010,SERIAL0000,1.0")
+
+    assert selection.physical_identity is None
+    assert selection.model_info is None
     assert selection.driver_class is GenericScpiPowerSupply
-    assert selection.reason == "known_model_generic_fallback"
+    assert selection.reason == "unknown_model_generic_fallback"

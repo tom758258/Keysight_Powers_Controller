@@ -222,11 +222,59 @@ E3646A_SETPOINT_RANGES = _model_ranges(
     notes=("At *RST, the low voltage range is selected.", "Range metadata is not flattened into one combined maximum."),
 )
 
+PSM2010_SETPOINT_RANGES = _model_ranges(
+    "PSM-2010",
+    (
+        (
+            1,
+            "OUT1",
+            (
+                OutputSetpointRange(
+                    "LOW",
+                    ("P8V",),
+                    "0 to 8 V / 20 A",
+                    0.0,
+                    8.24,
+                    0.0,
+                    0.0,
+                    0.0,
+                    20.6,
+                    20.0,
+                    20.0,
+                ),
+                OutputSetpointRange(
+                    "HIGH",
+                    ("P20V",),
+                    "0 to 20 V / 10 A",
+                    0.0,
+                    20.6,
+                    0.0,
+                    0.0,
+                    0.0,
+                    10.3,
+                    10.0,
+                    20.0,
+                ),
+            ),
+        ),
+    ),
+    range_basis="official range-dependent output voltage setpoint and output current limit programming range",
+    document_title="PSM-Series Programming Manual",
+    publication_id="82SM-60030IA",
+    publication_date="2018-01-09",
+    source_pages=("printed page 28",),
+    notes=(
+        "The manual documents an instrument-wide *RST current value of 20 A; this does not mean 20 A is valid while HIGH range is retained.",
+        "HIGH remains limited to a 10 A rating and a 10.3 A programming maximum.",
+    ),
+)
+
 SETPOINT_RANGES_BY_MODEL_ID: Mapping[str, ModelSetpointRanges] = MappingProxyType(
     {
         "keysight-e36312a": E36312A_SETPOINT_RANGES,
         "keysight-edu36311a": EDU36311A_SETPOINT_RANGES,
         "keysight-e3646a": E3646A_SETPOINT_RANGES,
+        "gw-instek-psm-2010": PSM2010_SETPOINT_RANGES,
     }
 )
 

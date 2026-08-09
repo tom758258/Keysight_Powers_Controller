@@ -132,7 +132,11 @@ def current_model_enablement_inventory() -> ModelEnablementInventory:
         channels=MODEL_CHANNELS_BY_ID,
         simulator_resources=SIMULATED_RESOURCE_FOR_MODEL_ID,
         simulator_idns=simulator_idns,
-        drivers=MODEL_DRIVERS,
+        drivers={
+            model_id: driver
+            for model_id, driver in MODEL_DRIVERS.items()
+            if model_id in active_or_candidate
+        },
         command_capabilities=command_capabilities,
         live_policies={policy.model_id: policy for policy in LIVE_SUPPORT_POLICY_REGISTRY},
         feature_inventories=feature_inventories,

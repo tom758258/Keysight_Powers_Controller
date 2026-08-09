@@ -77,9 +77,47 @@ def test_e3646a_programming_ranges_are_range_aware() -> None:
     assert ranges.channel(2).to_dict() == ranges.channel(1).to_dict() | {"channel": 2, "output_identifier": "OUT2"}
 
 
-def test_setpoint_ranges_metadata_lists_active_models_only() -> None:
+def test_psm2010_programming_ranges_are_range_aware() -> None:
+    ranges = setpoint_ranges_for_model_id("gw-instek-psm-2010")
+    assert ranges is not None
+    channel = ranges.channel(1)
+    assert channel is not None
+    assert channel.output_identifier == "OUT1"
+
+    low, high = (item.to_dict() for item in channel.ranges)
+    assert low == {
+        "name": "LOW",
+        "aliases": ["P8V"],
+        "rated_range_label": "0 to 8 V / 20 A",
+        "voltage_min": 0.0,
+        "voltage_max": 8.24,
+        "voltage_default": 0.0,
+        "voltage_reset": 0.0,
+        "current_min": 0.0,
+        "current_max": 20.6,
+        "current_default": 20.0,
+        "current_reset": 20.0,
+    }
+    assert high == {
+        "name": "HIGH",
+        "aliases": ["P20V"],
+        "rated_range_label": "0 to 20 V / 10 A",
+        "voltage_min": 0.0,
+        "voltage_max": 20.6,
+        "voltage_default": 0.0,
+        "voltage_reset": 0.0,
+        "current_min": 0.0,
+        "current_max": 10.3,
+        "current_default": 10.0,
+        "current_reset": 20.0,
+    }
+    assert "does not mean 20 A is valid while HIGH range is retained" in ranges.notes[0]
+
+
+def test_setpoint_ranges_metadata_lists_documented_models() -> None:
     metadata = setpoint_ranges_by_model_metadata()
     assert set(metadata) == {
+        "gw-instek-psm-2010",
         "keysight-e36312a",
         "keysight-edu36311a",
         "keysight-e3646a",

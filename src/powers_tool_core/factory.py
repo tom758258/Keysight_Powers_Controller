@@ -9,6 +9,7 @@ from powers_tool_core.drivers.e36312a import E36312APowerSupply
 from powers_tool_core.drivers.e3646a import E3646APowerSupply
 from powers_tool_core.drivers.edu36311a import EDU36311APowerSupply
 from powers_tool_core.drivers.generic_scpi import ChannelStrategy, GenericScpiPowerSupply
+from powers_tool_core.drivers.psm2010 import PSM2010PowerSupply
 from powers_tool_core.core import UnsupportedModelError
 from powers_tool_core.identity import (
     IdentityResolutionError,
@@ -30,6 +31,7 @@ MODEL_DRIVERS: dict[str, type[GenericScpiPowerSupply]] = {
     "keysight-e36312a": E36312APowerSupply,
     "keysight-e3646a": E3646APowerSupply,
     "keysight-edu36311a": EDU36311APowerSupply,
+    "gw-instek-psm-2010": PSM2010PowerSupply,
 }
 
 

@@ -4,6 +4,8 @@ from powers_tool_core.drivers.e36312a import E36312APowerSupply, TriggerSnapshot
 from powers_tool_core.drivers.e3646a import E3646APowerSupply
 from powers_tool_core.drivers.edu36311a import EDU36311APowerSupply
 from powers_tool_core.drivers.generic_scpi import NoChannelStrategy
+from powers_tool_core.drivers.psm2010 import PSM2010PowerSupply
+from powers_tool_core.electrical_ratings import PSM2010_ELECTRICAL_RATINGS
 from powers_tool_core.safety import SafetyLimits, SafetyValidationError
 
 
@@ -31,6 +33,135 @@ class RestoreFailingSession(FakeSession):
         self.commands.append(command)
         if command == "INST:NSEL 1":
             raise RuntimeError("restore failed")
+
+
+def test_psm2010_driver_exposes_single_channel_capabilities() -> None:
+    assert PSM2010PowerSupply.capabilities.channels == (1,)
+    assert PSM2010PowerSupply.capabilities.simulated_measure_channels == (1,)
+    assert PSM2010PowerSupply.capabilities.real_measure_channels == (1,)
+    assert PSM2010PowerSupply.capabilities.electrical_ratings is PSM2010_ELECTRICAL_RATINGS
+
+
+@pytest.mark.parametrize(("response", "expected"), [("P8V", "LOW"), ("P20V", "HIGH")])
+def test_psm2010_driver_queries_canonical_output_range(response, expected) -> None:
+    session = FakeSession({"VOLT:RANG?": response})
+    power_supply = PSM2010PowerSupply(session)
+
+    assert power_supply.output_range(channel=1) == expected
+    assert session.commands == ["VOLT:RANG?"]
+
+
+@pytest.mark.parametrize(
+    ("requested", "expected"),
+    [
+        ("LOW", "VOLT:RANG LOW"),
+        ("P8V", "VOLT:RANG LOW"),
+        ("HIGH", "VOLT:RANG HIGH"),
+        ("P20V", "VOLT:RANG HIGH"),
+    ],
+)
+def test_psm2010_driver_explicitly_sets_output_range(requested, expected) -> None:
+    session = FakeSession()
+    power_supply = PSM2010PowerSupply(session)
+
+    power_supply.set_output_range(channel=1, output_range=requested)
+
+    assert session.commands == [expected]
+
+
+def test_psm2010_driver_rejects_invalid_range_before_io() -> None:
+    session = FakeSession()
+    power_supply = PSM2010PowerSupply(session)
+
+    with pytest.raises(ValueError, match="output range must be"):
+        power_supply.set_output_range(channel=1, output_range="AUTO")
+
+    assert session.commands == []
+
+
+def test_psm2010_driver_rejects_unknown_range_response() -> None:
+    session = FakeSession({"VOLT:RANG?": "LOW"})
+    power_supply = PSM2010PowerSupply(session)
+
+    with pytest.raises(ValueError, match="unsupported PSM-2010 output range response"):
+        power_supply.output_range(channel=1)
+
+    assert session.commands == ["VOLT:RANG?"]
+
+
+@pytest.mark.parametrize(
+    ("response", "method", "value", "expected_command"),
+    [
+        ("P8V", "voltage", 5.0, "VOLT 5"),
+        ("P8V", "current", 15.0, "CURR 15"),
+        ("P20V", "voltage", 15.0, "VOLT 15"),
+        ("P20V", "current", 5.0, "CURR 5"),
+    ],
+)
+def test_psm2010_driver_writes_scalar_supported_by_active_range(
+    response,
+    method,
+    value,
+    expected_command,
+) -> None:
+    session = FakeSession({"VOLT:RANG?": response})
+    power_supply = PSM2010PowerSupply(session)
+
+    if method == "voltage":
+        power_supply.set_voltage(channel=1, voltage=value)
+    else:
+        power_supply.set_current_limit(channel=1, current=value)
+
+    assert session.commands == ["VOLT:RANG?", expected_command]
+
+
+@pytest.mark.parametrize(
+    ("response", "method", "value", "range_name"),
+    [
+        ("P8V", "voltage", 15.0, "LOW"),
+        ("P20V", "current", 15.0, "HIGH"),
+    ],
+)
+def test_psm2010_driver_rejects_scalar_unsupported_by_active_range(
+    response,
+    method,
+    value,
+    range_name,
+) -> None:
+    session = FakeSession({"VOLT:RANG?": response})
+    power_supply = PSM2010PowerSupply(session)
+
+    with pytest.raises(SafetyValidationError, match=rf"PSM-2010 {range_name} range maximum"):
+        if method == "voltage":
+            power_supply.set_voltage(channel=1, voltage=value)
+        else:
+            power_supply.set_current_limit(channel=1, current=value)
+
+    assert session.commands == ["VOLT:RANG?"]
+
+
+def test_psm2010_driver_uses_documented_measurement_queries() -> None:
+    session = FakeSession({"MEAS?": "5.000", "MEAS:CURR?": "1.250"})
+    power_supply = PSM2010PowerSupply(session)
+
+    assert power_supply.measure_voltage(channel=1) == 5.0
+    assert power_supply.measure_current(channel=1) == 1.25
+    assert session.commands == ["MEAS?", "MEAS:CURR?"]
+
+
+@pytest.mark.parametrize("channel", [2, 3])
+def test_psm2010_driver_rejects_non_channel_one_before_io(channel) -> None:
+    session = FakeSession()
+    power_supply = PSM2010PowerSupply(session)
+
+    with pytest.raises(ValueError, match="channel must be 1"):
+        power_supply.set_voltage(channel=channel, voltage=1.0)
+    with pytest.raises(ValueError, match="channel must be 1"):
+        power_supply.set_output_range(channel=channel, output_range="LOW")
+    with pytest.raises(ValueError, match="channel must be 1"):
+        power_supply.measure_voltage(channel=channel)
+
+    assert session.commands == []
 
 
 @pytest.mark.parametrize(

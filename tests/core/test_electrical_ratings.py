@@ -4,6 +4,7 @@ from powers_tool_core.electrical_ratings import (
     ChannelElectricalRating,
     ElectricalOperatingRange,
     ModelElectricalRatings,
+    PSM2010_ELECTRICAL_RATINGS,
     electrical_ratings_by_model_metadata,
     ratings_for_model_id,
 )
@@ -84,9 +85,36 @@ def test_safety_config_can_only_make_rating_more_restrictive() -> None:
 def test_unknown_model_has_no_invented_rating() -> None:
     assert ratings_for_model_id("UNKNOWN") is None
     assert set(electrical_ratings_by_model_metadata()) == {
+        "gw-instek-psm-2010",
         "keysight-e36312a",
         "keysight-edu36311a",
     }
+
+
+def test_psm2010_ratings_preserve_dual_range_pair_validation() -> None:
+    rating = PSM2010_ELECTRICAL_RATINGS.channel(1)
+
+    assert rating is not None
+    assert (rating.max_voltage, rating.max_current) == (20.0, 20.0)
+    assert [
+        (item.name, item.max_voltage, item.max_current)
+        for item in rating.operating_ranges
+    ] == [
+        ("LOW", 8.0, 20.0),
+        ("HIGH", 20.0, 10.0),
+    ]
+
+    with pytest.raises(
+        SafetyValidationError,
+        match=r"15 V and current 15 A do not fit any official electrical operating range",
+    ):
+        validate_effective_setpoint(
+            model="PSM-2010",
+            channel=1,
+            electrical_ratings=PSM2010_ELECTRICAL_RATINGS,
+            voltage=15.0,
+            current=15.0,
+        )
 
 
 DUAL_RANGE_RATINGS = ModelElectricalRatings(
