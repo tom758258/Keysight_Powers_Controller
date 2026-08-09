@@ -104,6 +104,11 @@ REGISTERED_MODELS: dict[str, ModelInfo] = {
         target_group="later",
         enablement_stage=MODEL_ENABLEMENT_CATALOG_ONLY,
     ),
+    "gw-instek-psm-2010": ModelInfo(
+        identity=IDENTITY_INDEXES.models_by_id["gw-instek-psm-2010"],
+        target_group="psm-series",
+        enablement_stage=MODEL_ENABLEMENT_CATALOG_ONLY,
+    ),
 }
 
 DE_SCOPED_MODEL_IDS = frozenset({"keysight-e36103b", "keysight-e36232a"})

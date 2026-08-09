@@ -60,7 +60,8 @@ Only Product-open feature entries are available to Product callers.
 
 The following catalog-known model IDs are not active Product planning or live
 expected-model identities: `keysight-e36313a`, `keysight-e36233a`,
-`keysight-e36441a`, and `keysight-e36155a`.
+`keysight-e36441a`, `keysight-e36155a`, and `gw-instek-psm-2010` (GW Instek
+PSM-2010).
 
 `keysight-e36103b` and `keysight-e36232a` are de-scoped. They are rejected as
 no-hardware planning identities, live expected-model guards, WebUI model

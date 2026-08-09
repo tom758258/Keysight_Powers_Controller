@@ -80,6 +80,7 @@ def test_known_model_registry_lookup() -> None:
         "keysight-e36233a",
         "keysight-e36441a",
         "keysight-e36155a",
+        "gw-instek-psm-2010",
     }
 
     model = lookup_model("keysight-e36312a")
@@ -92,6 +93,16 @@ def test_known_model_registry_lookup() -> None:
     assert model.model_id == "keysight-e36312a"
     assert model.vendor_id == "keysight"
     assert model.display_name == "Keysight E36312A"
+
+    psm = lookup_model("gw-instek-psm-2010")
+    assert psm is not None
+    assert psm.manufacturer == "GW.Inc"
+    assert psm.model == "PSM-2010"
+    assert psm.target_group == "psm-series"
+    assert psm.enablement_stage == "catalog_only"
+    assert psm.vendor_id == "gw-instek"
+    assert psm.display_name == "GW Instek PSM-2010"
+
     assert lookup_model("E36312A") is None
     assert lookup_model("keysight-e36103b") is None
     assert lookup_model("keysight-e36232a") is None
@@ -102,7 +113,11 @@ def test_model_enablement_stages_are_explicit() -> None:
     assert PRODUCT_ACTIVE_MODEL_IDS == {"keysight-e36312a", "keysight-edu36311a", "keysight-e3646a"}
     assert CANDIDATE_MODEL_IDS == frozenset()
     assert CATALOG_ONLY_MODEL_IDS == {
-        "keysight-e36313a", "keysight-e36233a", "keysight-e36441a", "keysight-e36155a"
+        "keysight-e36313a",
+        "keysight-e36233a",
+        "keysight-e36441a",
+        "keysight-e36155a",
+        "gw-instek-psm-2010",
     }
     assert {REGISTERED_MODELS[model].enablement_stage for model in PRODUCT_ACTIVE_MODEL_IDS} == {
         "product_active"

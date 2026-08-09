@@ -48,6 +48,7 @@ FROZEN_MODEL_IDS = {
     "keysight-e36155a",
     "keysight-e36103b",
     "keysight-e36232a",
+    "gw-instek-psm-2010",
 }
 
 FROZEN_REPORTED_MODELS = {
@@ -60,6 +61,7 @@ FROZEN_REPORTED_MODELS = {
     "E36155A",
     "E36103B",
     "E36232A",
+    "PSM-2010",
 }
 
 EXPECTED_MODEL_ID_BY_CANONICAL_MODEL = {
@@ -72,6 +74,7 @@ EXPECTED_MODEL_ID_BY_CANONICAL_MODEL = {
     "E36155A": "keysight-e36155a",
     "E36103B": "keysight-e36103b",
     "E36232A": "keysight-e36232a",
+    "PSM-2010": "gw-instek-psm-2010",
 }
 
 EXPECTED_DISPLAY_NAME_BY_MODEL_ID = {
@@ -84,6 +87,7 @@ EXPECTED_DISPLAY_NAME_BY_MODEL_ID = {
     "keysight-e36155a": "Keysight E36155A",
     "keysight-e36103b": "Keysight E36103B",
     "keysight-e36232a": "Keysight E36232A",
+    "gw-instek-psm-2010": "GW Instek PSM-2010",
 }
 
 
@@ -223,7 +227,11 @@ def test_canonical_lifecycle_sets_preserve_assignments() -> None:
     assert PRODUCT_ACTIVE_MODEL_IDS == {"keysight-e36312a", "keysight-edu36311a", "keysight-e3646a"}
     assert CANDIDATE_MODEL_IDS == frozenset()
     assert CATALOG_ONLY_MODEL_IDS == {
-        "keysight-e36313a", "keysight-e36233a", "keysight-e36441a", "keysight-e36155a"
+        "keysight-e36313a",
+        "keysight-e36233a",
+        "keysight-e36441a",
+        "keysight-e36155a",
+        "gw-instek-psm-2010",
     }
     assert DE_SCOPED_MODEL_IDS == {"keysight-e36103b", "keysight-e36232a"}
 
@@ -254,6 +262,24 @@ def test_builtin_resolver_recognizes_all_physical_identities(
     assert resolved.model_id == model_id
 
 
+def test_builtin_resolver_recognizes_gw_instek_psm_2010_identity() -> None:
+    vendor = IDENTITY_INDEXES.vendors_by_id["gw-instek"]
+    model = IDENTITY_INDEXES.models_by_id["gw-instek-psm-2010"]
+
+    assert vendor.display_name == "GW Instek"
+    assert vendor.canonical_manufacturer == "GW.Inc"
+    assert vendor.manufacturer_aliases == ()
+    assert model.vendor_id == "gw-instek"
+    assert model.canonical_model == "PSM-2010"
+    assert model.display_name == "GW Instek PSM-2010"
+    assert model.model_aliases == ()
+
+    resolved = resolve_physical_model_identity("  gw.inc  ", "  psm-2010  ")
+    assert resolved.vendor_id == "gw-instek"
+    assert resolved.model_id == "gw-instek-psm-2010"
+    assert resolved.canonical_model == "PSM-2010"
+
+
 def test_historical_manufacturer_alias_is_narrow_and_evidence_backed() -> None:
     assert resolve_physical_model_identity("Agilent Technologies", "E3646A").model_id == "keysight-e3646a"
     with pytest.raises(IdentityResolutionError) as excinfo:
@@ -274,6 +300,10 @@ def test_historical_manufacturer_alias_is_narrow_and_evidence_backed() -> None:
         ("KEYSIGHT", "  ", "missing_model"),
         ("UNKNOWN", "E36312A", "unknown_manufacturer"),
         ("KEYSIGHT", "UNKNOWN", "unknown_model"),
+        ("KEYSIGHT", "PSM-2010", "manufacturer_model_mismatch"),
+        ("GW.Inc", "E36312A", "manufacturer_model_mismatch"),
+        ("GW INSTEK", "PSM-2010", "unknown_manufacturer"),
+        ("GW.Inc", "PSM2010", "unknown_model"),
     ],
 )
 def test_resolver_fails_closed(manufacturer, model, reason: str) -> None:

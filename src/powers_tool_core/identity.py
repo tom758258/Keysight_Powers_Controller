@@ -541,6 +541,11 @@ VENDORS = (
         canonical_manufacturer="KEYSIGHT",
         manufacturer_aliases=("KEYSIGHT TECHNOLOGIES",),
     ),
+    VendorInfo(
+        vendor_id="gw-instek",
+        display_name="GW Instek",
+        canonical_manufacturer="GW.Inc",
+    ),
 )
 
 EXPECTED_MODEL_ID_BY_CANONICAL_MODEL = MappingProxyType(
@@ -554,6 +559,7 @@ EXPECTED_MODEL_ID_BY_CANONICAL_MODEL = MappingProxyType(
         "E36155A": "keysight-e36155a",
         "E36103B": "keysight-e36103b",
         "E36232A": "keysight-e36232a",
+        "PSM-2010": "gw-instek-psm-2010",
     }
 )
 
@@ -573,6 +579,7 @@ PHYSICAL_MODELS = (
     PhysicalModelInfo("keysight-e36155a", "keysight", "E36155A", "Keysight E36155A"),
     PhysicalModelInfo("keysight-e36103b", "keysight", "E36103B", "Keysight E36103B"),
     PhysicalModelInfo("keysight-e36232a", "keysight", "E36232A", "Keysight E36232A"),
+    PhysicalModelInfo("gw-instek-psm-2010", "gw-instek", "PSM-2010", "GW Instek PSM-2010"),
 )
 
 IDENTITY_INDEXES = build_identity_indexes(VENDORS, PHYSICAL_MODELS)

@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from powers_tool_core.drivers.generic_scpi import GenericScpiPowerSupply
+from powers_tool_core.identity import canonical_physical_model_id
 from powers_tool_core.model_enablement import (
     ModelEnablementInventory,
     current_model_enablement_inventory,
@@ -153,7 +154,11 @@ def test_current_model_enablement_stage_sets_are_exact_and_disjoint() -> None:
     assert PRODUCT_ACTIVE_MODEL_IDS == {"keysight-e36312a", "keysight-edu36311a", "keysight-e3646a"}
     assert CANDIDATE_MODEL_IDS == frozenset()
     assert CATALOG_ONLY_MODEL_IDS == {
-        "keysight-e36313a", "keysight-e36233a", "keysight-e36441a", "keysight-e36155a"
+        "keysight-e36313a",
+        "keysight-e36233a",
+        "keysight-e36441a",
+        "keysight-e36155a",
+        "gw-instek-psm-2010",
     }
     assert DE_SCOPED_MODEL_IDS == {"keysight-e36103b", "keysight-e36232a"}
     stage_sets = [PRODUCT_ACTIVE_MODEL_IDS, CANDIDATE_MODEL_IDS, CATALOG_ONLY_MODEL_IDS, DE_SCOPED_MODEL_IDS]
@@ -191,11 +196,11 @@ def test_all_physical_enablement_registries_use_canonical_model_ids() -> None:
     )
 
     for values in registries:
-        assert all(model_id.startswith("keysight-") for model_id in values)
+        assert all(canonical_physical_model_id(model_id) == model_id for model_id in values)
         assert "GENERIC" not in values
         assert "generic-scpi" not in values
     for values in model_sets:
-        assert all(model_id.startswith("keysight-") for model_id in values)
+        assert all(canonical_physical_model_id(model_id) == model_id for model_id in values)
         assert "GENERIC" not in values
         assert "generic-scpi" not in values
 
