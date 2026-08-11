@@ -188,7 +188,9 @@ codes, failures or partial results, output-state result, error queue, and
 cleanup result.
 
 Failed validation is still useful evidence and must not be discarded. Passing
-artifacts are candidate evidence only. They do not automatically promote product support.
+artifacts for pending or new exact scopes are candidate evidence; regression
+artifacts for already Product-open exact scopes are not candidate evidence.
+Neither kind automatically promotes or broadens Product support.
 Failed cleanup is not accepted evidence.
 Skipped or incomplete cleanup is not cleanup-verified evidence. Required
 state-changing evidence cannot pass unless safe-off succeeds, outputs are

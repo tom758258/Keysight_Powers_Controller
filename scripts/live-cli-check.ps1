@@ -571,12 +571,14 @@ function Test-CurrentConnectionSupportsCandidates {
     }).Count -eq 1
 }
 
-function Load-CoreCandidateInventory {
+function Load-CoreSupportPolicyInventory {
     $code = @'
 import json
+import sys
 from powers_tool_core.models import CANDIDATE_MODEL_IDS
 from powers_tool_core.support_policy import (
     VALIDATION_STATUS_TRANSPORT_PENDING,
+    exact_live_support_metadata,
     internal_validation_candidate_inventory,
     live_support_policy_metadata,
 )
@@ -602,29 +604,74 @@ for model in CANDIDATE_MODEL_IDS:
                 (scope['transport_scope'], scope['backend_scope'])
                 for scope in pending_scopes
             )
+exact = exact_live_support_metadata(
+    model_id=sys.argv[1],
+    resource=sys.argv[2],
+    backend=sys.argv[3],
+)
 print(json.dumps({
-    model: {
-        'commands': sorted(entry['commands']),
-        'connections': [list(value) for value in sorted(entry['connections'])],
-    }
-    for model, entry in data.items()
+    'candidate_inventory': {
+        model: {
+            'commands': sorted(entry['commands']),
+            'connections': [list(value) for value in sorted(entry['connections'])],
+        }
+        for model, entry in data.items()
+    },
+    'product_open_commands': sorted(
+        command
+        for command, entry in exact['commands'].items()
+        if entry['product_open'] and not entry['policy_exempt'] and not entry['offline_only']
+    ),
+    'validation_pending_commands': sorted(
+        command
+        for command, entry in exact['commands'].items()
+        if entry['exact_scope_validation_status'] == VALIDATION_STATUS_TRANSPORT_PENDING
+    ),
 }))
 '@
     $hadPythonPath = $null -ne [Environment]::GetEnvironmentVariable("PYTHONPATH", "Process")
     $oldPythonPath = [Environment]::GetEnvironmentVariable("PYTHONPATH", "Process")
     try {
         [Environment]::SetEnvironmentVariable("PYTHONPATH", (Get-ValidationChildPythonPath), "Process")
-        $inventoryJson = & $PythonExe -c $code
+        $inventoryJson = & $PythonExe -c $code $script:NormalizedTarget $script:TransportScope $script:BackendArtifact.backend_scope
     }
     finally {
         if ($hadPythonPath) { [Environment]::SetEnvironmentVariable("PYTHONPATH", $oldPythonPath, "Process") }
         else { [Environment]::SetEnvironmentVariable("PYTHONPATH", $null, "Process") }
     }
     if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace(($inventoryJson -join ""))) {
-        throw "Core validation candidate inventory could not be loaded."
+        throw "Core validation support-policy inventory could not be loaded."
     }
-    try { $script:CandidateInventory = ($inventoryJson -join "`n") | ConvertFrom-Json }
-    catch { throw "Core validation candidate inventory is malformed." }
+    try {
+        $inventory = ($inventoryJson -join "`n") | ConvertFrom-Json
+        $script:CandidateInventory = $inventory.candidate_inventory
+        $script:ProductOpenCommands = @($inventory.product_open_commands)
+        $script:ValidationPendingCommands = @($inventory.validation_pending_commands)
+    }
+    catch { throw "Core validation support-policy inventory is malformed." }
+}
+
+function Resolve-ValidationSupportPolicy {
+    param([Parameter(Mandatory = $true)][object[]]$LiveCases)
+
+    $commands = @($LiveCases | Where-Object {
+        $_.phase -eq "live" -and [bool]$_.live_hardware_expected -and $_.args.Count -gt 0 -and
+        [string]$_.args[0] -in $script:PolicyGatedCommands
+    } | ForEach-Object { [string]$_.args[0] } | Sort-Object -Unique)
+    $pendingCommands = New-Object System.Collections.Generic.List[string]
+    foreach ($command in $commands) {
+        if ($command -in $script:ProductOpenCommands) { continue }
+        if (
+            $command -in $script:ValidationPendingCommands -or
+            (Test-CurrentConnectionSupportsCandidates -Command $command)
+        ) {
+            $pendingCommands.Add($command)
+            continue
+        }
+        throw "Live command '$command' is neither Product-open nor an explicit validation candidate for the selected exact scope."
+    }
+    $script:PendingLiveSupportAllowed = $pendingCommands.Count -gt 0
+    $script:SupportPolicyMode = if ($script:PendingLiveSupportAllowed) { "validation" } else { "product" }
 }
 
 function Get-BaseValidationCommandArguments {
@@ -2900,6 +2947,8 @@ $script:ExternalPreflight = [pscustomobject]@{ status = "not_run" }
 $script:SensitiveValues = New-Object System.Collections.Generic.List[string]
 $script:PlannedLiveCases = @()
 $script:CandidateInventory = $null
+$script:ProductOpenCommands = @()
+$script:ValidationPendingCommands = @()
 $script:SupportPolicyMode = "validation"
 $script:PendingLiveSupportAllowed = $true
 
@@ -2927,13 +2976,6 @@ $script:ResourceDisplay = "$ConnectionLabel`:<redacted-resource>"
 $script:BackendValue = $Backend
 $script:TransportScope = Get-TransportScope -Connection $ConnectionLabel
 $script:BackendArtifact = Get-BackendArtifactFields -Value $Backend
-$psm2010ProductScope = (
-    $script:NormalizedTarget -eq "gw-instek-psm-2010" -and
-    $script:TransportScope -eq "asrl" -and
-    $script:BackendArtifact.backend_scope -eq "system_visa"
-)
-$script:SupportPolicyMode = if ($psm2010ProductScope) { "product" } else { "validation" }
-$script:PendingLiveSupportAllowed = -not $psm2010ProductScope
 $script:InstrumentIdentity = $null
 $script:CleanupEvidence = $null
 $script:SensitiveValues = New-Object System.Collections.Generic.List[string]
@@ -2976,12 +3018,14 @@ $startedAt = Get-Date
 
 Ensure-ArtifactDirectories
 try {
-    Load-CoreCandidateInventory
+    Load-CoreSupportPolicyInventory
+    $script:PlannedLiveCases = @(Get-SuiteCases -Model $NormalizedTarget -Suites $SuitesToRun -Live:$true)
+    Resolve-ValidationSupportPolicy -LiveCases $script:PlannedLiveCases
 }
 catch {
-    $script:Failures.Add("Validation build resolution failed: $($_.Exception.Message)")
+    $script:Failures.Add("Validation support-policy resolution failed: $($_.Exception.Message)")
     Write-ValidationArtifacts -ValidationMode "preflight_failed" -Result "preflight_failed" -StartedAt $startedAt
-    Write-Error "Core candidate inventory load failed before VISA access."
+    Write-Error "Core validation support-policy resolution failed before VISA access."
     exit 1
 }
 $externalPreflightExit = 0
@@ -3041,7 +3085,6 @@ foreach ($case in $preflightCases) {
         break
     }
 }
-$script:PlannedLiveCases = @(Get-SuiteCases -Model $NormalizedTarget -Suites $SuitesToRun -Live:$true)
 try {
     Assert-CandidateScopeInventory -Model $NormalizedTarget -LiveCases $script:PlannedLiveCases -RequireComplete:($Suite -eq "full")
 }

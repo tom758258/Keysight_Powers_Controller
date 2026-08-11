@@ -1615,9 +1615,9 @@ def test_live_cli_check_readonly_plan_only_succeeds_without_hardware(
     assert SUPPORT_EVIDENCE_MANIFEST.schema_version == 2
     assert type(SUPPORT_EVIDENCE_MANIFEST.schema_version) is int
     assert report["kind"] == "powers-tool-live-validation"
-    assert report["support_policy_mode"] == "validation"
-    assert report["pending_live_support_allowed"] is True
-    assert report["candidate_evidence_only"] is True
+    assert report["support_policy_mode"] == "product"
+    assert report["pending_live_support_allowed"] is False
+    assert report["candidate_evidence_only"] is False
     assert report["promotes_live_support"] is False
     assert report["plan_only"] is True
     assert report["live_executed"] is False
@@ -1649,7 +1649,7 @@ $script:NormalizedTarget = "gw-instek-psm-2010"
 $script:TransportScope = "asrl"
 $script:BackendArtifact = Get-BackendArtifactFields -Value $null
 $script:RawResource = "ASRL1::SIM::PSM2010::INSTR"
-Load-CoreCandidateInventory
+Load-CoreSupportPolicyInventory
 $readonly = @(Get-ReadOnlyCases -Model $script:NormalizedTarget -Live:$true | ForEach-Object {
     [pscustomobject]@{
         name = $_.name
@@ -1728,6 +1728,58 @@ $nonmatchingCandidateCount = @(
     ]
     assert all(case["validation_kind"] == "output-state" for case in after_cases)
     assert all(case["expected_output_enabled"] is False for case in after_cases)
+
+
+def test_live_cli_check_psm2010_pending_command_on_product_connection_uses_validation_policy() -> None:
+    command = r'''
+$env:POWERS_TOOL_LIVE_CLI_CHECK_IMPORT_ONLY = "1"
+. .\scripts\live-cli-check.ps1
+$script:NormalizedTarget = "gw-instek-psm-2010"
+$script:TransportScope = "asrl"
+$script:BackendArtifact = Get-BackendArtifactFields -Value $null
+$script:CandidateInventory = '{"gw-instek-psm-2010":{"commands":["measure"],"connections":[["asrl","system_visa"]]}}' | ConvertFrom-Json
+$script:ProductOpenCommands = @()
+$script:ValidationPendingCommands = @()
+$cases = @((New-CommandCase -Name "future-measure" -Suite "readonly" -Phase "live" -Args @("measure") -LiveHardwareExpected:$true -CandidateScopeRequired:$true))
+Resolve-ValidationSupportPolicy -LiveCases $cases
+$arguments = Add-ValidationSupportPolicyArgument -Arguments @("measure")
+[pscustomobject]@{
+    support_policy_mode = $script:SupportPolicyMode
+    pending_live_support_allowed = $script:PendingLiveSupportAllowed
+    validation_flag_present = $arguments -contains "--validation-allow-pending-live-support"
+} | ConvertTo-Json -Compress
+'''
+    result = _run_powershell_command(command)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert json.loads(result.stdout) == {
+        "support_policy_mode": "validation",
+        "pending_live_support_allowed": True,
+        "validation_flag_present": True,
+    }
+
+
+def test_live_cli_check_rejects_unregistered_nonproduct_command() -> None:
+    command = r'''
+$env:POWERS_TOOL_LIVE_CLI_CHECK_IMPORT_ONLY = "1"
+. .\scripts\live-cli-check.ps1
+$script:NormalizedTarget = "gw-instek-psm-2010"
+$script:TransportScope = "asrl"
+$script:BackendArtifact = Get-BackendArtifactFields -Value $null
+$script:CandidateInventory = '{}' | ConvertFrom-Json
+$script:ProductOpenCommands = @()
+$script:ValidationPendingCommands = @()
+$cases = @((New-CommandCase -Name "unregistered-measure" -Suite "readonly" -Phase "live" -Args @("measure") -LiveHardwareExpected:$true))
+try {
+    Resolve-ValidationSupportPolicy -LiveCases $cases
+    "unexpected-success"
+}
+catch { $_.Exception.Message }
+'''
+    result = _run_powershell_command(command)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "neither Product-open nor an explicit validation candidate" in result.stdout
 
 
 def test_live_cli_check_safe_state_summary_excludes_low_power_setpoints() -> None:
@@ -2027,7 +2079,9 @@ def test_trigger_list_redirected_stdin_fails_before_manual_case() -> None:
     ("connection", "backend"),
     [("ASRL", None), ("USB", "@py"), ("USB", "@ivi")],
 )
-def test_plan_only_has_no_stale_candidate_scope_marking(connection, backend) -> None:
+def test_plan_only_rejects_unregistered_exact_scope_before_preflight(
+    connection, backend
+) -> None:
     arguments = [
         "-Target",
         "keysight-e36312a",
@@ -2045,11 +2099,9 @@ def test_plan_only_has_no_stale_candidate_scope_marking(connection, backend) -> 
 
     result = _run_live_cli_check(*arguments)
 
-    assert result.returncode == 0, result.stdout + result.stderr
-    report = json.loads(_report_path(result.stdout, result.stderr).read_text(encoding="utf-8"))
-    assert report["plan_only"] is True
-    assert report["live_executed"] is False
-    assert report["failures"] == []
+    assert result.returncode == 1
+    assert "resolution failed before VISA access." in (result.stdout + result.stderr)
+    assert "Running selected-suite no-hardware plans" not in result.stdout
 
 
 def test_future_candidate_inventory_still_requires_full_plan_coverage() -> None:
@@ -2617,7 +2669,7 @@ $env:POWERS_TOOL_LIVE_CLI_CHECK_IMPORT_ONLY = "1"
 $script:NormalizedTarget = "keysight-e3646a"
 $script:TransportScope = "asrl"
 $script:BackendArtifact = Get-BackendArtifactFields -Value $null
-Load-CoreCandidateInventory
+Load-CoreSupportPolicyInventory
 [pscustomobject]@{
     candidate = Test-CurrentConnectionSupportsCandidates -Command "log"
 } | ConvertTo-Json -Compress
@@ -3467,7 +3519,12 @@ def test_english_docs_describe_contributor_validation_workflow():
     assert "-PlanOnly" in contributor
     assert "private/" in contributor
     assert "shareable/" in contributor
-    assert "Passing artifacts are candidate evidence only." in normalized
+    assert (
+        "Passing artifacts for pending or new exact scopes are candidate evidence; "
+        "regression artifacts for already Product-open exact scopes are not candidate evidence."
+        in normalized
+    )
+    assert "Neither kind automatically promotes or broadens Product support." in normalized
 
 
 def test_english_docs_describe_cli_suite_scope():
