@@ -2105,8 +2105,8 @@ def test_plan_only_rejects_unregistered_exact_scope_before_preflight(
 
     assert result.returncode == 1
     combined_output = result.stdout + result.stderr
-    assert "resolution failed" in combined_output
-    assert "VISA access" in combined_output
+    normalized_output = " ".join(combined_output.split())
+    assert "resolution failed before VISA access." in normalized_output
     assert "Running selected-suite no-hardware plans" not in result.stdout
     reports = list(Path(".tmp_tests/live_cli_check").glob("*/shareable/report.json"))
     changed = [
