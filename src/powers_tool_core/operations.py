@@ -483,9 +483,17 @@ def _execute_output_write(
     if command == "set":
         _require_channel(power_supply, channel, command)
         _validate_setpoint_for_request(request, idn, channel)
-        if p.get("current") is not None:
+        if isinstance(power_supply, PSM2010PowerSupply) and p.get("voltage") is not None and p.get("current") is not None:
+            power_supply.set_output_pair(
+                channel=channel,
+                voltage=p["voltage"],
+                current=p["current"],
+            )
+        elif p.get("current") is not None:
             power_supply.set_current_limit(channel=channel, current=p["current"])
-        if p.get("voltage") is not None:
+        if p.get("voltage") is not None and not (
+            isinstance(power_supply, PSM2010PowerSupply) and p.get("current") is not None
+        ):
             power_supply.set_voltage(channel=channel, voltage=p["voltage"])
         _settle_after_write(request, sleep, stop_requested)
         verification = _verify_setpoints_after_write(request, power_supply, channels=(channel,))
@@ -504,8 +512,12 @@ def _execute_output_write(
             if not p.get("no_output", False):
                 _require_confirmation_if_needed(request, p["voltage"], p["current"], selected_channel, idn)
         for selected_channel in channels:
-            power_supply.set_current_limit(channel=selected_channel, current=p["current"])
-            power_supply.set_voltage(channel=selected_channel, voltage=p["voltage"])
+            _write_output_pair(
+                power_supply,
+                channel=selected_channel,
+                voltage=p["voltage"],
+                current=p["current"],
+            )
         if not p.get("no_output", False):
             for selected_channel in channels:
                 power_supply.output_on(channel=selected_channel)
@@ -691,14 +703,26 @@ def _execute_output_write(
         active_voltage = voltages[0]
         try:
             raise_if_cancelled(stop_requested)
-            power_supply.set_current_limit(channel=channel, current=p["current"])
+            if isinstance(power_supply, PSM2010PowerSupply):
+                power_supply.set_output_pair(
+                    channel=channel,
+                    voltage=voltages[0],
+                    current=p["current"],
+                )
+            else:
+                power_supply.set_current_limit(channel=channel, current=p["current"])
             for loop_index in range(1, loop_count + 1):
                 active_loop_index = loop_index
                 for index, voltage in enumerate(voltages):
                     active_step_index = index
                     active_voltage = voltage
                     raise_if_cancelled(stop_requested)
-                    power_supply.set_voltage(channel=channel, voltage=voltage)
+                    if not (
+                        isinstance(power_supply, PSM2010PowerSupply)
+                        and loop_index == 1
+                        and index == 0
+                    ):
+                        power_supply.set_voltage(channel=channel, voltage=voltage)
                     completed_voltages.append(voltage)
                     progress.complete_unit()
                     if index == 0 and loop_index == 1 and enable_output:
@@ -855,8 +879,12 @@ def _execute_output_write(
         output_was_enabled = False
         measurements: dict[str, float]
         try:
-            power_supply.set_current_limit(channel=channel, current=p["current"])
-            power_supply.set_voltage(channel=channel, voltage=p["voltage"])
+            _write_output_pair(
+                power_supply,
+                channel=channel,
+                voltage=p["voltage"],
+                current=p["current"],
+            )
             power_supply.output_on(channel=channel)
             output_was_enabled = True
             interruptible_sleep(
@@ -1276,6 +1304,24 @@ def _resource_payload(request: OperationRequest, idn: str, **extra: Any) -> dict
 
 def _driver_step(index: int, action: str, **parameters: Any) -> dict[str, Any]:
     return {"index": index, "type": "driver_action", "action": action, "parameters": parameters}
+
+
+def _write_output_pair(
+    power_supply: Any,
+    *,
+    channel: int,
+    voltage: float,
+    current: float,
+) -> None:
+    if isinstance(power_supply, PSM2010PowerSupply):
+        power_supply.set_output_pair(
+            channel=channel,
+            voltage=voltage,
+            current=current,
+        )
+        return
+    power_supply.set_current_limit(channel=channel, current=current)
+    power_supply.set_voltage(channel=channel, voltage=voltage)
 
 
 def _setpoint_write_steps(channel: int | str | None, parameters: dict[str, Any]) -> list[dict[str, Any]]:

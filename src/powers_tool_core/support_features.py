@@ -30,11 +30,13 @@ SUPPORTED_SEQUENCE_ACTIONS_BY_MODEL_ID = {
     "keysight-e36312a": INSTRUMENT_SEQUENCE_ACTIONS,
     "keysight-edu36311a": INSTRUMENT_SEQUENCE_ACTIONS - {"trigger-pulse"},
     "keysight-e3646a": INSTRUMENT_SEQUENCE_ACTIONS - {"trigger-pulse"},
+    "gw-instek-psm-2010": INSTRUMENT_SEQUENCE_ACTIONS - {"trigger-pulse"},
 }
 SUPPORTED_REAL_TRIGGER_SOURCES_BY_MODEL_ID = {
     "keysight-e36312a": REAL_TRIGGER_SOURCES,
     "keysight-edu36311a": frozenset(),
     "keysight-e3646a": frozenset(),
+    "gw-instek-psm-2010": frozenset(),
 }
 
 

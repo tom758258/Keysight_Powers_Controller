@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import math
+
 from powers_tool_core.drivers.base import Channel, DriverCapabilities
 from powers_tool_core.drivers.generic_scpi import (
     GenericScpiPowerSupply,
     _format_number,
+    _parse_bool,
     _parse_float,
 )
 from powers_tool_core.electrical_ratings import PSM2010_ELECTRICAL_RATINGS
-from powers_tool_core.safety import SafetyValidationError
+from powers_tool_core.safety import SafetyValidationError, validate_setpoint
+from powers_tool_core.setpoint_ranges import PSM2010_SETPOINT_RANGES
 
 
 class PSM2010PowerSupply(GenericScpiPowerSupply):
@@ -44,23 +48,137 @@ class PSM2010PowerSupply(GenericScpiPowerSupply):
 
     def set_voltage(self, *, channel: Channel = None, voltage: float) -> None:
         selected_channel = _psm2010_channel(channel)
-        self._validate_driver_setpoint(channel=selected_channel, voltage=voltage)
-        active_range = self.output_range(channel=selected_channel)
-        _validate_active_range_setpoint(active_range, voltage=voltage)
+        current = self.programmed_current(channel=selected_channel)
+        self._prepare_output_pair(
+            channel=selected_channel,
+            voltage=voltage,
+            current=current,
+        )
         self._write(f"VOLT {_format_number(voltage)}", channel=selected_channel)
 
     def set_current_limit(self, *, channel: Channel = None, current: float) -> None:
         selected_channel = _psm2010_channel(channel)
-        self._validate_driver_setpoint(channel=selected_channel, current=current)
-        active_range = self.output_range(channel=selected_channel)
-        _validate_active_range_setpoint(active_range, current=current)
+        voltage = self.programmed_voltage(channel=selected_channel)
+        self._prepare_output_pair(
+            channel=selected_channel,
+            voltage=voltage,
+            current=current,
+        )
         self._write(f"CURR {_format_number(current)}", channel=selected_channel)
+
+    def set_output_pair(
+        self,
+        *,
+        channel: Channel = None,
+        voltage: float,
+        current: float,
+    ) -> None:
+        """Resolve one complete target pair before writing either setpoint."""
+
+        selected_channel = _psm2010_channel(channel)
+        self._prepare_output_pair(
+            channel=selected_channel,
+            voltage=voltage,
+            current=current,
+        )
+        self._write(f"CURR {_format_number(current)}", channel=selected_channel)
+        self._write(f"VOLT {_format_number(voltage)}", channel=selected_channel)
+
+    def output_on(self, *, channel: Channel = None) -> None:
+        selected_channel = _psm2010_channel(channel)
+        self._prepare_output_pair(
+            channel=selected_channel,
+            voltage=self.programmed_voltage(channel=selected_channel),
+            current=self.programmed_current(channel=selected_channel),
+        )
+        super().output_on(channel=selected_channel)
+
+    def _prepare_output_pair(
+        self,
+        *,
+        channel: int,
+        voltage: float,
+        current: float,
+    ) -> str:
+        self._validate_driver_setpoint(
+            channel=channel,
+            voltage=voltage,
+            current=current,
+        )
+        active_range = self.output_range(channel=channel)
+        compatible = _compatible_programming_ranges(voltage, current)
+        if not compatible:
+            raise SafetyValidationError(
+                f"PSM-2010 target pair {voltage:g} V / {current:g} A does not fit "
+                "the LOW or HIGH programming range"
+            )
+        if active_range in compatible:
+            return active_range
+        target_range = compatible[0]
+        if self.output_state(channel=channel):
+            raise SafetyValidationError(
+                f"PSM-2010 output is ON; changing output range from {active_range} "
+                f"to {target_range} is not allowed"
+            )
+        self.set_output_range(channel=channel, output_range=target_range)
+        return target_range
 
     def measure_voltage(self, *, channel: Channel = None) -> float:
         return _parse_float(self._query("MEAS?", channel=channel), "voltage")
 
     def measure_current(self, *, channel: Channel = None) -> float:
         return _parse_float(self._query("MEAS:CURR?", channel=channel), "current")
+
+    def over_voltage_protection_tripped(self, *, channel: Channel = None) -> bool:
+        return _parse_bool(
+            self._query("VOLT:PROT:TRIP?", channel=channel),
+            "over-voltage protection",
+        )
+
+    def over_current_protection_tripped(self, *, channel: Channel = None) -> bool:
+        return _parse_bool(
+            self._query("CURR:PROT:TRIP?", channel=channel),
+            "over-current protection",
+        )
+
+    def over_current_protection_delay_trigger(self, *, channel: Channel = None) -> str:
+        _psm2010_channel(channel)
+        raise ValueError("PSM-2010 does not support an OCP delay trigger setting")
+
+    def clear_output_protection(self, *, channel: Channel = None) -> None:
+        selected_channel = _psm2010_channel(channel)
+        self._write("CURR:PROT:CLE", channel=selected_channel)
+        self._write("VOLT:PROT:CLE", channel=selected_channel)
+
+    def set_over_voltage_protection(self, *, channel: Channel = None, voltage: float) -> None:
+        selected_channel = _psm2010_channel(channel)
+        validate_setpoint(
+            channel=selected_channel,
+            voltage=voltage,
+            limits=self._safety_limits,
+        )
+        if voltage > 22.0:
+            raise SafetyValidationError(
+                f"over-voltage protection level {voltage:g} exceeds PSM-2010 maximum 22 V"
+            )
+        self._write(f"VOLT:PROT {_format_number(voltage)}", channel=selected_channel)
+
+    def set_over_current_protection_delay(self, *, channel: Channel = None, seconds: float) -> None:
+        selected_channel = _psm2010_channel(channel)
+        if not math.isfinite(seconds) or not 0.1 <= seconds <= 10.0:
+            raise ValueError(
+                "PSM-2010 over-current protection delay must be from 0.1 through 10 seconds"
+            )
+        self._write(f"CURR:PROT:DEL {_format_number(seconds)}", channel=selected_channel)
+
+    def set_over_current_protection_delay_trigger(
+        self,
+        *,
+        channel: Channel = None,
+        trigger: str,
+    ) -> None:
+        _psm2010_channel(channel)
+        raise ValueError("PSM-2010 does not support an OCP delay trigger setting")
 
     def _write(self, command: str, *, channel: Channel) -> None:
         super()._write(command, channel=_psm2010_channel(channel))
@@ -78,6 +196,10 @@ _INPUT_RANGE_NAMES = {
 _QUERY_RANGE_NAMES = {
     "P8V": "LOW",
     "P20V": "HIGH",
+}
+_PROGRAMMING_RANGE_BY_NAME = {
+    output_range.name: output_range
+    for output_range in PSM2010_SETPOINT_RANGES.channels[1].ranges
 }
 _ELECTRICAL_RANGE_BY_NAME = {
     operating_range.name: operating_range
@@ -101,20 +223,12 @@ def _canonical_output_range(output_range: str) -> str:
         raise ValueError("PSM-2010 output range must be LOW, HIGH, P8V, or P20V") from exc
 
 
-def _validate_active_range_setpoint(
-    active_range: str,
-    *,
-    voltage: float | None = None,
-    current: float | None = None,
-) -> None:
-    rating = _ELECTRICAL_RANGE_BY_NAME[active_range]
-    if voltage is not None and voltage > rating.max_voltage:
-        raise SafetyValidationError(
-            f"voltage {voltage:g} exceeds PSM-2010 {active_range} range maximum "
-            f"{rating.max_voltage:g} V"
-        )
-    if current is not None and current > rating.max_current:
-        raise SafetyValidationError(
-            f"current {current:g} exceeds PSM-2010 {active_range} range maximum "
-            f"{rating.max_current:g} A"
-        )
+def _compatible_programming_ranges(voltage: float, current: float) -> tuple[str, ...]:
+    return tuple(
+        name
+        for name, output_range in _PROGRAMMING_RANGE_BY_NAME.items()
+        if output_range.voltage_min <= voltage <= output_range.voltage_max
+        and output_range.current_min <= current <= output_range.current_max
+        and voltage <= _ELECTRICAL_RANGE_BY_NAME[name].max_voltage
+        and current <= _ELECTRICAL_RANGE_BY_NAME[name].max_current
+    )

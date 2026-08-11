@@ -446,8 +446,10 @@ def test_commands_metadata_includes_model_aware_support(client: TestClient):
     assert "completion-pulse workflows are disabled" in support["keysight-e3646a"]["trigger-pulse"]["disabled_reason"]
     assert "disabled_reason" not in support["keysight-e3646a"]["ramp-list"]
     assert "disabled_reason" not in support["keysight-e3646a"]["sequence"]
-    assert support["gw-instek-psm-2010"]["set"]["real"] is False
-    assert support["gw-instek-psm-2010"]["output-on"]["real"] is False
+    assert support["gw-instek-psm-2010"]["set"]["real"] is True
+    assert support["gw-instek-psm-2010"]["set"]["hardware_validation"] == "not_enabled"
+    assert support["gw-instek-psm-2010"]["output-on"]["real"] is True
+    assert support["gw-instek-psm-2010"]["output-on"]["hardware_validation"] == "not_enabled"
     assert (
         support["gw-instek-psm-2010"]["capabilities"]["hardware_validation"]
         == "rs232_read_only"

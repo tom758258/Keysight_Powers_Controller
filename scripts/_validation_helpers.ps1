@@ -61,12 +61,14 @@ $script:ValidationTargetProfiles = [ordered]@{
         canonical_display_name = "GW Instek PSM-2010"
         channels = @(1)
         simulator_resource = "ASRL1::SIM::PSM2010::INSTR"
-        suites = @("readonly", "safe-state")
+        suites = @("readonly", "safe-state", "output", "protection", "snapshot", "software-sequence")
         preflight_capability_expectations = [ordered]@{
             "data.channels" = @(1)
             "data.resource.interface" = "ASRL"
             "data.command_support.output-off.dry_run" = $true
-            "data.command_support.set.simulate" = $false
+            "data.command_support.set.simulate" = $true
+            "data.command_support.protection-status.simulate" = $true
+            "data.command_support.snapshot.simulate" = $true
         }
     }
 }

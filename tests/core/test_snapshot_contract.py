@@ -214,8 +214,100 @@ def test_restore_explicit_all_channel_is_valid() -> None:
             {"document": _snapshot(), "channel": "all"},
         )
     )
-
     assert result["restored_channels"] == [1, 2, 3]
+
+
+def _psm_snapshot() -> dict[str, object]:
+    return run_core_command(
+        OperationRequest(
+            "snapshot",
+            RuntimeOptions(
+                simulate=True,
+                resource="ASRL1::SIM::PSM2010::INSTR",
+            ),
+        )
+    )
+
+
+def test_psm2010_snapshot_schema_2_extension_preserves_output_range() -> None:
+    snapshot = _psm_snapshot()
+
+    assert snapshot["schema_version"] == 2
+    assert snapshot["resolved_identity"]["model_id"] == "gw-instek-psm-2010"
+    assert snapshot["output_ranges"] == [{"channel": 1, "range": "LOW"}]
+    assert snapshot["protection_settings"][0]["protection"]["ocp_delay_trigger"] is None
+    assert validate_snapshot_document(snapshot) == snapshot
+
+
+def test_psm2010_restore_plan_orders_range_before_protection_and_setpoints() -> None:
+    plan = restore_plan(
+        _psm_snapshot(),
+        resource="ASRL1::fixture::INSTR",
+        channels=(1,),
+        restore_output_state=False,
+        allow_output_on=False,
+    )
+
+    assert [step["action"] for step in plan["steps"]] == [
+        "output_off",
+        "set_output_range",
+        "set_over_voltage_protection",
+        "set_over_current_protection_enabled",
+        "set_over_current_protection_delay",
+        "set_current_limit",
+        "set_voltage",
+    ]
+    assert [step["command"] for step in plan["steps"]] == [
+        "OUTP OFF",
+        "VOLT:RANG LOW",
+        "VOLT:PROT 21",
+        "CURR:PROT:STAT ON",
+        "CURR:PROT:DEL 0.1",
+        "CURR 0.05",
+        "VOLT 1",
+    ]
+
+
+@pytest.mark.parametrize("output_range", [None, "P8V", "AUTO", "low"])
+def test_psm2010_snapshot_rejects_missing_or_noncanonical_range(output_range) -> None:
+    snapshot = deepcopy(_psm_snapshot())
+    if output_range is None:
+        snapshot.pop("output_ranges")
+    else:
+        snapshot["output_ranges"][0]["range"] = output_range
+
+    with pytest.raises(CoreValidationError, match="output_ranges"):
+        validate_snapshot_document(snapshot)
+
+
+def test_psm2010_snapshot_rejects_setpoints_incompatible_with_saved_range() -> None:
+    snapshot = deepcopy(_psm_snapshot())
+    snapshot["readback"][0]["setpoints"] = {"voltage": 15.0, "current": 5.0}
+
+    with pytest.raises(CoreValidationError, match="output range does not contain"):
+        validate_snapshot_document(snapshot)
+
+
+def test_e36312a_snapshot_rejects_psm_output_range_extension() -> None:
+    snapshot = _snapshot()
+    snapshot["output_ranges"] = [{"channel": 1, "range": "LOW"}]
+
+    with pytest.raises(CoreValidationError, match="only supported for PSM-2010"):
+        validate_snapshot_document(snapshot)
+
+
+def test_psm2010_restore_plan_defensively_requires_output_range() -> None:
+    snapshot = _psm_snapshot()
+    snapshot.pop("output_ranges")
+
+    with pytest.raises(CoreValidationError, match="output_ranges does not contain channel 1"):
+        restore_plan(
+            snapshot,
+            resource="ASRL1::fixture::INSTR",
+            channels=(1,),
+            restore_output_state=False,
+            allow_output_on=False,
+        )
 
 
 @pytest.mark.parametrize(

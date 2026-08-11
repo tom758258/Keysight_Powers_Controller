@@ -9,6 +9,7 @@ from powers_tool_core import capabilities
 from powers_tool_core.connection import open_resource
 from powers_tool_core.core import CoreIoError, CoreValidationError, OperationRequest, UnsupportedModelError
 from powers_tool_core.drivers.e36312a import E36312APowerSupply
+from powers_tool_core.drivers.psm2010 import PSM2010PowerSupply
 from powers_tool_core.errors import VisaConnectionError
 from powers_tool_core.factory import create_power_supply, select_driver
 from powers_tool_core.models import parse_idn
@@ -44,7 +45,7 @@ def run_snapshot(
         if not request.runtime.simulate:
             enforce_live_support_for_idn(request, idn)
         power_supply = create_power_supply(instrument.session, idn)
-        if not isinstance(power_supply, E36312APowerSupply):
+        if not isinstance(power_supply, (E36312APowerSupply, PSM2010PowerSupply)):
             model = parse_idn(idn).model
             raise UnsupportedModelError(
                 f"{capabilities.unsupported_command_message('snapshot', model, 'live')}\n"
@@ -65,7 +66,7 @@ def run_snapshot(
                 "snapshot manufacturer and model do not resolve to a canonical physical identity"
             )
         parsed_idn = selection.idn
-        return {
+        snapshot = {
             "schema_version": SNAPSHOT_SCHEMA_VERSION,
             "kind": SNAPSHOT_KIND,
             "resource": request.runtime.resource,
@@ -125,6 +126,15 @@ def run_snapshot(
                 for channel in channels
             ],
         }
+        if isinstance(power_supply, PSM2010PowerSupply):
+            snapshot["output_ranges"] = [
+                {
+                    "channel": channel,
+                    "range": power_supply.output_range(channel=channel),
+                }
+                for channel in channels
+            ]
+        return snapshot
 
 
 def _open(request: OperationRequest, *, opener: Callable[..., Any], scpi_logger: Callable[[str, str, str], None] | None) -> tuple[Any, str]:

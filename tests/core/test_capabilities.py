@@ -212,24 +212,29 @@ def test_command_support_psm2010_product_boundary() -> None:
         )
         assert support[command]["hardware_validation"] == expected_validation
 
+    dry_run_commands = {
+        "set", "apply", "output-on", "cycle-output", "ramp", "ramp-list",
+        "sequence", "smoke-output", "protection-set", "clear-protection",
+        "restore-from-snapshot",
+    }
     for command in (
-        "set",
-        "apply",
-        "output-on",
-        "cycle-output",
-        "ramp",
-        "ramp-list",
-        "sequence",
-        "log",
-        "doctor",
-        "protection-set",
-        "snapshot",
+        "validate-readonly", "set", "apply", "output-on", "cycle-output",
+        "ramp", "ramp-list", "sequence", "smoke-output", "log",
+        "protection-status", "protection-set", "clear-protection", "snapshot",
         "restore-from-snapshot",
     ):
-        assert support[command]["real"] is False
-        assert support[command]["simulate"] is False
-        assert support[command]["dry_run"] is False
+        assert support[command]["real"] is True
+        assert support[command]["simulate"] is True
+        assert support[command]["dry_run"] is (command in dry_run_commands)
         assert support[command]["hardware_validation"] == "not_enabled"
+
+    assert support["doctor"] == {
+        "real": True,
+        "simulate": True,
+        "dry_run": False,
+        "requires_confirm": False,
+        "hardware_validation": "not_applicable",
+    }
 
     for command in capabilities.TRIGGER_COMMANDS:
         assert support[command] == {
@@ -323,7 +328,6 @@ def test_capabilities_static_groups_preserve_json_lists() -> None:
         "output_commands": ["set", "output-on", "output-off", "safe-off", "cycle-output", "apply", "ramp", "ramp-list", "smoke-output"],
         "e36312a_only_commands": [
             "measure-all",
-            "snapshot",
             "trigger-pulse",
             "trigger-status",
             "trigger-step",

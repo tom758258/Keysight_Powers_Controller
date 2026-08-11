@@ -1321,18 +1321,16 @@ function Get-ReadOnlyCases {
     }
     $cases.Add((New-CommandCase -Name "read-status" -Suite "readonly" -Phase $phase -Args (@("read-status") + $modeFlag + @("--json", "--resource", $resource, "--all", "--log-scpi")) -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "read-status"))))
     $cases.Add((New-CommandCase -Name "readback" -Suite "readonly" -Phase $phase -Args (@("readback") + $modeFlag + @("--json", "--resource", $resource, "--all", "--log-scpi")) -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "readback"))))
-    if ($Model -in @("keysight-e36312a", "keysight-edu36311a")) {
-        $cases.Add((New-CommandCase -Name "validate-readonly" -Suite "readonly" -Phase $phase -Args (@("validate-readonly") + $modeFlag + @("--json", "--resource", $resource, "--log-scpi")) -LiveHardwareExpected:$Live))
-        $cases.Add((New-CommandCase -Name "protection-status" -Suite "readonly" -Phase $phase -Args (@("protection-status") + $modeFlag + @("--json", "--resource", $resource, "--all", "--log-scpi")) -LiveHardwareExpected:$Live))
+    if ($Model -in @("keysight-e36312a", "keysight-edu36311a", "gw-instek-psm-2010")) {
+        $cases.Add((New-CommandCase -Name "validate-readonly" -Suite "readonly" -Phase $phase -Args (@("validate-readonly") + $modeFlag + @("--json", "--resource", $resource, "--log-scpi")) -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "validate-readonly"))))
+        $cases.Add((New-CommandCase -Name "protection-status" -Suite "readonly" -Phase $phase -Args (@("protection-status") + $modeFlag + @("--json", "--resource", $resource, "--all", "--log-scpi")) -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "protection-status"))))
     }
     $cases.Add((New-CommandCase -Name "capabilities" -Suite "readonly" -Phase $phase -Args (@("capabilities") + $modeFlag + @("--json", "--resource", $resource, "--log-scpi")) -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "capabilities"))))
-    if ($Model -ne "gw-instek-psm-2010") {
-        if ($Live) {
-            $cases.Add((New-CommandCase -Name "doctor-resource" -Suite "readonly" -Phase $phase -Args @("doctor", "--json", "--resource", $resource, "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "doctor" -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "doctor"))))
-        }
-        else {
-            $cases.Add((New-CommandCase -Name "doctor-environment" -Suite "readonly" -Phase $phase -Args @("doctor", "--simulate", "--json") -ValidationKind "doctor-offline"))
-        }
+    if ($Live) {
+        $cases.Add((New-CommandCase -Name "doctor-resource" -Suite "readonly" -Phase $phase -Args @("doctor", "--json", "--resource", $resource, "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "doctor" -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "doctor"))))
+    }
+    else {
+        $cases.Add((New-CommandCase -Name "doctor-environment" -Suite "readonly" -Phase $phase -Args @("doctor", "--simulate", "--json") -ValidationKind "doctor-offline"))
     }
     if ($Model -eq "keysight-e36312a") {
         $cases.Add((New-CommandCase -Name "measure-all" -Suite "readonly" -Phase $phase -Args (@("measure-all") + $modeFlag + @("--json", "--resource", $resource, "--log-scpi")) -LiveHardwareExpected:$Live -ValidationKind "measure-all" -ExpectedChannels $channels -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "measure-all"))))
@@ -1340,7 +1338,7 @@ function Get-ReadOnlyCases {
             $cases.Add((New-CommandCase -Name "readonly-error-queue-checkpoint" -Suite "readonly" -Phase $phase -Args @("error", "--json", "--resource", $resource, "--max-reads", "20", "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "empty-errors"))
         }
     }
-    if ($Model -in @("keysight-e36312a", "keysight-edu36311a", "keysight-e3646a")) {
+    if ($Model -in @("keysight-e36312a", "keysight-edu36311a", "keysight-e3646a", "gw-instek-psm-2010")) {
         $logCsv = Join-Path $script:PrivateArtifactDir ($phase + "-log.csv")
         $logJsonl = Join-Path $script:PrivateArtifactDir ($phase + "-log.jsonl")
         $cases.Add((New-CommandCase -Name "log-one-sample" -Suite "readonly" -Phase $phase -Args (@("log") + $modeFlag + @("--channel", "all", "--interval-sec", "0.1", "--samples", "1", "--csv", $logCsv, "--jsonl", $logJsonl, "--json", "--resource", $resource, "--log-scpi")) -LiveHardwareExpected:$Live -ValidationKind "log" -ExpectedChannels $channels -GeneratedArtifacts @($logCsv, $logJsonl) -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "log"))))
@@ -1384,11 +1382,11 @@ function Get-OutputCases {
     $cases.Add((New-CommandCase -Name "safe-off-before" -Suite "output" -Phase $phase -Args (@("safe-off") + $allCommon) -StateChanging:$Live -LiveHardwareExpected:$Live))
     foreach ($channel in Get-TargetChannels -Model $Model) {
         $common = if ($Live) { @("--json", "--resource", $resource, "--channel", [string]$channel, "--log-scpi") } else { @("--dry-run", "--json") + $modelArgs + @("--channel", [string]$channel) }
-        $cases.Add((New-CommandCase -Name ("set-ch" + $channel) -Suite "output" -Phase $phase -Args (@("set") + $common + @("--voltage", "1", "--current", "0.05")) -StateChanging:$Live -LiveHardwareExpected:$Live))
+        $cases.Add((New-CommandCase -Name ("set-ch" + $channel) -Suite "output" -Phase $phase -Args (@("set") + $common + @("--voltage", "1", "--current", "0.05")) -StateChanging:$Live -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "set"))))
         $cases.Add((New-CommandCase -Name ("output-off-ch" + $channel) -Suite "output" -Phase $phase -Args (@("output-off") + $common) -StateChanging:$Live -LiveHardwareExpected:$Live))
-        $cases.Add((New-CommandCase -Name ("smoke-output-ch" + $channel) -Suite "output" -Phase $phase -Args (@("smoke-output") + $common + @("--voltage", "1", "--current", "0.05", "--duration-ms", "500", "--confirm")) -StateChanging:$Live -LiveHardwareExpected:$Live))
-        $cases.Add((New-CommandCase -Name ("cycle-output-ch" + $channel) -Suite "output" -Phase $phase -Args (@("cycle-output") + $common + @("--duration-ms", "500", "--confirm")) -StateChanging:$Live -LiveHardwareExpected:$Live))
-        $cases.Add((New-CommandCase -Name ("ramp-ch" + $channel) -Suite "output" -Phase $phase -Args (@("ramp") + $common + @("--start-voltage", "0", "--stop-voltage", "1", "--step-voltage", "0.25", "--current", "0.05", "--delay-ms", "100")) -StateChanging:$Live -LiveHardwareExpected:$Live))
+        $cases.Add((New-CommandCase -Name ("smoke-output-ch" + $channel) -Suite "output" -Phase $phase -Args (@("smoke-output") + $common + @("--voltage", "1", "--current", "0.05", "--duration-ms", "500", "--confirm")) -StateChanging:$Live -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "smoke-output"))))
+        $cases.Add((New-CommandCase -Name ("cycle-output-ch" + $channel) -Suite "output" -Phase $phase -Args (@("cycle-output") + $common + @("--duration-ms", "500", "--confirm")) -StateChanging:$Live -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "cycle-output"))))
+        $cases.Add((New-CommandCase -Name ("ramp-ch" + $channel) -Suite "output" -Phase $phase -Args (@("ramp") + $common + @("--start-voltage", "0", "--stop-voltage", "1", "--step-voltage", "0.25", "--current", "0.05", "--delay-ms", "100")) -StateChanging:$Live -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "ramp"))))
         if ($Model -ne "keysight-e3646a") {
             $cases.Add((New-CommandCase -Name ("output-on-ch" + $channel) -Suite "output" -Phase $phase -Args (@("output-on") + $common + @("--confirm")) -StateChanging:$Live -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "output-on"))))
             $stateArgs = if ($Live) { @("output-state", "--json", "--resource", $resource, "--channel", [string]$channel, "--log-scpi") } else { @("output-state", "--simulate", "--json", "--resource", $resource, "--channel", [string]$channel) }
@@ -1414,7 +1412,7 @@ function Get-OutputCases {
         $readbackArgs = @("readback", "--simulate", "--json", "--resource", $resource, "--all")
     }
     $cases.Add((New-CommandCase -Name "readback-after-set" -Suite "output" -Phase $phase -Args $readbackArgs -LiveHardwareExpected:$Live))
-    $cases.Add((New-CommandCase -Name "apply-no-output-all" -Suite "output" -Phase $phase -Args (@("apply") + $allCommon + @("--voltage", "1", "--current", "0.05", "--no-output")) -StateChanging:$Live -LiveHardwareExpected:$Live))
+    $cases.Add((New-CommandCase -Name "apply-no-output-all" -Suite "output" -Phase $phase -Args (@("apply") + $allCommon + @("--voltage", "1", "--current", "0.05", "--no-output")) -StateChanging:$Live -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "apply"))))
     $cases.Add((New-CommandCase -Name "safe-off-cleanup" -Suite "output" -Phase $phase -Args (@("safe-off") + $allCommon) -StateChanging:$Live -LiveHardwareExpected:$Live))
     return $cases.ToArray()
 }
@@ -1427,54 +1425,55 @@ function Get-ProtectionCases {
     $modeFlag = if ($Live) { @() } else { @("--simulate") }
     $writeFlag = if ($Live) { @() } else { @("--dry-run") }
     return @(
-        (New-CommandCase -Name "protection-status-before" -Suite "protection" -Phase $phase -Args (@("protection-status") + $modeFlag + @("--json", "--resource", $resource, "--all", "--log-scpi")) -LiveHardwareExpected:$Live),
-        (New-CommandCase -Name "protection-set-all" -Suite "protection" -Phase $phase -Args (@("protection-set") + $writeFlag + @("--json", "--resource", $resource, "--channel", "all", "--ovp-voltage", "5", "--ocp", "on", "--confirm", "--log-scpi")) -StateChanging:$Live -LiveHardwareExpected:$Live),
-        (New-CommandCase -Name "protection-status-after-set" -Suite "protection" -Phase $phase -Args (@("protection-status") + $modeFlag + @("--json", "--resource", $resource, "--all", "--log-scpi")) -LiveHardwareExpected:$Live),
-        (New-CommandCase -Name "clear-protection-all" -Suite "protection" -Phase $phase -Args (@("clear-protection") + $writeFlag + @("--json", "--resource", $resource, "--all", "--confirm", "--log-scpi")) -StateChanging:$Live -LiveHardwareExpected:$Live),
-        (New-CommandCase -Name "protection-status-after-clear" -Suite "protection" -Phase $phase -Args (@("protection-status") + $modeFlag + @("--json", "--resource", $resource, "--all", "--log-scpi")) -LiveHardwareExpected:$Live)
+        (New-CommandCase -Name "protection-status-before" -Suite "protection" -Phase $phase -Args (@("protection-status") + $modeFlag + @("--json", "--resource", $resource, "--all", "--log-scpi")) -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "protection-status"))),
+        (New-CommandCase -Name "protection-set-all" -Suite "protection" -Phase $phase -Args (@("protection-set") + $writeFlag + @("--json", "--resource", $resource, "--channel", "all", "--ovp-voltage", "5", "--ocp", "on", "--confirm", "--log-scpi")) -StateChanging:$Live -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "protection-set"))),
+        (New-CommandCase -Name "protection-status-after-set" -Suite "protection" -Phase $phase -Args (@("protection-status") + $modeFlag + @("--json", "--resource", $resource, "--all", "--log-scpi")) -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "protection-status"))),
+        (New-CommandCase -Name "clear-protection-all" -Suite "protection" -Phase $phase -Args (@("clear-protection") + $writeFlag + @("--json", "--resource", $resource, "--all", "--confirm", "--log-scpi")) -StateChanging:$Live -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "clear-protection"))),
+        (New-CommandCase -Name "protection-status-after-clear" -Suite "protection" -Phase $phase -Args (@("protection-status") + $modeFlag + @("--json", "--resource", $resource, "--all", "--log-scpi")) -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "protection-status")))
     )
 }
 
 function Get-SnapshotCases {
     param([string]$Model, [bool]$Live)
 
-    $resource = if ($Live) { $script:RawResource } else { $TargetMetadata["keysight-e36312a"].simulator_resource }
+    $resource = if ($Live) { $script:RawResource } else { $TargetMetadata[$Model].simulator_resource }
     $phase = if ($Live) { "live" } else { "preflight" }
     $snapshotPath = if ($Live) { Join-Path $script:PrivateArtifactDir "snapshot-live.json" } else { New-ValidationSnapshotFile }
     $modeFlag = if ($Live) { @() } else { @("--simulate") }
     $cases = New-Object System.Collections.Generic.List[object]
     $cases.AddRange(@(
-        (New-CommandCase -Name "snapshot-save" -Suite "snapshot" -Phase $phase -Args (@("snapshot") + $modeFlag + @("--json", "--resource", $resource, "--log-scpi", "--snapshot-json", $snapshotPath)) -LiveHardwareExpected:$Live -GeneratedArtifacts @($snapshotPath)),
-        (New-CommandCase -Name "snapshot-compare" -Suite "snapshot" -Phase $phase -Args (@("snapshot") + $modeFlag + @("--json", "--resource", $resource, "--compare", $snapshotPath, "--log-scpi")) -LiveHardwareExpected:$Live),
+        (New-CommandCase -Name "snapshot-save" -Suite "snapshot" -Phase $phase -Args (@("snapshot") + $modeFlag + @("--json", "--resource", $resource, "--log-scpi", "--snapshot-json", $snapshotPath)) -LiveHardwareExpected:$Live -GeneratedArtifacts @($snapshotPath) -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "snapshot"))),
+        (New-CommandCase -Name "snapshot-compare" -Suite "snapshot" -Phase $phase -Args (@("snapshot") + $modeFlag + @("--json", "--resource", $resource, "--compare", $snapshotPath, "--log-scpi")) -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "snapshot"))),
         (New-CommandCase -Name "restore-from-snapshot-plan" -Suite "snapshot" -Phase $phase -Args @("restore-from-snapshot", "--dry-run", "--json", "--snapshot", $snapshotPath, "--resource", $resource, "--channel", "all") -StateChanging:$false -LiveHardwareExpected:$false)
     ))
-    if ($Live -and $Model -eq "keysight-e36312a") {
+    if ($Live -and $Model -in @("keysight-e36312a", "gw-instek-psm-2010")) {
+        $expectedChannels = @(Get-TargetChannels -Model $Model)
         $snapshotA = Join-Path $script:PrivateArtifactDir "restore-off-snapshot-a.json"
         $snapshotB = Join-Path $script:PrivateArtifactDir "restore-off-snapshot-b.json"
         $snapshotC = Join-Path $script:PrivateArtifactDir "restore-off-snapshot-c.json"
         $snapshotOn = Join-Path $script:PrivateArtifactDir "restore-on-snapshot.json"
         $commonAll = @("--json", "--resource", $resource, "--channel", "all", "--log-scpi")
         $cases.Add((New-CommandCase -Name "restore-off-safe-off" -Suite "snapshot" -Phase $phase -Args (@("safe-off") + $commonAll) -StateChanging:$true -LiveHardwareExpected:$true))
-        $cases.Add((New-CommandCase -Name "restore-off-program-a" -Suite "snapshot" -Phase $phase -Args (@("apply") + $commonAll + @("--voltage", "1", "--current", "0.05", "--no-output")) -StateChanging:$true -LiveHardwareExpected:$true))
-        $cases.Add((New-CommandCase -Name "restore-off-protection-a" -Suite "snapshot" -Phase $phase -Args @("protection-set", "--json", "--resource", $resource, "--channel", "all", "--ovp-voltage", "5", "--ocp", "on", "--confirm", "--log-scpi") -StateChanging:$true -LiveHardwareExpected:$true))
-        $cases.Add((New-CommandCase -Name "restore-off-save-a" -Suite "snapshot" -Phase $phase -Args @("snapshot", "--json", "--resource", $resource, "--snapshot-json", $snapshotA, "--log-scpi") -LiveHardwareExpected:$true -GeneratedArtifacts @($snapshotA)))
-        $cases.Add((New-CommandCase -Name "restore-off-mutate-setpoints" -Suite "snapshot" -Phase $phase -Args (@("apply") + $commonAll + @("--voltage", "0.5", "--current", "0.04", "--no-output")) -StateChanging:$true -LiveHardwareExpected:$true))
-        $cases.Add((New-CommandCase -Name "restore-off-mutate-protection" -Suite "snapshot" -Phase $phase -Args @("protection-set", "--json", "--resource", $resource, "--channel", "all", "--ovp-voltage", "4", "--ocp", "off", "--confirm", "--log-scpi") -StateChanging:$true -LiveHardwareExpected:$true))
-        $cases.Add((New-CommandCase -Name "restore-off-save-b" -Suite "snapshot" -Phase $phase -Args @("snapshot", "--json", "--resource", $resource, "--snapshot-json", $snapshotB, "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "snapshot-mutation" -GeneratedArtifacts @($snapshotB) -CompareSnapshotPaths @($snapshotA,$snapshotB)))
-        $cases.Add((New-CommandCase -Name "restore-off-execute" -Suite "snapshot" -Phase $phase -Args @("restore-from-snapshot", "--json", "--resource", $resource, "--snapshot", $snapshotA, "--channel", "all", "--confirm", "--log-scpi") -StateChanging:$true -LiveHardwareExpected:$true -ValidationKind "restore" -ExpectedChannels @(1,2,3) -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "restore-from-snapshot")))
-        $cases.Add((New-CommandCase -Name "restore-off-save-c" -Suite "snapshot" -Phase $phase -Args @("snapshot", "--json", "--resource", $resource, "--snapshot-json", $snapshotC, "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "snapshot-compare" -GeneratedArtifacts @($snapshotC) -CompareSnapshotPaths @($snapshotA,$snapshotC)))
-        $cases.Add((New-CommandCase -Name "restore-off-assert-outputs" -Suite "snapshot" -Phase $phase -Args @("output-state", "--json", "--resource", $resource, "--channel", "all", "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "output-state" -ExpectedChannels @(1,2,3) -ExpectedOutputEnabled $false))
+        $cases.Add((New-CommandCase -Name "restore-off-program-a" -Suite "snapshot" -Phase $phase -Args (@("apply") + $commonAll + @("--voltage", "1", "--current", "0.05", "--no-output")) -StateChanging:$true -LiveHardwareExpected:$true -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "apply")))
+        $cases.Add((New-CommandCase -Name "restore-off-protection-a" -Suite "snapshot" -Phase $phase -Args @("protection-set", "--json", "--resource", $resource, "--channel", "all", "--ovp-voltage", "5", "--ocp", "on", "--confirm", "--log-scpi") -StateChanging:$true -LiveHardwareExpected:$true -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "protection-set")))
+        $cases.Add((New-CommandCase -Name "restore-off-save-a" -Suite "snapshot" -Phase $phase -Args @("snapshot", "--json", "--resource", $resource, "--snapshot-json", $snapshotA, "--log-scpi") -LiveHardwareExpected:$true -GeneratedArtifacts @($snapshotA) -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "snapshot")))
+        $cases.Add((New-CommandCase -Name "restore-off-mutate-setpoints" -Suite "snapshot" -Phase $phase -Args (@("apply") + $commonAll + @("--voltage", "0.5", "--current", "0.04", "--no-output")) -StateChanging:$true -LiveHardwareExpected:$true -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "apply")))
+        $cases.Add((New-CommandCase -Name "restore-off-mutate-protection" -Suite "snapshot" -Phase $phase -Args @("protection-set", "--json", "--resource", $resource, "--channel", "all", "--ovp-voltage", "4", "--ocp", "off", "--confirm", "--log-scpi") -StateChanging:$true -LiveHardwareExpected:$true -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "protection-set")))
+        $cases.Add((New-CommandCase -Name "restore-off-save-b" -Suite "snapshot" -Phase $phase -Args @("snapshot", "--json", "--resource", $resource, "--snapshot-json", $snapshotB, "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "snapshot-mutation" -GeneratedArtifacts @($snapshotB) -CompareSnapshotPaths @($snapshotA,$snapshotB) -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "snapshot")))
+        $cases.Add((New-CommandCase -Name "restore-off-execute" -Suite "snapshot" -Phase $phase -Args @("restore-from-snapshot", "--json", "--resource", $resource, "--snapshot", $snapshotA, "--channel", "all", "--confirm", "--log-scpi") -StateChanging:$true -LiveHardwareExpected:$true -ValidationKind "restore" -ExpectedChannels $expectedChannels -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "restore-from-snapshot")))
+        $cases.Add((New-CommandCase -Name "restore-off-save-c" -Suite "snapshot" -Phase $phase -Args @("snapshot", "--json", "--resource", $resource, "--snapshot-json", $snapshotC, "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "snapshot-compare" -GeneratedArtifacts @($snapshotC) -CompareSnapshotPaths @($snapshotA,$snapshotC) -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "snapshot")))
+        $cases.Add((New-CommandCase -Name "restore-off-assert-outputs" -Suite "snapshot" -Phase $phase -Args @("output-state", "--json", "--resource", $resource, "--channel", "all", "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "output-state" -ExpectedChannels $expectedChannels -ExpectedOutputEnabled $false))
         $cases.Add((New-CommandCase -Name "restore-on-safe-off" -Suite "snapshot" -Phase $phase -Args (@("safe-off") + $commonAll) -StateChanging:$true -LiveHardwareExpected:$true))
-        $cases.Add((New-CommandCase -Name "restore-on-program-all" -Suite "snapshot" -Phase $phase -Args (@("apply") + $commonAll + @("--voltage", "1", "--current", "0.05", "--no-output")) -StateChanging:$true -LiveHardwareExpected:$true))
+        $cases.Add((New-CommandCase -Name "restore-on-program-all" -Suite "snapshot" -Phase $phase -Args (@("apply") + $commonAll + @("--voltage", "1", "--current", "0.05", "--no-output")) -StateChanging:$true -LiveHardwareExpected:$true -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "apply")))
         $cases.Add((New-CommandCase -Name "restore-on-enable-ch1" -Suite "snapshot" -Phase $phase -Args @("output-on", "--json", "--resource", $resource, "--channel", "1", "--confirm", "--log-scpi") -StateChanging:$true -LiveHardwareExpected:$true -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "output-on")))
-        $cases.Add((New-CommandCase -Name "restore-on-save" -Suite "snapshot" -Phase $phase -Args @("snapshot", "--json", "--resource", $resource, "--snapshot-json", $snapshotOn, "--log-scpi") -LiveHardwareExpected:$true -GeneratedArtifacts @($snapshotOn)))
+        $cases.Add((New-CommandCase -Name "restore-on-save" -Suite "snapshot" -Phase $phase -Args @("snapshot", "--json", "--resource", $resource, "--snapshot-json", $snapshotOn, "--log-scpi") -LiveHardwareExpected:$true -GeneratedArtifacts @($snapshotOn) -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "snapshot")))
         $cases.Add((New-CommandCase -Name "restore-on-safe-off-before-restore" -Suite "snapshot" -Phase $phase -Args (@("safe-off") + $commonAll) -StateChanging:$true -LiveHardwareExpected:$true))
-        $cases.Add((New-CommandCase -Name "restore-on-mutate-ch1" -Suite "snapshot" -Phase $phase -Args @("set", "--json", "--resource", $resource, "--channel", "1", "--voltage", "0.5", "--current", "0.04", "--log-scpi") -StateChanging:$true -LiveHardwareExpected:$true))
-        $cases.Add((New-CommandCase -Name "restore-on-execute" -Suite "snapshot" -Phase $phase -Args @("restore-from-snapshot", "--json", "--resource", $resource, "--snapshot", $snapshotOn, "--channel", "all", "--restore-output-state", "--confirm", "--log-scpi") -StateChanging:$true -LiveHardwareExpected:$true -ValidationKind "restore" -ExpectedChannels @(1,2,3) -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "restore-from-snapshot")))
-        $cases.Add((New-CommandCase -Name "restore-on-readback" -Suite "snapshot" -Phase $phase -Args @("readback", "--json", "--resource", $resource, "--channel", "all", "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "snapshot-readback" -ExpectedChannels @(1,2,3) -CompareSnapshotPaths @($snapshotOn)))
-        $cases.Add((New-CommandCase -Name "restore-on-assert" -Suite "snapshot" -Phase $phase -Args @("output-state", "--json", "--resource", $resource, "--channel", "all", "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "output-state-one-on" -ExpectedChannels @(1,2,3)))
+        $cases.Add((New-CommandCase -Name "restore-on-mutate-ch1" -Suite "snapshot" -Phase $phase -Args @("set", "--json", "--resource", $resource, "--channel", "1", "--voltage", "0.5", "--current", "0.04", "--log-scpi") -StateChanging:$true -LiveHardwareExpected:$true -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "set")))
+        $cases.Add((New-CommandCase -Name "restore-on-execute" -Suite "snapshot" -Phase $phase -Args @("restore-from-snapshot", "--json", "--resource", $resource, "--snapshot", $snapshotOn, "--channel", "all", "--restore-output-state", "--confirm", "--log-scpi") -StateChanging:$true -LiveHardwareExpected:$true -ValidationKind "restore" -ExpectedChannels $expectedChannels -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "restore-from-snapshot")))
+        $cases.Add((New-CommandCase -Name "restore-on-readback" -Suite "snapshot" -Phase $phase -Args @("readback", "--json", "--resource", $resource, "--channel", "all", "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "snapshot-readback" -ExpectedChannels $expectedChannels -CompareSnapshotPaths @($snapshotOn)))
+        $cases.Add((New-CommandCase -Name "restore-on-assert" -Suite "snapshot" -Phase $phase -Args @("output-state", "--json", "--resource", $resource, "--channel", "all", "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "output-state-one-on" -ExpectedChannels $expectedChannels))
         $cases.Add((New-CommandCase -Name "restore-on-immediate-safe-off" -Suite "snapshot" -Phase $phase -Args (@("safe-off") + $commonAll) -StateChanging:$true -LiveHardwareExpected:$true -CleanupRole "restore_on_immediate_safe_off"))
-        $cases.Add((New-CommandCase -Name "restore-on-final-output-state" -Suite "snapshot" -Phase $phase -Args @("output-state", "--json", "--resource", $resource, "--channel", "all", "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "output-state" -ExpectedChannels @(1,2,3) -ExpectedOutputEnabled $false))
+        $cases.Add((New-CommandCase -Name "restore-on-final-output-state" -Suite "snapshot" -Phase $phase -Args @("output-state", "--json", "--resource", $resource, "--channel", "all", "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "output-state" -ExpectedChannels $expectedChannels -ExpectedOutputEnabled $false))
         $cases.Add((New-CommandCase -Name "restore-error-queue" -Suite "snapshot" -Phase $phase -Args @("error", "--json", "--resource", $resource, "--max-reads", "20", "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "empty-errors"))
     }
     return $cases.ToArray()
@@ -1530,9 +1529,9 @@ function Get-SoftwareSequenceCases {
     if ($Live) {
         $safeOffArgs = @("safe-off", "--json", "--resource", $resource, "--channel", "all", "--log-scpi")
         $cases.Add((New-CommandCase -Name "safe-off-before-software-sequence" -Suite "software-sequence" -Phase $phase -Args $safeOffArgs -StateChanging:$true -LiveHardwareExpected:$true))
-        $cases.Add((New-CommandCase -Name "ramp-list-live-low-power" -Suite "software-sequence" -Phase $phase -Args (@("ramp-list", "--json", "--resource", $resource) + $rampListArgs + @("--log-scpi")) -StateChanging:$true -LiveHardwareExpected:$true))
-        $cases.Add((New-CommandCase -Name "sequence-live-readonly" -Suite "software-sequence" -Phase $phase -Args @("sequence", "--json", "--resource", $resource, "--file", $readOnlySequence, "--log-scpi") -LiveHardwareExpected:$true))
-        $cases.Add((New-CommandCase -Name "sequence-live-output-low-power" -Suite "software-sequence" -Phase $phase -Args @("sequence", "--json", "--resource", $resource, "--file", $outputSequence, "--log-scpi") -StateChanging:$true -LiveHardwareExpected:$true))
+        $cases.Add((New-CommandCase -Name "ramp-list-live-low-power" -Suite "software-sequence" -Phase $phase -Args (@("ramp-list", "--json", "--resource", $resource) + $rampListArgs + @("--log-scpi")) -StateChanging:$true -LiveHardwareExpected:$true -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "ramp-list")))
+        $cases.Add((New-CommandCase -Name "sequence-live-readonly" -Suite "software-sequence" -Phase $phase -Args @("sequence", "--json", "--resource", $resource, "--file", $readOnlySequence, "--log-scpi") -LiveHardwareExpected:$true -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "sequence")))
+        $cases.Add((New-CommandCase -Name "sequence-live-output-low-power" -Suite "software-sequence" -Phase $phase -Args @("sequence", "--json", "--resource", $resource, "--file", $outputSequence, "--log-scpi") -StateChanging:$true -LiveHardwareExpected:$true -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "sequence")))
         $cases.Add((New-CommandCase -Name "safe-off-after-software-sequence" -Suite "software-sequence" -Phase $phase -Args $safeOffArgs -StateChanging:$true -LiveHardwareExpected:$true))
     }
     else {
@@ -1540,14 +1539,14 @@ function Get-SoftwareSequenceCases {
         $cases.Add((New-CommandCase -Name "ramp-list-dry-run" -Suite "software-sequence" -Phase $phase -Args (@("ramp-list", "--dry-run", "--json", "--model", $Model) + $rampListArgs)))
         $cases.Add((New-CommandCase -Name "sequence-lint-readonly" -Suite "software-sequence" -Phase $phase -Args @("sequence", "--lint", "--json", "--model", $Model, "--resource", $resource, "--file", $readOnlySequence)))
         $cases.Add((New-CommandCase -Name "sequence-dry-run-readonly" -Suite "software-sequence" -Phase $phase -Args @("sequence", "--dry-run", "--json", "--model", $Model, "--resource", $resource, "--file", $readOnlySequence)))
-        if ($Model -in @("keysight-edu36311a", "keysight-e3646a")) {
+        if ($Model -in @("keysight-edu36311a", "keysight-e3646a", "gw-instek-psm-2010")) {
             $negativeCases = @(
                 @{ Name = "sequence-unsupported-trigger"; Action = "trigger-list"; Expected = "trigger-list" },
                 @{ Name = "sequence-unsupported-snapshot"; Action = "snapshot"; Expected = "snapshot" },
                 @{ Name = "sequence-unsupported-restore"; Action = "restore-from-snapshot"; Expected = "restore" },
                 @{ Name = "sequence-unsupported-native-list"; Action = "native-list"; Expected = "native-list" }
             )
-            if ($Model -eq "keysight-e3646a") {
+            if ($Model -in @("keysight-e3646a", "gw-instek-psm-2010")) {
                 $negativeCases += @(
                     @{ Name = "sequence-unsupported-protection"; Action = "protection-set"; Expected = "protection" },
                     @{ Name = "sequence-unsupported-completion-pulse"; Action = "trigger-pulse"; Expected = "trigger-pulse" }

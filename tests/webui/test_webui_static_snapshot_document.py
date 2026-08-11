@@ -24,6 +24,9 @@ strictAssert.equal(snapshot.validateSnapshotDocument(valid), undefined);
 strictAssert.equal(snapshot.snapshotSuggestedName(valid, null, new Date(2024, 0, 2, 3, 4, 5)), "powers-tool-E36312A-A1-20240102-030405.snapshot.json");
 strictAssert.throws(() => snapshot.validateSnapshotDocument({ ...valid, kind: "other" }), /schema_version 2/);
 strictAssert.throws(() => snapshot.validateSnapshotDocument({ ...valid, readback: {} }), /readback/);
+const psm = { ...valid, reported_identity: { model: "PSM-2010", serial: "SIM" }, resolved_identity: { model_id: "gw-instek-psm-2010" }, readback: [{ channel: 1, setpoints: { voltage: 1, current: 0.05 } }], outputs: [{ channel: 1, enabled: false }], output_ranges: [{ channel: 1, range: "LOW" }] };
+strictAssert.equal(snapshot.validateRestoreSnapshot(psm), undefined);
+strictAssert.throws(() => snapshot.validateRestoreSnapshot({ ...psm, output_ranges: undefined }), /output_ranges/);
 strictAssert.equal("PowersToolWebUI" in globalThis, false);
 """,
         ("snapshot-restore.js",),

@@ -45,6 +45,42 @@ class FakeSession:
         return responses.get(command, '0,"No error"')
 
 
+class PSM2010Session(FakeSession):
+    capabilities = type("Capabilities", (), {"channels": (1,)})()
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.output_range = "LOW"
+        self.voltage = 1.0
+        self.current = 0.05
+        self.output_enabled = False
+
+    def write(self, command: str) -> None:
+        super().write(command)
+        if command.startswith("VOLT:RANG "):
+            self.output_range = command.split()[-1]
+        elif command.startswith("VOLT "):
+            self.voltage = float(command.split()[-1])
+        elif command.startswith("CURR "):
+            self.current = float(command.split()[-1])
+        elif command == "OUTP ON":
+            self.output_enabled = True
+        elif command == "OUTP OFF":
+            self.output_enabled = False
+
+    def query(self, command: str) -> str:
+        self.queries.append(command)
+        responses = {
+            "*IDN?": "GW.Inc,PSM-2010,SIM000006,FW1.00",
+            "VOLT:RANG?": "P8V" if self.output_range == "LOW" else "P20V",
+            "VOLT?": str(self.voltage),
+            "CURR?": str(self.current),
+            "OUTP?": "1" if self.output_enabled else "0",
+            "SYST:ERR?": '0,"No error"',
+        }
+        return responses.get(command, '0,"No error"')
+
+
 def request(document, *, resource="USB0::SIM::E36312A::INSTR", **runtime):
     return SequenceRequest(
         runtime=RuntimeOptions(resource=resource, **runtime),
@@ -190,6 +226,65 @@ def test_sequence_dry_run_does_not_open_visa_and_adds_preview() -> None:
     assert opened is False
     assert data["status"] == "planned"
     assert data["plan"]["steps"][0]["preview"]["commands"] == ["CURR 0.1,(@1)", "VOLT 1,(@1)"]
+
+
+def test_psm2010_sequence_dry_run_uses_single_output_scpi_preview() -> None:
+    data = run_sequence(
+        request(
+            {
+                "version": 1,
+                "steps": [{"action": "set", "channel": 1, "voltage": 1.0, "current": 0.1}],
+            },
+            resource="ASRL1::SIM::PSM2010::INSTR",
+            dry_run=True,
+            planning_model_id="gw-instek-psm-2010",
+        )
+    )
+
+    assert data["plan"]["steps"][0]["preview"]["commands"] == ["CURR 0.1", "VOLT 1"]
+
+
+def test_psm2010_sequence_uses_shared_range_resolution() -> None:
+    session = PSM2010Session()
+    data = run_sequence(
+        request(
+            {
+                "version": 1,
+                "steps": [
+                    {"action": "set", "channel": 1, "voltage": 15.0, "current": 5.0}
+                ],
+            },
+            resource="ASRL1::INSTR",
+            support_policy_mode=SUPPORT_POLICY_MODE_VALIDATION,
+        ),
+        opener=lambda *args, **kwargs: session,
+    )
+
+    assert data["status"] == "completed"
+    assert session.writes[:3] == ["VOLT:RANG HIGH", "CURR 5", "VOLT 15"]
+
+
+def test_psm2010_sequence_rejects_cross_range_transition_while_output_is_on() -> None:
+    session = PSM2010Session()
+    data = run_sequence(
+        request(
+            {
+                "version": 1,
+                "steps": [
+                    {"action": "set", "channel": 1, "voltage": 5.0, "current": 5.0},
+                    {"action": "output-on", "channel": 1},
+                    {"action": "set", "channel": 1, "voltage": 15.0, "current": 5.0},
+                ],
+            },
+            resource="ASRL1::INSTR",
+            support_policy_mode=SUPPORT_POLICY_MODE_VALIDATION,
+        ),
+        opener=lambda *args, **kwargs: session,
+    )
+
+    assert data["status"] == "failed"
+    assert "output is ON" in data["failed_step"]["message"]
+    assert "VOLT:RANG HIGH" not in session.writes
 
 
 def test_sequence_dry_run_all_output_and_cycle_previews() -> None:

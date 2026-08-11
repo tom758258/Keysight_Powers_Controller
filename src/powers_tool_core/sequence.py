@@ -15,6 +15,7 @@ from powers_tool_core.core import CommandCancelled, CoreExecutionError, CoreIoEr
 from powers_tool_core.drivers.e36312a import E36312APowerSupply
 from powers_tool_core.drivers.edu36311a import EDU36311APowerSupply
 from powers_tool_core.drivers.e3646a import E3646APowerSupply
+from powers_tool_core.drivers.psm2010 import PSM2010PowerSupply
 from powers_tool_core.errors import VisaConnectionError
 from powers_tool_core.factory import create_power_supply
 from powers_tool_core.model_resolution import (
@@ -42,7 +43,12 @@ from powers_tool_core.workflow_validation import (
 from powers_tool_core.command_contract import validate_and_normalize_request, validate_sequence_action_parameters
 
 IDN_QUERY = "*IDN?"
-OUTPUT_WRITE_POWER_SUPPLY_TYPES = (E36312APowerSupply, E3646APowerSupply, EDU36311APowerSupply)
+OUTPUT_WRITE_POWER_SUPPLY_TYPES = (
+    E36312APowerSupply,
+    E3646APowerSupply,
+    EDU36311APowerSupply,
+    PSM2010PowerSupply,
+)
 SEQUENCE_OUTPUT_ACTIONS = {"safe-off", "set", "output-on", "output-off", "cycle-output", "apply", "trigger-pulse"}
 
 
@@ -281,35 +287,40 @@ def sequence_step_preview(
         channel = sequence_channel(parameters.get("channel", 1))
         voltage = _format_text_value(parameters["voltage"])
         current = _format_text_value(parameters["current"])
-        return {"commands": [f"CURR {current},(@{channel})", f"VOLT {voltage},(@{channel})"]}
+        return {
+            "commands": [
+                _preview_scpi(f"CURR {current}", channel, planning_model_id),
+                _preview_scpi(f"VOLT {voltage}", channel, planning_model_id),
+            ]
+        }
     if action == "apply":
         channel = sequence_channel(parameters.get("channel", 1), allow_all=True)
         voltage = _format_text_value(parameters["voltage"])
         current = _format_text_value(parameters["current"])
         commands: list[str] = []
         for selected_channel in sequence_preview_channels(channel, planning_model_id=planning_model_id, planning_profile_id=planning_profile_id):
-            commands.append(f"CURR {current},(@{selected_channel})")
-            commands.append(f"VOLT {voltage},(@{selected_channel})")
+            commands.append(_preview_scpi(f"CURR {current}", selected_channel, planning_model_id))
+            commands.append(_preview_scpi(f"VOLT {voltage}", selected_channel, planning_model_id))
             if not parameters.get("no_output", False):
-                commands.append(f"OUTP ON,(@{selected_channel})")
+                commands.append(_preview_scpi("OUTP ON", selected_channel, planning_model_id))
         return {"commands": commands}
     if action == "output-on":
         channel = sequence_channel(parameters.get("channel", 1), allow_all=True)
-        return {"commands": [f"OUTP ON,(@{selected_channel})" for selected_channel in sequence_preview_channels(channel, planning_model_id=planning_model_id, planning_profile_id=planning_profile_id)]}
+        return {"commands": [_preview_scpi("OUTP ON", selected_channel, planning_model_id) for selected_channel in sequence_preview_channels(channel, planning_model_id=planning_model_id, planning_profile_id=planning_profile_id)]}
     if action == "output-off":
         channel = sequence_channel(parameters.get("channel", 1), allow_all=True)
-        return {"commands": [f"OUTP OFF,(@{selected_channel})" for selected_channel in sequence_preview_channels(channel, planning_model_id=planning_model_id, planning_profile_id=planning_profile_id)]}
+        return {"commands": [_preview_scpi("OUTP OFF", selected_channel, planning_model_id) for selected_channel in sequence_preview_channels(channel, planning_model_id=planning_model_id, planning_profile_id=planning_profile_id)]}
     if action == "output-state":
         channel = sequence_channel(parameters.get("channel", 1), allow_all=True)
-        return {"commands": [f"OUTP? (@{selected_channel})" for selected_channel in sequence_preview_channels(channel, planning_model_id=planning_model_id, planning_profile_id=planning_profile_id)]}
+        return {"commands": [_preview_scpi("OUTP?", selected_channel, planning_model_id) for selected_channel in sequence_preview_channels(channel, planning_model_id=planning_model_id, planning_profile_id=planning_profile_id)]}
     if action == "cycle-output":
         channel = sequence_channel(parameters.get("channel", 1), allow_all=True)
-        commands = [f"OUTP ON,(@{selected_channel})" for selected_channel in sequence_preview_channels(channel, planning_model_id=planning_model_id, planning_profile_id=planning_profile_id)]
-        commands.extend(f"OUTP OFF,(@{selected_channel})" for selected_channel in sequence_preview_channels(channel, planning_model_id=planning_model_id, planning_profile_id=planning_profile_id))
+        commands = [_preview_scpi("OUTP ON", selected_channel, planning_model_id) for selected_channel in sequence_preview_channels(channel, planning_model_id=planning_model_id, planning_profile_id=planning_profile_id)]
+        commands.extend(_preview_scpi("OUTP OFF", selected_channel, planning_model_id) for selected_channel in sequence_preview_channels(channel, planning_model_id=planning_model_id, planning_profile_id=planning_profile_id))
         return {"commands": commands, "duration_ms": parameters.get("duration_ms", 500)}
     if action == "safe-off":
         channel = sequence_channel(parameters.get("channel", 1), allow_all=True)
-        return {"commands": [f"OUTP OFF,(@{selected_channel})" for selected_channel in sequence_preview_channels(channel, planning_model_id=planning_model_id, planning_profile_id=planning_profile_id)]}
+        return {"commands": [_preview_scpi("OUTP OFF", selected_channel, planning_model_id) for selected_channel in sequence_preview_channels(channel, planning_model_id=planning_model_id, planning_profile_id=planning_profile_id)]}
     if action == "trigger-pulse":
         channel = sequence_channel(parameters.get("channel", 1))
         pins = sequence_pulse_pins(parameters.get("pins"))
@@ -561,7 +572,7 @@ def execute_sequence_step(
     action = step["action"]
     parameters = step["parameters"]
     if action in SEQUENCE_OUTPUT_ACTIONS and not request.runtime.simulate and not isinstance(power_supply, OUTPUT_WRITE_POWER_SUPPLY_TYPES):
-        raise CoreValidationError("real output-affecting sequence steps are enabled only for E36312A, E3646A, or EDU36311A")
+        raise CoreValidationError("real output-affecting sequence steps are enabled only for E36312A, E3646A, EDU36311A, or PSM-2010")
     if action in {"measure", "readback"}:
         _validate_read_only_channel(power_supply, sequence_channel(parameters.get("channel", 1)), command_label="sequence")
     if action == "output-state":
@@ -657,8 +668,15 @@ def execute_sequence_step(
         current = parameters["current"]
         for selected_channel in sequence_channels(channel, power_supply.capabilities.channels):
             raise_if_cancelled(stop_requested)
-            power_supply.set_current_limit(channel=selected_channel, current=current)
-            power_supply.set_voltage(channel=selected_channel, voltage=voltage)
+            if isinstance(power_supply, PSM2010PowerSupply):
+                power_supply.set_output_pair(
+                    channel=selected_channel,
+                    voltage=voltage,
+                    current=current,
+                )
+            else:
+                power_supply.set_current_limit(channel=selected_channel, current=current)
+                power_supply.set_voltage(channel=selected_channel, voltage=voltage)
             if action == "apply" and not parameters.get("no_output", False):
                 power_supply.output_on(channel=selected_channel)
         return {"index": step["index"], "action": action, "channel": channel, "voltage": voltage, "current": current}
@@ -789,6 +807,13 @@ def sequence_preview_channels(
             return E36312APowerSupply.capabilities.channels
         return no_hardware_channels(planning_model_id, planning_profile_id)
     return (int(channel),)
+
+
+def _preview_scpi(command: str, channel: int, planning_model_id: str | None) -> str:
+    if planning_model_id == "gw-instek-psm-2010":
+        return command
+    separator = "," if " " in command else " "
+    return f"{command}{separator}(@{channel})"
 
 
 def _validate_no_hardware_sequence_channels(request: SequenceRequest, channel: int | str) -> None:

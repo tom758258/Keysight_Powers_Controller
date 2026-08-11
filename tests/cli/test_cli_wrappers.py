@@ -16,6 +16,7 @@ PSM2010_SMOKE_CASES = (
     "capabilities-simulate",
     "measure-ch1-simulate",
     "output-state-ch1-simulate",
+    "set-dry-run",
 )
 PSM2010_DEEP_CASES = (
     "list-resources-simulate",
@@ -28,6 +29,11 @@ PSM2010_DEEP_CASES = (
     "output-state-dry-run",
     "output-off-dry-run",
     "safe-off-dry-run",
+    "ramp-list-dry-run",
+    "sequence-dry-run",
+    "protection-status-simulate",
+    "protection-set-dry-run",
+    "snapshot-simulate",
 )
 
 
@@ -142,7 +148,10 @@ def test_shared_helper_owns_all_model_and_suite_boundaries() -> None:
         "canonical_display_name": "GW Instek PSM-2010",
         "channels": [1],
         "simulator_resource": "ASRL1::SIM::PSM2010::INSTR",
-        "suites": ["readonly", "safe-state"],
+        "suites": [
+            "readonly", "safe-state", "output", "protection", "snapshot",
+            "software-sequence",
+        ],
     }
     assert inventory["suites"] == ["smoke", "deep", "full"]
     assert inventory["smoke_targets"] == [
@@ -174,7 +183,7 @@ def test_shared_helper_owns_all_model_and_suite_boundaries() -> None:
         "set-dry-run",
         "ramp-list-dry-run",
         "sequence-dry-run",
-    }.isdisjoint(inventory["psm_full_cases"])
+    }.issubset(inventory["psm_full_cases"])
 
 
 @pytest.mark.parametrize(
@@ -214,18 +223,19 @@ def test_psm2010_preflight_executes_maintained_no_hardware_cases(
     assert target_report["model_id"] == "gw-instek-psm-2010"
     assert target_report["expected_model"] == "PSM-2010"
     assert target_report["simulator_resource"] == "ASRL1::SIM::PSM2010::INSTR"
-    assert target_report["suites"] == ["readonly", "safe-state"]
+    assert target_report["suites"] == [
+        "readonly", "safe-state", "output", "protection", "snapshot",
+        "software-sequence",
+    ]
     assert target_report["visa_io_performed"] is False
     assert target_report["resource_scan_performed"] is False
     assert target_report["resource_guess_performed"] is False
 
     commands = {command["name"]: command for command in target_report["commands"]}
     assert set(commands) == expected_cases
-    assert {
-        "set-dry-run",
-        "ramp-list-dry-run",
-        "sequence-dry-run",
-    }.isdisjoint(commands)
+    assert "set-dry-run" in commands
+    if suite == "full":
+        assert {"ramp-list-dry-run", "sequence-dry-run"}.issubset(commands)
     assert all(
         command["passed"] is True and command["hardware_touched"] is False
         for command in commands.values()

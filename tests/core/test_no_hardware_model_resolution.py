@@ -127,20 +127,23 @@ def test_psm2010_unsupported_dry_run_commands_fail_before_open(
         ("output-on", {"channel": 1}),
     ],
 )
-def test_psm2010_no_hardware_mutating_commands_remain_disabled(
+def test_psm2010_no_hardware_mutating_commands_are_implemented(
     command: str, parameters: dict[str, object]
 ) -> None:
-    with pytest.raises(CoreValidationError, match="not enabled|not supported"):
-        run_core_command(
-            OperationRequest(
-                command=command,
-                runtime=RuntimeOptions(
-                    simulate=True,
-                    planning_model_id="gw-instek-psm-2010",
-                ),
-                parameters=parameters,
-            )
+    result = run_core_command(
+        OperationRequest(
+            command=command,
+            runtime=RuntimeOptions(
+                simulate=True,
+                planning_model_id="gw-instek-psm-2010",
+            ),
+            parameters=parameters,
         )
+    )
+
+    assert result["operation"]["name"] == command
+    assert result["target"]["resource"] == "ASRL1::SIM::PSM2010::INSTR"
+    assert result["hardware_touched"] is False
 
 
 def test_simulate_rejects_explicit_non_sim_resource() -> None:

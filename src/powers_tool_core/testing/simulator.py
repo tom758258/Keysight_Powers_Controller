@@ -90,6 +90,9 @@ SIMULATED_PROTECTION_TRIPS = {
         2: {"voltage": False, "current": False},
         3: {"voltage": False, "current": False},
     },
+    "ASRL1::SIM::PSM2010::INSTR": {
+        1: {"voltage": False, "current": False},
+    },
     "USB0::SIM::EDU36311A::INSTR": {
         1: {"voltage": False, "current": False},
         2: {"voltage": False, "current": False},
@@ -102,6 +105,14 @@ SIMULATED_PROTECTION_SETTINGS = {
         1: {"ovp_voltage": "6.000", "ocp_enabled": "ON", "ocp_delay": "0.08", "ocp_delay_trigger": "SCH"},
         2: {"ovp_voltage": "6.000", "ocp_enabled": "ON", "ocp_delay": "0.08", "ocp_delay_trigger": "SCH"},
         3: {"ovp_voltage": "6.000", "ocp_enabled": "ON", "ocp_delay": "0.08", "ocp_delay_trigger": "SCH"},
+    },
+    "ASRL1::SIM::PSM2010::INSTR": {
+        1: {
+            "ovp_voltage": "21.000",
+            "ocp_enabled": "ON",
+            "ocp_delay": "0.1",
+            "ocp_delay_trigger": None,
+        },
     },
     "USB0::SIM::EDU36311A::INSTR": {
         1: {"ovp_voltage": "6.000", "ocp_enabled": "ON", "ocp_delay": "0.08", "ocp_delay_trigger": "SCH"},
@@ -322,7 +333,7 @@ class SimulatedResource:
                 raise VisaConnectionError(f"No simulated response for {command!r}")
             SIMULATED_PROGRAMMED_SETPOINTS[self.resource_name][channel][name] = value
             return
-        if _simulated_clear_protection(command) is not None:
+        if _simulated_clear_protection(self.resource_name, command) is not None:
             return
         if _simulated_protection_set(self.resource_name, command) is not None:
             return
@@ -476,13 +487,40 @@ def _simulated_digital_pin_polarity(command: str) -> bool:
     return re.fullmatch(r"DIG:PIN[123]:POL (?:POS|NEG)", command) is not None
 
 
-def _simulated_clear_protection(command: str) -> int | None:
+def _simulated_clear_protection(resource_name: str, command: str) -> int | None:
     if command.startswith("OUTP:PROT:CLE (@") and command.endswith(")"):
-        return _parse_channel_list(command, "OUTP:PROT:CLE (@")
+        channel = _parse_channel_list(command, "OUTP:PROT:CLE (@")
+        SIMULATED_PROTECTION_TRIPS[resource_name][channel] = {
+            "voltage": False,
+            "current": False,
+        }
+        return channel
+    if command in {"CURR:PROT:CLE", "VOLT:PROT:CLE"}:
+        trip = "current" if command.startswith("CURR") else "voltage"
+        SIMULATED_PROTECTION_TRIPS[resource_name][1][trip] = False
+        return 1
     return None
 
 
 def _simulated_protection_set(resource_name: str, command: str) -> int | None:
+    if command.startswith("VOLT:PROT ") and ",(@" not in command:
+        value = command.removeprefix("VOLT:PROT ").strip()
+        float(value)
+        SIMULATED_PROTECTION_SETTINGS[resource_name][1]["ovp_voltage"] = value
+        return 1
+    if command.startswith("CURR:PROT:STAT ") and ",(@" not in command:
+        state = command.removeprefix("CURR:PROT:STAT ").strip()
+        if state not in {"ON", "OFF"}:
+            raise VisaConnectionError(f"Unsupported simulated protection command {command!r}")
+        SIMULATED_PROTECTION_SETTINGS[resource_name][1]["ocp_enabled"] = state
+        return 1
+    if command.startswith("CURR:PROT:DEL ") and ",(@" not in command:
+        value = command.removeprefix("CURR:PROT:DEL ").strip()
+        delay = float(value)
+        if not 0.1 <= delay <= 10.0:
+            raise VisaConnectionError(f"Unsupported simulated protection command {command!r}")
+        SIMULATED_PROTECTION_SETTINGS[resource_name][1]["ocp_delay"] = value
+        return 1
     if command.startswith("VOLT:PROT ") and ",(@" in command and command.endswith(")"):
         value, channel_text = command.removeprefix("VOLT:PROT ").split(",(@", maxsplit=1)
         try:
@@ -552,6 +590,12 @@ def _simulated_status_write(resource_name: str, command: str) -> bool:
 
 
 def _simulated_protection_setting(command: str) -> tuple[str, int] | None:
+    if command == "VOLT:PROT?":
+        return ("ovp_voltage", 1)
+    if command == "CURR:PROT:STAT?":
+        return ("ocp_enabled", 1)
+    if command == "CURR:PROT:DEL?":
+        return ("ocp_delay", 1)
     if command.startswith("VOLT:PROT? (@") and command.endswith(")"):
         return ("ovp_voltage", _parse_channel_list(command, "VOLT:PROT? (@"))
     if command.startswith("CURR:PROT:STAT? (@") and command.endswith(")"):

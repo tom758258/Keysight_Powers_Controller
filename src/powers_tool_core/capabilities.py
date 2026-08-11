@@ -40,7 +40,6 @@ OUTPUT_COMMANDS = frozenset(
 )
 E36312A_ONLY_COMMANDS = (
     "measure-all",
-    "snapshot",
     "trigger-pulse",
     "trigger-status",
     "trigger-step",
@@ -93,17 +92,43 @@ _PSM2010_ENABLED_COMMANDS = frozenset(
         "output-state",
         "readback",
         "read-status",
+        "validate-readonly",
+        "log",
         "capabilities",
+        "set",
+        "output-on",
         "output-off",
         "safe-off",
+        "cycle-output",
+        "apply",
+        "ramp",
+        "ramp-list",
+        "smoke-output",
+        "sequence",
+        "protection-status",
+        "protection-set",
+        "clear-protection",
+        "snapshot",
+        "restore-from-snapshot",
     }
 )
 _PSM2010_DRY_RUN_COMMANDS = frozenset(
     {
         "identify",
         "output-state",
+        "set",
+        "output-on",
         "output-off",
         "safe-off",
+        "cycle-output",
+        "apply",
+        "ramp",
+        "ramp-list",
+        "smoke-output",
+        "sequence",
+        "protection-set",
+        "clear-protection",
+        "restore-from-snapshot",
     }
 )
 
@@ -267,7 +292,18 @@ def command_support(model_id: str | None) -> dict[str, dict[str, Any]]:
                 entry["hardware_validation"] = (
                     "validated"
                     if command in {"output-off", "safe-off"}
-                    else "rs232_read_only"
+                    else (
+                        "rs232_read_only"
+                        if command in {
+                            "identify",
+                            "measure",
+                            "output-state",
+                            "readback",
+                            "read-status",
+                            "capabilities",
+                        }
+                        else "not_enabled"
+                    )
                 )
         else:
             if command in {"identify", "measure", "doctor", "capabilities"}:
@@ -294,16 +330,6 @@ def command_support(model_id: str | None) -> dict[str, dict[str, Any]]:
             )
         if command == "log":
             entry["dry_run"] = False
-        if normalized == PSM2010_MODEL_ID and command == "doctor":
-            entry.update(
-                {
-                    "real": False,
-                    "simulate": False,
-                    "dry_run": False,
-                    "requires_confirm": False,
-                    "hardware_validation": "not_enabled",
-                }
-            )
         support[command] = entry
     return support
 

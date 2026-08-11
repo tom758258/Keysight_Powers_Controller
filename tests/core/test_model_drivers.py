@@ -90,21 +90,21 @@ def test_psm2010_driver_rejects_unknown_range_response() -> None:
 
 
 @pytest.mark.parametrize(
-    ("response", "method", "value", "expected_command"),
+    ("responses", "method", "value", "expected_commands"),
     [
-        ("P8V", "voltage", 5.0, "VOLT 5"),
-        ("P8V", "current", 15.0, "CURR 15"),
-        ("P20V", "voltage", 15.0, "VOLT 15"),
-        ("P20V", "current", 5.0, "CURR 5"),
+        ({"CURR?": "15", "VOLT:RANG?": "P8V"}, "voltage", 5.0, ["CURR?", "VOLT:RANG?", "VOLT 5"]),
+        ({"VOLT?": "5", "VOLT:RANG?": "P8V"}, "current", 15.0, ["VOLT?", "VOLT:RANG?", "CURR 15"]),
+        ({"CURR?": "5", "VOLT:RANG?": "P20V"}, "voltage", 15.0, ["CURR?", "VOLT:RANG?", "VOLT 15"]),
+        ({"VOLT?": "15", "VOLT:RANG?": "P20V"}, "current", 5.0, ["VOLT?", "VOLT:RANG?", "CURR 5"]),
     ],
 )
 def test_psm2010_driver_writes_scalar_supported_by_active_range(
-    response,
+    responses,
     method,
     value,
-    expected_command,
+    expected_commands,
 ) -> None:
-    session = FakeSession({"VOLT:RANG?": response})
+    session = FakeSession(responses)
     power_supply = PSM2010PowerSupply(session)
 
     if method == "voltage":
@@ -112,32 +112,73 @@ def test_psm2010_driver_writes_scalar_supported_by_active_range(
     else:
         power_supply.set_current_limit(channel=1, current=value)
 
-    assert session.commands == ["VOLT:RANG?", expected_command]
+    assert session.commands == expected_commands
 
 
 @pytest.mark.parametrize(
-    ("response", "method", "value", "range_name"),
+    ("responses", "method", "value", "expected_commands"),
     [
-        ("P8V", "voltage", 15.0, "LOW"),
-        ("P20V", "current", 15.0, "HIGH"),
+        ({"CURR?": "5", "VOLT:RANG?": "P8V", "OUTP?": "OFF"}, "voltage", 15.0, ["CURR?", "VOLT:RANG?", "OUTP?", "VOLT:RANG HIGH", "VOLT 15"]),
+        ({"VOLT?": "5", "VOLT:RANG?": "P20V", "OUTP?": "OFF"}, "current", 15.0, ["VOLT?", "VOLT:RANG?", "OUTP?", "VOLT:RANG LOW", "CURR 15"]),
     ],
 )
-def test_psm2010_driver_rejects_scalar_unsupported_by_active_range(
-    response,
+def test_psm2010_driver_switches_range_for_scalar_when_output_is_off(
+    responses,
     method,
     value,
-    range_name,
+    expected_commands,
 ) -> None:
-    session = FakeSession({"VOLT:RANG?": response})
+    session = FakeSession(responses)
     power_supply = PSM2010PowerSupply(session)
 
-    with pytest.raises(SafetyValidationError, match=rf"PSM-2010 {range_name} range maximum"):
-        if method == "voltage":
-            power_supply.set_voltage(channel=1, voltage=value)
-        else:
-            power_supply.set_current_limit(channel=1, current=value)
+    if method == "voltage":
+        power_supply.set_voltage(channel=1, voltage=value)
+    else:
+        power_supply.set_current_limit(channel=1, current=value)
 
-    assert session.commands == ["VOLT:RANG?"]
+    assert session.commands == expected_commands
+
+
+def test_psm2010_driver_rejects_range_switch_while_output_is_on() -> None:
+    session = FakeSession({"CURR?": "5", "VOLT:RANG?": "P8V", "OUTP?": "ON"})
+    power_supply = PSM2010PowerSupply(session)
+
+    with pytest.raises(SafetyValidationError, match="output is ON"):
+        power_supply.set_voltage(channel=1, voltage=15.0)
+
+    assert session.commands == ["CURR?", "VOLT:RANG?", "OUTP?"]
+
+
+def test_psm2010_driver_rejects_impossible_pair_before_scpi_io() -> None:
+    session = FakeSession()
+    power_supply = PSM2010PowerSupply(session)
+
+    with pytest.raises(SafetyValidationError):
+        power_supply.set_output_pair(channel=1, voltage=15.0, current=15.0)
+
+    assert session.commands == []
+
+
+def test_psm2010_output_on_switches_range_while_output_is_off() -> None:
+    session = FakeSession(
+        {"VOLT?": "15", "CURR?": "5", "VOLT:RANG?": "P8V", "OUTP?": "OFF"}
+    )
+    power_supply = PSM2010PowerSupply(session)
+
+    power_supply.output_on(channel=1)
+
+    assert session.commands == [
+        "VOLT?", "CURR?", "VOLT:RANG?", "OUTP?", "VOLT:RANG HIGH", "OUTP ON"
+    ]
+
+
+def test_psm2010_complete_pair_keeps_current_range_when_both_fit() -> None:
+    session = FakeSession({"VOLT:RANG?": "P20V"})
+    power_supply = PSM2010PowerSupply(session)
+
+    power_supply.set_output_pair(channel=1, voltage=5.0, current=5.0)
+
+    assert session.commands == ["VOLT:RANG?", "CURR 5", "VOLT 5"]
 
 
 def test_psm2010_driver_uses_documented_measurement_queries() -> None:
@@ -147,6 +188,61 @@ def test_psm2010_driver_uses_documented_measurement_queries() -> None:
     assert power_supply.measure_voltage(channel=1) == 5.0
     assert power_supply.measure_current(channel=1) == 1.25
     assert session.commands == ["MEAS?", "MEAS:CURR?"]
+
+
+def test_psm2010_driver_maps_protection_status_settings_and_clear() -> None:
+    session = FakeSession(
+        {
+            "VOLT:PROT:TRIP?": "1",
+            "CURR:PROT:TRIP?": "0",
+            "VOLT:PROT?": "21",
+            "CURR:PROT:STAT?": "ON",
+            "CURR:PROT:DEL?": "0.1",
+        }
+    )
+    power_supply = PSM2010PowerSupply(session)
+
+    assert power_supply.over_voltage_protection_tripped(channel=1) is True
+    assert power_supply.over_current_protection_tripped(channel=1) is False
+    assert power_supply.over_voltage_protection_level(channel=1) == 21.0
+    assert power_supply.over_current_protection_enabled(channel=1) is True
+    assert power_supply.over_current_protection_delay(channel=1) == 0.1
+    power_supply.set_over_voltage_protection(channel=1, voltage=21.5)
+    power_supply.set_over_current_protection_enabled(channel=1, enabled=True)
+    power_supply.set_over_current_protection_delay(channel=1, seconds=10.0)
+    power_supply.clear_output_protection(channel=1)
+
+    assert session.commands[-5:] == [
+        "VOLT:PROT 21.5",
+        "CURR:PROT:STAT ON",
+        "CURR:PROT:DEL 10",
+        "CURR:PROT:CLE",
+        "VOLT:PROT:CLE",
+    ]
+
+
+@pytest.mark.parametrize("delay", [0.0, 10.1])
+def test_psm2010_driver_rejects_ambiguous_or_out_of_range_ocp_delay(delay) -> None:
+    session = FakeSession()
+    power_supply = PSM2010PowerSupply(session)
+
+    with pytest.raises(ValueError, match="0.1 through 10"):
+        power_supply.set_over_current_protection_delay(channel=1, seconds=delay)
+
+    assert session.commands == []
+
+
+def test_psm2010_driver_rejects_ocp_delay_trigger_without_io() -> None:
+    session = FakeSession()
+    power_supply = PSM2010PowerSupply(session)
+
+    with pytest.raises(ValueError, match="does not support an OCP delay trigger"):
+        power_supply.set_over_current_protection_delay_trigger(
+            channel=1,
+            trigger="setting-change",
+        )
+
+    assert session.commands == []
 
 
 @pytest.mark.parametrize("channel", [2, 3])

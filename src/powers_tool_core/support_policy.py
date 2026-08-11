@@ -108,10 +108,35 @@ _PENDING_STATUSES = frozenset({VALIDATION_STATUS_TRANSPORT_PENDING})
 
 # Internal-only admission for exact live-validation candidates. These entries
 # are deliberately absent from public support metadata and accepted evidence.
-_VALIDATION_ONLY_COMMAND_CANDIDATES: Mapping[str, frozenset[str]] = {}
+_VALIDATION_ONLY_COMMAND_CANDIDATES: Mapping[str, frozenset[str]] = {
+    "gw-instek-psm-2010": frozenset(
+        {
+            "validate-readonly",
+            "log",
+            "doctor",
+            "set",
+            "output-on",
+            "cycle-output",
+            "apply",
+            "ramp",
+            "smoke-output",
+            "ramp-list",
+            "sequence",
+            "protection-status",
+            "protection-set",
+            "clear-protection",
+            "snapshot",
+            "restore-from-snapshot",
+        }
+    )
+}
 _VALIDATION_ONLY_EXACT_CONNECTIONS: Mapping[
     str, frozenset[tuple[str, str]]
-] = {}
+] = {
+    "gw-instek-psm-2010": frozenset(
+        {(TRANSPORT_ASRL, BACKEND_SYSTEM_VISA)}
+    )
+}
 
 
 def internal_validation_candidate_inventory() -> Mapping[str, Mapping[str, tuple]]:
@@ -559,15 +584,15 @@ def ensure_live_scope_supported(
         backend=normalized_backend,
         support_policy_mode=normalized_mode,
     )
-    if candidate_scope is not None:
-        return candidate_scope
-    scope = find_live_support_scope(
-        model_id=model_id,
-        command=normalized_command,
-        transport=normalized_transport,
-        backend=normalized_backend,
-        registry=registry,
-    )
+    scope = candidate_scope
+    if scope is None:
+        scope = find_live_support_scope(
+            model_id=model_id,
+            command=normalized_command,
+            transport=normalized_transport,
+            backend=normalized_backend,
+            registry=registry,
+        )
     if scope is None:
         raise LiveSupportPolicyError(
             _rejection_message(
@@ -675,10 +700,15 @@ def _validation_only_candidate_scope(
     ):
         return None
     return CommandLiveSupportScope(
-        validation_status=VALIDATION_STATUS_PROFILE_VALIDATED,
+        validation_status=VALIDATION_STATUS_TRANSPORT_PENDING,
         transport_scope=transport,
         backend_scope=backend,
         note="Internal exact validation-only candidate admission.",
+        feature_scopes=_feature_scopes_for(
+            model_id=model_id,
+            command=command,
+            validation_status=VALIDATION_STATUS_FEATURE_PENDING,
+        ),
         admission_kind="validation_candidate",
     )
 

@@ -37,8 +37,18 @@ export function validateRestoreSnapshot(document) {
   if (document.protection_settings && !Array.isArray(document.protection_settings)) throw new Error("Snapshot 'protection_settings' must be an array.");
   validateReadbackChannels(document.readback);
   validateOutputChannels(document.outputs);
-  if (document.resolved_identity.model_id !== "keysight-e36312a") {
-    throw new Error(`Snapshot model_id '${document.resolved_identity.model_id}' is not supported. Only 'keysight-e36312a' is supported for restore.`);
+  const supportedModels = new Set(["keysight-e36312a", "gw-instek-psm-2010"]);
+  if (!supportedModels.has(document.resolved_identity.model_id)) {
+    throw new Error(`Snapshot model_id '${document.resolved_identity.model_id}' is not supported for restore.`);
+  }
+  if (document.resolved_identity.model_id === "gw-instek-psm-2010") {
+    if (!Array.isArray(document.output_ranges) || document.output_ranges.length !== 1) {
+      throw new Error("PSM-2010 snapshot must contain one output_ranges entry.");
+    }
+    const outputRange = document.output_ranges[0];
+    if (outputRange?.channel !== 1 || !["LOW", "HIGH"].includes(outputRange?.range)) {
+      throw new Error("PSM-2010 snapshot output range must be LOW or HIGH for channel 1.");
+    }
   }
 }
 

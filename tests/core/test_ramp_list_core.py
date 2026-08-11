@@ -58,6 +58,18 @@ class OutputTrackingSession(FakeSession):
         return super().query(command)
 
 
+class PSM2010Session(FakeSession):
+    def query(self, command: str) -> str:
+        self.queries.append(command)
+        responses = {
+            "*IDN?": "GW.Inc,PSM-2010,SIM000006,FW1.00",
+            "VOLT:RANG?": "P8V",
+            "OUTP?": "0",
+            "SYST:ERR?": '0,"No error"',
+        }
+        return responses.get(command, '0,"No error"')
+
+
 def document(*segments):
     return {"kind": RAMP_LIST_KIND, "version": 2, "segments": list(segments)}
 
@@ -88,6 +100,34 @@ def request(doc, **runtime):
         runtime=RuntimeOptions(resource="USB0::SIM::E36312A::INSTR", **runtime),
         parameters={"document": doc},
     )
+
+
+def test_psm2010_ramp_list_uses_shared_range_resolution() -> None:
+    session = PSM2010Session()
+    result = run_ramp_list(
+        OperationRequest(
+            "ramp-list",
+            RuntimeOptions(
+                resource="ASRL1::INSTR",
+                support_policy_mode="validation",
+            ),
+            {
+                "document": document(
+                    segment(
+                        current=5.0,
+                        start_voltage=15.0,
+                        stop_voltage=15.0,
+                        step_voltage=1.0,
+                    )
+                )
+            },
+        ),
+        opener=lambda *args, **kwargs: session,
+        sleep=lambda _seconds: None,
+    )
+
+    assert result["status"] == "completed"
+    assert session.writes[:3] == ["VOLT:RANG HIGH", "CURR 5", "VOLT 15"]
 
 
 def test_ramp_list_contract_versions_are_explicit() -> None:

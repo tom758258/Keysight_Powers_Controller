@@ -398,8 +398,7 @@ def test_psm2010_unregistered_live_scopes_fail_closed(
 
 
 @pytest.mark.parametrize("command", ["set", "output-on", "doctor"])
-@pytest.mark.parametrize("mode", [SUPPORT_POLICY_MODE_PRODUCT, SUPPORT_POLICY_MODE_VALIDATION])
-def test_psm2010_unvalidated_commands_remain_closed(command: str, mode: str) -> None:
+def test_psm2010_validation_candidates_remain_closed_in_product_mode(command: str) -> None:
     assert command_live_support("gw-instek-psm-2010", command).scopes == ()
     with pytest.raises(LiveSupportPolicyError):
         ensure_live_scope_supported(
@@ -407,7 +406,43 @@ def test_psm2010_unvalidated_commands_remain_closed(command: str, mode: str) -> 
             command=command,
             transport="ASRL1::INSTR",
             backend=None,
-            support_policy_mode=mode,
+            support_policy_mode=SUPPORT_POLICY_MODE_PRODUCT,
+        )
+
+    scope = ensure_live_scope_supported(
+        model_id="gw-instek-psm-2010",
+        command=command,
+        transport="ASRL1::INSTR",
+        backend=None,
+        support_policy_mode=SUPPORT_POLICY_MODE_VALIDATION,
+    )
+    assert scope.admission_kind == "validation_candidate"
+    assert scope.validation_status == VALIDATION_STATUS_TRANSPORT_PENDING
+    assert scope.accepted_evidence_ids == ()
+
+
+@pytest.mark.parametrize(
+    ("transport", "backend"),
+    [
+        ("USB0::fixture::INSTR", None),
+        ("TCPIP0::192.0.2.1::INSTR", None),
+        ("GPIB0::5::INSTR", None),
+        ("ASRL1::INSTR", "@py"),
+        ("ASRL1::INSTR", "@bt"),
+        ("ASRL1::INSTR", "@ivi"),
+    ],
+)
+def test_psm2010_validation_candidates_reject_nonexact_connections(
+    transport: str,
+    backend: str | None,
+) -> None:
+    with pytest.raises(LiveSupportPolicyError):
+        ensure_live_scope_supported(
+            model_id="gw-instek-psm-2010",
+            command="set",
+            transport=transport,
+            backend=backend,
+            support_policy_mode=SUPPORT_POLICY_MODE_VALIDATION,
         )
 
 
@@ -426,6 +461,28 @@ def test_psm2010_trigger_family_is_not_supported_by_model(command: str, mode: st
             backend=None,
             support_policy_mode=mode,
         )
+
+
+def test_psm2010_validation_sequence_rejects_trigger_action_feature() -> None:
+    with pytest.raises(LiveSupportPolicyError, match="missing_feature_metadata"):
+        ensure_live_scope_supported(
+            model_id="gw-instek-psm-2010",
+            command="sequence",
+            transport="ASRL1::INSTR",
+            backend=None,
+            support_policy_mode=SUPPORT_POLICY_MODE_VALIDATION,
+            feature_requirements=(("sequence_action", "trigger-pulse"),),
+        )
+
+    scope = ensure_live_scope_supported(
+        model_id="gw-instek-psm-2010",
+        command="sequence",
+        transport="ASRL1::INSTR",
+        backend=None,
+        support_policy_mode=SUPPORT_POLICY_MODE_VALIDATION,
+        feature_requirements=(("sequence_action", "set"),),
+    )
+    assert scope.admission_kind == "validation_candidate"
 
 
 def test_feature_pending_is_validation_only_with_synthetic_metadata() -> None:
@@ -1367,7 +1424,19 @@ def test_public_projection_preserves_model_and_generic_boundaries() -> None:
 def test_internal_validation_candidate_inventory_is_exact_and_immutable() -> None:
     inventory = internal_validation_candidate_inventory()
 
-    assert dict(inventory) == {}
+    assert dict(inventory["gw-instek-psm-2010"]) == {
+        "commands": tuple(
+            sorted(
+                {
+                    "validate-readonly", "log", "doctor", "set", "output-on",
+                    "cycle-output", "apply", "ramp", "smoke-output", "ramp-list",
+                    "sequence", "protection-status", "protection-set",
+                    "clear-protection", "snapshot", "restore-from-snapshot",
+                }
+            )
+        ),
+        "connections": ((TRANSPORT_ASRL, BACKEND_SYSTEM_VISA),),
+    }
     with pytest.raises(TypeError):
         inventory["future-model"] = {}  # type: ignore[index]
 

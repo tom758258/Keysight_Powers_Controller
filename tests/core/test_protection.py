@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from powers_tool_core.core import OperationRequest, RuntimeOptions
+from powers_tool_core.core import CoreValidationError, OperationRequest, RuntimeOptions
 from powers_tool_core.protection import run_protection
 
 
@@ -99,3 +99,53 @@ def test_protection_status_reads_and_aggregates_trip_flags_by_channel(model: str
         "OUTP? (@2)",
         "OUTP? (@3)",
     ]
+
+
+def test_psm2010_simulated_protection_status_uses_single_output_scpi() -> None:
+    result = run_protection(
+        OperationRequest(
+            "protection-status",
+            RuntimeOptions(
+                simulate=True,
+                resource="ASRL1::SIM::PSM2010::INSTR",
+            ),
+            {"all": True},
+        )
+    )
+
+    assert result["protection_by_channel"] == [
+        {
+            "channel": 1,
+            "protection": {
+                "over_voltage_tripped": False,
+                "over_current_tripped": False,
+            },
+        }
+    ]
+
+
+def test_psm2010_protection_plan_rejects_delay_trigger_before_open() -> None:
+    opened = False
+
+    def opener(*_args, **_kwargs):
+        nonlocal opened
+        opened = True
+        raise AssertionError("opener must not run")
+
+    with pytest.raises(CoreValidationError, match="does not support the ocp_delay_trigger"):
+        run_protection(
+            OperationRequest(
+                "protection-set",
+                RuntimeOptions(
+                    dry_run=True,
+                    planning_model_id="gw-instek-psm-2010",
+                ),
+                {
+                    "channel": 1,
+                    "ocp_delay_trigger": "setting-change",
+                },
+            ),
+            opener=opener,
+        )
+
+    assert opened is False

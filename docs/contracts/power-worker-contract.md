@@ -269,8 +269,10 @@ Restore snapshot documents must contain non-empty `outputs`, `readback`, and
 `protection_settings` sections with exactly the same channel inventory. A
 channel protection record is required even when each optional protection
 field is null; incomplete snapshots are rejected instead of partially
-restored. Restore also requires an explicit `channel` selector; exact `"all"`
-is valid, but an omitted selector is rejected before artifact creation.
+restored. PSM-2010 documents also require a matching `output_ranges` section
+with one `LOW` or `HIGH` active range per channel. Restore also requires an
+explicit `channel` selector; exact `"all"` is valid, but an omitted selector is
+rejected before artifact creation.
 
 `set` arguments require `channel` plus `voltage`, `current`, or both. An
 omitted setpoint is left unchanged on the instrument and must not be replaced

@@ -1630,3 +1630,59 @@ def test_e3646a_operations_fake_execution() -> None:
     assert "VOLT 0.5" in session_ramp.writes
     assert "VOLT 1" in session_ramp.writes
     assert "VOLT 1.5" in session_ramp.writes
+
+
+def test_psm2010_apply_switches_range_before_complete_pair_write() -> None:
+    session = FakeSession(
+        idn="GW.Inc,PSM-2010,SIM000006,FW1.00",
+        responses={"VOLT:RANG?": "P8V", "OUTP?": "0"},
+    )
+    result = run_operation(
+        OperationRequest(
+            "apply",
+            RuntimeOptions(
+                resource="ASRL1::INSTR",
+                support_policy_mode="validation",
+            ),
+            {
+                "channel": 1,
+                "voltage": 15.0,
+                "current": 5.0,
+                "no_output": True,
+            },
+        ),
+        opener=lambda *args, **kwargs: session,
+    )
+
+    assert result["voltage"] == 15.0
+    assert session.writes[:3] == ["VOLT:RANG HIGH", "CURR 5", "VOLT 15"]
+    assert not any("(@" in command for command in session.writes)
+
+
+def test_psm2010_ramp_rejects_cross_range_transition_while_output_is_on() -> None:
+    session = FakeSession(
+        idn="GW.Inc,PSM-2010,SIM000006,FW1.00",
+        responses={"VOLT:RANG?": "P8V", "OUTP?": "1"},
+    )
+
+    with pytest.raises(CoreExecutionError, match="output is ON"):
+        run_operation(
+            OperationRequest(
+                "ramp",
+                RuntimeOptions(
+                    resource="ASRL1::INSTR",
+                    support_policy_mode="validation",
+                ),
+                {
+                    "channel": 1,
+                    "start_voltage": 15.0,
+                    "stop_voltage": 15.0,
+                    "step_voltage": 1.0,
+                    "current": 5.0,
+                    "delay_ms": 0,
+                },
+            ),
+            opener=lambda *args, **kwargs: session,
+        )
+
+    assert not any(command.startswith(("VOLT ", "CURR ")) for command in session.writes)

@@ -21,6 +21,7 @@ from powers_tool_core.core import (
 )
 from powers_tool_core.drivers.e36312a import E36312APowerSupply
 from powers_tool_core.drivers.edu36311a import EDU36311APowerSupply
+from powers_tool_core.drivers.psm2010 import PSM2010PowerSupply
 from powers_tool_core.drivers.e3646a import E3646APowerSupply
 from powers_tool_core.errors import VisaConnectionError
 from powers_tool_core.factory import create_power_supply
@@ -66,7 +67,12 @@ SEGMENT_FIELDS = frozenset(
         "hold_ms",
     }
 )
-OUTPUT_WRITE_POWER_SUPPLY_TYPES = (E36312APowerSupply, E3646APowerSupply, EDU36311APowerSupply)
+OUTPUT_WRITE_POWER_SUPPLY_TYPES = (
+    E36312APowerSupply,
+    E3646APowerSupply,
+    EDU36311APowerSupply,
+    PSM2010PowerSupply,
+)
 
 
 def run_ramp_list(
@@ -405,7 +411,7 @@ def execute_ramp_list(
             power_supply = create_power_supply(session, idn_raw)
             if not isinstance(power_supply, OUTPUT_WRITE_POWER_SUPPLY_TYPES):
                 raise CoreValidationError(
-                    f"ramp-list real execution is only supported for E36312A, E3646A, or EDU36311A; "
+                    f"ramp-list real execution is only supported for E36312A, E3646A, EDU36311A, or PSM-2010; "
                     f"found {type(power_supply).__name__} from *IDN? response"
                 )
             _validate_plan_for_power_supply(request, plan, power_supply, idn_raw)
@@ -699,10 +705,19 @@ def execute_ramp_segment(
     triggers = BoundedResultDetails[dict[str, Any]]()
     trigger: dict[str, Any] | None = None
     raise_if_cancelled(stop_requested)
-    power_supply.set_current_limit(channel=channel, current=segment["current"])
+    first_voltage = segment["voltages"][0]
+    if isinstance(power_supply, PSM2010PowerSupply):
+        power_supply.set_output_pair(
+            channel=channel,
+            voltage=first_voltage,
+            current=segment["current"],
+        )
+    else:
+        power_supply.set_current_limit(channel=channel, current=segment["current"])
     for voltage_index, voltage in enumerate(segment["voltages"]):
         raise_if_cancelled(stop_requested)
-        power_supply.set_voltage(channel=channel, voltage=voltage)
+        if not (isinstance(power_supply, PSM2010PowerSupply) and voltage_index == 0):
+            power_supply.set_voltage(channel=channel, voltage=voltage)
         if unit_completed is not None:
             unit_completed()
         if voltage_index == 0 and enable_channel:

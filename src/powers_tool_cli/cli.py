@@ -155,6 +155,7 @@ from powers_tool_core.drivers.e36312a import E36312APowerSupply
 from powers_tool_core.drivers.e3646a import E3646APowerSupply
 from powers_tool_core.drivers.edu36311a import EDU36311APowerSupply
 from powers_tool_core.drivers.generic_scpi import GenericScpiPowerSupply
+from powers_tool_core.drivers.psm2010 import PSM2010PowerSupply
 from powers_tool_core.errors import VisaConnectionError
 from powers_tool_core.factory import create_power_supply, select_driver
 from powers_tool_core.identity import (
@@ -2291,9 +2292,12 @@ def _run_validate_readonly(args: argparse.Namespace) -> int:
             _enforce_live_cli_scope(args, idn_raw, command="validate-readonly")
             selection = select_driver(idn_raw)
             power_supply = selection.driver_class(session)
-            if not isinstance(power_supply, (E36312APowerSupply, EDU36311APowerSupply)):
+            if not isinstance(
+                power_supply,
+                (E36312APowerSupply, EDU36311APowerSupply, PSM2010PowerSupply),
+            ):
                 raise _ReadOnlyModelError(
-                    "validate-readonly is only supported for E36312A or EDU36311A; "
+                    "validate-readonly is only supported for E36312A, EDU36311A, or PSM-2010; "
                     f"found {selection.driver_class.__name__} from *IDN? response"
                 )
             channels = power_supply.capabilities.channels
@@ -4458,9 +4462,12 @@ def _validate_read_only_channel(
     *,
     command_label: str,
 ) -> None:
-    if not isinstance(power_supply, (E36312APowerSupply, EDU36311APowerSupply)):
+    if not isinstance(
+        power_supply,
+        (E36312APowerSupply, EDU36311APowerSupply, PSM2010PowerSupply),
+    ):
         raise _ReadOnlyModelError(
-            f"{command_label} is only supported for E36312A or EDU36311A; "
+            f"{command_label} is only supported for E36312A, EDU36311A, or PSM-2010; "
             f"found {type(power_supply).__name__} from *IDN? response"
         )
     if channel not in power_supply.capabilities.channels:
@@ -4686,6 +4693,12 @@ def _compare_snapshot_data(
     )
     _compare_exact(differences, "errors", baseline.get("errors"), current.get("errors"))
     _compare_exact(differences, "outputs", baseline.get("outputs"), current.get("outputs"))
+    _compare_exact(
+        differences,
+        "output_ranges",
+        baseline.get("output_ranges"),
+        current.get("output_ranges"),
+    )
     _compare_exact(differences, "protection", baseline.get("protection"), current.get("protection"))
     _compare_channel_measurements(
         differences,

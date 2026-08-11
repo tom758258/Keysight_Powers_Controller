@@ -14,6 +14,10 @@ from powers_tool_core.connection import open_resource
 from powers_tool_core.cancellation import StopRequested, raise_if_cancelled
 from powers_tool_core.core import ConfirmationRequiredError, CoreIoError, CoreValidationError, OperationRequest, UnsupportedModelError
 from powers_tool_core.drivers.e36312a import E36312APowerSupply
+from powers_tool_core.drivers.psm2010 import (
+    PSM2010PowerSupply,
+    _compatible_programming_ranges,
+)
 from powers_tool_core.errors import VisaConnectionError
 from powers_tool_core.factory import create_power_supply
 from powers_tool_core.identity import IDENTITY_INDEXES, IdentityResolutionError, resolve_physical_model_identity
@@ -101,7 +105,7 @@ def _run_restore_admitted(
             resolved_identity = _validate_restore_identity(parsed_idn, snapshot)
             enforce_live_support_for_idn(request, idn_raw)
             power_supply = create_power_supply(session, idn_raw)
-            if not isinstance(power_supply, E36312APowerSupply):
+            if not isinstance(power_supply, (E36312APowerSupply, PSM2010PowerSupply)):
                 model = parse_idn(idn_raw).model
                 raise UnsupportedModelError(
                     f"{capabilities.unsupported_command_message('restore-from-snapshot', model, 'live')}\n"
@@ -145,9 +149,12 @@ def restore_plan(
     restore_output_state: bool,
     allow_output_on: bool,
 ) -> dict[str, Any]:
+    model_id = snapshot["resolved_identity"]["model_id"]
+    psm2010 = model_id == "gw-instek-psm-2010"
     outputs = _records_by_channel(snapshot.get("outputs"))
     readback = _records_by_channel(snapshot.get("readback"))
     protection = _records_by_channel(snapshot.get("protection_settings"))
+    output_ranges = _records_by_channel(snapshot.get("output_ranges"))
     steps: list[dict[str, Any]] = []
     for channel in channels:
         if channel not in outputs:
@@ -158,29 +165,43 @@ def restore_plan(
             raise CoreValidationError(
                 f"snapshot protection_settings does not contain channel {channel}"
             )
-        steps.append(_restore_step("output_off", f"OUTP OFF,(@{channel})", channel=channel))
+        if psm2010 and channel not in output_ranges:
+            raise CoreValidationError(
+                f"snapshot output_ranges does not contain channel {channel}"
+            )
+        steps.append(_restore_step("output_off", _restore_scpi("OUTP OFF", channel, psm2010), channel=channel))
+        if psm2010:
+            output_range = output_ranges[channel]["range"]
+            steps.append(
+                _restore_step(
+                    "set_output_range",
+                    f"VOLT:RANG {output_range}",
+                    channel=channel,
+                    output_range=output_range,
+                )
+            )
         protection_record = protection[channel]["protection"]
         ovp_voltage = protection_record.get("ovp_voltage")
         if ovp_voltage is not None:
-            steps.append(_restore_step("set_over_voltage_protection", f"VOLT:PROT {_format_value(ovp_voltage)},(@{channel})", channel=channel, voltage=ovp_voltage))
+            steps.append(_restore_step("set_over_voltage_protection", _restore_scpi(f"VOLT:PROT {_format_value(ovp_voltage)}", channel, psm2010), channel=channel, voltage=ovp_voltage))
         ocp_enabled = protection_record.get("ocp_enabled")
         if ocp_enabled is not None:
             ocp_command = "ON" if ocp_enabled else "OFF"
-            steps.append(_restore_step("set_over_current_protection_enabled", f"CURR:PROT:STAT {ocp_command},(@{channel})", channel=channel, enabled=ocp_enabled))
+            steps.append(_restore_step("set_over_current_protection_enabled", _restore_scpi(f"CURR:PROT:STAT {ocp_command}", channel, psm2010), channel=channel, enabled=ocp_enabled))
         ocp_delay = protection_record.get("ocp_delay")
         if ocp_delay is not None:
-            steps.append(_restore_step("set_over_current_protection_delay", f"CURR:PROT:DEL {_format_value(ocp_delay)},(@{channel})", channel=channel, seconds=ocp_delay))
+            steps.append(_restore_step("set_over_current_protection_delay", _restore_scpi(f"CURR:PROT:DEL {_format_value(ocp_delay)}", channel, psm2010), channel=channel, seconds=ocp_delay))
         ocp_delay_trigger = protection_record.get("ocp_delay_trigger")
         if ocp_delay_trigger is not None:
             trigger_command = _ocp_delay_trigger_scpi(ocp_delay_trigger)
-            steps.append(_restore_step("set_over_current_protection_delay_trigger", f"CURR:PROT:DEL:STAR {trigger_command},(@{channel})", channel=channel, trigger=ocp_delay_trigger))
+            steps.append(_restore_step("set_over_current_protection_delay_trigger", _restore_scpi(f"CURR:PROT:DEL:STAR {trigger_command}", channel, psm2010), channel=channel, trigger=ocp_delay_trigger))
         setpoints = readback.get(channel, {}).get("setpoints", {})
         if "current" not in setpoints or "voltage" not in setpoints:
             raise CoreValidationError(f"snapshot does not contain voltage/current setpoints for channel {channel}")
-        steps.append(_restore_step("set_current_limit", f"CURR {_format_value(setpoints['current'])},(@{channel})", channel=channel, current=setpoints["current"]))
-        steps.append(_restore_step("set_voltage", f"VOLT {_format_value(setpoints['voltage'])},(@{channel})", channel=channel, voltage=setpoints["voltage"]))
+        steps.append(_restore_step("set_current_limit", _restore_scpi(f"CURR {_format_value(setpoints['current'])}", channel, psm2010), channel=channel, current=setpoints["current"]))
+        steps.append(_restore_step("set_voltage", _restore_scpi(f"VOLT {_format_value(setpoints['voltage'])}", channel, psm2010), channel=channel, voltage=setpoints["voltage"]))
         if restore_output_state and allow_output_on and outputs.get(channel, {}).get("enabled") is True:
-            steps.append(_restore_step("output_on", f"OUTP ON,(@{channel})", channel=channel))
+            steps.append(_restore_step("output_on", _restore_scpi("OUTP ON", channel, psm2010), channel=channel))
     return {
         "operation": {"name": "restore-from-snapshot"},
         "target": {"resource": resource, "channels": list(channels)},
@@ -283,7 +304,7 @@ def validate_snapshot_document(document: dict[str, Any]) -> dict[str, Any]:
         {
             "schema_version", "kind", "resource", "reported_identity", "resolved_identity",
             "errors", "read_count", "outputs", "readback", "measurements", "protection",
-            "protection_settings",
+            "protection_settings", "output_ranges",
         },
         "snapshot",
     )
@@ -323,20 +344,35 @@ def validate_snapshot_document(document: dict[str, Any]) -> dict[str, Any]:
         raise CoreValidationError(
             "snapshot reported_identity conflicts with resolved_identity"
         )
-    if identity.model_id != "keysight-e36312a":
+    if identity.model_id not in {"keysight-e36312a", "gw-instek-psm-2010"}:
         raise CoreValidationError(
-            "snapshot model must be E36312A (model_id keysight-e36312a) "
+            "snapshot model must be E36312A or PSM-2010 "
             "for restore-from-snapshot"
         )
-    outputs = _validate_output_records(document.get("outputs"))
-    readback = _validate_readback_records(document.get("readback"))
+    supported_channels = _snapshot_supported_channels(identity.model_id)
+    outputs = _validate_output_records(document.get("outputs"), supported_channels)
+    readback = _validate_readback_records(document.get("readback"), supported_channels)
     # These read-only producer sections are optional in older schema-2
     # snapshots, but become strict as soon as they are present.
     if "measurements" in document:
-        _validate_measurement_records(document["measurements"])
+        _validate_measurement_records(document["measurements"], supported_channels)
     if "protection" in document:
         _validate_snapshot_protection(document["protection"])
-    protection = _validate_protection_records(document.get("protection_settings"))
+    protection = _validate_protection_records(
+        document.get("protection_settings"),
+        supported_channels,
+        psm2010=identity.model_id == "gw-instek-psm-2010",
+    )
+    output_ranges: dict[int, dict[str, Any]] = {}
+    if identity.model_id == "gw-instek-psm-2010":
+        output_ranges = _validate_output_range_records(
+            document.get("output_ranges"),
+            supported_channels,
+        )
+    elif "output_ranges" in document:
+        raise CoreValidationError(
+            "snapshot output_ranges is only supported for PSM-2010"
+        )
     if not outputs:
         raise CoreValidationError("snapshot outputs must not be empty")
     if not readback:
@@ -348,6 +384,8 @@ def validate_snapshot_document(document: dict[str, Any]) -> dict[str, Any]:
         "readback": set(readback),
         "protection_settings": set(protection),
     }
+    if identity.model_id == "gw-instek-psm-2010":
+        inventories["output_ranges"] = set(output_ranges)
     all_channels = set().union(*inventories.values())
     for section, channels in inventories.items():
         missing = sorted(all_channels - channels)
@@ -355,6 +393,16 @@ def validate_snapshot_document(document: dict[str, Any]) -> dict[str, Any]:
             raise CoreValidationError(
                 f"snapshot {section} does not contain channel {missing[0]}"
             )
+    if identity.model_id == "gw-instek-psm-2010":
+        for channel, range_record in output_ranges.items():
+            setpoints = readback[channel]["setpoints"]
+            if range_record["range"] not in _compatible_programming_ranges(
+                float(setpoints["voltage"]),
+                float(setpoints["current"]),
+            ):
+                raise CoreValidationError(
+                    f"snapshot output range does not contain channel {channel} setpoints"
+                )
     return document
 
 
@@ -368,14 +416,17 @@ def _restore_channels(request: OperationRequest, snapshot: dict[str, Any]) -> tu
         allow_all=True,
         required=True,
     )
+    supported_channels = _snapshot_supported_channels(
+        snapshot["resolved_identity"]["model_id"]
+    )
     if selected == "all":
-        channels = tuple(channel for channel in available if channel in E36312APowerSupply.capabilities.channels)
+        channels = tuple(channel for channel in available if channel in supported_channels)
         _require_restore_channels(snapshot, channels)
         return channels
     assert type(selected) is int
     channel = selected
-    if channel not in E36312APowerSupply.capabilities.channels:
-        raise CoreValidationError(f"channel {channel} is not supported; supported: {E36312APowerSupply.capabilities.channels}")
+    if channel not in supported_channels:
+        raise CoreValidationError(f"channel {channel} is not supported; supported: {supported_channels}")
     if channel not in available:
         raise CoreValidationError(f"snapshot does not contain channel {channel}")
     _require_restore_channels(snapshot, (channel,))
@@ -384,6 +435,13 @@ def _restore_channels(request: OperationRequest, snapshot: dict[str, Any]) -> tu
 
 def _restore_step(action: str, scpi: str, **parameters: Any) -> dict[str, Any]:
     return {"action": action, "command": scpi, "parameters": parameters}
+
+
+def _restore_scpi(command: str, channel: int, psm2010: bool) -> str:
+    if psm2010:
+        return command
+    separator = "," if " " in command else " "
+    return f"{command}{separator}(@{channel})"
 
 
 def _ocp_delay_trigger_scpi(trigger: Any) -> str:
@@ -395,11 +453,12 @@ def _ocp_delay_trigger_scpi(trigger: Any) -> str:
 
 
 def _execute_restore_plan(
-    power_supply: E36312APowerSupply,
+    power_supply: E36312APowerSupply | PSM2010PowerSupply,
     plan: dict[str, Any],
     *,
     stop_requested: StopRequested = None,
 ) -> None:
+    pending_psm_current: dict[int, float] = {}
     for step in plan["steps"]:
         raise_if_cancelled(stop_requested)
         action = step["action"]
@@ -407,6 +466,13 @@ def _execute_restore_plan(
         channel = parameters["channel"]
         if action == "output_off":
             power_supply.output_off(channel=channel)
+        elif action == "set_output_range":
+            if not isinstance(power_supply, PSM2010PowerSupply):
+                raise CoreValidationError("set_output_range is only valid for PSM-2010 restore")
+            power_supply.set_output_range(
+                channel=channel,
+                output_range=str(parameters["output_range"]),
+            )
         elif action == "set_over_voltage_protection":
             power_supply.set_over_voltage_protection(channel=channel, voltage=float(parameters["voltage"]))
         elif action == "set_over_current_protection_enabled":
@@ -416,16 +482,29 @@ def _execute_restore_plan(
         elif action == "set_over_current_protection_delay_trigger":
             power_supply.set_over_current_protection_delay_trigger(channel=channel, trigger=str(parameters["trigger"]))
         elif action == "set_current_limit":
-            power_supply.set_current_limit(channel=channel, current=float(parameters["current"]))
+            if isinstance(power_supply, PSM2010PowerSupply):
+                pending_psm_current[channel] = float(parameters["current"])
+            else:
+                power_supply.set_current_limit(channel=channel, current=float(parameters["current"]))
         elif action == "set_voltage":
-            power_supply.set_voltage(channel=channel, voltage=float(parameters["voltage"]))
+            if isinstance(power_supply, PSM2010PowerSupply):
+                power_supply.set_output_pair(
+                    channel=channel,
+                    voltage=float(parameters["voltage"]),
+                    current=pending_psm_current[channel],
+                )
+            else:
+                power_supply.set_voltage(channel=channel, voltage=float(parameters["voltage"]))
         elif action == "output_on":
             power_supply.output_on(channel=channel)
         else:
             raise CoreValidationError(f"unsupported restore action: {action}")
 
 
-def _validate_restore_setpoints(power_supply: E36312APowerSupply, plan: dict[str, Any]) -> None:
+def _validate_restore_setpoints(
+    power_supply: E36312APowerSupply | PSM2010PowerSupply,
+    plan: dict[str, Any],
+) -> None:
     pending: dict[int, dict[str, float]] = {}
     for step in plan["steps"]:
         parameters = step["parameters"]
@@ -439,7 +518,7 @@ def _validate_restore_setpoints(power_supply: E36312APowerSupply, plan: dict[str
             values["voltage"] = float(parameters["voltage"])
     for channel, values in pending.items():
         validate_effective_setpoint(
-            model="E36312A",
+            model=power_supply.capabilities.electrical_ratings.model,
             channel=channel,
             electrical_ratings=power_supply.capabilities.electrical_ratings,
             voltage=values.get("voltage"),
@@ -466,7 +545,9 @@ def _validate_restore_identity(idn: Any, snapshot: dict[str, Any]) -> Any:
     return connected
 
 
-def _raise_on_instrument_errors(power_supply: E36312APowerSupply) -> None:
+def _raise_on_instrument_errors(
+    power_supply: E36312APowerSupply | PSM2010PowerSupply,
+) -> None:
     errors, _read_count = power_supply.read_error_queue(20)
     if errors:
         raise CoreValidationError("instrument reported errors after restore-from-snapshot: " + "; ".join(errors))
@@ -486,7 +567,11 @@ def _records_by_channel(records: Any) -> dict[int, dict[str, Any]]:
     return by_channel
 
 
-def _validated_channel_records(records: Any, section: str) -> dict[int, dict[str, Any]]:
+def _validated_channel_records(
+    records: Any,
+    section: str,
+    supported_channels: tuple[int, ...],
+) -> dict[int, dict[str, Any]]:
     if not isinstance(records, list):
         raise CoreValidationError(f"snapshot {section} must be a list")
     by_channel: dict[int, dict[str, Any]] = {}
@@ -498,7 +583,7 @@ def _validated_channel_records(records: Any, section: str) -> dict[int, dict[str
             raise CoreValidationError(
                 f"snapshot {section}[].channel must be a positive integer"
             )
-        if channel not in E36312APowerSupply.capabilities.channels:
+        if channel not in supported_channels:
             raise CoreValidationError(
                 f"snapshot {section}[].channel {channel} is not supported"
             )
@@ -508,8 +593,11 @@ def _validated_channel_records(records: Any, section: str) -> dict[int, dict[str
     return by_channel
 
 
-def _validate_output_records(records: Any) -> dict[int, dict[str, Any]]:
-    by_channel = _validated_channel_records(records, "outputs")
+def _validate_output_records(
+    records: Any,
+    supported_channels: tuple[int, ...],
+) -> dict[int, dict[str, Any]]:
+    by_channel = _validated_channel_records(records, "outputs", supported_channels)
     for record in by_channel.values():
         _reject_unknown_fields(record, {"channel", "enabled"}, "snapshot outputs[]")
         if type(record.get("enabled")) is not bool:
@@ -517,8 +605,11 @@ def _validate_output_records(records: Any) -> dict[int, dict[str, Any]]:
     return by_channel
 
 
-def _validate_readback_records(records: Any) -> dict[int, dict[str, Any]]:
-    by_channel = _validated_channel_records(records, "readback")
+def _validate_readback_records(
+    records: Any,
+    supported_channels: tuple[int, ...],
+) -> dict[int, dict[str, Any]]:
+    by_channel = _validated_channel_records(records, "readback", supported_channels)
     for record in by_channel.values():
         _reject_unknown_fields(record, {"channel", "setpoints"}, "snapshot readback[]")
         setpoints = record.get("setpoints")
@@ -533,8 +624,19 @@ def _validate_readback_records(records: Any) -> dict[int, dict[str, Any]]:
     return by_channel
 
 
-def _validate_measurement_records(records: Any) -> dict[int, dict[str, Any]]:
-    by_channel = _validated_channel_records(records, "measurements")
+def _snapshot_supported_channels(model_id: str) -> tuple[int, ...]:
+    if model_id == "keysight-e36312a":
+        return E36312APowerSupply.capabilities.channels
+    if model_id == "gw-instek-psm-2010":
+        return PSM2010PowerSupply.capabilities.channels
+    raise CoreValidationError(f"snapshot model_id {model_id!r} is not supported")
+
+
+def _validate_measurement_records(
+    records: Any,
+    supported_channels: tuple[int, ...],
+) -> dict[int, dict[str, Any]]:
+    by_channel = _validated_channel_records(records, "measurements", supported_channels)
     for record in by_channel.values():
         _reject_unknown_fields(record, {"channel", "measurements"}, "snapshot measurements[]")
         readings = record.get("measurements")
@@ -563,8 +665,17 @@ def _validate_snapshot_protection(value: Any) -> None:
             raise CoreValidationError(f"snapshot protection.{field} must be a boolean")
 
 
-def _validate_protection_records(records: Any) -> dict[int, dict[str, Any]]:
-    by_channel = _validated_channel_records(records, "protection_settings")
+def _validate_protection_records(
+    records: Any,
+    supported_channels: tuple[int, ...],
+    *,
+    psm2010: bool,
+) -> dict[int, dict[str, Any]]:
+    by_channel = _validated_channel_records(
+        records,
+        "protection_settings",
+        supported_channels,
+    )
     for record in by_channel.values():
         _reject_unknown_fields(record, {"channel", "protection"}, "snapshot protection_settings[]")
         protection = record.get("protection")
@@ -590,6 +701,10 @@ def _validate_protection_records(records: Any) -> dict[int, dict[str, Any]]:
             )
             if float(ocp_delay) < 0:
                 raise CoreValidationError("snapshot ocp_delay must be non-negative")
+            if psm2010 and not 0.1 <= float(ocp_delay) <= 10.0:
+                raise CoreValidationError(
+                    "PSM-2010 snapshot ocp_delay must be from 0.1 through 10 seconds"
+                )
         ocp_delay_trigger = protection.get("ocp_delay_trigger")
         if ocp_delay_trigger is not None and ocp_delay_trigger not in {
             "setting-change",
@@ -598,6 +713,34 @@ def _validate_protection_records(records: Any) -> dict[int, dict[str, Any]]:
             raise CoreValidationError(
                 "snapshot ocp_delay_trigger must be one of: setting-change, cc-transition, null"
             )
+        if psm2010 and ocp_delay_trigger is not None:
+            raise CoreValidationError(
+                "PSM-2010 snapshot ocp_delay_trigger must be null"
+            )
+    return by_channel
+
+
+def _validate_output_range_records(
+    records: Any,
+    supported_channels: tuple[int, ...],
+) -> dict[int, dict[str, Any]]:
+    by_channel = _validated_channel_records(
+        records,
+        "output_ranges",
+        supported_channels,
+    )
+    for record in by_channel.values():
+        _reject_unknown_fields(
+            record,
+            {"channel", "range"},
+            "snapshot output_ranges[]",
+        )
+        if record.get("range") not in {"LOW", "HIGH"}:
+            raise CoreValidationError(
+                "snapshot output_ranges[].range must be LOW or HIGH"
+            )
+    if not by_channel:
+        raise CoreValidationError("snapshot output_ranges must not be empty")
     return by_channel
 
 
@@ -620,6 +763,8 @@ def _require_restore_channels(snapshot: dict[str, Any], channels: tuple[int, ...
         "readback": _records_by_channel(snapshot.get("readback")),
         "protection_settings": _records_by_channel(snapshot.get("protection_settings")),
     }
+    if snapshot["resolved_identity"]["model_id"] == "gw-instek-psm-2010":
+        sections["output_ranges"] = _records_by_channel(snapshot.get("output_ranges"))
     for channel in channels:
         for section, records in sections.items():
             if channel not in records:

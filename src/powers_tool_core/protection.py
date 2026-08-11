@@ -18,6 +18,7 @@ from powers_tool_core.core import (
 )
 from powers_tool_core.drivers.e36312a import E36312APowerSupply
 from powers_tool_core.drivers.edu36311a import EDU36311APowerSupply
+from powers_tool_core.drivers.psm2010 import PSM2010PowerSupply
 from powers_tool_core.errors import VisaConnectionError
 from powers_tool_core.factory import create_power_supply
 from powers_tool_core.models import parse_idn
@@ -33,7 +34,7 @@ from powers_tool_core.transport import dry_run_plan
 from powers_tool_core.validation import ChannelSelectionError, expand_channel_selection
 
 IDN_QUERY = "*IDN?"
-SUPPORTED_TYPES = (E36312APowerSupply, EDU36311APowerSupply)
+SUPPORTED_TYPES = (E36312APowerSupply, EDU36311APowerSupply, PSM2010PowerSupply)
 OCP_DELAY_TRIGGERS = {"setting-change": "SCH", "cc-transition": "CCTR"}
 PROTECTION_SET_OPERATION_ERROR = (
     "protection-set requires --ovp-voltage, --ocp, --ocp-delay, or --ocp-delay-trigger"
@@ -107,13 +108,22 @@ def _run_clear(request: OperationRequest, *, opener: Callable[..., Any], scpi_lo
     selected = _selected_channel(request)
     channels = _channels(selected, _plan_supported_channels(request))
     if request.runtime.dry_run or request.runtime.simulate:
+        psm2010 = request.runtime.planning_model_id == "gw-instek-psm-2010"
         return {
             "plan": dry_run_plan(
                 command=request.command,
                 resource=request.runtime.resource,
                 planning_model_id=request.runtime.planning_model_id,
                 planning_profile_id=request.runtime.planning_profile_id,
-                scpi=tuple(f"OUTP:PROT:CLE (@{channel})" for channel in channels),
+                scpi=(
+                    tuple(
+                        command
+                        for _channel in channels
+                        for command in ("CURR:PROT:CLE", "VOLT:PROT:CLE")
+                    )
+                    if psm2010
+                    else tuple(f"OUTP:PROT:CLE (@{channel})" for channel in channels)
+                ),
                 description="Preview clearing output protection for selected channels.",
             )
         }
@@ -137,6 +147,11 @@ def _run_set(request: OperationRequest, *, opener: Callable[..., Any], scpi_logg
         raise CoreValidationError(PROTECTION_SET_OPERATION_ERROR)
     ocp_delay = _optional_ocp_delay(p.get("ocp_delay"))
     ocp_delay_trigger = _optional_ocp_delay_trigger(p.get("ocp_delay_trigger"))
+    _validate_psm_protection_options(
+        request.runtime.planning_model_id == "gw-instek-psm-2010",
+        ocp_delay=ocp_delay,
+        ocp_delay_trigger=ocp_delay_trigger,
+    )
     channels = _channels(_selected_channel(request), _plan_supported_channels(request))
     limits = _safety_limits(request)
     try:
@@ -153,7 +168,14 @@ def _run_set(request: OperationRequest, *, opener: Callable[..., Any], scpi_logg
                 resource=request.runtime.resource,
                 planning_model_id=request.runtime.planning_model_id,
                 planning_profile_id=request.runtime.planning_profile_id,
-                scpi=_protection_set_scpi(channels, p.get("ovp_voltage"), p.get("ocp"), ocp_delay, ocp_delay_trigger),
+                scpi=_protection_set_scpi(
+                    channels,
+                    p.get("ovp_voltage"),
+                    p.get("ocp"),
+                    ocp_delay,
+                    ocp_delay_trigger,
+                    psm2010=request.runtime.planning_model_id == "gw-instek-psm-2010",
+                ),
                 description="Preview setting output protection for selected channels.",
             )
         }
@@ -164,6 +186,11 @@ def _run_set(request: OperationRequest, *, opener: Callable[..., Any], scpi_logg
         enforce_live_support_for_idn(request, idn)
         power_supply = create_power_supply(instrument.session, idn)
         _require_supported(power_supply, request.command, parse_idn(idn).model)
+        _validate_psm_protection_options(
+            isinstance(power_supply, PSM2010PowerSupply),
+            ocp_delay=ocp_delay,
+            ocp_delay_trigger=ocp_delay_trigger,
+        )
         channels = _channels(_selected_channel(request), power_supply.capabilities.channels)
         for channel in channels:
             if p.get("ovp_voltage") is not None:
@@ -316,18 +343,42 @@ def _protection_set_scpi(
     ocp: str | None,
     ocp_delay: float | None,
     ocp_delay_trigger: str | None,
+    *,
+    psm2010: bool = False,
 ) -> tuple[str, ...]:
     commands: list[str] = []
     for channel in channels:
         if ovp_voltage is not None:
-            commands.append(f"VOLT:PROT {_json_safe_number(ovp_voltage)},(@{channel})")
+            commands.append(_protection_scpi(f"VOLT:PROT {_json_safe_number(ovp_voltage)}", channel, psm2010))
         if ocp is not None:
-            commands.append(f"CURR:PROT:STAT {ocp.upper()},(@{channel})")
+            commands.append(_protection_scpi(f"CURR:PROT:STAT {ocp.upper()}", channel, psm2010))
         if ocp_delay is not None:
-            commands.append(f"CURR:PROT:DEL {_json_safe_number(ocp_delay)},(@{channel})")
+            commands.append(_protection_scpi(f"CURR:PROT:DEL {_json_safe_number(ocp_delay)}", channel, psm2010))
         if ocp_delay_trigger is not None:
-            commands.append(f"CURR:PROT:DEL:STAR {OCP_DELAY_TRIGGERS[ocp_delay_trigger]},(@{channel})")
+            commands.append(_protection_scpi(f"CURR:PROT:DEL:STAR {OCP_DELAY_TRIGGERS[ocp_delay_trigger]}", channel, psm2010))
     return tuple(commands)
+
+
+def _protection_scpi(command: str, channel: int, psm2010: bool) -> str:
+    return command if psm2010 else f"{command},(@{channel})"
+
+
+def _validate_psm_protection_options(
+    psm2010: bool,
+    *,
+    ocp_delay: float | None,
+    ocp_delay_trigger: str | None,
+) -> None:
+    if not psm2010:
+        return
+    if ocp_delay_trigger is not None:
+        raise CoreValidationError(
+            "PSM-2010 does not support the ocp_delay_trigger protection option"
+        )
+    if ocp_delay is not None and not 0.1 <= ocp_delay <= 10.0:
+        raise CoreValidationError(
+            "PSM-2010 ocp_delay must be from 0.1 through 10 seconds"
+        )
 
 
 def _safety_limits(request: OperationRequest):

@@ -78,9 +78,11 @@ def test_supported_models_matrix_matches_cli_support(capsys):
         assert psm[command]["hardware_validation"] == "rs232_read_only"
     for command in {"output-off", "safe-off"}:
         assert psm[command]["hardware_validation"] == "validated"
-    for command in {"set", "output-on", "doctor"}:
-        assert psm[command]["real"] is False
+    for command in {"set", "output-on"}:
+        assert psm[command]["real"] is True
         assert psm[command]["hardware_validation"] == "not_enabled"
+    assert psm["doctor"]["real"] is True
+    assert psm["doctor"]["hardware_validation"] == "not_applicable"
     for command in {
         "trigger-pulse", "trigger-status", "trigger-step", "trigger-list",
         "trigger-fire", "trigger-abort",

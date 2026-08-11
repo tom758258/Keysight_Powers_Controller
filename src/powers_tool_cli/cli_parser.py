@@ -935,7 +935,7 @@ def build_parser(
 
     restore_parser = subparsers.add_parser(
         "restore-from-snapshot",
-        help="Restore selected E36312A channel settings from a saved snapshot.",
+        help="Restore selected supported-model channel settings from a saved snapshot.",
     )
     restore_parser.add_argument("--snapshot", required=True, help="Snapshot JSON path.")
     _add_resource_argument(restore_parser)
