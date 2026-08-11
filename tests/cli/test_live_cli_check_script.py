@@ -1748,6 +1748,30 @@ $nonmatchingCandidateCount = @(
     assert all(case["expected_output_enabled"] is False for case in after_cases)
 
 
+def test_live_cli_check_safe_state_summary_excludes_low_power_setpoints() -> None:
+    result = _run_live_cli_check(
+        "-Target",
+        "gw-instek-psm-2010",
+        "-Connection",
+        "ASRL",
+        "-Resource",
+        "ASRL1::SIM::PSM2010::INSTR",
+        "-Suite",
+        "safe-state",
+        "-PlanOnly",
+        "-SkipExternalPreflight",
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    report_path = _report_path(result.stdout, result.stderr)
+    summary = report_path.with_name("summary.md").read_text(encoding="utf-8")
+    assert "1 V / 0.05 A" not in summary
+    assert (
+        "Safe-state cases may turn outputs OFF but never enable outputs or write setpoints."
+        in summary
+    )
+
+
 def test_live_cli_check_psm2010_full_plan_only_covers_exact_pending_commands() -> None:
     result = _run_live_cli_check(
         "-Target",
@@ -1765,11 +1789,17 @@ def test_live_cli_check_psm2010_full_plan_only_covers_exact_pending_commands() -
     assert result.returncode == 0, result.stdout + result.stderr
     report_path = _report_path(result.stdout, result.stderr)
     report = json.loads(report_path.read_text(encoding="utf-8"))
+    summary = report_path.with_name("summary.md").read_text(encoding="utf-8")
     assert report["suites"] == ["readonly", "safe-state"]
     assert report["state_changing"] is True
     assert report["plan_only"] is True
     assert report["live_executed"] is False
     assert report["failures"] == []
+    assert "1 V / 0.05 A" not in summary
+    assert (
+        "Safe-state cases may turn outputs OFF but never enable outputs or write setpoints."
+        in summary
+    )
 
     expected_names = {
         "verify",
@@ -1835,6 +1865,27 @@ def test_live_cli_check_psm2010_full_plan_only_covers_exact_pending_commands() -
         is False
         for path in private_payloads
     )
+
+
+def test_live_cli_check_output_summary_keeps_low_power_setpoints() -> None:
+    result = _run_live_cli_check(
+        "-Target",
+        "keysight-e3646a",
+        "-Connection",
+        "ASRL",
+        "-Resource",
+        "ASRL1::SIM::E3646A::INSTR",
+        "-Suite",
+        "output",
+        "-PlanOnly",
+        "-SkipExternalPreflight",
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    report_path = _report_path(result.stdout, result.stderr)
+    summary = report_path.with_name("summary.md").read_text(encoding="utf-8")
+    assert "State-changing live cases use low-power 1 V / 0.05 A settings." in summary
+    assert "Safe-state cases may turn outputs OFF" not in summary
 
 
 def test_live_cli_check_skip_external_preflight_requires_plan_only() -> None:

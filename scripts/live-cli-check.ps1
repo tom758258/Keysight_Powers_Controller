@@ -2820,8 +2820,14 @@ function Write-ValidationArtifacts {
     $lines.Add("- This run produces candidate validation evidence only. Passing artifacts do not automatically promote product support.")
     $lines.Add("- This suite validates only the selected model, connection, suite, and command cases.")
     $lines.Add("- It does not validate untested features or other connections.")
-    if ($script:StateChanging) {
+    $outputAffectingSuites = @($script:SuitesToRun | Where-Object { $_ -in @("output", "snapshot", "trigger-list", "software-sequence") })
+    if (@($outputAffectingSuites).Count -gt 0) {
         $lines.Add("- State-changing live cases use low-power 1 V / 0.05 A settings.")
+    }
+    if ("safe-state" -in $script:SuitesToRun) {
+        $lines.Add("- Safe-state cases may turn outputs OFF but never enable outputs or write setpoints.")
+    }
+    if ($script:StateChanging) {
         $lines.Add("- Safe-off cleanup does not restore original voltage/current/protection settings.")
     }
     else {
