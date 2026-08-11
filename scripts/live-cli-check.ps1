@@ -2870,7 +2870,10 @@ function Write-ValidationArtifacts {
     $lines.Add("Resource: ``" + $script:ResourceDisplay + "``")
     $lines.Add("")
     $lines.Add("## Safety Notes")
-    if ($candidateEvidenceOnly) {
+    if ($script:SupportPolicyMode -eq "unresolved") {
+        $lines.Add("- Support-policy classification did not resolve successfully.")
+    }
+    elseif ($candidateEvidenceOnly) {
         $lines.Add("- This run produces candidate validation evidence only. Passing artifacts do not automatically promote product support.")
     }
     else {
@@ -3023,6 +3026,8 @@ try {
     Resolve-ValidationSupportPolicy -LiveCases $script:PlannedLiveCases
 }
 catch {
+    $script:SupportPolicyMode = "unresolved"
+    $script:PendingLiveSupportAllowed = $false
     $script:Failures.Add("Validation support-policy resolution failed: $($_.Exception.Message)")
     Write-ValidationArtifacts -ValidationMode "preflight_failed" -Result "preflight_failed" -StartedAt $startedAt
     Write-Error "Core validation support-policy resolution failed before VISA access."

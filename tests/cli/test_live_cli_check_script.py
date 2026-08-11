@@ -2082,6 +2082,10 @@ def test_trigger_list_redirected_stdin_fails_before_manual_case() -> None:
 def test_plan_only_rejects_unregistered_exact_scope_before_preflight(
     connection, backend
 ) -> None:
+    before = {
+        path: path.stat().st_mtime_ns
+        for path in Path(".tmp_tests/live_cli_check").glob("*/shareable/report.json")
+    }
     arguments = [
         "-Target",
         "keysight-e36312a",
@@ -2100,8 +2104,36 @@ def test_plan_only_rejects_unregistered_exact_scope_before_preflight(
     result = _run_live_cli_check(*arguments)
 
     assert result.returncode == 1
-    assert "resolution failed before VISA access." in (result.stdout + result.stderr)
+    combined_output = result.stdout + result.stderr
+    assert "resolution failed" in combined_output
+    assert "VISA access" in combined_output
     assert "Running selected-suite no-hardware plans" not in result.stdout
+    reports = list(Path(".tmp_tests/live_cli_check").glob("*/shareable/report.json"))
+    changed = [
+        path
+        for path in reports
+        if path not in before or path.stat().st_mtime_ns != before[path]
+    ]
+    assert len(changed) == 1, changed
+    report_path = changed[0]
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    summary = report_path.with_name("summary.md").read_text(encoding="utf-8")
+    assert report["validation_mode"] == "preflight_failed"
+    assert report["support_policy_mode"] == "unresolved"
+    assert report["pending_live_support_allowed"] is False
+    assert report["candidate_evidence_only"] is False
+    assert report["promotes_live_support"] is False
+    assert report["external_preflight"] == {"status": "not_run"}
+    assert any(
+        "neither Product-open nor an explicit validation candidate" in failure
+        for failure in report["failures"]
+    )
+    assert "Support-policy classification did not resolve successfully." in summary
+    assert "This run produces candidate validation evidence only." not in summary
+    assert (
+        "This run is a regression validation of an already Product-open exact scope."
+        not in summary
+    )
 
 
 def test_future_candidate_inventory_still_requires_full_plan_coverage() -> None:
