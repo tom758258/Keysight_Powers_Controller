@@ -85,6 +85,17 @@ _EDU36311A_VERIFIED_COMMANDS = _EDU36311A_ACCEPTED_COMMANDS | {
 }
 _E3646A_VERIFIED_COMMANDS = _E3646A_ACCEPTED_COMMANDS | {"doctor", "output-on"}
 _E3646A_20260807_VERIFIED_COMMANDS = frozenset({"log"})
+_PSM2010_VERIFIED_COMMANDS = frozenset(
+    {
+        "measure",
+        "output-state",
+        "readback",
+        "read-status",
+        "capabilities",
+        "output-off",
+        "safe-off",
+    }
+)
 
 _E36312A_ACCEPTED_FEATURES = {
     "sequence": frozenset(
@@ -348,6 +359,16 @@ SUPPORT_EVIDENCE_RECORDS = (
         _E3646A_20260807_VERIFIED_COMMANDS,
         {},
         evidence_date="2026-08-07",
+    ),
+    _verified_record(
+        "gw-instek-psm-2010-asrl-system-visa-20260811-full",
+        "gw-instek-psm-2010",
+        "asrl",
+        ".tmp_tests/live_cli_check/20260811_182827_gw-instek-psm-2010_ASRL_full/shareable",
+        "7621936dd5ffc46cdc826370f5a3cb1c65973377e036cab96f79ab0a3fb413a8",
+        _PSM2010_VERIFIED_COMMANDS,
+        {},
+        evidence_date="2026-08-11",
     ),
 )
 

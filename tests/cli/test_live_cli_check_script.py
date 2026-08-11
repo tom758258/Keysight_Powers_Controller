@@ -552,7 +552,12 @@ def test_optional_observed_identity_uses_exactly_one_non_null_path(
 
 @pytest.mark.parametrize(
     "target",
-    ["keysight-e36312a", "keysight-edu36311a", "keysight-e3646a"],
+    [
+        "keysight-e36312a",
+        "keysight-edu36311a",
+        "keysight-e3646a",
+        "gw-instek-psm-2010",
+    ],
 )
 def test_optional_null_identity_placeholder_is_absent_for_all_targets(
     tmp_path, target
@@ -1636,7 +1641,7 @@ def test_live_cli_check_readonly_plan_only_succeeds_without_hardware(
     assert "hardware_touched" not in json.dumps(report)
 
 
-def test_live_cli_check_psm2010_suite_composition_and_candidate_marking() -> None:
+def test_live_cli_check_psm2010_suite_composition_has_no_candidate_marking() -> None:
     command = r'''
 $env:POWERS_TOOL_LIVE_CLI_CHECK_IMPORT_ONLY = "1"
 . .\scripts\live-cli-check.ps1
@@ -1679,20 +1684,7 @@ $nonmatchingCandidateCount = @(
 
     assert result.returncode == 0, result.stdout + result.stderr
     composition = json.loads(result.stdout)
-    assert composition["inventory"] == {
-        "gw-instek-psm-2010": {
-            "commands": [
-                "capabilities",
-                "measure",
-                "output-off",
-                "output-state",
-                "read-status",
-                "readback",
-                "safe-off",
-            ],
-            "connections": [["asrl", "system_visa"]],
-        }
-    }
+    assert composition["inventory"] == {}
     assert composition["nonmatching_candidate_count"] == 0
 
     readonly = composition["readonly"]
@@ -1707,17 +1699,7 @@ $nonmatchingCandidateCount = @(
         "readback",
         "capabilities",
     ]
-    candidate_commands = {
-        "measure",
-        "output-state",
-        "read-status",
-        "readback",
-        "capabilities",
-    }
-    assert all(
-        case["candidate"] is (case["command"] in candidate_commands)
-        for case in readonly
-    )
+    assert all(case["candidate"] is False for case in readonly)
     assert all(case["command"] != "doctor" for case in readonly)
 
     safe_state = composition["safe_state"]
@@ -1735,7 +1717,7 @@ $nonmatchingCandidateCount = @(
         "safe-off",
         "output-state",
     ]
-    assert all(case["candidate"] is True for case in safe_state)
+    assert all(case["candidate"] is False for case in safe_state)
     assert {
         case["name"] for case in safe_state if case["state_changing"]
     } == {"output-off-all", "safe-off-all"}
@@ -1772,7 +1754,7 @@ def test_live_cli_check_safe_state_summary_excludes_low_power_setpoints() -> Non
     )
 
 
-def test_live_cli_check_psm2010_full_plan_only_covers_exact_pending_commands() -> None:
+def test_live_cli_check_psm2010_full_plan_only_covers_exact_product_commands() -> None:
     result = _run_live_cli_check(
         "-Target",
         "gw-instek-psm-2010",
@@ -1820,7 +1802,7 @@ def test_live_cli_check_psm2010_full_plan_only_covers_exact_pending_commands() -
     assert {case["name"] for case in report["cases"]} == expected_names
     assert {case["name"] for case in report["planned_live_cases"]} == expected_names
 
-    expected_candidates = {
+    expected_product_commands = {
         "measure",
         "output-state",
         "readback",
@@ -1830,7 +1812,7 @@ def test_live_cli_check_psm2010_full_plan_only_covers_exact_pending_commands() -
         "safe-off",
     }
     planned_commands = {case["command"] for case in report["planned_live_cases"]}
-    assert planned_commands & expected_candidates == expected_candidates
+    assert planned_commands & expected_product_commands == expected_product_commands
     assert planned_commands.isdisjoint(
         {
             "doctor",

@@ -99,7 +99,7 @@ def test_known_model_registry_lookup() -> None:
     assert psm.manufacturer == "GW.Inc"
     assert psm.model == "PSM-2010"
     assert psm.target_group == "psm-series"
-    assert psm.enablement_stage == "candidate"
+    assert psm.enablement_stage == "product_active"
     assert psm.vendor_id == "gw-instek"
     assert psm.display_name == "GW Instek PSM-2010"
 
@@ -110,8 +110,11 @@ def test_known_model_registry_lookup() -> None:
 
 
 def test_model_enablement_stages_are_explicit() -> None:
-    assert PRODUCT_ACTIVE_MODEL_IDS == {"keysight-e36312a", "keysight-edu36311a", "keysight-e3646a"}
-    assert CANDIDATE_MODEL_IDS == {"gw-instek-psm-2010"}
+    assert PRODUCT_ACTIVE_MODEL_IDS == {
+        "keysight-e36312a", "keysight-edu36311a", "keysight-e3646a",
+        "gw-instek-psm-2010",
+    }
+    assert CANDIDATE_MODEL_IDS == set()
     assert CATALOG_ONLY_MODEL_IDS == {
         "keysight-e36313a",
         "keysight-e36233a",
@@ -121,9 +124,7 @@ def test_model_enablement_stages_are_explicit() -> None:
     assert {REGISTERED_MODELS[model].enablement_stage for model in PRODUCT_ACTIVE_MODEL_IDS} == {
         "product_active"
     }
-    assert {REGISTERED_MODELS[model].enablement_stage for model in CANDIDATE_MODEL_IDS} == {
-        "candidate"
-    }
+    assert {REGISTERED_MODELS[model].enablement_stage for model in CANDIDATE_MODEL_IDS} == set()
     assert {REGISTERED_MODELS[model].enablement_stage for model in CATALOG_ONLY_MODEL_IDS} == {
         "catalog_only"
     }

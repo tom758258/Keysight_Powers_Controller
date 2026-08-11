@@ -403,7 +403,7 @@ normalized request features after IDN and before feature-specific SCPI.
 
 The Product model selector contains Product-active models only. Candidate,
 catalog-only, and de-scoped models are not browser runtime choices; there are
-currently no candidates and this framework enables no new model. WebUI remains
+currently no candidates. WebUI remains
 Product-only and provides neither a candidate bootstrap control nor a backend
 or validation selector.
 
@@ -576,16 +576,20 @@ scoped; only commands in the Core exact matrix are opened:
 - EDU36311A USB + system VISA
 - EDU36311A LAN + system VISA
 - E3646A ASRL / RS-232 + system VISA
+- PSM-2010 ASRL / RS-232 + system VISA
 
 Only exact commands in the Core product matrix are opened on those
-connections. E3646A live validation remains restricted to ASRL / RS-232;
-E3646A USB and LAN remain outside the current scope.
+connections. E3646A and PSM-2010 remain restricted to ASRL / RS-232 + system
+VISA; their USB and LAN paths remain outside the current scope. PSM-2010 opens
+only `measure`, `output-state`, `read-status`, `readback`, `capabilities`,
+`output-off`, and `safe-off`; setpoint and output-enable commands remain closed.
 
 | Model | USB | LAN | ASRL / RS-232 |
 | --- | --- | --- | --- |
 | E36312A | accepted exact commands | accepted exact commands | N/A |
 | EDU36311A | accepted exact commands | accepted exact commands | N/A |
 | E3646A | not current scope | not current scope | accepted exact commands |
+| PSM-2010 | not current scope | not current scope | accepted exact commands |
 
 E36312A `full` now includes `software-sequence` in addition to read-only,
 output, protection, snapshot, and trigger-list suites. EDU36311A `full` now

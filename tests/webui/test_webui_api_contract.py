@@ -152,6 +152,8 @@ def test_commands_metadata(client: TestClient):
     assert channel_capabilities["keysight-edu36311a"]["output_control_scope"] == "per_channel"
     assert channel_capabilities["keysight-e3646a"]["channels"] == [1, 2]
     assert channel_capabilities["keysight-e3646a"]["output_control_scope"] == "global"
+    assert channel_capabilities["gw-instek-psm-2010"]["channels"] == [1]
+    assert channel_capabilities["gw-instek-psm-2010"]["output_control_scope"] == "global"
     assert "generic-scpi" not in channel_capabilities
     assert data["planning_profiles"]["generic-scpi"]["channels"] == [1]
     assert data["electrical_ratings_by_model_id"]["keysight-e36312a"]["channels"][0] == {
@@ -164,6 +166,7 @@ def test_commands_metadata(client: TestClient):
         "keysight-e36312a",
         "keysight-edu36311a",
         "keysight-e3646a",
+        "gw-instek-psm-2010",
     }
     e3646a_ch1_ranges = setpoint_ranges["keysight-e3646a"]["channels"][0]["ranges"]
     assert e3646a_ch1_ranges[0]["name"] == "LOW"
@@ -423,7 +426,12 @@ def test_commands_metadata_includes_model_aware_support(client: TestClient):
     data = response.json()
     support = data["command_support_by_model_id"]
 
-    assert set(support) == {"keysight-e36312a", "keysight-e3646a", "keysight-edu36311a"}
+    assert set(support) == {
+        "keysight-e36312a",
+        "keysight-e3646a",
+        "keysight-edu36311a",
+        "gw-instek-psm-2010",
+    }
     assert support["keysight-e36312a"]["trigger-list"]["real"] is True
     assert support["keysight-edu36311a"]["trigger-list"]["real"] is False
     assert support["keysight-edu36311a"]["trigger-list"]["hardware_validation"] == "not_supported_by_model"
@@ -438,6 +446,8 @@ def test_commands_metadata_includes_model_aware_support(client: TestClient):
     assert "completion-pulse workflows are disabled" in support["keysight-e3646a"]["trigger-pulse"]["disabled_reason"]
     assert "disabled_reason" not in support["keysight-e3646a"]["ramp-list"]
     assert "disabled_reason" not in support["keysight-e3646a"]["sequence"]
+    assert support["gw-instek-psm-2010"]["set"]["real"] is False
+    assert support["gw-instek-psm-2010"]["output-on"]["real"] is False
     generic_support = data["planning_profiles"]["generic-scpi"]["command_support"]
     assert generic_support["set"]["real"] is False
     for model in support:
@@ -466,7 +476,12 @@ def test_commands_metadata_includes_safe_exact_live_support_projection(
         "output_affecting_commands",
     } <= set(data)
     live_support = data["live_support_by_model_id"]
-    assert set(live_support) == {"keysight-e36312a", "keysight-edu36311a", "keysight-e3646a"}
+    assert set(live_support) == {
+        "keysight-e36312a",
+        "keysight-edu36311a",
+        "keysight-e3646a",
+        "gw-instek-psm-2010",
+    }
 
     e36312a_set = live_support["keysight-e36312a"]["commands"]["set"]
     assert {
@@ -484,6 +499,27 @@ def test_commands_metadata_includes_safe_exact_live_support_projection(
         ("asrl", "system_visa")
     ]
     assert live_support["keysight-e3646a"]["commands"]["trigger-list"]["profile_supported"] is False
+    psm = live_support["gw-instek-psm-2010"]["commands"]
+    psm_validated = {"capabilities", "output-off", "safe-off"}
+    assert {
+        command
+        for command, policy in psm.items()
+        if any(scope["product_open"] for scope in policy["scopes"])
+    } == psm_validated
+    for command in psm_validated:
+        assert {
+            (scope["transport_scope"], scope["backend_scope"], scope["validation_status"])
+            for scope in psm[command]["scopes"]
+        } == {("asrl", "system_visa", "live_validated_full_suite")}
+    for command in {"set", "output-on"}:
+        assert psm[command]["scopes"] == []
+    projected_diagnostics = set(psm) & {
+        "list-resources", "verify", "identify", "error", "clear",
+    }
+    assert projected_diagnostics
+    for command in projected_diagnostics:
+        assert psm[command]["policy_exempt"] is True
+        assert psm[command]["scopes"] == []
     generic_live = data["planning_profiles"]["generic-scpi"]["live_support"]
     assert generic_live["live_capable"] is False
     assert generic_live["schema_version"] == 2

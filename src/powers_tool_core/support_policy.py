@@ -1047,6 +1047,10 @@ _E3646A_LOG_VERIFIED_BACKEND_NOTE = (
     "Accepted for the exact ASRL / RS-232 system-VISA scope; this does not "
     "validate USB, TCPIP, pyvisa-py, or a custom VISA backend."
 )
+_PSM2010_VERIFIED_BACKEND_NOTE = (
+    "Accepted for the exact ASRL / RS-232 system-VISA scope; this does not "
+    "validate USB, TCPIP, pyvisa-py, pyvisa-bt, or a custom VISA backend."
+)
 _PENDING_BACKEND_NOTE = (
     "The model and command are implemented and validated over TCPIP with the "
     "system VISA backend. The TCPIP/pyvisa-py exact backend scope remains pending "
@@ -1077,6 +1081,9 @@ _VERIFIED_EVIDENCE_IDS = {
     ("keysight-edu36311a", TRANSPORT_USB): "keysight-edu36311a-usb-system-visa-20260717-full",
     ("keysight-edu36311a", TRANSPORT_TCPIP): "keysight-edu36311a-tcpip-system-visa-20260717-full",
     ("keysight-e3646a", TRANSPORT_ASRL): "keysight-e3646a-asrl-system-visa-20260717-full",
+    ("gw-instek-psm-2010", TRANSPORT_ASRL): (
+        "gw-instek-psm-2010-asrl-system-visa-20260811-full"
+    ),
 }
 
 _VERIFIED_COMMAND_EVIDENCE_IDS = {
@@ -1091,6 +1098,18 @@ _VERIFIED_COMMAND_NOTES = {
     ("keysight-e3646a", TRANSPORT_ASRL, "log"): _E3646A_LOG_VERIFIED_BACKEND_NOTE,
 }
 
+_PSM2010_VALIDATED_COMMANDS = frozenset(
+    {
+        "measure",
+        "output-state",
+        "readback",
+        "read-status",
+        "capabilities",
+        "output-off",
+        "safe-off",
+    }
+)
+
 _PROMOTED_COMMANDS = {
     "keysight-e36312a": frozenset(
         {
@@ -1100,6 +1119,7 @@ _PROMOTED_COMMANDS = {
     ),
     "keysight-edu36311a": frozenset({"output-on", "log", "doctor"}),
     "keysight-e3646a": frozenset({"output-on", "doctor", "log"}),
+    "gw-instek-psm-2010": _PSM2010_VALIDATED_COMMANDS,
 }
 
 _VALIDATED_COMMANDS = {
@@ -1129,33 +1149,19 @@ _VALIDATED_COMMANDS = {
             "ramp-list", "sequence", "output-on", "doctor", "log",
         }
     ),
+    "gw-instek-psm-2010": _PSM2010_VALIDATED_COMMANDS,
 }
 
 _VALIDATED_TRANSPORTS = {
     "keysight-e36312a": (TRANSPORT_USB, TRANSPORT_TCPIP),
     "keysight-edu36311a": (TRANSPORT_USB, TRANSPORT_TCPIP),
     "keysight-e3646a": (TRANSPORT_ASRL,),
+    "gw-instek-psm-2010": (TRANSPORT_ASRL,),
 }
 
-_CANDIDATE_PENDING_COMMANDS = {
-    "gw-instek-psm-2010": frozenset(
-        {
-            "measure",
-            "output-state",
-            "readback",
-            "read-status",
-            "capabilities",
-            "output-off",
-            "safe-off",
-        }
-    ),
-}
+_CANDIDATE_PENDING_COMMANDS = {}
 
-_CANDIDATE_PENDING_CONNECTIONS = {
-    "gw-instek-psm-2010": (
-        (TRANSPORT_ASRL, BACKEND_SYSTEM_VISA),
-    ),
-}
+_CANDIDATE_PENDING_CONNECTIONS = {}
 
 _CANDIDATE_PENDING_NOTE = (
     "The exact model, command, transport, and backend scope remains pending live validation."
@@ -1202,7 +1208,11 @@ def _build_registry() -> tuple[ModelSupportPolicy, ...]:
                             note=(
                                 _VERIFIED_COMMAND_NOTES.get(
                                     command_scope_key,
-                                    _VERIFIED_BACKEND_NOTE,
+                                    (
+                                        _PSM2010_VERIFIED_BACKEND_NOTE
+                                        if model_id == "gw-instek-psm-2010"
+                                        else _VERIFIED_BACKEND_NOTE
+                                    ),
                                 )
                                 if promoted
                                 else _LEGACY_BACKEND_NOTE

@@ -102,8 +102,8 @@ Core 會拒絕未知或不適用欄位、同時提供的 alias、未記載為 nu
 null，以及用來代替 exact boolean、integer 或 finite numeric field 的可強制轉換
 字串或數字。</p>
 <p>這是用於控制支援之直流電源供應器的 vendor-neutral CLI adapter。目前
-Product-active 型號以文件所述 Keysight models 為準；未知
-live hardware 會 fail closed。</p>
+Product-active 型號以 <a href="../core/supported-models.md">Supported Models</a> 所列 exact
+model scopes 為準；未知 live hardware 會 fail closed。</p>
 <p>CLI 包含在單一 <code>powers-tool</code> distribution 中，保留 <code>powers_tool_cli</code> import
 boundary，並透過 <code>powers-tool</code> console command 將操作員命令轉接到共用
 <code>powers_tool_core</code> runtime。</p>
@@ -283,6 +283,10 @@ VISA runtime。
 <p>實際 live availability 仍由 model、command、transport、backend 與 required feature
 的 exact Product scope 決定。Product-open command 不代表整個 feature family 開放；missing 或 pending feature
 scopes 仍會 fail closed。CLI model list 僅包含 Product-active models。</p>
+<p>GW Instek PSM-2010 的 Product LIVE scope 僅限 ASRL / RS-232 + system VISA，
+以及 <code>measure</code>、<code>output-state</code>、<code>read-status</code>、<code>readback</code>、<code>capabilities</code>、
+<code>output-off</code>、<code>safe-off</code>。其中輸出命令只會關閉輸出，不會啟用輸出或寫入
+setpoint；其他命令、transport 與 backend 仍會 fail closed。</p>
 <h2 id="測試">測試</h2>
 <p>預設 CLI 測試不需要硬體：</p>
 <div class="code-wrapper"><pre><code class="language-powershell">.\.venv\Scripts\python.exe -m pytest tests\cli -q -p no:cacheprovider

@@ -8,8 +8,8 @@ resolves the reported manufacturer plus model to one canonical physical
 `model_id + command + transport + backend + required feature` match. Missing,
 unsupported, or non-Product-open scopes fail closed. A Product-open system VISA
 scope does not inherit to pyvisa-py, pyvisa-bt, or a custom backend. No current
-Product-open exact scope uses `pyvisa_bt`. E3646A remains ASRL / RS-232 + system
-VISA only.
+Product-open exact scope uses `pyvisa_bt`. E3646A and PSM-2010 remain ASRL /
+RS-232 + system VISA only.
 
 The `live_validated_full_suite` status identifies current Product-open exact
 command scopes in the public support projection. For the machine-readable
@@ -32,6 +32,7 @@ The current `live_validated_full_suite` command inventories are:
 | `keysight-e36312a` (Keysight E36312A) | USB + system VISA; TCPIP + system VISA | `measure`, `output-state`, `read-status`, `readback`, `validate-readonly`, `capabilities`, `set`, `output-on`, `output-off`, `safe-off`, `cycle-output`, `apply`, `ramp`, `smoke-output`, `ramp-list`, `sequence`, `protection-status`, `protection-set`, `clear-protection`, `snapshot`, `restore-from-snapshot`, `measure-all`, `log`, `doctor`, `trigger-status`, `trigger-step`, `trigger-list`, `trigger-abort`, `trigger-fire`, `trigger-pulse` |
 | `keysight-edu36311a` (Keysight EDU36311A) | USB + system VISA; TCPIP + system VISA | `measure`, `output-state`, `read-status`, `readback`, `validate-readonly`, `capabilities`, `set`, `output-on`, `output-off`, `safe-off`, `cycle-output`, `apply`, `ramp`, `smoke-output`, `ramp-list`, `sequence`, `protection-status`, `protection-set`, `clear-protection`, `log`, `doctor` |
 | `keysight-e3646a` (Keysight E3646A) | ASRL / RS-232 + system VISA | `measure`, `output-state`, `read-status`, `readback`, `capabilities`, `set`, `output-on`, `output-off`, `safe-off`, `cycle-output`, `apply`, `ramp`, `smoke-output`, `ramp-list`, `sequence`, `log`, `doctor` |
+| `gw-instek-psm-2010` (GW Instek PSM-2010) | ASRL / RS-232 + system VISA | `measure`, `output-state`, `read-status`, `readback`, `capabilities`, `output-off`, `safe-off` |
 
 `list-resources`, `verify`, `identify`, `error`, and `clear` are explicit
 diagnostic exemptions. Their success proves only that diagnostic operation; it
@@ -62,9 +63,6 @@ The following catalog-known model IDs are not active Product planning or live
 expected-model identities: `keysight-e36313a`, `keysight-e36233a`,
 `keysight-e36441a`, and `keysight-e36155a`.
 
-`gw-instek-psm-2010` (GW Instek PSM-2010) has no Product-open exact scope and
-is not included in the Product LIVE matrix.
-
 `keysight-e36103b` and `keysight-e36232a` are de-scoped. They are rejected as
 no-hardware planning identities, live expected-model guards, WebUI model
 selections, and live model-aware operations. They must not fall back to
@@ -79,9 +77,9 @@ physical live model.
 Product support is scoped by model, connection, backend, command, and feature.
 
 The current exact Product connections are E36312A USB and LAN, EDU36311A USB
-and LAN, and E3646A ASRL / RS-232. Each connection remains limited to the
-commands and feature entries listed in the Product matrix. E3646A USB and LAN
-are outside the current scope.
+and LAN, and E3646A and PSM-2010 ASRL / RS-232. Each connection remains limited
+to the commands and feature entries listed in the Product matrix. E3646A and
+PSM-2010 USB and LAN are outside the current scope.
 
 The E36312A and EDU36311A TCPIP + pyvisa-py connections are not currently
 available for Product use. System VISA support does not extend to pyvisa-py or
@@ -92,6 +90,7 @@ pyvisa-bt or a custom backend.
 | E36312A | accepted exact commands only | accepted exact commands only | N/A |
 | EDU36311A | accepted exact commands only | accepted exact commands only | N/A |
 | E3646A | not current scope | not current scope | accepted exact commands only |
+| PSM-2010 | not current scope | not current scope | accepted exact commands only |
 
 EDU36311A trigger/native LIST and snapshot/restore remain disabled in live,
 simulate, and dry-run. E3646A protection, trigger/native LIST,
@@ -103,8 +102,8 @@ real execution within the exact Product scopes above. EDU36311A
 `protection-set` and `clear-protection` require `--confirm` for real execution
 and report `hardware_validation=validated`.
 
-Trigger workflows are E36312A-only. EDU36311A, E3646A, and `generic-scpi` do not
-expose trigger dry-run or simulator behavior; their trigger commands report
+Trigger workflows are E36312A-only. EDU36311A, E3646A, PSM-2010, and
+`generic-scpi` do not expose trigger dry-run or simulator behavior; their trigger commands report
 `real=false`, `simulate=false`, and `dry_run=false`.
 
 ## No-Hardware Planning Identity Matrix
@@ -119,6 +118,7 @@ placeholders and must not imply a model.
 | `keysight-e36312a` | `USB0::SIM::E36312A::INSTR` | CH1, CH2, CH3 | Per-channel output control; `all` expands to CH1-CH3 | Trigger workflows and native LIST are E36312A-only and Product-open on supported live E36312A paths. Protection read/write paths are supported. |
 | `keysight-edu36311a` | `USB0::SIM::EDU36311A::INSTR` | CH1, CH2, CH3 | Per-channel output control; `all` expands to CH1-CH3 | Protection read/write paths are supported. Trigger workflows and native LIST are not exposed in dry-run, simulate, or real mode. |
 | `keysight-e3646a` | `ASRL1::SIM::E3646A::INSTR` | CH1, CH2 | Global output enable/disable; channel selection is used for setpoints and readback | RS-232 / ASRL output workflows are Product-open within the exact scope. Protection writes, trigger workflows, snapshot restore, completion pulses, and native LIST are disabled. |
+| `gw-instek-psm-2010` | `ASRL1::SIM::PSM2010::INSTR` | CH1 | Global output control | Product LIVE is limited to the seven read-only/status and output-OFF commands in the exact-scope matrix. Setpoint writes, output enable, protection, trigger, snapshot, ramp, and sequence workflows are disabled. |
 | `generic-scpi` planning profile | None; use explicit `--profile generic-scpi` in dry-run | CH1 | Unknown | Conservative no-hardware planning only. Trigger workflows, native LIST, and protection writes are not exposed. |
 
 Live hardware uses manufacturer-plus-model IDN resolution. In live mode,
@@ -225,6 +225,11 @@ command-level facts:
 - E3646A `SYST:REM` and `SYST:LOC` are state-changing remote/local commands.
   They are sent only when `--serial-remote` or `--serial-local-on-close` is
   explicitly requested for an ASRL resource.
+- PSM-2010 Product execution is limited to ASRL / RS-232 + system VISA and the
+  seven exact commands in the matrix above. `output-off` and `safe-off` may
+  turn output OFF; they do not enable output or write setpoints. Setpoint,
+  output-enable, protection, trigger, snapshot, ramp, and sequence commands
+  remain closed, as do all other transports and VISA backends.
 - No-hardware output-family, Ramp List, Sequence, `protection-set`,
   `clear-protection`, and trigger plans use strict planning identity.
   `--dry-run` and `--simulate` require either an explicit physical `--model`

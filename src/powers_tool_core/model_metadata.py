@@ -22,6 +22,7 @@ OUTPUT_CONTROL_SCOPE_BY_MODEL_ID = {
     "keysight-e36312a": "per_channel",
     "keysight-edu36311a": "per_channel",
     "keysight-e3646a": "global",
+    "gw-instek-psm-2010": "global",
 }
 
 _GENERIC_SCPI_OUTPUT_CONTROL_SCOPE = "unknown"

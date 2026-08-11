@@ -224,8 +224,11 @@ def test_exact_inventory_mapping_rejects_swapped_same_vendor_model_ids() -> None
 
 
 def test_canonical_lifecycle_sets_preserve_assignments() -> None:
-    assert PRODUCT_ACTIVE_MODEL_IDS == {"keysight-e36312a", "keysight-edu36311a", "keysight-e3646a"}
-    assert CANDIDATE_MODEL_IDS == {"gw-instek-psm-2010"}
+    assert PRODUCT_ACTIVE_MODEL_IDS == {
+        "keysight-e36312a", "keysight-edu36311a", "keysight-e3646a",
+        "gw-instek-psm-2010",
+    }
+    assert CANDIDATE_MODEL_IDS == set()
     assert CATALOG_ONLY_MODEL_IDS == {
         "keysight-e36313a",
         "keysight-e36233a",

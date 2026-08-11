@@ -122,7 +122,7 @@ E3646A_VALIDATED_COMMANDS = {
     "doctor",
     "log",
 }
-PSM2010_PENDING_COMMANDS = {
+PSM2010_VALIDATED_COMMANDS = {
     "measure",
     "output-state",
     "readback",
@@ -254,6 +254,7 @@ def test_backend_normalization_is_idempotent(value: str | None) -> None:
         ("keysight-edu36311a", TRANSPORT_USB, EDU36311A_VALIDATED_COMMANDS),
         ("keysight-edu36311a", TRANSPORT_TCPIP, EDU36311A_VALIDATED_COMMANDS),
         ("keysight-e3646a", TRANSPORT_ASRL, E3646A_VALIDATED_COMMANDS),
+        ("gw-instek-psm-2010", TRANSPORT_ASRL, PSM2010_VALIDATED_COMMANDS),
     ],
 )
 def test_exact_validated_command_inventory(
@@ -341,31 +342,26 @@ def test_product_rejects_and_validation_allows_transport_pending() -> None:
     assert scope.validation_status == VALIDATION_STATUS_TRANSPORT_PENDING
 
 
-def test_psm2010_has_only_exact_validation_pending_scope() -> None:
+def test_psm2010_has_only_exact_product_open_scope() -> None:
     assert _commands_for_scope(
         "gw-instek-psm-2010", TRANSPORT_ASRL, BACKEND_SYSTEM_VISA
-    ) == PSM2010_PENDING_COMMANDS
+    ) == PSM2010_VALIDATED_COMMANDS
 
-    for command in PSM2010_PENDING_COMMANDS:
-        scope = ensure_live_scope_supported(
-            model_id="gw-instek-psm-2010",
-            command=command,
-            transport="ASRL1::INSTR",
-            backend=None,
-            support_policy_mode=SUPPORT_POLICY_MODE_VALIDATION,
-        )
-        assert scope.validation_status == VALIDATION_STATUS_TRANSPORT_PENDING
-        assert scope.accepted_evidence_ids == ()
-        assert scope.candidate_basis_evidence_ids == ()
-
-        with pytest.raises(LiveSupportPolicyError, match="transport_pending"):
-            ensure_live_scope_supported(
+    for command in PSM2010_VALIDATED_COMMANDS:
+        for mode in (SUPPORT_POLICY_MODE_PRODUCT, SUPPORT_POLICY_MODE_VALIDATION):
+            scope = ensure_live_scope_supported(
                 model_id="gw-instek-psm-2010",
                 command=command,
                 transport="ASRL1::INSTR",
                 backend=None,
-                support_policy_mode=SUPPORT_POLICY_MODE_PRODUCT,
+                support_policy_mode=mode,
             )
+            assert scope.validation_status == VALIDATION_STATUS_LIVE_VALIDATED_FULL_SUITE
+            assert scope.accepted_evidence_ids == (
+                "gw-instek-psm-2010-asrl-system-visa-20260811-full",
+            )
+            assert scope.admission_kind == "product"
+        assert scope.candidate_basis_evidence_ids == ()
 
 
 @pytest.mark.parametrize(
@@ -379,8 +375,9 @@ def test_psm2010_has_only_exact_validation_pending_scope() -> None:
         ("ASRL1::INSTR", "@ivi"),
     ],
 )
+@pytest.mark.parametrize("mode", [SUPPORT_POLICY_MODE_PRODUCT, SUPPORT_POLICY_MODE_VALIDATION])
 def test_psm2010_unregistered_live_scopes_fail_closed(
-    transport: str, backend: str | None
+    transport: str, backend: str | None, mode: str
 ) -> None:
     with pytest.raises(LiveSupportPolicyError):
         ensure_live_scope_supported(
@@ -388,18 +385,22 @@ def test_psm2010_unregistered_live_scopes_fail_closed(
             command="measure",
             transport=transport,
             backend=backend,
-            support_policy_mode=SUPPORT_POLICY_MODE_VALIDATION,
+            support_policy_mode=mode,
         )
 
 
-def test_psm2010_has_no_product_open_scope() -> None:
-    product_open_scopes = [
-        scope
-        for policy in command_live_support_matrix("gw-instek-psm-2010").values()
-        for scope in policy.scopes
-        if scope.validation_status == VALIDATION_STATUS_LIVE_VALIDATED_FULL_SUITE
-    ]
-    assert product_open_scopes == []
+@pytest.mark.parametrize("command", ["set", "output-on", "doctor"])
+@pytest.mark.parametrize("mode", [SUPPORT_POLICY_MODE_PRODUCT, SUPPORT_POLICY_MODE_VALIDATION])
+def test_psm2010_unvalidated_commands_remain_closed(command: str, mode: str) -> None:
+    assert command_live_support("gw-instek-psm-2010", command).scopes == ()
+    with pytest.raises(LiveSupportPolicyError):
+        ensure_live_scope_supported(
+            model_id="gw-instek-psm-2010",
+            command=command,
+            transport="ASRL1::INSTR",
+            backend=None,
+            support_policy_mode=mode,
+        )
 
 
 def test_feature_pending_is_validation_only_with_synthetic_metadata() -> None:

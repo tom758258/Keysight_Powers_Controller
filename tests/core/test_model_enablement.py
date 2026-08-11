@@ -151,8 +151,11 @@ def _candidate_with_feature_command(
 
 
 def test_current_model_enablement_stage_sets_are_exact_and_disjoint() -> None:
-    assert PRODUCT_ACTIVE_MODEL_IDS == {"keysight-e36312a", "keysight-edu36311a", "keysight-e3646a"}
-    assert CANDIDATE_MODEL_IDS == {"gw-instek-psm-2010"}
+    assert PRODUCT_ACTIVE_MODEL_IDS == {
+        "keysight-e36312a", "keysight-edu36311a", "keysight-e3646a",
+        "gw-instek-psm-2010",
+    }
+    assert CANDIDATE_MODEL_IDS == set()
     assert CATALOG_ONLY_MODEL_IDS == {
         "keysight-e36313a",
         "keysight-e36233a",
@@ -166,7 +169,8 @@ def test_current_model_enablement_stage_sets_are_exact_and_disjoint() -> None:
 
 def test_current_model_enablement_inventory_is_consistent() -> None:
     inventory = current_model_enablement_inventory()
-    assert inventory.candidate_model_ids == {"gw-instek-psm-2010"}
+    assert inventory.candidate_model_ids == set()
+    assert "gw-instek-psm-2010" in inventory.product_model_ids
     assert inventory.channels["gw-instek-psm-2010"] == (1,)
     assert inventory.simulator_resources["gw-instek-psm-2010"] == "ASRL1::SIM::PSM2010::INSTR"
     assert "gw-instek-psm-2010" in inventory.safety_validated_models
@@ -416,6 +420,6 @@ def test_product_ui_and_wrapper_targets_match_product_active_models() -> None:
     assert 'option value="keysight-' not in index_html
     wrapper = Path("scripts/_validation_helpers.ps1").read_text(encoding="utf-8")
     wrapper_targets = frozenset(
-        re.findall(r'^    "(keysight-[^"]+)" = \[pscustomobject\]@\{', wrapper, re.MULTILINE)
+        re.findall(r'^    "((?:keysight|gw-instek)-[^"]+)" = \[pscustomobject\]@\{', wrapper, re.MULTILINE)
     )
     assert wrapper_targets == PRODUCT_ACTIVE_MODEL_IDS

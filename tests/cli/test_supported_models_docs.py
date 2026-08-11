@@ -16,6 +16,7 @@ def test_supported_models_matrix_matches_cli_support(capsys):
         "keysight-e36312a",
         "keysight-edu36311a",
         "keysight-e3646a",
+        "gw-instek-psm-2010",
         "not_supported_by_model",
     ):
         assert token in matrix
@@ -23,6 +24,7 @@ def test_supported_models_matrix_matches_cli_support(capsys):
     e36312a = _capabilities("USB0::SIM::E36312A::INSTR", capsys)["command_support"]
     e3646a = _capabilities("ASRL1::SIM::E3646A::INSTR", capsys)["command_support"]
     edu = _capabilities("USB0::SIM::EDU36311A::INSTR", capsys)["command_support"]
+    psm = _capabilities("ASRL1::SIM::PSM2010::INSTR", capsys)["command_support"]
 
     assert e36312a["smoke-output"]["real"] is True
     assert e36312a["protection-set"]["real"] is True
@@ -57,6 +59,14 @@ def test_supported_models_matrix_matches_cli_support(capsys):
         assert edu[command]["simulate"] is False
         assert edu[command]["dry_run"] is False
         assert edu[command]["hardware_validation"] == "not_supported_by_model"
+
+    for command in {
+        "measure", "output-state", "read-status", "readback", "capabilities",
+        "output-off", "safe-off",
+    }:
+        assert psm[command]["real"] is True
+    for command in {"set", "output-on", "doctor"}:
+        assert psm[command]["real"] is False
 
 
 def test_public_docs_preserve_machine_schema_and_support_tokens() -> None:

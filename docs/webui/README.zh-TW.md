@@ -6,6 +6,15 @@
 
 WebUI 與 CLI 是建立在共用 Core runtime 之上的平行產品介面。
 
+## Product 支援邊界
+
+Product model selector 僅包含 Product-active 型號。GW Instek PSM-2010 的
+Product LIVE scope 僅限 ASRL / RS-232 + system VISA，以及 `measure`、
+`output-state`、`read-status`、`readback`、`capabilities`、`output-off`、
+`safe-off`。其中輸出命令只會關閉輸出，不會啟用輸出或寫入 setpoint；
+其他命令、transport 與 backend 仍會 fail closed。完整範圍以
+[Supported Models](../core/supported-models.md) 為準。
+
 WebUI 內建於單一 `powers-tool` 發行套件中，同時保留了 `powers_tool_webui` 的 import 邊界。它依賴共用的 `powers_tool_core` runtime 與發行套件的 `webui` extra。其前端由靜態的 `index.html`、`styles.css`，以及以 `app.js` 為 bootstrap／composition root 的原生 JavaScript modules 組成；執行或建置 WebUI frontend 不需要 bundler／npm build pipeline 或 Node toolchain，但 repository 的 JavaScript syntax validation 仍會使用 Node。
 
 ## 套件與進入點 (Package And Entry Point)

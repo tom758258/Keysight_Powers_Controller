@@ -9,8 +9,8 @@ null，以及用來代替 exact boolean、integer 或 finite numeric field 的�
 字串或數字。
 
 這是用於控制支援之直流電源供應器的 vendor-neutral CLI adapter。目前
-Product-active 型號以文件所述 Keysight models 為準；未知
-live hardware 會 fail closed。
+Product-active 型號以 [Supported Models](../core/supported-models.md) 所列 exact
+model scopes 為準；未知 live hardware 會 fail closed。
 
 CLI 包含在單一 `powers-tool` distribution 中，保留 `powers_tool_cli` import
 boundary，並透過 `powers-tool` console command 將操作員命令轉接到共用
@@ -141,6 +141,11 @@ resource、不會送出 SCPI、不會修改實體儀器狀態，也不會啟用�
 的 exact Product scope 決定。
 Product-open command 不代表整個 feature family 開放；missing 或 pending feature
 scopes 仍會 fail closed。CLI model list 僅包含 Product-active models。
+
+GW Instek PSM-2010 的 Product LIVE scope 僅限 ASRL / RS-232 + system VISA，
+以及 `measure`、`output-state`、`read-status`、`readback`、`capabilities`、
+`output-off`、`safe-off`。其中輸出命令只會關閉輸出，不會啟用輸出或寫入
+setpoint；其他命令、transport 與 backend 仍會 fail closed。
 
 ## 測試
 

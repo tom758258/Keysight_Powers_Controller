@@ -115,31 +115,18 @@ def test_psm2010_identify_does_not_send_unconfirmed_extended_queries() -> None:
     assert session.queries == ["*IDN?"]
 
 
-def test_psm2010_measure_is_validation_only_and_uses_driver_queries() -> None:
+def test_psm2010_measure_is_product_open_and_uses_driver_queries() -> None:
     product_session = FakeSession("GW.Inc,PSM-2010,SN,FW1.00")
-    with pytest.raises(LiveSupportPolicyError, match="transport_pending"):
-        run_instrument_io(
-            _request(
-                "measure",
-                "ASRL1::INSTR",
-                model="gw-instek-psm-2010",
-            ),
-            opener=lambda *args, **kwargs: product_session,
-        )
-    assert product_session.queries == ["*IDN?"]
-
-    validation_session = FakeSession("GW.Inc,PSM-2010,SN,FW1.00")
     data = run_instrument_io(
         _request(
             "measure",
             "ASRL1::INSTR",
             model="gw-instek-psm-2010",
-            support_policy_mode=SUPPORT_POLICY_MODE_VALIDATION,
         ),
-        opener=lambda *args, **kwargs: validation_session,
+        opener=lambda *args, **kwargs: product_session,
     )
     assert data["measurements"] == {"voltage": 1.0, "current": 0.1}
-    assert validation_session.queries == ["*IDN?", "MEAS?", "MEAS:CURR?"]
+    assert product_session.queries == ["*IDN?", "MEAS?", "MEAS:CURR?"]
 
 
 @pytest.mark.parametrize(
@@ -150,7 +137,7 @@ def test_psm2010_measure_is_validation_only_and_uses_driver_queries() -> None:
         ("output-state", ["*IDN?", "OUTP?"]),
     ],
 )
-def test_psm2010_candidate_output_commands_use_existing_core_path(
+def test_psm2010_product_open_output_commands_use_existing_core_path(
     command: str, expected_queries: list[str]
 ) -> None:
     session = FakeSession("GW.Inc,PSM-2010,SN,FW1.00")
@@ -159,7 +146,6 @@ def test_psm2010_candidate_output_commands_use_existing_core_path(
         RuntimeOptions(
             resource="ASRL1::INSTR",
             expected_model_id="gw-instek-psm-2010",
-            support_policy_mode=SUPPORT_POLICY_MODE_VALIDATION,
         ),
         {"channel": 1},
     )

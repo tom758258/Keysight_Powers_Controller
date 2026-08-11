@@ -9,8 +9,9 @@ together, explicit nulls unless documented nullable, and coercible strings or
 numbers used in place of exact booleans, integers, or finite numeric fields.
 
 Vendor-neutral CLI adapter for controlling supported DC power supplies.
-Current Product-active models are the documented Keysight models; unknown live
-hardware remains fail closed.
+Current Product-active models are the exact model scopes documented in
+[Supported Models](../core/supported-models.md); unknown live hardware remains
+fail closed.
 
 The CLI ships inside the single `powers-tool` distribution while
 preserving the `powers_tool_cli` import boundary. It exposes the
@@ -241,8 +242,10 @@ entries:
 The complete Product-open command inventory remains the
 [Product LIVE exact-scope matrix](../core/supported-models.md#product-live-exact-scope-matrix).
 Only exact commands in that matrix are opened for normal LIVE use on those
-connections. E3646A live use remains restricted to ASRL /
-RS-232; E3646A USB and LAN remain outside the current scope.
+connections. E3646A and PSM-2010 live use remains restricted to ASRL /
+RS-232 + system VISA; their USB and LAN paths remain outside the current scope.
+PSM-2010 is Product-open only for `measure`, `output-state`, `read-status`,
+`readback`, `capabilities`, `output-off`, and `safe-off`.
 Sequence actions and Trigger Step/List sources are also exact feature-policy
 requirements. Missing or pending feature entries remain closed in normal CLI
 Product mode; a Product-open command does not imply that an unregistered action
@@ -337,7 +340,7 @@ dry-run or simulator behavior.
 No-hardware plans distinguish `planning_model_id` from
 `planning_profile_id`. Channel validation and `--channel all` expansion use
 the resolved planning identity: E3646A expands `all` to CH1 and CH2 and
-rejects CH3; E36312A and EDU36311A expand to CH1, CH2, and CH3;
+rejects CH3; PSM-2010 uses CH1; E36312A and EDU36311A expand to CH1, CH2, and CH3;
 `generic-scpi` conservatively allows CH1 only.
 
 Trigger/native LIST workflows are E36312A-only. EDU36311A supports
@@ -676,6 +679,16 @@ not set that termination option. Omitted or empty termination fields also mean
 do not override the VISA setting. Custom raw strings are still accepted, but
 PowerShell may pass values such as `\r` as a literal backslash plus `r`; use
 the aliases when you need actual control characters.
+
+### PSM-2010 RS-232 / ASRL Scope
+
+PSM-2010 Product LIVE support is ASRL/RS-232 + system VISA only. Its exact
+model-aware command scope is `measure`, `output-state`, `read-status`,
+`readback`, `capabilities`, `output-off`, and `safe-off`. The two output
+commands may turn output OFF but do not enable output or write setpoints.
+Setpoint, output-enable, protection, trigger, snapshot, ramp, and sequence
+commands remain closed, as do USB, TCPIP, pyvisa-py, pyvisa-bt, and custom VISA
+scopes.
 
 ### Read-Only Command Examples
 

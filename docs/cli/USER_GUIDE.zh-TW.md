@@ -1,6 +1,6 @@
 # Powers Tool CLI 使用者指南
 
-本指南針對取得已建置之 CLI 執行檔或已安裝 `powers-tool` 命令的操作員，說明如何控制支援的 Keysight 直流電源供應器。重點涵蓋常規的實機 (live) 工作流程、資源選擇與安全優先檢查。有關開發人員環境設定、詳細指令參考與自動化細節，請參見 [CLI README](README.zh-TW.md)。
+本指南針對取得已建置之 CLI 執行檔或已安裝 `powers-tool` 命令的操作員，說明如何控制支援的直流電源供應器。目前硬體支援以 [Supported Models](../core/supported-models.md) 所列 exact Product scope 為準。重點涵蓋常規的實機 (live) 工作流程、資源選擇與安全優先檢查。有關開發人員環境設定、詳細指令參考與自動化細節，請參見 [CLI README](README.zh-TW.md)。
 
 ## 啟動 CLI
 
