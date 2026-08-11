@@ -139,8 +139,8 @@ def hardware_validation_status(model_id: str | None) -> dict[str, Any]:
         }
     if model_id == PSM2010_MODEL_ID:
         return {
-            "read_only": "not_enabled",
-            "output": "not_enabled",
+            "read_only": "rs232_read_only",
+            "output": "validated_off_only",
             "protection": "not_enabled",
             "trigger": "not_enabled",
         }
@@ -264,7 +264,11 @@ def command_support(model_id: str | None) -> dict[str, dict[str, Any]]:
                 entry["real"] = True
                 entry["simulate"] = True
                 entry["dry_run"] = command in _PSM2010_DRY_RUN_COMMANDS
-                entry["hardware_validation"] = "not_enabled"
+                entry["hardware_validation"] = (
+                    "validated"
+                    if command in {"output-off", "safe-off"}
+                    else "rs232_read_only"
+                )
         else:
             if command in {"identify", "measure", "doctor", "capabilities"}:
                 entry["real"] = True

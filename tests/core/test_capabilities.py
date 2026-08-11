@@ -181,7 +181,14 @@ def test_command_support_e3646a_rs232_read_only_boundary() -> None:
         assert support[command]["hardware_validation"] == "not_enabled"
 
 
-def test_command_support_psm2010_candidate_boundary() -> None:
+def test_command_support_psm2010_product_boundary() -> None:
+    assert capabilities.hardware_validation_status("gw-instek-psm-2010") == {
+        "read_only": "rs232_read_only",
+        "output": "validated_off_only",
+        "protection": "not_enabled",
+        "trigger": "not_enabled",
+    }
+
     support = capabilities.command_support("gw-instek-psm-2010")
 
     expected_dry_run = {
@@ -198,7 +205,12 @@ def test_command_support_psm2010_candidate_boundary() -> None:
         assert support[command]["real"] is True
         assert support[command]["simulate"] is True
         assert support[command]["dry_run"] is dry_run
-        assert support[command]["hardware_validation"] == "not_enabled"
+        expected_validation = (
+            "validated"
+            if command in {"output-off", "safe-off"}
+            else "rs232_read_only"
+        )
+        assert support[command]["hardware_validation"] == expected_validation
 
     for command in (
         "set",

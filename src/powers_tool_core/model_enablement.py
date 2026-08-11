@@ -40,12 +40,8 @@ MODEL_ENABLEMENT_STAGES = frozenset(
 # E3646A predates flattened rating metadata and uses enforced range-dependent
 # limits. This compatibility is only for the existing Product-active model.
 PRODUCT_RATING_COMPATIBILITY_MODEL_IDS = frozenset({"keysight-e3646a"})
-SAFETY_VALIDATED_MODEL_IDS = PRODUCT_ACTIVE_MODEL_IDS | {
-    "gw-instek-psm-2010"
-}
-NO_HARDWARE_COVERED_MODEL_IDS = PRODUCT_ACTIVE_MODEL_IDS | {
-    "gw-instek-psm-2010"
-}
+SAFETY_VALIDATED_MODEL_IDS = PRODUCT_ACTIVE_MODEL_IDS
+NO_HARDWARE_COVERED_MODEL_IDS = PRODUCT_ACTIVE_MODEL_IDS
 
 
 def _resolved_simulator_model_id(idn: str) -> str | None:

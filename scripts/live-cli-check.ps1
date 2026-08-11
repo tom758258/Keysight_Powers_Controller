@@ -660,6 +660,9 @@ function Add-ValidationSupportPolicyArgument {
     if ($command -in $script:ExemptLiveDiagnosticCommands -or $command -notin $script:PolicyGatedCommands) {
         return $Arguments
     }
+    if (-not $script:PendingLiveSupportAllowed) {
+        return $Arguments
+    }
     if ($Arguments -contains "--validation-allow-pending-live-support") {
         return $Arguments
     }
@@ -2291,7 +2294,7 @@ function Invoke-ValidationCommand {
         settle_delay_ms = if (Test-LiveTcpipPhase -Phase $Case.phase) { $script:TcpipSessionSettleDelayMs } else { 0 }
         attempts = $attemptDiagnostics.ToArray()
         expected_success = $Case.expected_success
-        support_policy_mode = if ($allArgs -contains "--validation-allow-pending-live-support") { "validation" } else { $null }
+        support_policy_mode = if ($allArgs -contains "--validation-allow-pending-live-support") { "validation" } elseif ($allArgs[0] -in $script:PolicyGatedCommands) { "product" } else { $null }
         transport_scope = $script:TransportScope
         backend_scope = $backendScope
         identity_observed = $identityObserved
@@ -2756,8 +2759,8 @@ function Write-ValidationArtifacts {
         transport_scope = $script:TransportScope
         suite = $Suite
         validation_mode = $ValidationMode
-        support_policy_mode = "validation"
-        pending_live_support_allowed = $true
+        support_policy_mode = $script:SupportPolicyMode
+        pending_live_support_allowed = $script:PendingLiveSupportAllowed
         candidate_evidence_only = $true
         promotes_live_support = $false
         plan_only = [bool]$PlanOnly
@@ -2889,6 +2892,8 @@ $script:ExternalPreflight = [pscustomobject]@{ status = "not_run" }
 $script:SensitiveValues = New-Object System.Collections.Generic.List[string]
 $script:PlannedLiveCases = @()
 $script:CandidateInventory = $null
+$script:SupportPolicyMode = "validation"
+$script:PendingLiveSupportAllowed = $true
 
 if ($env:POWERS_TOOL_LIVE_CLI_CHECK_IMPORT_ONLY -eq "1") {
     return
@@ -2914,6 +2919,13 @@ $script:ResourceDisplay = "$ConnectionLabel`:<redacted-resource>"
 $script:BackendValue = $Backend
 $script:TransportScope = Get-TransportScope -Connection $ConnectionLabel
 $script:BackendArtifact = Get-BackendArtifactFields -Value $Backend
+$psm2010ProductScope = (
+    $script:NormalizedTarget -eq "gw-instek-psm-2010" -and
+    $script:TransportScope -eq "asrl" -and
+    $script:BackendArtifact.backend_scope -eq "system_visa"
+)
+$script:SupportPolicyMode = if ($psm2010ProductScope) { "product" } else { "validation" }
+$script:PendingLiveSupportAllowed = -not $psm2010ProductScope
 $script:InstrumentIdentity = $null
 $script:CleanupEvidence = $null
 $script:SensitiveValues = New-Object System.Collections.Generic.List[string]

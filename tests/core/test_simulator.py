@@ -50,7 +50,7 @@ def test_deterministic_simulator_registry_uses_matching_canonical_identity() -> 
         assert selection.physical_identity.vendor_id == IDENTITY_INDEXES.models_by_id[model_id].vendor_id
 
 
-def test_psm2010_simulator_supports_candidate_read_and_safe_state_commands() -> None:
+def test_psm2010_simulator_supports_product_read_and_safe_state_commands() -> None:
     session = SimulatedResourceManager().open_resource("ASRL1::SIM::PSM2010::INSTR")
 
     assert session.query("MEAS?") == "1.000"

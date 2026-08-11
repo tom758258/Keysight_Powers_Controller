@@ -24,7 +24,8 @@ def test_supported_models_matrix_matches_cli_support(capsys):
     e36312a = _capabilities("USB0::SIM::E36312A::INSTR", capsys)["command_support"]
     e3646a = _capabilities("ASRL1::SIM::E3646A::INSTR", capsys)["command_support"]
     edu = _capabilities("USB0::SIM::EDU36311A::INSTR", capsys)["command_support"]
-    psm = _capabilities("ASRL1::SIM::PSM2010::INSTR", capsys)["command_support"]
+    psm_data = _capabilities("ASRL1::SIM::PSM2010::INSTR", capsys)
+    psm = psm_data["command_support"]
 
     assert e36312a["smoke-output"]["real"] is True
     assert e36312a["protection-set"]["real"] is True
@@ -65,8 +66,21 @@ def test_supported_models_matrix_matches_cli_support(capsys):
         "output-off", "safe-off",
     }:
         assert psm[command]["real"] is True
+    assert psm_data["hardware_validation"] == {
+        "read_only": "rs232_read_only",
+        "output": "validated_off_only",
+        "protection": "not_enabled",
+        "trigger": "not_enabled",
+    }
+    for command in {
+        "identify", "measure", "output-state", "read-status", "readback", "capabilities",
+    }:
+        assert psm[command]["hardware_validation"] == "rs232_read_only"
+    for command in {"output-off", "safe-off"}:
+        assert psm[command]["hardware_validation"] == "validated"
     for command in {"set", "output-on", "doctor"}:
         assert psm[command]["real"] is False
+        assert psm[command]["hardware_validation"] == "not_enabled"
 
 
 def test_public_docs_preserve_machine_schema_and_support_tokens() -> None:

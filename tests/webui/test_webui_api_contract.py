@@ -448,6 +448,12 @@ def test_commands_metadata_includes_model_aware_support(client: TestClient):
     assert "disabled_reason" not in support["keysight-e3646a"]["sequence"]
     assert support["gw-instek-psm-2010"]["set"]["real"] is False
     assert support["gw-instek-psm-2010"]["output-on"]["real"] is False
+    assert (
+        support["gw-instek-psm-2010"]["capabilities"]["hardware_validation"]
+        == "rs232_read_only"
+    )
+    for command in ("output-off", "safe-off"):
+        assert support["gw-instek-psm-2010"][command]["hardware_validation"] == "validated"
     generic_support = data["planning_profiles"]["generic-scpi"]["command_support"]
     assert generic_support["set"]["real"] is False
     for model in support:

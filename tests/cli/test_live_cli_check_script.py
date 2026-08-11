@@ -1776,6 +1776,10 @@ def test_live_cli_check_psm2010_full_plan_only_covers_exact_product_commands() -
     assert report["state_changing"] is True
     assert report["plan_only"] is True
     assert report["live_executed"] is False
+    assert report["support_policy_mode"] == "product"
+    assert report["pending_live_support_allowed"] is False
+    assert report["candidate_evidence_only"] is True
+    assert report["promotes_live_support"] is False
     assert report["failures"] == []
     assert "1 V / 0.05 A" not in summary
     assert (
@@ -2329,6 +2333,7 @@ $env:POWERS_TOOL_LIVE_CLI_CHECK_IMPORT_ONLY = "1"
 $script:CliExecutable = $PythonExe
 $script:CliPrefix = @("-m", "powers_tool_cli.cli")
 $script:NormalizedTarget = "keysight-e36312a"
+$script:PendingLiveSupportAllowed = $true
 $policy = @(Add-ValidationSupportPolicyArgument -Arguments @("measure", "--json"))
 if (@($policy | Where-Object { $_ -eq "--validation-allow-pending-live-support" }).Count -ne 1) { throw "policy command did not receive exactly one flag" }
 $duplicate = @(Add-ValidationSupportPolicyArgument -Arguments @("measure", "--validation-allow-pending-live-support", "--json"))
@@ -2337,6 +2342,9 @@ foreach ($diagnostic in @("list-resources", "verify", "identify", "error", "clea
     $args = @(Add-ValidationSupportPolicyArgument -Arguments @($diagnostic, "--json"))
     if ($args -contains "--validation-allow-pending-live-support") { throw "$diagnostic should remain exempt" }
 }
+$script:PendingLiveSupportAllowed = $false
+$product = @(Add-ValidationSupportPolicyArgument -Arguments @("measure", "--json"))
+if ($product -contains "--validation-allow-pending-live-support") { throw "Product policy command received pending-support flag" }
 """
     result = _run_powershell_command(command)
 
