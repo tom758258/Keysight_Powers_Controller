@@ -155,14 +155,20 @@ setpoints before SCPI.
 | E3646A | OUT1 / CH1 | HIGH / P20V | 0 to 20.60 V | 0 to 1.545 A | 0 A |
 | E3646A | OUT2 / CH2 | LOW / P8V | 0 to 8.24 V | 0 to 3.09 A | 0 A |
 | E3646A | OUT2 / CH2 | HIGH / P20V | 0 to 20.60 V | 0 to 1.545 A | 0 A |
+| PSM-2010 | OUT1 / CH1 | LOW / P8V | 0 to 8.24 V | 0 to 20.6 A | N/A |
+| PSM-2010 | OUT1 / CH1 | HIGH / P20V | 0 to 20.6 V | 0 to 10.3 A | N/A |
 
 Sources: E36300 Series Programmable DC Power Supplies Programming Guide,
 manual part number E36311-90008, printed page 16; EDU36311A Programming Guide,
 manual part number EDU36311-90013, printed pages 15 and 39; Agilent E364xA
 Dual Output DC Power Supplies User's and Service Guide, manual part number
-E3646-90001, printed pages 82, 83, 84, and 91. E3646A ranges are
-range-dependent and are not flattened into a single voltage/current maximum.
-At *RST, the E3646A low voltage range is selected.
+E3646-90001, printed pages 82, 83, 84, and 91; GW Instek PSM-Series
+Programming Manual, manual part number 82SM-60030IA, printed page 28. E3646A
+and PSM-2010 ranges are range-dependent and are not flattened into a single
+voltage/current maximum. At *RST, the E3646A low voltage range is selected.
+The PSM-2010 manual documents an instrument-wide *RST current value of 20 A;
+this does not mean 20 A is valid while HIGH range is retained. HIGH remains
+limited to a 10 A rating and a 10.3 A programming maximum.
 
 ## Command Support Notes
 

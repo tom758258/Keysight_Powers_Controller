@@ -110,7 +110,7 @@ are never reported as Product-open exact live commands.
 - `powers_tool_core.connection`: VISA backend selection, resource listing,
   identity query, and connection helpers.
 - `powers_tool_core.factory`: IDN-based driver selection for generic SCPI,
-  E36312A, EDU36311A, and E3646A instruments.
+  E36312A, EDU36311A, E3646A, and PSM-2010 instruments.
 - `powers_tool_core.drivers`: model-specific driver implementations and
   shared SCPI channel strategies.
 - `powers_tool_core.operations`: output and setpoint operations such as

@@ -61,7 +61,7 @@ Product metadata。
 ## 套件內容
 
 - `powers_tool_core.connection`: VISA 後端選擇、資源列表、身分查詢與連線輔助工具。
-- `powers_tool_core.factory`: 基於 IDN 的驅動程式選擇，適用於通用 SCPI、E36312A、EDU36311A 與 E3646A 儀器。
+- `powers_tool_core.factory`: 基於 IDN 的驅動程式選擇，適用於通用 SCPI、E36312A、EDU36311A、E3646A 與 PSM-2010 儀器。
 - `powers_tool_core.drivers`: 特定型號的驅動程式實作與共用的 SCPI 通道策略。
 - `powers_tool_core.operations`: 輸出與設定點操作，例如 `set`、`apply`、`output-on`、`output-off`、`safe-off`、`ramp`、`ramp-list`，以及 readback/snapshot 輔助工具。
 - `powers_tool_core.readonly`: 唯讀的 `status`、`readback`、`measure-all` 與不會開啟 VISA 的 dry-run 計畫。
