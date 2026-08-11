@@ -1778,12 +1778,22 @@ def test_live_cli_check_psm2010_full_plan_only_covers_exact_product_commands() -
     assert report["live_executed"] is False
     assert report["support_policy_mode"] == "product"
     assert report["pending_live_support_allowed"] is False
-    assert report["candidate_evidence_only"] is True
+    assert report["candidate_evidence_only"] is False
     assert report["promotes_live_support"] is False
     assert report["failures"] == []
     assert "1 V / 0.05 A" not in summary
     assert (
         "Safe-state cases may turn outputs OFF but never enable outputs or write setpoints."
+        in summary
+    )
+    assert "Support policy mode: `product`" in summary
+    assert "Pending live support allowed: `false`" in summary
+    assert "Candidate evidence only: `false`" in summary
+    assert "Promotes product support: `false`" in summary
+    assert "candidate validation evidence only" not in summary
+    assert (
+        "This run is a regression validation of an already Product-open exact scope. "
+        "It does not promote or broaden Product support."
         in summary
     )
 
@@ -2502,7 +2512,17 @@ def test_live_cli_check_plan_artifact_redacts_resource_and_command_paths():
     assert str(Path.cwd()) not in report_text
     assert report["resource"] == "LAN:<redacted-resource>"
     assert all("<redacted-resource>" not in command["arguments"] for command in report["commands"])
-    assert "candidate validation evidence only" in report_path.with_name("summary.md").read_text(encoding="utf-8")
+    assert report["support_policy_mode"] == "validation"
+    assert report["pending_live_support_allowed"] is True
+    assert report["candidate_evidence_only"] is True
+    assert report["promotes_live_support"] is False
+    summary = report_path.with_name("summary.md").read_text(encoding="utf-8")
+    assert "Support policy mode: `validation`" in summary
+    assert "Pending live support allowed: `true`" in summary
+    assert "Candidate evidence only: `true`" in summary
+    assert "Promotes product support: `false`" in summary
+    assert "candidate validation evidence only" in summary
+    assert "regression validation of an already Product-open exact scope" not in summary
 
 
 def test_live_cli_check_shareable_plan_contains_no_private_runtime_material():

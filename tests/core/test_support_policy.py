@@ -131,6 +131,14 @@ PSM2010_VALIDATED_COMMANDS = {
     "output-off",
     "safe-off",
 }
+PSM2010_UNSUPPORTED_TRIGGER_COMMANDS = {
+    "trigger-pulse",
+    "trigger-status",
+    "trigger-step",
+    "trigger-list",
+    "trigger-fire",
+    "trigger-abort",
+}
 
 
 def _commands_for_scope(model_id: str, transport: str, backend: str) -> set[str]:
@@ -394,6 +402,23 @@ def test_psm2010_unregistered_live_scopes_fail_closed(
 def test_psm2010_unvalidated_commands_remain_closed(command: str, mode: str) -> None:
     assert command_live_support("gw-instek-psm-2010", command).scopes == ()
     with pytest.raises(LiveSupportPolicyError):
+        ensure_live_scope_supported(
+            model_id="gw-instek-psm-2010",
+            command=command,
+            transport="ASRL1::INSTR",
+            backend=None,
+            support_policy_mode=mode,
+        )
+
+
+@pytest.mark.parametrize("command", sorted(PSM2010_UNSUPPORTED_TRIGGER_COMMANDS))
+@pytest.mark.parametrize("mode", [SUPPORT_POLICY_MODE_PRODUCT, SUPPORT_POLICY_MODE_VALIDATION])
+def test_psm2010_trigger_family_is_not_supported_by_model(command: str, mode: str) -> None:
+    policy = command_live_support("gw-instek-psm-2010", command)
+
+    assert policy.validation_status == VALIDATION_STATUS_NOT_SUPPORTED_BY_MODEL
+    assert policy.scopes == ()
+    with pytest.raises(LiveSupportPolicyError, match="not_supported_by_model"):
         ensure_live_scope_supported(
             model_id="gw-instek-psm-2010",
             command=command,

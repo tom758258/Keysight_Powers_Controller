@@ -186,7 +186,7 @@ def test_command_support_psm2010_product_boundary() -> None:
         "read_only": "rs232_read_only",
         "output": "validated_off_only",
         "protection": "not_enabled",
-        "trigger": "not_enabled",
+        "trigger": "not_supported_by_model",
     }
 
     support = capabilities.command_support("gw-instek-psm-2010")
@@ -223,7 +223,6 @@ def test_command_support_psm2010_product_boundary() -> None:
         "log",
         "doctor",
         "protection-set",
-        "trigger-pulse",
         "snapshot",
         "restore-from-snapshot",
     ):
@@ -231,6 +230,15 @@ def test_command_support_psm2010_product_boundary() -> None:
         assert support[command]["simulate"] is False
         assert support[command]["dry_run"] is False
         assert support[command]["hardware_validation"] == "not_enabled"
+
+    for command in capabilities.TRIGGER_COMMANDS:
+        assert support[command] == {
+            "real": False,
+            "simulate": False,
+            "dry_run": False,
+            "requires_confirm": False,
+            "hardware_validation": "not_supported_by_model",
+        }
 
 
 @pytest.mark.parametrize(
@@ -345,6 +353,17 @@ def test_edu36311a_trigger_error_explains_feature_lock() -> None:
     assert "dry-run mode" in message
     assert "disabled in live, simulate, and dry-run" in message
     assert "Use E36312A" in message
+
+
+@pytest.mark.parametrize("command", sorted(capabilities.TRIGGER_COMMANDS))
+def test_psm2010_trigger_error_explains_permanent_model_boundary(command: str) -> None:
+    message = _unsupported_message(command, "gw-instek-psm-2010", "simulate")
+
+    assert command in message
+    assert "PSM-2010 does not support Powers trigger workflows." in message
+    assert "not yet" not in message
+    assert "not validated" not in message
+    assert "currently disabled" not in message
 
 
 @pytest.mark.parametrize("command", ["snapshot", "restore-from-snapshot"])

@@ -454,6 +454,16 @@ def test_commands_metadata_includes_model_aware_support(client: TestClient):
     )
     for command in ("output-off", "safe-off"):
         assert support["gw-instek-psm-2010"][command]["hardware_validation"] == "validated"
+    for command in (
+        "trigger-pulse", "trigger-status", "trigger-step", "trigger-list",
+        "trigger-fire", "trigger-abort",
+    ):
+        trigger_support = support["gw-instek-psm-2010"][command]
+        assert trigger_support["real"] is False
+        assert trigger_support["simulate"] is False
+        assert trigger_support["dry_run"] is False
+        assert trigger_support["hardware_validation"] == "not_supported_by_model"
+        assert "PSM-2010 does not support Powers trigger workflows." in trigger_support["disabled_reason"]
     generic_support = data["planning_profiles"]["generic-scpi"]["command_support"]
     assert generic_support["set"]["real"] is False
     for model in support:

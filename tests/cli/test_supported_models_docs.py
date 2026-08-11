@@ -70,7 +70,7 @@ def test_supported_models_matrix_matches_cli_support(capsys):
         "read_only": "rs232_read_only",
         "output": "validated_off_only",
         "protection": "not_enabled",
-        "trigger": "not_enabled",
+        "trigger": "not_supported_by_model",
     }
     for command in {
         "identify", "measure", "output-state", "read-status", "readback", "capabilities",
@@ -81,6 +81,14 @@ def test_supported_models_matrix_matches_cli_support(capsys):
     for command in {"set", "output-on", "doctor"}:
         assert psm[command]["real"] is False
         assert psm[command]["hardware_validation"] == "not_enabled"
+    for command in {
+        "trigger-pulse", "trigger-status", "trigger-step", "trigger-list",
+        "trigger-fire", "trigger-abort",
+    }:
+        assert psm[command]["real"] is False
+        assert psm[command]["simulate"] is False
+        assert psm[command]["dry_run"] is False
+        assert psm[command]["hardware_validation"] == "not_supported_by_model"
 
 
 def test_public_docs_preserve_machine_schema_and_support_tokens() -> None:

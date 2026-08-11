@@ -2750,6 +2750,8 @@ function Write-ValidationArtifacts {
         }
         $Result = "failed"
     }
+    $candidateEvidenceOnly = [bool]$script:PendingLiveSupportAllowed
+    $promotesLiveSupport = $false
     $reportFields = [ordered]@{
         schema_version = "2.0"
         kind = "powers-tool-live-validation"
@@ -2761,8 +2763,8 @@ function Write-ValidationArtifacts {
         validation_mode = $ValidationMode
         support_policy_mode = $script:SupportPolicyMode
         pending_live_support_allowed = $script:PendingLiveSupportAllowed
-        candidate_evidence_only = $true
-        promotes_live_support = $false
+        candidate_evidence_only = $candidateEvidenceOnly
+        promotes_live_support = $promotesLiveSupport
         plan_only = [bool]$PlanOnly
         live_executed = ($ValidationMode -eq "live")
         state_changing = $script:StateChanging
@@ -2811,16 +2813,22 @@ function Write-ValidationArtifacts {
     $lines.Add("PlanOnly: ``" + [bool]$PlanOnly + "``")
     $lines.Add("External preflight: ``" + $script:ExternalPreflight.status + "``")
     $lines.Add("Live executed: ``" + ($ValidationMode -eq "live") + "``")
-    $lines.Add("Support policy mode: ``validation``")
-    $lines.Add("Candidate evidence only: ``true``")
-    $lines.Add("Promotes product support: ``false``")
+    $lines.Add("Support policy mode: ``" + $script:SupportPolicyMode + "``")
+    $lines.Add("Pending live support allowed: ``" + $script:PendingLiveSupportAllowed.ToString().ToLowerInvariant() + "``")
+    $lines.Add("Candidate evidence only: ``" + $candidateEvidenceOnly.ToString().ToLowerInvariant() + "``")
+    $lines.Add("Promotes product support: ``" + $promotesLiveSupport.ToString().ToLowerInvariant() + "``")
     $lines.Add("Transport scope: ``" + $script:TransportScope + "``")
     $lines.Add("Backend scope: ``" + $script:BackendArtifact.backend_scope + "``")
     $lines.Add("Shareable artifact directory: ``" + (ConvertTo-RepoRelativePath -Path $script:ShareableArtifactDir) + "``")
     $lines.Add("Resource: ``" + $script:ResourceDisplay + "``")
     $lines.Add("")
     $lines.Add("## Safety Notes")
-    $lines.Add("- This run produces candidate validation evidence only. Passing artifacts do not automatically promote product support.")
+    if ($candidateEvidenceOnly) {
+        $lines.Add("- This run produces candidate validation evidence only. Passing artifacts do not automatically promote product support.")
+    }
+    else {
+        $lines.Add("- This run is a regression validation of an already Product-open exact scope. It does not promote or broaden Product support.")
+    }
     $lines.Add("- This suite validates only the selected model, connection, suite, and command cases.")
     $lines.Add("- It does not validate untested features or other connections.")
     $outputAffectingSuites = @($script:SuitesToRun | Where-Object { $_ -in @("output", "snapshot", "trigger-list", "software-sequence") })

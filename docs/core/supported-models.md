@@ -105,6 +105,8 @@ and report `hardware_validation=validated`.
 Trigger workflows are E36312A-only. EDU36311A, E3646A, PSM-2010, and
 `generic-scpi` do not expose trigger dry-run or simulator behavior; their trigger commands report
 `real=false`, `simulate=false`, and `dry_run=false`.
+PSM-2010 does not support Powers trigger workflows; its trigger commands also
+report `hardware_validation=not_supported_by_model`.
 
 ## No-Hardware Planning Identity Matrix
 
@@ -118,7 +120,7 @@ placeholders and must not imply a model.
 | `keysight-e36312a` | `USB0::SIM::E36312A::INSTR` | CH1, CH2, CH3 | Per-channel output control; `all` expands to CH1-CH3 | Trigger workflows and native LIST are E36312A-only and Product-open on supported live E36312A paths. Protection read/write paths are supported. |
 | `keysight-edu36311a` | `USB0::SIM::EDU36311A::INSTR` | CH1, CH2, CH3 | Per-channel output control; `all` expands to CH1-CH3 | Protection read/write paths are supported. Trigger workflows and native LIST are not exposed in dry-run, simulate, or real mode. |
 | `keysight-e3646a` | `ASRL1::SIM::E3646A::INSTR` | CH1, CH2 | Global output enable/disable; channel selection is used for setpoints and readback | RS-232 / ASRL output workflows are Product-open within the exact scope. Protection writes, trigger workflows, snapshot restore, completion pulses, and native LIST are disabled. |
-| `gw-instek-psm-2010` | `ASRL1::SIM::PSM2010::INSTR` | CH1 | Global output control | Product LIVE is limited to the seven read-only/status and output-OFF commands in the exact-scope matrix. Setpoint writes, output enable, protection, trigger, snapshot, ramp, and sequence workflows are disabled. |
+| `gw-instek-psm-2010` | `ASRL1::SIM::PSM2010::INSTR` | CH1 | Global output control | Product LIVE is limited to the seven read-only/status and output-OFF commands in the exact-scope matrix. Powers trigger workflows are not supported by the model profile. Setpoint writes, output enable, protection, snapshot, ramp, and sequence workflows are disabled. |
 | `generic-scpi` planning profile | None; use explicit `--profile generic-scpi` in dry-run | CH1 | Unknown | Conservative no-hardware planning only. Trigger workflows, native LIST, and protection writes are not exposed. |
 
 Live hardware uses manufacturer-plus-model IDN resolution. In live mode,

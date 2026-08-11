@@ -142,7 +142,7 @@ def hardware_validation_status(model_id: str | None) -> dict[str, Any]:
             "read_only": "rs232_read_only",
             "output": "validated_off_only",
             "protection": "not_enabled",
-            "trigger": "not_enabled",
+            "trigger": "not_supported_by_model",
         }
     return {
         "read_only": "generic_channel_1_only",
@@ -285,7 +285,11 @@ def command_support(model_id: str | None) -> dict[str, dict[str, Any]]:
                     "simulate": False,
                     "dry_run": False,
                     "requires_confirm": False,
-                    "hardware_validation": "not_enabled",
+                    "hardware_validation": (
+                        "not_supported_by_model"
+                        if normalized == PSM2010_MODEL_ID
+                        else "not_enabled"
+                    ),
                 }
             )
         if command == "log":
@@ -402,6 +406,8 @@ def unsupported_command_reason(command: str, identity: str | None) -> str:
                 "E3646A completion-pulse workflows are disabled until separately validated. "
                 "E3646A ramp-list and sequence are software workflows, not native LIST."
             )
+    if model_label == "PSM-2010" and command in TRIGGER_COMMANDS:
+        return "PSM-2010 does not support Powers trigger workflows."
     e36312a_support = command_support(E36312A_MODEL_ID).get(command, {})
     if any(e36312a_support.get(key) is True for key in ("real", "simulate", "dry_run")):
         return "This workflow is currently E36312A-only for supported modes."
