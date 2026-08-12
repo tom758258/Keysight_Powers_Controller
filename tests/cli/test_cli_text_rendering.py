@@ -243,6 +243,34 @@ def test_format_output_plan_preserves_parameter_order_and_scalar_text() -> None:
     assert repr(plan) == repr(before)
 
 
+def test_format_output_plan_renders_multi_channel_target_without_channel() -> None:
+    plan = {
+        "operation": {"name": "ramp"},
+        "target": {
+            "resource": "USB0::SIM::E36312A::INSTR",
+            "channels": [1, 3],
+        },
+        "hardware_touched": False,
+        "steps": [],
+    }
+
+    result = cli_rendering.format_output_plan(
+        plan,
+        mode="dry-run",
+        dry_run=True,
+        value_to_text=_format_text_value,
+    )
+
+    assert result == (
+        "Dry-run plan for ramp",
+        "Mode: dry-run",
+        "Resource: USB0::SIM::E36312A::INSTR",
+        "Channels: 1, 3",
+        "Hardware touched: false",
+        "Steps:",
+    )
+
+
 def test_format_scpi_plan_preserves_simulation_label_and_step_order() -> None:
     plan = {
         "operation": {"name": "clear"},

@@ -149,14 +149,24 @@ def format_output_plan(
     value_to_text: Callable[[object], str],
 ) -> tuple[str, ...]:
     label = "Dry-run" if dry_run else "Simulation"
+    target = plan["target"]
     lines = [
         f"{label} plan for {plan['operation']['name']}",
         f"Mode: {mode}",
-        f"Resource: {plan['target']['resource']}",
-        f"Channel: {plan['target']['channel']}",
-        f"Hardware touched: {str(plan['hardware_touched']).lower()}",
-        "Steps:",
+        f"Resource: {target['resource']}",
     ]
+    if "channels" in target:
+        lines.append(
+            "Channels: " + ", ".join(str(channel) for channel in target["channels"])
+        )
+    else:
+        lines.append(f"Channel: {target['channel']}")
+    lines.extend(
+        [
+            f"Hardware touched: {str(plan['hardware_touched']).lower()}",
+            "Steps:",
+        ]
+    )
     for step in plan["steps"]:
         parameters = " ".join(
             f"{name}={value_to_text(value)}"
