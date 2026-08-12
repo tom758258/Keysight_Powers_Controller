@@ -155,8 +155,8 @@ def test_psm2010_protection_plan_rejects_delay_trigger_before_open() -> None:
     ("parameters", "message"),
     [
         ({"ocp_delay_trigger": "setting-change"}, "does not support the ocp_delay_trigger"),
-        ({"ocp_delay": 0.09}, "0.1 through 10"),
-        ({"ocp_delay": 10.1}, "0.1 through 10"),
+        ({"ocp_delay": 0.1}, "does not support the ocp_delay protection option"),
+        ({"ocp_delay": 10.0}, "does not support the ocp_delay protection option"),
     ],
 )
 def test_psm2010_expected_model_prevalidates_protection_before_open(
@@ -188,28 +188,69 @@ def test_psm2010_expected_model_prevalidates_protection_before_open(
 
 
 @pytest.mark.parametrize("ocp_delay", [0.1, 10.0])
-def test_psm2010_expected_model_accepts_ocp_delay_boundaries_before_open(
+@pytest.mark.parametrize("mode", ["dry_run", "simulate"])
+def test_psm2010_planning_model_rejects_ocp_delay_before_open(
     ocp_delay: float,
+    mode: str,
 ) -> None:
     opened = False
 
     def opener(*_args, **_kwargs):
         nonlocal opened
         opened = True
-        raise AssertionError("boundary reached opener")
+        raise AssertionError("opener must not run")
 
-    with pytest.raises(AssertionError, match="boundary reached opener"):
+    runtime = RuntimeOptions(
+        resource="ASRL1::SIM::PSM2010::INSTR" if mode == "simulate" else None,
+        planning_model_id="gw-instek-psm-2010",
+        **{mode: True},
+    )
+    with pytest.raises(CoreValidationError, match="does not support the ocp_delay protection option"):
         run_protection(
             OperationRequest(
                 "protection-set",
-                RuntimeOptions(
-                    resource="ASRL1::fixture::INSTR",
-                    expected_model_id="gw-instek-psm-2010",
-                    confirm=True,
-                ),
+                runtime,
                 {"channel": 1, "ocp_delay": ocp_delay},
             ),
             opener=opener,
         )
 
-    assert opened is True
+    assert opened is False
+
+
+def test_psm2010_protection_plan_keeps_ovp_and_ocp_supported() -> None:
+    result = run_protection(
+        OperationRequest(
+            "protection-set",
+            RuntimeOptions(
+                dry_run=True,
+                planning_model_id="gw-instek-psm-2010",
+            ),
+            {"channel": 1, "ovp_voltage": 5.0, "ocp": "on"},
+        )
+    )
+
+    assert [step["command"] for step in result["plan"]["steps"]] == [
+        "VOLT:PROT 5",
+        "CURR:PROT:STAT ON",
+    ]
+
+
+def test_psm2010_detected_model_rejects_ocp_delay_before_write() -> None:
+    session = FakeSession("GW.Inc,PSM-2010,SIM000006,FW1.06", {})
+
+    with pytest.raises(CoreValidationError, match="does not support the ocp_delay protection option"):
+        run_protection(
+            OperationRequest(
+                "protection-set",
+                RuntimeOptions(
+                    resource="ASRL1::INSTR",
+                    confirm=True,
+                    support_policy_mode="validation",
+                ),
+                {"channel": 1, "ocp_delay": 1.0},
+            ),
+            opener=lambda *_args, **_kwargs: session,
+        )
+
+    assert session.queries == ["*IDN?"]

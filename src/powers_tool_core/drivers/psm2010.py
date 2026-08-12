@@ -165,12 +165,8 @@ class PSM2010PowerSupply(GenericScpiPowerSupply):
         self._write(f"VOLT:PROT {_format_number(voltage)}", channel=selected_channel)
 
     def set_over_current_protection_delay(self, *, channel: Channel = None, seconds: float) -> None:
-        selected_channel = _psm2010_channel(channel)
-        if not math.isfinite(seconds) or not 0.1 <= seconds <= 10.0:
-            raise ValueError(
-                "PSM-2010 over-current protection delay must be from 0.1 through 10 seconds"
-            )
-        self._write(f"CURR:PROT:DEL {_format_number(seconds)}", channel=selected_channel)
+        _psm2010_channel(channel)
+        raise ValueError("PSM-2010 does not support OCP delay configuration")
 
     def set_over_current_protection_delay_trigger(
         self,

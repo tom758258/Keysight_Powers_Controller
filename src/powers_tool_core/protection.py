@@ -375,9 +375,9 @@ def _validate_psm_protection_options(
         raise CoreValidationError(
             "PSM-2010 does not support the ocp_delay_trigger protection option"
         )
-    if ocp_delay is not None and not 0.1 <= ocp_delay <= 10.0:
+    if ocp_delay is not None:
         raise CoreValidationError(
-            "PSM-2010 ocp_delay must be from 0.1 through 10 seconds"
+            "PSM-2010 does not support the ocp_delay protection option"
         )
 
 

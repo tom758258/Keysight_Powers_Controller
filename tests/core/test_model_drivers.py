@@ -207,13 +207,11 @@ def test_psm2010_driver_maps_protection_status_settings_and_clear() -> None:
     assert power_supply.over_current_protection_enabled(channel=1) is True
     power_supply.set_over_voltage_protection(channel=1, voltage=21.5)
     power_supply.set_over_current_protection_enabled(channel=1, enabled=True)
-    power_supply.set_over_current_protection_delay(channel=1, seconds=10.0)
     power_supply.clear_output_protection(channel=1)
 
-    assert session.commands[-5:] == [
+    assert session.commands[-4:] == [
         "VOLT:PROT 21.5",
         "CURR:PROT:STAT ON",
-        "CURR:PROT:DEL 10",
         "CURR:PROT:CLE",
         "VOLT:PROT:CLE",
     ]
@@ -261,13 +259,23 @@ def test_psm2010_driver_accepts_ovp_maximum() -> None:
     assert session.commands == ["VOLT:PROT 22"]
 
 
-@pytest.mark.parametrize("delay", [0.0, 10.1])
-def test_psm2010_driver_rejects_ambiguous_or_out_of_range_ocp_delay(delay) -> None:
+@pytest.mark.parametrize("delay", [0.1, 10.0])
+def test_psm2010_driver_rejects_ocp_delay_configuration_without_io(delay) -> None:
     session = FakeSession()
     power_supply = PSM2010PowerSupply(session)
 
-    with pytest.raises(ValueError, match="0.1 through 10"):
+    with pytest.raises(ValueError, match="does not support OCP delay configuration"):
         power_supply.set_over_current_protection_delay(channel=1, seconds=delay)
+
+    assert session.commands == []
+
+
+def test_psm2010_driver_rejects_invalid_ocp_delay_configuration_channel_without_io() -> None:
+    session = FakeSession()
+    power_supply = PSM2010PowerSupply(session)
+
+    with pytest.raises(ValueError, match="PSM-2010 channel must be 1"):
+        power_supply.set_over_current_protection_delay(channel=2, seconds=1.0)
 
     assert session.commands == []
 

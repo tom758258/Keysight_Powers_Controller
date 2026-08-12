@@ -1482,6 +1482,17 @@ def test_live_confirmation_warnings_format_single_software_sequence_suite():
     )
 
 
+def test_live_confirmation_warnings_use_model_neutral_snapshot_wording():
+    result = _confirmation_warnings_for_suites(["snapshot"])
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (
+        "Snapshot validation may include confirmed real restore paths and mandatory safe-off cleanup."
+        in result.stdout
+    )
+    assert "E36312A snapshot validation" not in result.stdout
+
+
 def test_live_cli_check_uses_phase_specific_artifact_names(tmp_path):
     fixture_path = _dynamic_fixture_cli_path(tmp_path)
     output_dir = tmp_path / "out"
@@ -1758,25 +1769,14 @@ $nonmatchingCandidateCount = @(
     protection = composition["protection"]
     assert [case["name"] for case in protection] == [
         "protection-status-before",
-        "protection-set-ocp-delay-max-acceptance",
-        "protection-set-ocp-delay-max-errors",
         "protection-set-all",
-        "protection-set-ocp-delay-min-errors",
         "protection-status-after-set",
         "clear-protection-all",
         "protection-status-after-clear",
     ]
     by_name = {case["name"]: case for case in protection}
-    assert by_name["protection-set-ocp-delay-max-acceptance"]["candidate"] is True
     assert by_name["protection-set-all"]["candidate"] is True
-    assert by_name["protection-set-ocp-delay-max-acceptance"]["arguments"][
-        by_name["protection-set-ocp-delay-max-acceptance"]["arguments"].index("--ocp-delay") + 1
-    ] == "10.0"
-    assert by_name["protection-set-all"]["arguments"][
-        by_name["protection-set-all"]["arguments"].index("--ocp-delay") + 1
-    ] == "0.1"
-    assert by_name["protection-set-ocp-delay-max-errors"]["validation_kind"] == "empty-errors"
-    assert by_name["protection-set-ocp-delay-min-errors"]["validation_kind"] == "empty-errors"
+    assert not any("--ocp-delay" in case["arguments"] for case in protection)
     assert not any("--ocp-delay-trigger" in case["arguments"] for case in protection)
 
     unchanged_names = [
@@ -1939,14 +1939,11 @@ def test_live_cli_check_psm2010_full_plan_only_covers_v2_candidates() -> None:
         }
     )
     planned_by_name = {case["name"]: case for case in report["planned_live_cases"]}
-    assert planned_by_name["protection-set-ocp-delay-max-acceptance"]["arguments"][
-        planned_by_name["protection-set-ocp-delay-max-acceptance"]["arguments"].index("--ocp-delay") + 1
-    ] == "10.0"
-    assert planned_by_name["protection-set-all"]["arguments"][
-        planned_by_name["protection-set-all"]["arguments"].index("--ocp-delay") + 1
-    ] == "0.1"
-    assert planned_by_name["protection-set-ocp-delay-max-errors"]["validation_kind"] == "empty-errors"
-    assert planned_by_name["protection-set-ocp-delay-min-errors"]["validation_kind"] == "empty-errors"
+    assert planned_by_name["protection-set-all"]["command"] == "protection-set"
+    assert not any(
+        "--ocp-delay" in case["arguments"]
+        for case in report["planned_live_cases"]
+    )
     assert not any(
         "--ocp-delay-trigger" in case["arguments"]
         for case in report["planned_live_cases"]

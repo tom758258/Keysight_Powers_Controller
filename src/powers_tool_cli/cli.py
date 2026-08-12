@@ -2571,6 +2571,14 @@ def _run_clear_protection(args: argparse.Namespace) -> int:
     except CoreIoError as exc:
         code = "clear_protection_failed" if exc.opened else "connection_failed"
         return _emit_safe_io_error(args, request=request, execution=execution, code=code, message=str(exc))
+    except CoreExecutionError as exc:
+        return _emit_safe_io_error(
+            args,
+            request=request,
+            execution=execution,
+            code="clear_protection_failed",
+            message=str(exc),
+        )
 
     if "plan" in data:
         plan = data["plan"]
@@ -2631,6 +2639,14 @@ def _run_protection_set(args: argparse.Namespace) -> int:
     except CoreIoError as exc:
         code = "protection_set_failed" if exc.opened else "connection_failed"
         return _emit_safe_io_error(args, request=request, execution=execution, code=code, message=str(exc))
+    except CoreExecutionError as exc:
+        return _emit_safe_io_error(
+            args,
+            request=request,
+            execution=execution,
+            code="protection_set_failed",
+            message=str(exc),
+        )
 
     if "plan" in data:
         plan = data["plan"]

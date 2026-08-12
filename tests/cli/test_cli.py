@@ -7850,6 +7850,57 @@ def test_protection_set_rejects_negative_ocp_delay(capsys) -> None:
     assert payload["error"]["message"] == "ocp_delay must be a finite non-negative number"
 
 
+def test_protection_set_execution_error_writes_json_envelope(
+    monkeypatch, tmp_path, capsys
+) -> None:
+    save_path = tmp_path / "protection-set-error.json"
+    message = 'protection-set completed with instrument errors: [\'-113, "Undefined header"\']'
+
+    def fail(*_args, **_kwargs):
+        raise CoreExecutionError(message)
+
+    monkeypatch.setattr(cli.protection_core, "run_protection", fail)
+
+    assert cli.main([
+        "protection-set", "--simulate", "--json", "--resource", OUTPUT_RESOURCE,
+        "--channel", "1", "--ovp-voltage", "5", "--save-json", str(save_path),
+    ]) == 1
+
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert payload["ok"] is False
+    assert payload["error"] == {
+        "type": "connection",
+        "code": "protection_set_failed",
+        "message": message,
+        "retryable": True,
+    }
+    assert json.loads(save_path.read_text(encoding="utf-8")) == payload
+    assert "Traceback" not in captured.err
+
+
+def test_clear_protection_execution_error_writes_json_envelope(monkeypatch, capsys) -> None:
+    message = "clear-protection completed with instrument errors: ['queue error']"
+
+    def fail(*_args, **_kwargs):
+        raise CoreExecutionError(message)
+
+    monkeypatch.setattr(cli.protection_core, "run_protection", fail)
+
+    assert cli.main([
+        "clear-protection", "--simulate", "--json", "--resource", OUTPUT_RESOURCE,
+        "--channel", "1",
+    ]) == 1
+
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert payload["ok"] is False
+    assert payload["error"]["type"] == "connection"
+    assert payload["error"]["code"] == "clear_protection_failed"
+    assert payload["error"]["message"] == message
+    assert "Traceback" not in captured.err
+
+
 def test_protection_set_dry_run_does_not_open_resource(monkeypatch, capsys) -> None:
     def fail_open_resource(*args, **kwargs):
         raise AssertionError("VISA resource should not be opened for dry-run")
