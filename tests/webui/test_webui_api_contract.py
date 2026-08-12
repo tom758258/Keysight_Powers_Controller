@@ -447,9 +447,12 @@ def test_commands_metadata_includes_model_aware_support(client: TestClient):
     assert "disabled_reason" not in support["keysight-e3646a"]["ramp-list"]
     assert "disabled_reason" not in support["keysight-e3646a"]["sequence"]
     assert support["gw-instek-psm-2010"]["set"]["real"] is True
-    assert support["gw-instek-psm-2010"]["set"]["hardware_validation"] == "not_enabled"
+    assert support["gw-instek-psm-2010"]["set"]["hardware_validation"] == "validated"
     assert support["gw-instek-psm-2010"]["output-on"]["real"] is True
-    assert support["gw-instek-psm-2010"]["output-on"]["hardware_validation"] == "not_enabled"
+    assert (
+        support["gw-instek-psm-2010"]["output-on"]["hardware_validation"]
+        == "validated_confirm_threshold_conditional"
+    )
     assert (
         support["gw-instek-psm-2010"]["capabilities"]["hardware_validation"]
         == "rs232_read_only"
@@ -518,7 +521,23 @@ def test_commands_metadata_includes_safe_exact_live_support_projection(
     ]
     assert live_support["keysight-e3646a"]["commands"]["trigger-list"]["profile_supported"] is False
     psm = live_support["gw-instek-psm-2010"]["commands"]
-    psm_validated = {"capabilities", "output-off", "safe-off"}
+    psm_validated = {
+        "apply",
+        "capabilities",
+        "clear-protection",
+        "cycle-output",
+        "output-off",
+        "output-on",
+        "protection-set",
+        "ramp",
+        "ramp-list",
+        "restore-from-snapshot",
+        "safe-off",
+        "sequence",
+        "set",
+        "smoke-output",
+        "snapshot",
+    }
     assert {
         command
         for command, policy in psm.items()
@@ -526,11 +545,14 @@ def test_commands_metadata_includes_safe_exact_live_support_projection(
     } == psm_validated
     for command in psm_validated:
         assert {
-            (scope["transport_scope"], scope["backend_scope"], scope["validation_status"])
+            (
+                scope["transport_scope"],
+                scope["backend_scope"],
+                scope["validation_status"],
+                scope["product_open"],
+            )
             for scope in psm[command]["scopes"]
-        } == {("asrl", "system_visa", "live_validated_full_suite")}
-    for command in {"set", "output-on"}:
-        assert psm[command]["scopes"] == []
+        } == {("asrl", "system_visa", "live_validated_full_suite", True)}
     projected_diagnostics = set(psm) & {
         "list-resources", "verify", "identify", "error", "clear",
     }
