@@ -243,6 +243,11 @@ Selected data mappings:
   completion readback, and cancellation cleanup diagnostics. Without output
   enable, final state is unchanged/not observed and no new output-state query
   is issued.
+- A single-channel Ramp preserves `channel`. A multi-channel Ramp exposes the
+  canonical selected `channels`; `enabled_channels`, `final_output_states`,
+  and verification checks reflect that selection. A failed channel write does
+  not complete the current logical voltage step and failure data identifies
+  `failed_channel`.
 - `ramp-list`: document version, per-iteration segment count, completed
   segment count, cumulative segment executions, ordered results, and failed
   Segment details with 1-based loop context.
@@ -263,7 +268,9 @@ Selected data mappings:
   execution rather than only retained details.
 - Ramp dry-run `steps` describe one voltage-path iteration plus any terminal
   workflow action; `voltage_steps_scope: "one_iteration"` and `loop_count`
-  make that boundary explicit. Completion-pulse plan actions do not depend on
+  make that boundary explicit. Multi-channel plans expose canonical selected
+  channels and one ordered driver action per channel for each logical voltage
+  step; channel count does not multiply execution units. Completion-pulse plan actions do not depend on
   whether the workflow enables output.
 - Loop-complete pulse results distinguish `requested`, `attempted`, `fired`,
   `completed`, `restored`, `restore_errors`, and `post_pulse_errors`. A

@@ -106,6 +106,10 @@ def channel_from_argv(argv: Sequence[str]) -> int | str | None:
     return int_from_argv(argv, "--channel")
 
 
+def channels_from_argv(argv: Sequence[str]) -> list[int | str] | None:
+    return _integer_list_from_argv(argv, "--channels")
+
+
 def status_channel_from_argv(argv: Sequence[str]) -> int | str | None:
     value = option_value(argv, "--channel")
     if value is None:

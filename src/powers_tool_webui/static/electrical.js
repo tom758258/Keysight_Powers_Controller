@@ -16,9 +16,12 @@ export function resolveInputElectricalConstraint({
     ...(constraint.exclusive_min !== undefined ? { exclusiveMin: String(constraint.exclusive_min) } : {})
   };
   const ratings = electricalRatingsByModel?.[modelId]?.channels;
+  const selectedChannels = Array.isArray(channel) ? channel.map(String) : null;
   const channels = !Array.isArray(ratings) ? [] : channel === "all"
     ? ratings
-    : ratings.filter((rating) => String(rating.channel) === String(channel));
+    : ratings.filter((rating) => selectedChannels
+      ? selectedChannels.includes(String(rating.channel))
+      : String(rating.channel) === String(channel));
   const rating = channels.length ? {
     max_voltage: Math.min(...channels.map((item) => Number(item.max_voltage))),
     max_current: Math.min(...channels.map((item) => Number(item.max_current)))

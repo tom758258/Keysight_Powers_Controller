@@ -61,6 +61,11 @@ message/note action with `message`; it does not collect telemetry.
   guesses.
 - `apply`, `ramp`, `smoke-output`, Ramp List, and Sequence set/apply steps keep
   their complete setpoint requirements.
+- Ramp requires exactly one selector: an exact positive integer `channel`, or
+  a non-empty `channels` list of unique positive integers. Core rejects
+  duplicates and unsupported channels, then orders `channels` by the selected
+  or detected model's canonical channel order. There is no Core `all` value
+  for Ramp; adapters may materialize All as an explicit list.
 - `restore-from-snapshot` requires an explicit `channel`, accepting one exact
   positive integer or exact `"all"`; omission never defaults to all channels.
 - `step_voltage` must be finite and greater than zero.
@@ -119,8 +124,10 @@ No unspecified maximum is added to time or read-count fields.
 
 ## Ramp Timing
 
-Ramp and Ramp List use software setpoint steps. `delay_ms` starts only after
-the voltage write and any synchronous every-step completion pulse finish. It
+Ramp and Ramp List use software setpoint steps. A multi-channel Ramp writes the
+same voltage to every selected channel in canonical order; the logical step
+completes only when every write succeeds. `delay_ms` starts only after the
+logical voltage step and any synchronous every-step completion pulse finish. It
 does not include write or pulse execution time and is not a real-time or exact
 step interval.
 
@@ -130,10 +137,12 @@ iteration). Ramp List accepts `step`, `segment` (after each Segment), or
 `loop`. Loop-complete timing requires `loop_count >= 2`. Every-step pulses
 accept `delay_ms = 0`.
 
-With `enable_output: true`, Ramp validates every effective setpoint before
-writes, then orders current, first voltage, output ON, mandatory ON readback,
+With `enable_output: true`, Ramp validates every effective setpoint for every
+selected channel before writes, then orders current, first voltage, output ON,
+mandatory ON readback for all selected channels,
 remaining voltage steps, per-iteration Ramp-complete pulse when selected, and
-final output-state readback. Ramp List applies the same first-setpoint rule
+final output-state readback. E3646A performs its global output ON only once;
+its selected channel setpoints remain per-channel. Ramp List applies the same first-setpoint rule
 once per channel and does not repeat output ON in later segments or loops.
 
 ## Effective Electrical Limits

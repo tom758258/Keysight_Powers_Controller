@@ -287,7 +287,12 @@ uv run powers-tool output-on @Base @Remote --channel 1 --confirm --json --log-sc
 uv run powers-tool output-off @Base @Remote --channel 1 --json --log-scpi
 uv run powers-tool safe-off @Base @Remote --channel 1 --json --log-scpi
 uv run powers-tool ramp @Base @Remote --channel 1 --start-voltage 0 --stop-voltage 1 --step-voltage 0.25 --current 0.05 --delay-ms 100 --json --log-scpi
+uv run powers-tool ramp @Base @Remote --channels 1,2 --start-voltage 0 --stop-voltage 1 --step-voltage 0.25 --current 0.05 --delay-ms 100 --json --log-scpi
 ```
+
+`ramp` 必須在 `--channel N` 與 `--channels N,N` 之間擇一使用。多通道會依型號的
+canonical channel order 執行，所有通道共用相同電流與電壓參數；只有全部通道完成
+同一個電壓後，該 logical step 才算完成。既有單通道用法保持相容。
 
 `output-on`、`cycle-output`、`smoke-output`，以及未使用 `--no-output` 的 `apply`，在選定設定點超過確認門檻時需要 `--confirm`。`set`、`output-off`、`safe-off`、`ramp`、`ramp-list` 不要求 `--confirm`。
 

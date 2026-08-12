@@ -172,6 +172,7 @@ export function createCommandController({
   pulseTimingDisplayName,
   isNumericChannel,
   isChannelSupported,
+  supportedChannelsForCurrentModel,
   channelUnsupportedReason,
   applyWorkflowPulseControlState,
   renderLoopControl,
@@ -299,13 +300,18 @@ function renderForm(command) {
   }
   (PARAMS[command] || []).forEach((param) => {
     if (command === "ramp" && param.name === "loop_count") return;
+    const options = command === "ramp" && param.name === "channel"
+      ? rampChannelOptions(supportedChannelsForCurrentModel())
+      : param.options;
     let input;
     if (param.type === "select") {
       input = document.createElement("select");
-      param.options.forEach((option) => {
+      options.forEach((option) => {
         const item = document.createElement("option");
         item.value = option;
-        item.textContent = param.parser === "intList"
+        item.textContent = command === "ramp" && param.name === "channel"
+          ? rampChannelOptionLabel(option, supportedChannelsForCurrentModel())
+          : param.parser === "intList"
           ? rearPinDisplayName(option)
           : pulseTimingDisplayName(command, option);
         item.dataset.i18nOption = option;
@@ -327,6 +333,10 @@ function renderForm(command) {
     if (command === "ramp" && Object.hasOwn(state.rampDraft, param.name)) {
       if (param.type === "checkbox") input.checked = Boolean(state.rampDraft[param.name]);
       else input.value = state.rampDraft[param.name];
+      if (param.type === "select" && input.selectedIndex < 0) {
+        input.value = options[0];
+        state.rampDraft[param.name] = input.value;
+      }
     } else if (param.value !== undefined) {
       input.value = param.value;
     }
@@ -436,6 +446,10 @@ function refreshCommandFormPresentation() {
     }
   });
   form.querySelectorAll("option[data-i18n-option]").forEach((option) => {
+    if (command === "ramp" && option.dataset.i18nParam === "channel") {
+      option.textContent = rampChannelOptionLabel(option.value, supportedChannelsForCurrentModel());
+      return;
+    }
     const optionKey = optionTranslationKey(option.dataset.i18nParam, option.dataset.i18nOption);
     if (optionKey) option.textContent = t(optionKey, undefined, option.textContent);
     if (option.dataset.i18nParam === "channel" && isNumericChannel(option.value) && option.disabled) {
@@ -643,6 +657,11 @@ function parameterPayload() {
     delete payload.completion_pulse_enabled;
   }
   if (state.selected === "ramp") {
+    const channels = String(payload.channel).split(",").map(Number);
+    if (channels.length > 1) {
+      delete payload.channel;
+      payload.channels = channels;
+    }
     if (!payload.loop_enabled) {
       if (payload.completion_pulse_timing === "loop") payload.completion_pulse_timing = "";
     } else if (!Number.isInteger(payload.loop_count) || payload.loop_count < 2 || payload.loop_count > 10000) {
@@ -765,13 +784,38 @@ function selectedChannelRatingFor(selected) {
 }
 
 function selectedInputElectricalConstraint(name, channel = document.getElementById("param-channel")?.value || "1") {
+  const selection = state.selected === "ramp" && String(channel).includes(",")
+    ? String(channel).split(",").map(Number)
+    : channel;
   return electrical.resolveInputElectricalConstraint({
     parameterConstraints: state.parameterConstraints,
     electricalRatingsByModel: state.electricalRatingsByModel,
     modelId: selectedElectricalRatingModel(),
-    channel,
+    channel: selection,
     parameterName: name
   });
+}
+
+function rampChannelOptions(channels) {
+  const values = channels.map(Number);
+  const options = [];
+  for (let size = 1; size <= values.length; size += 1) {
+    const visit = (start, selected) => {
+      if (selected.length === size) {
+        options.push(selected.join(","));
+        return;
+      }
+      for (let index = start; index < values.length; index += 1) visit(index + 1, [...selected, values[index]]);
+    };
+    visit(0, []);
+  }
+  return options;
+}
+
+function rampChannelOptionLabel(value, supported) {
+  const channels = String(value).split(",");
+  if (channels.length === supported.length && channels.length > 1) return t("form.option.all");
+  return channels.map((channel) => `CH${channel}`).join(" + ");
 }
 
 function refreshElectricalRatingConstraints() {

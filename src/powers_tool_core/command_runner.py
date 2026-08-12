@@ -18,7 +18,7 @@ from powers_tool_core import capabilities
 from powers_tool_core.core import CoreValidationError, OperationRequest, SequenceRequest, TriggerRequest
 from powers_tool_core.discovery import run_discovery
 from powers_tool_core.instrument_io import run_instrument_io
-from powers_tool_core.model_resolution import resolve_no_hardware_runtime
+from powers_tool_core.model_resolution import no_hardware_channels, resolve_no_hardware_runtime
 from powers_tool_core.operations import run_operation
 from powers_tool_core.command_contract import validate_and_normalize_request
 from powers_tool_core.parameter_constraints import validate_request_parameters
@@ -98,6 +98,9 @@ def validate_request_admission(
     else:
         request = _apply_no_hardware_support_gate(request)
 
+    if request.command == "ramp" and (request.runtime.dry_run or request.runtime.simulate):
+        request = _canonicalize_no_hardware_ramp_channels(request)
+
     if request.command == "ramp-list":
         from powers_tool_core.ramp_list import ramp_list_document_for_request, ramp_list_plan
 
@@ -111,6 +114,25 @@ def validate_request_admission(
         )
         ramp_list_plan(request, request.parameters["document"])
     return request
+
+
+def _canonicalize_no_hardware_ramp_channels(
+    request: OperationRequest | TriggerRequest | SequenceRequest,
+) -> OperationRequest | TriggerRequest | SequenceRequest:
+    selected = request.parameters.get("channels")
+    if selected is None:
+        return request
+    supported = no_hardware_channels(
+        request.runtime.planning_model_id,
+        request.runtime.planning_profile_id,
+    )
+    unsupported = tuple(channel for channel in selected if channel not in supported)
+    if unsupported:
+        raise CoreValidationError(
+            f"ramp channels {unsupported} are not supported; supported: {supported}"
+        )
+    canonical = tuple(channel for channel in supported if channel in selected)
+    return replace(request, parameters={**request.parameters, "channels": canonical})
 
 
 def workflow_execution_summary(

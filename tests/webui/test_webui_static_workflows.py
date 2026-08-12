@@ -528,10 +528,21 @@ def test_ramp_form_preserves_page_local_draft_across_reselection() -> None:
         refreshElectricalRatingConstraints = () => {};
         applyWorkflowPulseControlState = () => {};
         isChannelSupported = () => true;
+        supportedChannelsForCurrentModel = () => [1, 2, 3];
         selectedElectricalRatingModel = () => null;
         state.commands = {};
         state.workflowControl = { phase: "idle", jobId: null, command: null };
 
+        selectCommand("ramp");
+        const channelOptions = () => document.getElementById("param-channel").children.map((item) => [item.value, item.textContent]);
+        strictAssert.deepEqual(channelOptions(), [["1", "CH1"], ["2", "CH2"], ["3", "CH3"], ["1,2", "CH1 + CH2"], ["1,3", "CH1 + CH3"], ["2,3", "CH2 + CH3"], ["1,2,3", "All"]]);
+        supportedChannelsForCurrentModel = () => [1, 2];
+        selectCommand("ramp");
+        strictAssert.deepEqual(channelOptions(), [["1", "CH1"], ["2", "CH2"], ["1,2", "All"]]);
+        supportedChannelsForCurrentModel = () => [1];
+        selectCommand("ramp");
+        strictAssert.deepEqual(channelOptions(), [["1", "CH1"]]);
+        supportedChannelsForCurrentModel = () => [1, 2, 3];
         selectCommand("ramp");
         strictAssert.equal(document.getElementById("param-delay_ms").value, "0");
         strictAssert.equal(document.getElementById("param-stop_voltage").value, "1");
@@ -544,7 +555,7 @@ def test_ramp_form_preserves_page_local_draft_across_reselection() -> None:
           input.dispatch("input");
         };
         setInput("param-delay_ms", "500");
-        setInput("param-channel", "2");
+        setInput("param-channel", "1,3");
         setInput("param-start_voltage", "0.5");
         setInput("param-stop_voltage", "2.5");
         setInput("param-step_voltage", "0.25");
@@ -562,7 +573,7 @@ def test_ramp_form_preserves_page_local_draft_across_reselection() -> None:
 
         selectCommand("ramp");
         strictAssert.equal(document.getElementById("param-delay_ms").value, "500");
-        strictAssert.equal(document.getElementById("param-channel").value, "2");
+        strictAssert.equal(document.getElementById("param-channel").value, "1,3");
         strictAssert.equal(document.getElementById("param-start_voltage").value, "0.5");
         strictAssert.equal(document.getElementById("param-stop_voltage").value, "2.5");
         strictAssert.equal(document.getElementById("param-step_voltage").value, "0.25");
@@ -577,7 +588,7 @@ def test_ramp_form_preserves_page_local_draft_across_reselection() -> None:
         strictAssert.deepEqual(parameterPayload(), {
           enable_output: true,
           loop_count: 4,
-          channel: 2,
+          channels: [1, 3],
           current: 0.2,
           start_voltage: 0.5,
           stop_voltage: 2.5,
@@ -1742,7 +1753,8 @@ def test_static_command_select_options_use_human_labels_and_machine_values():
     display_name = extract_js_function(command_form_js, "optionDisplayName")
 
     assert "item.value = option;" in render_form
-    assert 'item.textContent = param.parser === "intList"' in render_form
+    assert 'item.textContent = command === "ramp" && param.name === "channel"' in render_form
+    assert ': param.parser === "intList"' in render_form
     assert '? rearPinDisplayName(option)' in render_form
     assert ': pulseTimingDisplayName(command, option);' in render_form
     assert "opt.value = ch;" in render_restore

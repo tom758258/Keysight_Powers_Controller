@@ -404,7 +404,9 @@ uv run powers-tool output-on @Base @Remote --channel 1 --confirm --json --log-sc
 uv run powers-tool output-off @Base @Remote --channel 1 --json --log-scpi
 uv run powers-tool safe-off @Base @Remote --channel 1 --json --log-scpi
 uv run powers-tool ramp @Base @Remote --channel 1 --start-voltage 0 --stop-voltage 1 --step-voltage 0.25 --current 0.05 --delay-ms 100 --json --log-scpi
+uv run powers-tool ramp @Base @Remote --channels 1,2 --start-voltage 0 --stop-voltage 1 --step-voltage 0.25 --current 0.05 --delay-ms 100 --json --log-scpi
 </code></pre></div>
+<p><code>ramp</code> 必須在 <code>--channel N</code> 與 <code>--channels N,N</code> 之間擇一使用。多通道會依型號的 canonical channel order 執行，所有通道共用相同電流與電壓參數；只有全部通道完成同一個電壓後，該 logical step 才算完成。既有單通道用法保持相容。</p>
 <p><code>output-on</code>、<code>cycle-output</code>、<code>smoke-output</code>，以及未使用 <code>--no-output</code> 的 <code>apply</code>，在選定設定點超過確認門檻時需要 <code>--confirm</code>。<code>set</code>、<code>output-off</code>、<code>safe-off</code>、<code>ramp</code>、<code>ramp-list</code> 不要求 <code>--confirm</code>。</p>
 <p>序列終止字元請優先使用別名 <code>CR</code>、<code>LF</code>、<code>CRLF</code> 或 <code>NONE</code>。<code>NONE</code> 表示不設定該終止字元選項；省略或空白欄位也表示不覆寫 VISA 設定。</p>
 <h3 id="唯讀指令範例">唯讀指令範例</h3>

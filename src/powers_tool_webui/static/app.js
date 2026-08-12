@@ -120,7 +120,7 @@ const PARAMS = {
     { name: "enable_output", type: "checkbox", label: "Enable output", ariaLabel: "Enable output after first setpoint", helpId: "ramp-enable-output-help", compactHelp: true, description: "Output is enabled only after the first safe setpoint is written and verified. It remains ON after normal completion. Stop workflow turns off every instrument output. Real hardware still requires confirmation." },
     { name: "loop_enabled", type: "checkbox", label: "Enable loop" },
     { name: "loop_count", type: "number", label: "Loop count", value: 2, conditionalLoop: true },
-    { name: "channel", type: "select", label: "Channel", options: ["1", "2", "3"], value: "1" },
+    { name: "channel", type: "select", label: "Channel", options: ["1"], value: "1", description: "Selected channels share the same Ramp parameters and advance in lockstep." },
     { name: "current", type: "number", label: "Current(A)", value: 0.1 },
     { name: "start_voltage", type: "number", label: "Start voltage(V)", value: 0 },
     { name: "stop_voltage", type: "number", label: "Stop voltage(V)", value: 1 },
@@ -204,6 +204,7 @@ const commandController = webuiCommandForm.createCommandController({
   pulseTimingDisplayName: (...args) => pulseTimingDisplayName(...args),
   isNumericChannel: (...args) => isNumericChannel(...args),
   isChannelSupported: (...args) => isChannelSupported(...args),
+  supportedChannelsForCurrentModel: (...args) => supportedChannelsForCurrentModel(...args),
   channelUnsupportedReason: (...args) => channelUnsupportedReason(...args),
   applyWorkflowPulseControlState: (...args) => applyWorkflowPulseControlState(...args),
   renderLoopControl: (...args) => renderLoopControl(...args),
@@ -1820,7 +1821,11 @@ function electricalRatingGuardReason(command, parameters) {
   if (!Array.isArray(ratings)) return "";
   const displayModel = physicalModelDisplayName(model);
   const check = (channel, voltage, current) => {
-    const selected = channel === "all" ? ratings : ratings.filter((rating) => String(rating.channel) === String(channel));
+    const selected = channel === "all"
+      ? ratings
+      : ratings.filter((rating) => Array.isArray(channel)
+        ? channel.map(String).includes(String(rating.channel))
+        : String(rating.channel) === String(channel));
     for (const rating of selected) {
       if (voltage !== undefined && voltage !== null && Number(voltage) > Number(rating.max_voltage)) return t("command.guard.electrical_voltage", { voltage, limit: rating.max_voltage, model: displayModel, channel: rating.channel });
       if (current !== undefined && current !== null && Number(current) > Number(rating.max_current)) return t("command.guard.electrical_current", { current, limit: rating.max_current, model: displayModel, channel: rating.channel });
@@ -1828,7 +1833,7 @@ function electricalRatingGuardReason(command, parameters) {
     return "";
   };
   if (["set", "apply", "smoke-output"].includes(command)) return check(parameters.channel, parameters.voltage, parameters.current);
-  if (command === "ramp") return check(parameters.channel, Math.max(Number(parameters.start_voltage), Number(parameters.stop_voltage)), parameters.current);
+  if (command === "ramp") return check(parameters.channels || parameters.channel, Math.max(Number(parameters.start_voltage), Number(parameters.stop_voltage)), parameters.current);
   if (command === "ramp-list") for (const segment of state.rampListSegments) { const reason = check(segment.channel, Math.max(Number(segment.start_voltage), Number(segment.stop_voltage)), segment.current); if (reason) return reason; }
   if (command === "trigger-step") return check(parameters.channel, parameters.voltage, parameters.current);
   if (command === "trigger-list") for (const voltage of parameters.voltage_list || []) for (const current of parameters.current_list || []) { const reason = check(parameters.channel, voltage, current); if (reason) return reason; }
@@ -1907,13 +1912,17 @@ function tripGuardReason(command, parameters) {
   if (command === "apply" && parameters.no_output === true) return "";
   const tripped = currentTripChannels();
   if (!tripped.length) return "";
-  const selected = parameters.channel;
+  const selected = parameters.channels || parameters.channel;
   const rampListChannels = command === "ramp-list"
     ? [...new Set((parameters.document?.segments || []).map((segment) => Number(segment.channel)))]
     : [];
   const blocked = command === "ramp-list"
     ? tripped.filter((channel) => rampListChannels.includes(channel))
-    : selected === "all" ? tripped : tripped.filter((channel) => channel === Number(selected));
+    : selected === "all"
+      ? tripped
+      : Array.isArray(selected)
+        ? tripped.filter((channel) => selected.includes(channel))
+        : tripped.filter((channel) => channel === Number(selected));
   if (!blocked.length) return "";
   return t("command.guard.protection_trip", {
     channels: blocked.map((channel) => `CH${channel}`).join(", "),

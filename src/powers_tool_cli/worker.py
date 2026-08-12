@@ -919,7 +919,7 @@ def _run_job_impl(state: WorkerState, job: dict[str, Any]) -> None:
             opener=opener,
             stop_requested=lambda: state.stop_event.is_set() or state.job_cancel_event.is_set(),
             cleanup_reporter=report_cleanup,
-            progress_reporter=report_progress if cmd == "log" else None,
+            progress_reporter=report_progress if cmd in {"log", "ramp"} else None,
             sample_reporter=report_sample if cmd == "log" else None,
         )
         if state.job_cancel_event.is_set() and cmd in {"ramp", "ramp-list", "sequence"}:

@@ -262,7 +262,10 @@ objects are rejected before queue or artifact mutation. `"all"` is accepted
 only by commands with all-channel selection;
 for output commands, `"all"` is supported by `apply`, `safe-off`,
 `output-on`, `output-off`, `output-state`, and `cycle-output`. `set`, `ramp`,
-and `smoke-output` remain single-channel commands. `ramp-list` accepts `file`
+and `smoke-output` do not accept `"all"`. Ramp instead requires exactly one of
+single `channel` or a non-empty, duplicate-free `channels` list; Core rejects
+unsupported entries and canonicalizes the list before queue admission for
+no-hardware jobs. `ramp-list` accepts `file`
 or `document`; each segment selects one positive integer channel.
 
 Restore snapshot documents must contain non-empty `outputs`, `readback`, and
@@ -304,7 +307,8 @@ precedence over document values.
 Core also rejects more than 1,000,000 logical execution units before queue or
 artifact mutation. Ramp counts voltage steps, Ramp List sums Segment voltage
 steps, and Sequence counts Steps, each multiplied by `loop_count`. Adapters
-warn above 100,000 units. Runtime detail arrays retain at most the first 100
+warn above 100,000 units. Ramp channel count does not multiply its logical
+units or progress. Runtime detail arrays retain at most the first 100
 and last 100 entries with additive truncation metadata, and progress is
 reported by completed units, total units, and integer percent.
 

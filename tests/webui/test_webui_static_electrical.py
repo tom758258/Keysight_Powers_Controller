@@ -35,6 +35,9 @@ strictAssert.deepEqual(voltage, { parameter: { attributes: { min: "0", max: "100
 const all = electrical.resolveInputElectricalConstraint({ parameterConstraints: constraints, electricalRatingsByModel: ratings, modelId: "model-a", channel: "all", parameterName: "current" });
 strictAssert.deepEqual(all.rating, { max_voltage: 6, max_current: 1 });
 strictAssert.equal(all.override.attributes.max, "1");
+const subset = electrical.resolveInputElectricalConstraint({ parameterConstraints: constraints, electricalRatingsByModel: ratings, modelId: "model-a", channel: [1, 2], parameterName: "voltage" });
+strictAssert.deepEqual(subset.rating, { max_voltage: 6, max_current: 1 });
+strictAssert.equal(subset.override.attributes.max, "6");
 const current = electrical.resolveInputElectricalConstraint({ parameterConstraints: { current: { min: null, max: null, step: null, exclusive_min: null, description: "" } }, electricalRatingsByModel: ratings, modelId: "model-a", channel: "2", parameterName: "current" });
 strictAssert.deepEqual(current.parameter, { attributes: { min: "null", max: "null", step: "any" }, exclusiveMin: "null" });
 strictAssert.deepEqual(current.rating, { max_voltage: 25, max_current: 1 });
@@ -65,10 +68,11 @@ document.getElementById = (id) => id === "expected-model-id" ? identity : null;
 state.executionMode = "simulate";
 state.physicalModels = [{ model_id: "model-a", display_name: "Model A" }];
 state.electricalRatingsByModel = {
-  "model-a": { channels: [{ channel: 1, max_voltage: 6, max_current: 5 }] }
+  "model-a": { channels: [{ channel: 1, max_voltage: 6, max_current: 5 }, { channel: 2, max_voltage: 25, max_current: 1 }] }
 };
 const expected = "Voltage 7 exceeds official DC output rating 6 V for Model A channel 1.";
 strictAssert.equal(electricalRatingGuardReason("ramp", { channel: 1, start_voltage: 0, stop_voltage: 7, current: 1 }), expected);
+strictAssert.equal(electricalRatingGuardReason("ramp", { channels: [1, 2], start_voltage: 0, stop_voltage: 7, current: 1 }), expected);
 state.rampListSegments = [{ channel: 1, start_voltage: 0, stop_voltage: 7, current: 1 }];
 strictAssert.equal(electricalRatingGuardReason("ramp-list", {}), expected);
 strictAssert.equal(electricalRatingGuardReason("trigger-step", { channel: 1, voltage: 7, current: 1 }), expected);

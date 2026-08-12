@@ -185,6 +185,10 @@ None、Every step、Ramp complete 或 Loop complete；Ramp List 的選項為 Non
 Every step、Segment complete 或 Loop complete。Sequence 只有既有的 per-Step
 `trigger-pulse` action，沒有 top-level completion pulse。
 
+Ramp 的 Channel selector 會依目前型號 metadata 動態顯示單一通道、通道組合與
+All。單一選項送出 `channel`；組合與 All 送出明確、canonical 的 `channels` 清單。
+所有所選通道共用相同 Ramp 參數，並以 lockstep logical steps 前進。
+
 Ramp、Ramp List 與 Sequence 支援有限 Loop。Loop 啟用時，count 必須是 exact integer
 `2..10000`；關閉 Loop 時 effective value 為 `1`。Core 最多接受 1,000,000 個
 logical execution units，超過 100,000 時 adapter 會顯示 long-running warning；

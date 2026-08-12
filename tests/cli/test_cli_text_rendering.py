@@ -121,6 +121,16 @@ def _format_text_value(value: object) -> str:
             ),
         ),
         (
+            "ramp",
+            None,
+            {"channels": [1, 3], "steps": 3},
+            (
+                "Resource: USB0::SIM::E36312A::INSTR",
+                "Channels: 1, 3",
+                "Steps: 3",
+            ),
+        ),
+        (
             "smoke-output",
             1,
             {
@@ -139,7 +149,7 @@ def _format_text_value(value: object) -> str:
 )
 def test_format_core_output_result_preserves_exact_lines_and_inputs(
     command: str,
-    channel: int | str,
+    channel: int | str | None,
     resource_data: dict[str, Any],
     expected: tuple[str, ...],
 ) -> None:

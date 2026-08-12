@@ -315,6 +315,31 @@ def test_parsed_ramp_mapping_preserves_completion_timing_and_omits_loop_count() 
     assert args.loop_count == 2
 
 
+def test_ramp_channels_mapping_uses_existing_list_parser_and_is_mutually_exclusive() -> None:
+    argv = [
+        "ramp",
+        "--channels",
+        "1,2",
+        "--start-voltage",
+        "0",
+        "--stop-voltage",
+        "1",
+        "--step-voltage",
+        "0.5",
+        "--current",
+        "0.05",
+    ]
+
+    args, request = _parsed_request(argv)
+
+    assert args.channels == (1, 2)
+    assert request["channels"] == [1, 2]
+    assert "channel" not in request
+    assert output.request_from_argv("ramp", argv)["channels"] == [1, 2]
+    with pytest.raises(SystemExit):
+        cli.build_parser().parse_args([*argv, "--channel", "1"])
+
+
 def test_json_safe_setpoint_values_and_drop_none_behavior_are_preserved() -> None:
     _, voltage_only = _parsed_request(["set", "--channel", "1", "--voltage", "nan"])
     _, current_only = _parsed_request(["set", "--channel", "1", "--current", "inf"])

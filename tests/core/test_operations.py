@@ -1003,6 +1003,180 @@ def test_ramp_enable_output_dry_run_shows_safe_order() -> None:
     ]
 
 
+def test_multi_channel_ramp_runs_lockstep_and_reports_logical_progress() -> None:
+    session = FakeSession()
+    progress: list[dict] = []
+    parameters = request(
+        "ramp",
+        start_voltage=0,
+        stop_voltage=1,
+        step_voltage=1,
+        current=0.1,
+        verify_after_write=True,
+    ).parameters
+    parameters.pop("channel")
+    parameters["channels"] = (2, 1)
+
+    data = run_operation(
+        OperationRequest(
+            command="ramp",
+            runtime=RuntimeOptions(resource="USB0::SIM::E36312A::INSTR", confirm=True),
+            parameters=parameters,
+        ),
+        opener=lambda *args, **kwargs: session,
+        sleep=lambda seconds: None,
+        progress_reporter=progress.append,
+    )
+
+    workflow_writes = [write for write in session.writes if write.startswith(("CURR", "VOLT"))]
+    assert workflow_writes == [
+        "CURR 0.1,(@1)",
+        "CURR 0.1,(@2)",
+        "VOLT 0,(@1)",
+        "VOLT 0,(@2)",
+        "VOLT 1,(@1)",
+        "VOLT 1,(@2)",
+    ]
+    assert [entry["completed_units"] for entry in progress] == [1, 2]
+    assert data["channels"] == [1, 2]
+    assert data["completed_step_executions"] == 2
+    assert [check["channel"] for check in data["verification"]["checks"]] == [1, 2]
+    assert [state["channel"] for state in data["final_output_states"]] == [1, 2]
+
+
+def test_multi_channel_ramp_validates_every_channel_before_writing() -> None:
+    session = FakeSession()
+    parameters = request(
+        "ramp",
+        start_voltage=10,
+        stop_voltage=10,
+        step_voltage=1,
+        current=0.1,
+    ).parameters
+    parameters.pop("channel")
+    parameters["channels"] = (2, 1)
+
+    with pytest.raises(CoreValidationError, match="channel 1"):
+        run_operation(
+            OperationRequest(
+                command="ramp",
+                runtime=RuntimeOptions(resource="USB0::SIM::E36312A::INSTR", confirm=True),
+                parameters=parameters,
+            ),
+            opener=lambda *args, **kwargs: session,
+            sleep=lambda seconds: None,
+        )
+
+    assert session.writes == []
+
+
+def test_multi_channel_ramp_failed_second_channel_does_not_complete_logical_step() -> None:
+    class FailingSession(FakeSession):
+        def write(self, command: str) -> None:
+            if command == "VOLT 1,(@2)":
+                raise ValueError("injected write failure")
+            super().write(command)
+
+    session = FailingSession()
+    parameters = request(
+        "ramp",
+        start_voltage=0,
+        stop_voltage=1,
+        step_voltage=1,
+        current=0.1,
+    ).parameters
+    parameters.pop("channel")
+    parameters["channels"] = (1, 2)
+
+    with pytest.raises(CoreExecutionError) as captured:
+        run_operation(
+            OperationRequest(
+                command="ramp",
+                runtime=RuntimeOptions(resource="USB0::SIM::E36312A::INSTR", confirm=True),
+                parameters=parameters,
+            ),
+            opener=lambda *args, **kwargs: session,
+            sleep=lambda seconds: None,
+        )
+
+    assert captured.value.data["completed_step_executions"] == 1
+    assert captured.value.data["channels"] == [1, 2]
+    assert captured.value.data["failed_channel"] == 2
+    assert captured.value.data["failed_step"]["completed_channels"] == [1]
+
+
+def test_multi_channel_ramp_dry_run_orders_actions_and_pulses_once_per_step() -> None:
+    parameters = request(
+        "ramp",
+        start_voltage=0,
+        stop_voltage=1,
+        step_voltage=1,
+        current=0.1,
+        completion_pulse_pins=(1,),
+        completion_pulse_timing="step",
+    ).parameters
+    parameters.pop("channel")
+    parameters["channels"] = (3, 1)
+
+    plan = output_plan(
+        OperationRequest(
+            command="ramp",
+            runtime=RuntimeOptions(dry_run=True, planning_model_id="keysight-e36312a"),
+            parameters=parameters,
+        )
+    )
+
+    driver_actions = [
+        (step["action"], step["parameters"].get("channel"))
+        for step in plan["steps"]
+        if step["action"] in {"set_current_limit", "set_voltage", "completion_pulse"}
+    ]
+    assert driver_actions == [
+        ("set_current_limit", 1),
+        ("set_current_limit", 3),
+        ("set_voltage", 1),
+        ("set_voltage", 3),
+        ("completion_pulse", 1),
+        ("set_voltage", 1),
+        ("set_voltage", 3),
+        ("completion_pulse", 1),
+    ]
+    assert plan["target"]["channels"] == [1, 3]
+    assert plan["execution_units"] == 2
+
+
+def test_e3646a_multi_channel_ramp_enables_global_output_once() -> None:
+    session = OutputStateSession(
+        idn="KEYSIGHT,E3646A,SERIAL0000,1.0",
+        output_enabled=False,
+    )
+    parameters = request(
+        "ramp",
+        start_voltage=0,
+        stop_voltage=1,
+        step_voltage=1,
+        current=0.1,
+        enable_output=True,
+    ).parameters
+    parameters.pop("channel")
+    parameters["channels"] = (2, 1)
+
+    data = run_operation(
+        OperationRequest(
+            command="ramp",
+            runtime=RuntimeOptions(resource="ASRL1::SIM::E3646A::INSTR", confirm=True),
+            parameters=parameters,
+        ),
+        opener=lambda *args, **kwargs: session,
+        sleep=lambda seconds: None,
+    )
+
+    assert session.writes.count("OUTP ON") == 1
+    assert data["channels"] == [1, 2]
+    assert data["enabled_channels"] == [1, 2]
+    assert [state["enabled"] for state in data["final_output_states"]] == [True, True]
+
+
 @pytest.mark.parametrize("enable_output", [False, True])
 @pytest.mark.parametrize(("timing", "expected_pulses"), [("step", 2), ("segment", 1), ("loop", 1)])
 def test_ramp_dry_run_completion_pulse_plan_is_independent_of_output_enable(

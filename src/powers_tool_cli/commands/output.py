@@ -10,6 +10,7 @@ from typing import Any, Callable
 from powers_tool_cli import cli_parser as parser_helpers
 from powers_tool_cli.request_primitives import (
     channel_from_argv,
+    channels_from_argv,
     completion_request_fields,
     completion_request_fields_from_argv,
     drop_none_setpoints,
@@ -296,7 +297,9 @@ def register_commands(
         help="Set current limit, then step voltage setpoints without changing output state.",
     )
     runtime._add_output_resource_arguments(ramp_parser)
-    ramp_parser.add_argument("--channel", required=True, type=runtime._positive_channel, help="Positive integer output channel.")
+    ramp_channels = ramp_parser.add_mutually_exclusive_group(required=True)
+    ramp_channels.add_argument("--channel", type=runtime._positive_channel, help="Positive integer output channel.")
+    ramp_channels.add_argument("--channels", type=runtime._channels_list, help="Comma-separated output channels.")
     ramp_parser.add_argument("--start-voltage", required=True, type=float, help="Starting voltage setpoint.")
     ramp_parser.add_argument("--stop-voltage", required=True, type=float, help="Final voltage setpoint.")
     ramp_parser.add_argument("--step-voltage", required=True, type=runtime._positive_float, help="Positive voltage step size.")
@@ -465,10 +468,15 @@ def request_for_args(args: argparse.Namespace) -> dict[str, Any]:
             **completion_request_fields(args),
         })
     if args.command == "ramp":
+        selection = (
+            {"channels": list(args.channels)}
+            if getattr(args, "channels", None) is not None
+            else {"channel": args.channel}
+        )
         return with_serial_request_fields(args, {
             "resource": args.resource,
             "resource_alias": getattr(args, "resource_alias", None),
-            "channel": args.channel,
+            **selection,
             "start_voltage": json_safe_number(args.start_voltage),
             "stop_voltage": json_safe_number(args.stop_voltage),
             "step_voltage": json_safe_number(args.step_voltage),
@@ -579,10 +587,12 @@ def request_from_argv(
             **completion_request_fields_from_argv(argv),
         })
     if command == "ramp":
+        channels = channels_from_argv(argv)
+        selection = {"channels": channels} if channels is not None else {"channel": channel_from_argv(argv)}
         return with_serial_request_fields_from_argv(argv, {
             "resource": option_value(argv, "--resource"),
             "resource_alias": option_value(argv, "--resource-alias"),
-            "channel": channel_from_argv(argv),
+            **selection,
             "start_voltage": number_from_argv(argv, "--start-voltage"),
             "stop_voltage": number_from_argv(argv, "--stop-voltage"),
             "step_voltage": number_from_argv(argv, "--step-voltage"),

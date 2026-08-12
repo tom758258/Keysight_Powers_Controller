@@ -321,6 +321,32 @@ def test_worker_queues_restore_admitted_runtime(tmp_path: Path) -> None:
     assert admitted.parameters["channel"] == "all"
 
 
+def test_worker_uses_core_admission_for_multi_channel_ramp(tmp_path: Path) -> None:
+    state = _worker_validation_state(tmp_path)
+    body = {
+        "schema_version": 2,
+        "command": "ramp",
+        "context": DRY_RUN_CONTEXT,
+        "arguments": {
+            "channels": [3, 1],
+            "start_voltage": 0,
+            "stop_voltage": 1,
+            "step_voltage": 1,
+            "current": 0.1,
+        },
+    }
+
+    status, payload = worker_mod._validate_command_body(body, state)
+
+    assert status == 202
+    assert payload["_admitted_request"].parameters["channels"] == (1, 3)
+
+    body["arguments"]["channel"] = 1
+    status, payload = worker_mod._validate_command_body(body, state)
+    assert status == 400
+    assert "requires exactly one of" in payload["error"]["message"]
+
+
 @pytest.mark.parametrize("pulse_channel", [True, 1.5, "2", None, 0, -1, 4])
 def test_worker_rejects_invalid_completion_pulse_channel_before_artifacts(
     tmp_path: Path,

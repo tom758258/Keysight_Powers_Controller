@@ -41,14 +41,18 @@ def format_core_output_result(
     *,
     command: str,
     resource: str,
-    channel: int | str,
+    channel: int | str | None,
     current: object,
     voltage: object,
     no_output: bool,
     resource_data: Mapping[str, Any],
     value_to_text: Callable[[object], str],
 ) -> tuple[str, ...]:
-    lines = [f"Resource: {resource}", f"Channel: {channel}"]
+    lines = [f"Resource: {resource}"]
+    if command == "ramp" and "channels" in resource_data:
+        lines.append("Channels: " + ", ".join(str(item) for item in resource_data["channels"]))
+    else:
+        lines.append(f"Channel: {channel}")
     if command == "set":
         lines.extend(
             [

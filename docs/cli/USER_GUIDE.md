@@ -125,6 +125,12 @@ Please note:
 
 ## Finite Workflow Loops
 
+Ramp accepts either `--channel N` or `--channels N,N`, but not both. A
+multi-channel Ramp applies the same current and voltage path to every selected
+channel in model channel order. Progress and completion pulses count logical
+voltage steps, after all selected channels finish; the existing single-channel
+command remains compatible.
+
 Ramp, Ramp List, and Sequence accept `--loop-count N`. The value is the total
 number of complete executions: 1 is the normal single run, 2 restarts once,
 and 10,000 is the maximum. Values outside the strict integer range 1 through 10,000

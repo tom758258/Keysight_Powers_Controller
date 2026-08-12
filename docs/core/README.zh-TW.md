@@ -150,6 +150,13 @@ operating range 內。明確設定的 safety limits 仍與 official rating 分�
 
 ## 輸出工作流程脈波 (Pulses)
 
+Ramp 必須在 `channel` 與非空、不可重複的 `channels` 清單之間擇一提供。
+多通道選擇會依型號的 canonical channel order 重新排序；所有所選通道共用相同
+電流與電壓路徑。只有每個所選通道都成功寫入後，該 logical voltage step 才算完成。
+驗證與輸出狀態涵蓋所有所選通道，但 progress 與 completion pulse 仍以每個 logical
+voltage step 一次計算。未指定 completion-pulse anchor 時，使用第一個 canonical
+selected channel。
+
 Ramp、Ramp List 與 Sequence 支援 strict `loop_count` 總執行次數 `1..10000`。
 舊 Ramp List v2/v3 與 Sequence v1 代表一次執行；Ramp List v4 與 Sequence v2
 會保存 `loop_count`。結果的 `segment_count` 與 `step_count` 仍以單次 iteration

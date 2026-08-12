@@ -50,7 +50,7 @@ strictAssert.equal(catalog.commandDisplayName("cycle-output", "Cycle output"), "
 strictAssert.equal(catalog.commandDisplayName("smoke-output", "Smoke output"), "輸出測試");
 strictAssert.equal(
   catalog.commandDescription("ramp", "raw"),
-  "依起始電壓、終止電壓與步進量，逐步調整指定通道的輸出。"
+  "讓一個或多個通道以 lockstep 方式逐步調整電壓。"
 );
 strictAssert.equal(
   catalog.commandDescription("ramp-list", "raw"),
@@ -164,7 +164,7 @@ state.selected = "ramp";
 controller.refreshSelectedCommandDescription();
 strictAssert.equal(
   elements.get("command-description").textContent,
-  "Ramp voltage Pending live validation: ASRL / system VISA"
+  "Ramp one or more channels in lockstep Pending live validation: ASRL / system VISA"
 );
 state.selected = "smoke-output";
 controller.refreshSelectedCommandDescription();
@@ -221,7 +221,7 @@ for (const [command, expected] of [
   ["cycle-output", "開啟指定通道，維持設定時間後自動關閉。"],
   ["smoke-output", "設定電壓與電流、短暫開啟並量測輸出，最後關閉輸出並確認狀態。"],
   ["snapshot", "建立硬體快照"],
-  ["ramp", "依起始電壓、終止電壓與步進量，逐步調整指定通道的輸出。"],
+  ["ramp", "讓一個或多個通道以 lockstep 方式逐步調整電壓。"],
   ["ramp-list", "依序執行多個逐步輸出區段，各區段可設定通道、電壓範圍、步進量與時間。"],
 ]) {
   state.commands[command] ||= {};

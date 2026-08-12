@@ -115,7 +115,8 @@ COMMAND_CONTRACTS: dict[str, CommandContract] = {
     "output-state": CommandContract(_fields(channel=Field("channel", required=True, allow_all=True))),
     "cycle-output": CommandContract(_fields(channel=Field("channel", required=True, allow_all=True), duration_ms=Field("positive_int", default=500), **_VERIFY_FIELDS, **_PULSE_FIELDS), **_GENERAL_PULSE_CONTRACT_OPTIONS),
     "ramp": CommandContract(_fields(
-        channel=Field("channel", required=True),
+        channel=Field("channel"),
+        channels=Field("channel_list"),
         current=Field("nonnegative_number", required=True),
         start_voltage=Field("nonnegative_number", required=True),
         stop_voltage=Field("nonnegative_number", required=True),
@@ -126,7 +127,7 @@ COMMAND_CONTRACTS: dict[str, CommandContract] = {
         completion_pulse_timing=Field("enum", default="segment", values=frozenset({"segment", "step", "loop"})),
         **_VERIFY_FIELDS,
         **_PULSE_FIELDS,
-    ), **_GENERAL_PULSE_CONTRACT_OPTIONS),
+    ), exactly_one_of=(("channel", "channels"),), **_GENERAL_PULSE_CONTRACT_OPTIONS),
     "smoke-output": CommandContract(_fields(channel=Field("channel", required=True), voltage=Field("nonnegative_number", required=True), current=Field("nonnegative_number", required=True), duration_ms=Field("positive_int", default=500), **_VERIFY_FIELDS, **_PULSE_FIELDS), **_GENERAL_PULSE_CONTRACT_OPTIONS),
     "ramp-list": CommandContract(_fields(file=STRING, document=DOCUMENT, lint=BOOLEAN_FALSE, loop_count=Field("range_int")), mutually_exclusive=(("file", "document"),)),
     "sequence": CommandContract(_fields(file=STRING, document=DOCUMENT, lint=BOOLEAN_FALSE, loop_count=Field("range_int")), mutually_exclusive=(("file", "document"),)),
@@ -315,6 +316,10 @@ def _admit_parameters(
     for field, required_fields in (contract.dependencies or {}).items():
         if field in normalized and any(required not in normalized for required in required_fields):
             raise CoreValidationError(f"{label} {field} requires {', '.join(required_fields)}")
+    if label == "ramp" and "channels" in normalized:
+        channels = normalized["channels"]
+        if len(set(channels)) != len(channels):
+            raise CoreValidationError("ramp channels must not contain duplicates")
     return normalized
 
 

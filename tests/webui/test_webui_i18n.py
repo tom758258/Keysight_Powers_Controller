@@ -292,8 +292,9 @@ assert.deepEqual(
     .sort(),
   [...maintainedCommandGuardMessages].sort()
 );
-const maintainedFieldDescriptions = [
-  "form.description.ramp.enable_output",
+    const maintainedFieldDescriptions = [
+      "form.description.ramp.channel",
+      "form.description.ramp.enable_output",
   "form.description.safe_off.channel",
   "form.description.sequence.trigger_pulse.leave_trigger_configured",
   "form.description.snapshot.max_errors",
@@ -349,7 +350,7 @@ assert.equal(ZH_TW_MESSAGES["command.name.cycle_output"], "短暫開啟輸出");
 assert.equal(ZH_TW_MESSAGES["command.name.smoke_output"], "輸出測試");
 assert.equal(
   ZH_TW_MESSAGES["command.description.ramp"],
-  "依起始電壓、終止電壓與步進量，逐步調整指定通道的輸出。"
+  "讓一個或多個通道以 lockstep 方式逐步調整電壓。"
 );
 assert.equal(
   ZH_TW_MESSAGES["command.description.ramp_list"],

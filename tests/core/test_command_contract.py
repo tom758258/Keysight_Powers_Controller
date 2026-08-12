@@ -185,6 +185,54 @@ def test_command_contract_enforces_workflow_loop_bound(
             validate_request_admission(request)
 
 
+def test_ramp_contract_accepts_legacy_channel_and_canonicalizes_channels() -> None:
+    legacy = validate_request_admission(
+        OperationRequest(
+            "ramp",
+            RuntimeOptions(dry_run=True, planning_model_id="keysight-e36312a"),
+            {"channel": 2, "current": 0.1, "start_voltage": 0, "stop_voltage": 1, "step_voltage": 1},
+        )
+    )
+    multi = validate_request_admission(
+        OperationRequest(
+            "ramp",
+            RuntimeOptions(dry_run=True, planning_model_id="keysight-e36312a"),
+            {"channels": [3, 1], "current": 0.1, "start_voltage": 0, "stop_voltage": 1, "step_voltage": 1},
+        )
+    )
+
+    assert legacy.parameters["channel"] == 2
+    assert "channels" not in legacy.parameters
+    assert multi.parameters["channels"] == (1, 3)
+
+
+@pytest.mark.parametrize(
+    "selection",
+    [
+        {},
+        {"channel": 1, "channels": [1, 2]},
+        {"channels": []},
+        {"channels": [1, 1]},
+        {"channels": [1, 4]},
+    ],
+)
+def test_ramp_contract_rejects_invalid_channel_selection(selection: dict) -> None:
+    with pytest.raises(CoreValidationError):
+        validate_request_admission(
+            OperationRequest(
+                "ramp",
+                RuntimeOptions(dry_run=True, planning_model_id="keysight-e36312a"),
+                {
+                    **selection,
+                    "current": 0.1,
+                    "start_voltage": 0,
+                    "stop_voltage": 1,
+                    "step_voltage": 1,
+                },
+            )
+        )
+
+
 @pytest.mark.parametrize("field", ["verify_after_write", "no_output", "leave_trigger_configured"])
 @pytest.mark.parametrize("value", ["false", 0, 1])
 def test_workflow_booleans_require_exact_json_boolean(field: str, value: object) -> None:

@@ -270,6 +270,15 @@ request, safety, confirmation, cleanup, or exact-scope enforcement.
 
 ## Output Workflow Pulses
 
+Ramp accepts exactly one of `channel` or a non-empty, duplicate-free
+`channels` list. Multi-channel selections are reordered to the model's
+canonical channel order. All selected channels share the same current and
+voltage path; each logical voltage step completes only after every selected
+channel has been written successfully. Verification and output-state results
+cover every selected channel, while progress and completion pulses remain one
+unit per logical voltage step. An omitted completion-pulse anchor defaults to
+the first canonical selected channel.
+
 Ramp, Ramp List, and Sequence support a strict `loop_count` total iteration
 count from 1 through 10,000. Old Ramp List v2/v3 and Sequence v1 documents imply
 one iteration; Ramp List v4 and Sequence v2 persist `loop_count`. Result

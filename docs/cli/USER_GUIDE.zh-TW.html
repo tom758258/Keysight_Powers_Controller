@@ -168,6 +168,7 @@ $env:POWERS_TOOL_ASRL_RESOURCE = "ASRL1::INSTR"
 <li>實機命令仍需要明確提供 <code>--resource</code> 參數。</li>
 </ul>
 <h2 id="有限工作流程迴圈">有限工作流程迴圈</h2>
+<p>Ramp 接受 <code>--channel N</code> 或 <code>--channels N,N</code>，但不可同時使用。多通道 Ramp 會依型號通道順序，將相同電流與電壓路徑套用到所有所選通道；progress 與 completion pulse 會在所有通道完成後，以 logical voltage step 計算。既有單通道命令保持相容。</p>
 <p>Ramp、Ramp List 與 Sequence 接受 <code>--loop-count N</code>。這個值代表完整執行次數：
 <code>1</code> 是一般單次執行，<code>2</code> 代表重新執行一次，最大值為 <code>10,000</code>。小於 <code>1</code>、
 大於 <code>10,000</code> 或不是嚴格整數的值都會被拒絕。對 Ramp List 與 Sequence 文件，

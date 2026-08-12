@@ -1301,8 +1301,8 @@ def test_static_compact_output_enable_layout_and_accessibility_contracts():
         strictAssert.deepEqual(rampPolarity.children.map((option) => option.textContent), ["正極性", "負極性"]);
         strictAssert.deepEqual(rampPolarity.children.map((option) => option.value), ["positive", "negative"]);
         const rampChannel = byId(commandForm, "param-channel");
-        strictAssert.deepEqual(rampChannel.children.map((option) => option.textContent), ["1", "2", "3"]);
-        strictAssert.deepEqual(rampChannel.children.map((option) => option.value), ["1", "2", "3"]);
+        strictAssert.deepEqual(rampChannel.children.map((option) => option.textContent), ["CH1", "CH2", "CH3", "CH1 + CH2", "CH1 + CH3", "CH2 + CH3", "全部"]);
+        strictAssert.deepEqual(rampChannel.children.map((option) => option.value), ["1", "2", "3", "1,2", "1,3", "2,3", "1,2,3"]);
         setLocale("en");
         refreshCommandFormPresentation();
         strictAssert.equal(byId(commandForm, "param-delay_ms"), rampDelayIdentity);
@@ -1314,6 +1314,7 @@ def test_static_compact_output_enable_layout_and_accessibility_contracts():
         strictAssert.deepEqual(rampTiming.children.map((option) => option.textContent), [
           "None", "Every step", "Ramp complete", "Loop complete"
         ]);
+        strictAssert.deepEqual(rampChannel.children.map((option) => option.textContent), ["CH1", "CH2", "CH3", "CH1 + CH2", "CH1 + CH3", "CH2 + CH3", "All"]);
         rampLoopEnabled.checked = false;
         rampLoopEnabled.listeners.change.forEach((listener) => listener());
         strictAssert.equal(byId(commandForm, "param-loop_count"), undefined);

@@ -5745,16 +5745,16 @@ def _apply_resource_payload(
 def _ramp_resource_payload(
     args: argparse.Namespace,
     idn_raw: str,
-    voltages: Sequence[float],
+    data: dict[str, Any],
 ) -> dict[str, Any]:
-    return {
+    voltages = data["voltages"]
+    payload = {
         "resource": _resource_payload(
             args.resource,
             simulated=args.simulate,
             reachable=True,
             idn_raw=idn_raw,
         ),
-        "channel": args.channel,
         "setpoints": {
             "current": _json_safe_number(args.current),
             "start_voltage": _json_safe_number(args.start_voltage),
@@ -5766,6 +5766,20 @@ def _ramp_resource_payload(
         "voltages": [_json_safe_number(voltage) for voltage in voltages],
         "output": {"changed": False},
     }
+    if "channels" in data:
+        payload["channels"] = list(data["channels"])
+        for name in (
+            "completed_step_executions",
+            "execution_units",
+            "progress",
+            "enabled_channels",
+            "final_output_states",
+        ):
+            if name in data:
+                payload[name] = data[name]
+    else:
+        payload["channel"] = args.channel
+    return payload
 
 
 def _output_on_resource_payload(
@@ -5888,7 +5902,7 @@ def _core_output_resource_data(args: argparse.Namespace, data: dict[str, Any]) -
     elif args.command == "cycle-output":
         payload = _cycle_output_resource_payload(args, idn_raw, data.get("outputs"))
     elif args.command == "ramp":
-        payload = _ramp_resource_payload(args, idn_raw, data["voltages"])
+        payload = _ramp_resource_payload(args, idn_raw, data)
     elif args.command == "smoke-output":
         payload = _smoke_output_resource_payload(
             args,
@@ -6490,6 +6504,8 @@ def _validate_output_request(
     args: argparse.Namespace,
     safety_limits: SafetyLimits | None,
 ) -> None:
+    if args.command == "ramp" and getattr(args, "channels", None) is not None:
+        return
     validation.validate_output_request(
         command=args.command,
         channel=args.channel,
@@ -6590,6 +6606,7 @@ def _driver_step(index: int, action: str, **parameters: Any) -> dict[str, Any]:
 def _operation_request_for_args(args: argparse.Namespace) -> OperationRequest:
     parameters = {
         "channel": getattr(args, "channel", None),
+        "channels": getattr(args, "channels", None),
         "voltage": getattr(args, "voltage", None),
         "current": getattr(args, "current", None),
         "duration_ms": getattr(args, "duration_ms", 0),

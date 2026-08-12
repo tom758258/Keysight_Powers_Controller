@@ -420,10 +420,13 @@ schema-2 snapshot document (directly or as saved CLI envelope data). It ignores 
 0.05 V measured voltage, and 0.01 A measured current, and exits `3` when
 differences are found.
 
-`ramp` is a setpoint-only command for E36312A, E3646A, and EDU36311A: it sets
-current limit first, then steps voltage from `--start-voltage` to the exact
-`--stop-voltage`. It does not turn output on or off and always uses software
-setpoint steps. E3646A and EDU36311A real `ramp` do not support
+`ramp` accepts exactly one of `--channel N` or `--channels N,N`. All selected
+channels share the same current and voltage parameters and advance in
+canonical channel order as one lockstep logical voltage step. The legacy
+single-channel form remains unchanged. Ramp sets current limit first, then
+steps voltage from `--start-voltage` to the exact `--stop-voltage`; it does not
+turn output on or off unless `--enable-output` is supplied and always uses
+software setpoint steps. E3646A and EDU36311A real `ramp` do not support
 completion-pulse options. `set`, `apply`, `output-on`, `output-off`, and
 `ramp` accept `--settle-ms` and `--verify-after-write`; verification failures
 return JSON error code `verification_failed` and exit `3`.
@@ -873,6 +876,7 @@ Ramp voltage setpoints without changing output state:
 
 ```powershell
 uv run powers-tool ramp --json --resource "$env:POWERS_TOOL_RESOURCE" --channel 1 --start-voltage 0 --stop-voltage 1 --step-voltage 0.25 --current 0.05 --delay-ms 100 --verify-after-write --settle-ms 200 --log-scpi
+uv run powers-tool ramp --json --resource "$env:POWERS_TOOL_RESOURCE" --channels 1,2 --start-voltage 0 --stop-voltage 1 --step-voltage 0.25 --current 0.05 --delay-ms 100 --verify-after-write --log-scpi
 uv run powers-tool ramp --json --resource "$env:POWERS_TOOL_RESOURCE" --channel 1 --start-voltage 0 --stop-voltage 1 --step-voltage 0.5 --current 0.05 --loop-count 2 --completion-pulse-timing loop --completion-pulse-pins 1 --log-scpi
 ```
 

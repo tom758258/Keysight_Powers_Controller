@@ -460,7 +460,12 @@ None, Every step, Segment complete, or Loop complete. Sequence retains only
 its per-Step Trigger pulse action.
 
 Ramp places Enable output first, then Enable loop, Channel/Current, Ramp
-setpoints, and Pulse timing. Ramp List places Enable loop between Auto-enable
+setpoints, and Pulse timing. Its Channel selector is generated from the
+current model metadata: single channels are followed by channel combinations
+and All when the model has multiple channels. Singletons submit `channel`;
+combinations and All submit an explicit canonical `channels` list. All selected
+channels share the same Ramp parameters and advance as lockstep logical steps.
+Ramp List places Enable loop between Auto-enable
 output for each channel and Pulse timing. Sequence places Enable loop between
 its toolbar and Step 1; Create snapshot has no Loop state. Loop count is
 conditionally created inline only when enabled, defaults to 2, and accepts

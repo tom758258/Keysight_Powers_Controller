@@ -323,6 +323,9 @@ function selectedChannelsForCommand(command, parameters = {}) {
     return [...new Set((parameters.document?.segments || []).map((segment) => Number(segment.channel)).filter(Number.isInteger))];
   }
   if (command === "trigger-list") return [Number(parameters.channel)].filter(Number.isInteger);
+  if (command === "ramp" && Array.isArray(parameters.channels)) {
+    return parameters.channels.map(Number).filter(Number.isInteger);
+  }
   if (command === "sequence") {
     return [...new Set((parameters.document?.steps || [])
       .map((step) => step.channel)

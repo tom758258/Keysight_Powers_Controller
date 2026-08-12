@@ -285,6 +285,11 @@ the field and means one execution. Ramp and Ramp List offer Loop complete in
 Pulse timing only while Loop is enabled. Ramp List saves v4 documents and
 Sequence saves v2 documents, both with explicit `loop_count`, including 1.
 
+Ramp's Channel selector follows the selected or detected model. It lists each
+channel, supported channel combinations, and All for multi-channel models.
+Selected channels share the same current and voltage settings and advance in
+lockstep; a voltage step completes only after every selected channel succeeds.
+
 ## Job Results
 
 Submitted commands appear in `Job Result`. Select a job to inspect its state

@@ -237,7 +237,11 @@ def output_plan(request: OperationRequest) -> dict[str, Any]:
         plan["steps"] = steps
         _append_write_followup_steps(p, plan["steps"], ("programmed_voltage", "programmed_current"), channels=channels)
     elif command == "ramp":
-        _require_plan_channels(request, channel)
+        channels = _plan_ramp_channels(request)
+        if "channels" in p:
+            plan["target"].pop("channel", None)
+            plan["target"]["channels"] = list(channels)
+            plan["channels"] = list(channels)
         voltages = ramp_voltages(p["start_voltage"], p["stop_voltage"], p["step_voltage"])
         _validate_ramp_completion_pulse(request)
         loop_count = normalize_loop_count(p.get("loop_count", 1))
@@ -248,25 +252,32 @@ def output_plan(request: OperationRequest) -> dict[str, Any]:
             reduction_hint="Ramp steps",
         )
         pulse_timing = p.get("completion_pulse_timing", "segment")
-        pulse_channel = _completion_pulse_channel(request, channel) if _completion_pulse_requested(request) else channel
+        pulse_channel = _completion_pulse_channel(request, channels[0]) if _completion_pulse_requested(request) else channels[0]
         enable_output = p.get("enable_output", False)
-        steps = [_driver_step(1, "set_current_limit", channel=channel, current=_json_safe_number(p["current"]))]
-        index = 2
-        for voltage_index, voltage in enumerate(voltages):
-            steps.append(_driver_step(index, "set_voltage", channel=channel, voltage=_json_safe_number(voltage)))
+        steps = []
+        index = 1
+        for selected_channel in channels:
+            steps.append(_driver_step(index, "set_current_limit", channel=selected_channel, current=_json_safe_number(p["current"])))
             index += 1
+        for voltage_index, voltage in enumerate(voltages):
+            for selected_channel in channels:
+                steps.append(_driver_step(index, "set_voltage", channel=selected_channel, voltage=_json_safe_number(voltage)))
+                index += 1
             if voltage_index == 0 and enable_output:
-                steps.append(_driver_step(index, "output_on", channel=channel))
-                index += 1
-                steps.append(
-                    _driver_step(
-                        index,
-                        "output_state",
-                        channel=channel,
-                        expected_enabled=True,
+                output_channels = channels[:1] if _ramp_plan_global_output(request) else channels
+                for selected_channel in output_channels:
+                    steps.append(_driver_step(index, "output_on", channel=selected_channel))
+                    index += 1
+                for selected_channel in channels:
+                    steps.append(
+                        _driver_step(
+                            index,
+                            "output_state",
+                            channel=selected_channel,
+                            expected_enabled=True,
+                        )
                     )
-                )
-                index += 1
+                    index += 1
             if _step_completion_pulse_requested(request):
                 steps.append(
                     _driver_step(
@@ -288,10 +299,11 @@ def output_plan(request: OperationRequest) -> dict[str, Any]:
             steps.append(_driver_step(index, "sleep", duration_ms=p["settle_ms"]))
             index += 1
         if p.get("verify_after_write", False):
-            steps.append(_driver_step(index, "programmed_voltage", channel=channel))
-            index += 1
-            steps.append(_driver_step(index, "programmed_current", channel=channel))
-            index += 1
+            for selected_channel in channels:
+                steps.append(_driver_step(index, "programmed_voltage", channel=selected_channel))
+                index += 1
+                steps.append(_driver_step(index, "programmed_current", channel=selected_channel))
+                index += 1
         if pulse_timing == "segment" and _completion_pulse_requested(request):
             steps.append(
                 _driver_step(
@@ -307,15 +319,16 @@ def output_plan(request: OperationRequest) -> dict[str, Any]:
             )
             index += 1
         if enable_output:
-            steps.append(
-                _driver_step(
-                    index,
-                    "output_state",
-                    channel=channel,
-                    final=True,
+            for selected_channel in channels:
+                steps.append(
+                    _driver_step(
+                        index,
+                        "output_state",
+                        channel=selected_channel,
+                        final=True,
+                    )
                 )
-            )
-            index += 1
+                index += 1
         if pulse_timing == "loop" and _completion_pulse_requested(request):
             steps.append(
                 _driver_step(
@@ -350,11 +363,12 @@ def output_plan(request: OperationRequest) -> dict[str, Any]:
         plan["enabled_channels"] = []
         plan["final_output_states"] = [
             {
-                "channel": channel,
+                "channel": selected_channel,
                 "enabled": None,
                 "verified": False,
                 "unchanged_by_workflow": not enable_output,
             }
+            for selected_channel in channels
         ]
         plan["cancellation_cleanup"] = None
     elif command == "smoke-output":
@@ -674,7 +688,8 @@ def _execute_output_write(
         return data
 
     if command == "ramp":
-        _require_channel(power_supply, channel, command)
+        channels = _ramp_channels(p, power_supply.capabilities.channels)
+        default_channel = channels[0]
         voltages = ramp_voltages(p["start_voltage"], p["stop_voltage"], p["step_voltage"])
         _validate_ramp_completion_pulse(request)
         loop_count = normalize_loop_count(p.get("loop_count", 1))
@@ -687,10 +702,23 @@ def _execute_output_write(
         progress = ExecutionProgress(execution_units, progress_reporter)
         pulse_timing = p.get("completion_pulse_timing", "segment")
         enable_output = p.get("enable_output", False)
-        for voltage in voltages:
-            _validate_setpoint_for_request(request, idn, channel, voltage=voltage, current=p["current"])
-            if enable_output:
-                _require_confirmation_if_needed(request, voltage, p["current"], channel, idn)
+        for selected_channel in channels:
+            for voltage in voltages:
+                _validate_setpoint_for_request(
+                    request,
+                    idn,
+                    selected_channel,
+                    voltage=voltage,
+                    current=p["current"],
+                )
+                if enable_output:
+                    _require_confirmation_if_needed(
+                        request,
+                        voltage,
+                        p["current"],
+                        selected_channel,
+                        idn,
+                    )
         trigger: dict[str, Any] | None = None
         verification = {"passed": True, "checks": [], "differences": []}
         _validate_requested_completion_pulse_power_supply(request, power_supply)
@@ -701,43 +729,85 @@ def _execute_output_write(
         active_loop_index = 1
         active_step_index = 0
         active_voltage = voltages[0]
+        active_channel: int | None = None
+        completed_channels_in_step: list[int] = []
+        enabled_channels: list[int] = []
+        selection_data = (
+            {"channels": list(channels)}
+            if "channels" in p
+            else {"channel": default_channel}
+        )
         try:
             raise_if_cancelled(stop_requested)
             if isinstance(power_supply, PSM2010PowerSupply):
                 power_supply.set_output_pair(
-                    channel=channel,
+                    channel=default_channel,
                     voltage=voltages[0],
                     current=p["current"],
                 )
             else:
-                power_supply.set_current_limit(channel=channel, current=p["current"])
+                for selected_channel in channels:
+                    active_channel = selected_channel
+                    power_supply.set_current_limit(channel=selected_channel, current=p["current"])
             for loop_index in range(1, loop_count + 1):
                 active_loop_index = loop_index
                 for index, voltage in enumerate(voltages):
                     active_step_index = index
                     active_voltage = voltage
+                    completed_channels_in_step = []
                     raise_if_cancelled(stop_requested)
-                    if not (
-                        isinstance(power_supply, PSM2010PowerSupply)
-                        and loop_index == 1
-                        and index == 0
-                    ):
-                        power_supply.set_voltage(channel=channel, voltage=voltage)
+                    for selected_channel in channels:
+                        active_channel = selected_channel
+                        if not (
+                            isinstance(power_supply, PSM2010PowerSupply)
+                            and loop_index == 1
+                            and index == 0
+                        ):
+                            try:
+                                power_supply.set_voltage(channel=selected_channel, voltage=voltage)
+                            except CoreExecutionError:
+                                raise
+                            except Exception as exc:
+                                raise CoreExecutionError(
+                                    f"ramp voltage write failed on channel {selected_channel}: {exc}"
+                                ) from exc
+                        completed_channels_in_step.append(selected_channel)
+                    active_channel = None
                     completed_voltages.append(voltage)
                     progress.complete_unit()
                     if index == 0 and loop_index == 1 and enable_output:
-                        power_supply.output_on(channel=channel)
-                        output_enable_executed = True
-                        on_verification = _verify_output_state_after_write(
-                            request,
-                            power_supply,
-                            expected=True,
-                            channel=channel,
-                            required=True,
+                        if isinstance(power_supply, E3646APowerSupply):
+                            active_channel = default_channel
+                            power_supply.output_on(channel=default_channel)
+                            enabled_channels.extend(channels)
+                            output_enable_executed = True
+                        else:
+                            for selected_channel in channels:
+                                active_channel = selected_channel
+                                power_supply.output_on(channel=selected_channel)
+                                enabled_channels.append(selected_channel)
+                                output_enable_executed = True
+                        on_verification = _combine_verifications(
+                            "ramp-output-on",
+                            *(
+                                _verify_output_state_after_write(
+                                    request,
+                                    power_supply,
+                                    expected=True,
+                                    channel=selected_channel,
+                                    required=True,
+                                )
+                                for selected_channel in channels
+                            ),
                         )
                         _raise_verification_failed(on_verification)
+                        active_channel = None
                     if _step_completion_pulse_requested(request):
-                        step_trigger = _maybe_run_completion_pulse(request, power_supply, default_channel=channel)
+                        step_trigger = _maybe_run_completion_pulse(
+                            request,
+                            power_supply,
+                            default_channel=default_channel,
+                        )
                         if step_trigger is not None:
                             entry = {"step_index": index, "voltage": voltage, "trigger": step_trigger}
                             if loop_count > 1:
@@ -749,7 +819,7 @@ def _execute_output_write(
                 verification = _verify_setpoints_after_write(
                     request,
                     power_supply,
-                    channels=(channel,),
+                    channels=channels,
                     expected_voltage=p["stop_voltage"],
                 )
                 _raise_verification_failed(verification)
@@ -758,29 +828,23 @@ def _execute_output_write(
                     iteration_trigger = _maybe_run_completion_pulse(
                         request,
                         power_supply,
-                        default_channel=channel,
+                        default_channel=default_channel,
                     )
                     if loop_count == 1:
                         trigger = iteration_trigger
                     elif iteration_trigger is not None:
                         triggers.append({"loop_index": loop_index, "trigger": iteration_trigger})
                 completed_loops += 1
-            final_output_states = (
-                [{
-                    "channel": channel,
-                    "enabled": power_supply.output_state(channel=channel),
-                    "verified": True,
-                    "unchanged_by_workflow": False,
-                }]
-                if enable_output
-                else [{
-                    "channel": channel,
-                    "enabled": None,
-                    "verified": False,
-                    "unchanged_by_workflow": True,
-                }]
-            )
-            if enable_output and final_output_states[0]["enabled"] is not True:
+            final_output_states = [
+                {
+                    "channel": selected_channel,
+                    "enabled": power_supply.output_state(channel=selected_channel) if enable_output else None,
+                    "verified": enable_output,
+                    "unchanged_by_workflow": not enable_output,
+                }
+                for selected_channel in channels
+            ]
+            if enable_output and any(state["enabled"] is not True for state in final_output_states):
                 raise CoreVerificationError(
                     "final output-state verification failed",
                     verification={
@@ -793,15 +857,16 @@ def _execute_output_write(
             _raise_on_instrument_errors(power_supply, command)
             raise_if_cancelled(stop_requested)
             if pulse_timing == "loop":
-                trigger = _maybe_run_completion_pulse(request, power_supply, default_channel=channel)
+                trigger = _maybe_run_completion_pulse(request, power_supply, default_channel=default_channel)
         except (CommandCancelled, KeyboardInterrupt):
             cancel_workflow_with_safe_off(
                 power_supply,
                 partial_result={
+                    **selection_data,
                     "loop_count": loop_count,
                     "enable_output": enable_output,
                     "output_enable_executed": output_enable_executed,
-                    "enabled_channels": [channel] if output_enable_executed else [],
+                    "enabled_channels": enabled_channels,
                     "completed_voltages": completed_voltages.retained(),
                     **completed_voltages.metadata("completed_voltages"),
                     "completed_loops": completed_loops,
@@ -811,12 +876,14 @@ def _execute_output_write(
                         "step_index": active_step_index,
                         "voltage": active_voltage,
                         "code": "interrupted",
+                        "failed_channel": active_channel,
+                        "completed_channels": list(completed_channels_in_step),
                     },
                     "triggers": triggers.retained(),
                     **triggers.metadata("triggers"),
                     "progress": progress.snapshot(),
                     "trigger": (
-                        _pending_completion_pulse_result(request, channel=channel)
+                        _pending_completion_pulse_result(request, channel=default_channel)
                         if _completion_pulse_requested(request)
                         and pulse_timing == "loop"
                         else None
@@ -826,9 +893,11 @@ def _execute_output_write(
             )
         except CoreExecutionError as exc:
             if exc.trigger is None and _completion_pulse_requested(request):
-                exc.trigger = _pending_completion_pulse_result(request, channel=channel)
+                exc.trigger = _pending_completion_pulse_result(request, channel=default_channel)
             failure_during_iteration = completed_loops < loop_count
             exc.data = {
+                **(exc.data or {}),
+                **selection_data,
                 "loop_count": loop_count,
                 "completed_loops": completed_loops,
                 "completed_step_executions": completed_voltages.total,
@@ -840,6 +909,8 @@ def _execute_output_write(
                         "step_index": active_step_index,
                         "voltage": active_voltage,
                         "code": "step_failed",
+                        "failed_channel": active_channel,
+                        "completed_channels": list(completed_channels_in_step),
                     }
                     if failure_during_iteration
                     else None
@@ -850,8 +921,13 @@ def _execute_output_write(
                 **triggers.metadata("triggers"),
                 "progress": progress.snapshot(),
             }
+            if active_channel is not None:
+                exc.data["failed_channel"] = active_channel
             raise
-        data = _resource_payload(request, idn, channel=channel, voltages=voltages)
+        if "channels" in p:
+            data = _resource_payload(request, idn, channels=list(channels), voltages=voltages)
+        else:
+            data = _resource_payload(request, idn, channel=default_channel, voltages=voltages)
         data["steps"] = len(voltages)
         data["loop_count"] = loop_count
         data["completed_loops"] = completed_loops
@@ -861,7 +937,7 @@ def _execute_output_write(
         data.update(completed_voltages.metadata("completed_voltages"))
         data["enable_output"] = enable_output
         data["output_enable_executed"] = output_enable_executed
-        data["enabled_channels"] = [channel] if output_enable_executed else []
+        data["enabled_channels"] = enabled_channels
         data["final_output_states"] = final_output_states
         data["cancellation_cleanup"] = None
         _attach_trigger_if_present(data, trigger)
@@ -983,7 +1059,10 @@ def _validate_known_simulated_model_setpoints(request: OperationRequest) -> None
     if ratings is None:
         return
     p = request.parameters
-    channels = ratings.channels.keys() if p.get("channel") == "all" else (p.get("channel"),)
+    if request.command == "ramp":
+        channels = _ramp_channels(p, tuple(ratings.channels))
+    else:
+        channels = ratings.channels.keys() if p.get("channel") == "all" else (p.get("channel"),)
     for channel in channels:
         if not isinstance(channel, int):
             continue
@@ -1078,6 +1157,26 @@ def _channels_from_selection(selection: int | str, supported: Sequence[int], *, 
         command_label = f" for {command}" if command else ""
         raise UnsupportedChannelError(f"channel {selection} is not supported{command_label}; supported: {tuple(supported)}")
     return (int(selection),)
+
+
+def _ramp_channels(parameters: dict[str, Any], supported: Sequence[int]) -> tuple[int, ...]:
+    present = tuple(name for name in ("channel", "channels") if name in parameters)
+    if len(present) != 1:
+        raise CoreValidationError("ramp requires exactly one of: channel, channels")
+    if "channels" not in parameters:
+        channel = parameters["channel"]
+        return _channels_from_selection(channel, supported, command="ramp")
+    selected = tuple(parameters["channels"])
+    if not selected:
+        raise CoreValidationError("ramp channels must be a non-empty list of channels")
+    if len(set(selected)) != len(selected):
+        raise CoreValidationError("ramp channels must not contain duplicates")
+    unsupported = tuple(channel for channel in selected if channel not in supported)
+    if unsupported:
+        raise UnsupportedChannelError(
+            f"ramp channels {unsupported} are not supported; supported: {tuple(supported)}"
+        )
+    return tuple(channel for channel in supported if channel in selected)
 
 
 def _raise_on_instrument_errors(power_supply: Any, command: str) -> None:
@@ -1385,6 +1484,20 @@ def _plan_channels(request: OperationRequest, channel: int | str) -> tuple[int, 
     if int(channel) not in supported:
         raise UnsupportedChannelError(f"channel {channel} is not supported; supported: {supported}")
     return (int(channel),)
+
+
+def _plan_ramp_channels(request: OperationRequest) -> tuple[int, ...]:
+    supported = no_hardware_channels(
+        request.runtime.planning_model_id,
+        request.runtime.planning_profile_id,
+    )
+    return _ramp_channels(request.parameters, supported)
+
+
+def _ramp_plan_global_output(request: OperationRequest) -> bool:
+    from powers_tool_core.model_metadata import OUTPUT_CONTROL_SCOPE_BY_MODEL_ID
+
+    return OUTPUT_CONTROL_SCOPE_BY_MODEL_ID.get(request.runtime.planning_model_id) == "global"
 
 
 def _require_plan_channels(request: OperationRequest, channel: int | str | None) -> None:
