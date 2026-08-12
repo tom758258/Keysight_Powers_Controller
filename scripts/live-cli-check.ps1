@@ -1424,13 +1424,26 @@ function Get-ProtectionCases {
     $phase = if ($Live) { "live" } else { "preflight" }
     $modeFlag = if ($Live) { @() } else { @("--simulate") }
     $writeFlag = if ($Live) { @() } else { @("--dry-run") }
-    return @(
-        (New-CommandCase -Name "protection-status-before" -Suite "protection" -Phase $phase -Args (@("protection-status") + $modeFlag + @("--json", "--resource", $resource, "--all", "--log-scpi")) -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "protection-status"))),
-        (New-CommandCase -Name "protection-set-all" -Suite "protection" -Phase $phase -Args (@("protection-set") + $writeFlag + @("--json", "--resource", $resource, "--channel", "all", "--ovp-voltage", "5", "--ocp", "on", "--confirm", "--log-scpi")) -StateChanging:$Live -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "protection-set"))),
-        (New-CommandCase -Name "protection-status-after-set" -Suite "protection" -Phase $phase -Args (@("protection-status") + $modeFlag + @("--json", "--resource", $resource, "--all", "--log-scpi")) -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "protection-status"))),
-        (New-CommandCase -Name "clear-protection-all" -Suite "protection" -Phase $phase -Args (@("clear-protection") + $writeFlag + @("--json", "--resource", $resource, "--all", "--confirm", "--log-scpi")) -StateChanging:$Live -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "clear-protection"))),
-        (New-CommandCase -Name "protection-status-after-clear" -Suite "protection" -Phase $phase -Args (@("protection-status") + $modeFlag + @("--json", "--resource", $resource, "--all", "--log-scpi")) -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "protection-status")))
-    )
+    $cases = New-Object System.Collections.Generic.List[object]
+    $cases.Add((New-CommandCase -Name "protection-status-before" -Suite "protection" -Phase $phase -Args (@("protection-status") + $modeFlag + @("--json", "--resource", $resource, "--all", "--log-scpi")) -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "protection-status"))))
+    if ($Live -and $Model -eq "gw-instek-psm-2010") {
+        # FW1.06 has no delay readback; validate setter acceptance only, then leave the explicit 0.1 s test value.
+        $cases.Add((New-CommandCase -Name "protection-set-ocp-delay-max-acceptance" -Suite "protection" -Phase $phase -Args @("protection-set", "--json", "--resource", $resource, "--channel", "all", "--ocp-delay", "10.0", "--confirm", "--log-scpi") -StateChanging:$true -LiveHardwareExpected:$true -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "protection-set")))
+        $cases.Add((New-CommandCase -Name "protection-set-ocp-delay-max-errors" -Suite "protection" -Phase $phase -Args @("error", "--json", "--resource", $resource, "--max-reads", "20", "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "empty-errors"))
+    }
+    $setArguments = @("protection-set") + $writeFlag + @("--json", "--resource", $resource, "--channel", "all", "--ovp-voltage", "5", "--ocp", "on")
+    if ($Live -and $Model -eq "gw-instek-psm-2010") {
+        $setArguments += @("--ocp-delay", "0.1")
+    }
+    $setArguments += @("--confirm", "--log-scpi")
+    $cases.Add((New-CommandCase -Name "protection-set-all" -Suite "protection" -Phase $phase -Args $setArguments -StateChanging:$Live -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "protection-set"))))
+    if ($Live -and $Model -eq "gw-instek-psm-2010") {
+        $cases.Add((New-CommandCase -Name "protection-set-ocp-delay-min-errors" -Suite "protection" -Phase $phase -Args @("error", "--json", "--resource", $resource, "--max-reads", "20", "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "empty-errors"))
+    }
+    $cases.Add((New-CommandCase -Name "protection-status-after-set" -Suite "protection" -Phase $phase -Args (@("protection-status") + $modeFlag + @("--json", "--resource", $resource, "--all", "--log-scpi")) -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "protection-status"))))
+    $cases.Add((New-CommandCase -Name "clear-protection-all" -Suite "protection" -Phase $phase -Args (@("clear-protection") + $writeFlag + @("--json", "--resource", $resource, "--all", "--confirm", "--log-scpi")) -StateChanging:$Live -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "clear-protection"))))
+    $cases.Add((New-CommandCase -Name "protection-status-after-clear" -Suite "protection" -Phase $phase -Args (@("protection-status") + $modeFlag + @("--json", "--resource", $resource, "--all", "--log-scpi")) -LiveHardwareExpected:$Live -CandidateScopeRequired:($Live -and (Test-CurrentConnectionSupportsCandidates -Command "protection-status"))))
+    return $cases.ToArray()
 }
 
 function Get-SnapshotCases {

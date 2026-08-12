@@ -217,35 +217,58 @@ def test_restore_explicit_all_channel_is_valid() -> None:
     assert result["restored_channels"] == [1, 2, 3]
 
 
-def _psm_snapshot() -> dict[str, object]:
+def _psm_snapshot(*, scpi_logger=None) -> dict[str, object]:
     return run_core_command(
         OperationRequest(
             "snapshot",
             RuntimeOptions(
                 simulate=True,
                 resource="ASRL1::SIM::PSM2010::INSTR",
+                log_scpi=scpi_logger is not None,
             ),
-        )
+        ),
+        scpi_logger=scpi_logger,
     )
 
 
 def test_psm2010_snapshot_schema_2_extension_preserves_output_range() -> None:
-    snapshot = _psm_snapshot()
+    transcript = []
+    snapshot = _psm_snapshot(scpi_logger=lambda *entry: transcript.append(entry))
 
     assert snapshot["schema_version"] == 2
     assert snapshot["resolved_identity"]["model_id"] == "gw-instek-psm-2010"
     assert snapshot["output_ranges"] == [{"channel": 1, "range": "LOW"}]
-    assert snapshot["protection_settings"][0]["protection"]["ocp_delay_trigger"] is None
+    assert snapshot["protection_settings"] == [
+        {
+            "channel": 1,
+            "protection": {
+                "ovp_voltage": 21.0,
+                "ocp_enabled": True,
+                "ocp_delay": None,
+                "ocp_delay_trigger": None,
+            },
+        }
+    ]
+    assert snapshot["readback"] == [
+        {"channel": 1, "setpoints": {"voltage": 1.0, "current": 0.05}}
+    ]
+    assert snapshot["measurements"] == [
+        {"channel": 1, "measurements": {"voltage": 1.0, "current": 0.05}}
+    ]
+    assert "CURR:PROT:DEL?" not in [entry[2] for entry in transcript]
     assert validate_snapshot_document(snapshot) == snapshot
 
 
 def test_psm2010_restore_plan_orders_range_before_protection_and_setpoints() -> None:
+    snapshot = deepcopy(_psm_snapshot())
+    snapshot["protection_settings"][0]["protection"]["ocp_delay"] = None
+    snapshot["outputs"][0]["enabled"] = True
     plan = restore_plan(
-        _psm_snapshot(),
+        snapshot,
         resource="ASRL1::fixture::INSTR",
         channels=(1,),
-        restore_output_state=False,
-        allow_output_on=False,
+        restore_output_state=True,
+        allow_output_on=True,
     )
 
     assert [step["action"] for step in plan["steps"]] == [
@@ -253,19 +276,20 @@ def test_psm2010_restore_plan_orders_range_before_protection_and_setpoints() -> 
         "set_output_range",
         "set_over_voltage_protection",
         "set_over_current_protection_enabled",
-        "set_over_current_protection_delay",
         "set_current_limit",
         "set_voltage",
+        "output_on",
     ]
     assert [step["command"] for step in plan["steps"]] == [
         "OUTP OFF",
         "VOLT:RANG LOW",
         "VOLT:PROT 21",
         "CURR:PROT:STAT ON",
-        "CURR:PROT:DEL 0.1",
         "CURR 0.05",
         "VOLT 1",
+        "OUTP ON",
     ]
+    assert not any(step["command"].startswith("CURR:PROT:DEL ") for step in plan["steps"])
 
 
 @pytest.mark.parametrize("output_range", [None, "P8V", "AUTO", "low"])

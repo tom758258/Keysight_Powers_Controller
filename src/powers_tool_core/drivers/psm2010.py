@@ -141,6 +141,10 @@ class PSM2010PowerSupply(GenericScpiPowerSupply):
             "over-current protection",
         )
 
+    def over_current_protection_delay(self, *, channel: Channel = None) -> float:
+        _psm2010_channel(channel)
+        raise ValueError("PSM-2010 does not support OCP delay readback")
+
     def over_current_protection_delay_trigger(self, *, channel: Channel = None) -> str:
         _psm2010_channel(channel)
         raise ValueError("PSM-2010 does not support an OCP delay trigger setting")

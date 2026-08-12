@@ -1668,6 +1668,21 @@ $safeState = @(Get-SafeStateCases -Model $script:NormalizedTarget -Live:$true | 
         expected_output_enabled = $_.expected_output_enabled
     }
 })
+$protection = @(Get-ProtectionCases -Model $script:NormalizedTarget -Live:$true | ForEach-Object {
+    [pscustomobject]@{
+        name = $_.name
+        command = $_.args[0]
+        arguments = @($_.args)
+        candidate = [bool]$_.candidate_scope_required
+        validation_kind = $_.validation_kind
+    }
+})
+$psmPreflightProtection = @(Get-ProtectionCases -Model $script:NormalizedTarget -Live:$false | ForEach-Object {
+    [pscustomobject]@{ name = $_.name; arguments = @($_.args) }
+})
+$e36312aProtection = @(Get-ProtectionCases -Model "keysight-e36312a" -Live:$true | ForEach-Object {
+    [pscustomobject]@{ name = $_.name; arguments = @($_.args) }
+})
 $script:TransportScope = "usb"
 $nonmatchingCandidateCount = @(
     @(Get-ReadOnlyCases -Model $script:NormalizedTarget -Live:$true) +
@@ -1678,6 +1693,9 @@ $nonmatchingCandidateCount = @(
     inventory = $script:CandidateInventory
     readonly = $readonly
     safe_state = $safeState
+    protection = $protection
+    psm_preflight_protection = $psmPreflightProtection
+    e36312a_protection = $e36312aProtection
     nonmatching_candidate_count = $nonmatchingCandidateCount
 } | ConvertTo-Json -Depth 10 -Compress
 '''
@@ -1736,6 +1754,45 @@ $nonmatchingCandidateCount = @(
     ]
     assert all(case["validation_kind"] == "output-state" for case in after_cases)
     assert all(case["expected_output_enabled"] is False for case in after_cases)
+
+    protection = composition["protection"]
+    assert [case["name"] for case in protection] == [
+        "protection-status-before",
+        "protection-set-ocp-delay-max-acceptance",
+        "protection-set-ocp-delay-max-errors",
+        "protection-set-all",
+        "protection-set-ocp-delay-min-errors",
+        "protection-status-after-set",
+        "clear-protection-all",
+        "protection-status-after-clear",
+    ]
+    by_name = {case["name"]: case for case in protection}
+    assert by_name["protection-set-ocp-delay-max-acceptance"]["candidate"] is True
+    assert by_name["protection-set-all"]["candidate"] is True
+    assert by_name["protection-set-ocp-delay-max-acceptance"]["arguments"][
+        by_name["protection-set-ocp-delay-max-acceptance"]["arguments"].index("--ocp-delay") + 1
+    ] == "10.0"
+    assert by_name["protection-set-all"]["arguments"][
+        by_name["protection-set-all"]["arguments"].index("--ocp-delay") + 1
+    ] == "0.1"
+    assert by_name["protection-set-ocp-delay-max-errors"]["validation_kind"] == "empty-errors"
+    assert by_name["protection-set-ocp-delay-min-errors"]["validation_kind"] == "empty-errors"
+    assert not any("--ocp-delay-trigger" in case["arguments"] for case in protection)
+
+    unchanged_names = [
+        "protection-status-before",
+        "protection-set-all",
+        "protection-status-after-set",
+        "clear-protection-all",
+        "protection-status-after-clear",
+    ]
+    assert [case["name"] for case in composition["psm_preflight_protection"]] == unchanged_names
+    assert [case["name"] for case in composition["e36312a_protection"]] == unchanged_names
+    assert not any(
+        "--ocp-delay" in case["arguments"]
+        for inventory in ("psm_preflight_protection", "e36312a_protection")
+        for case in composition[inventory]
+    )
 
 
 def test_live_cli_check_psm2010_pending_command_on_product_connection_uses_validation_policy() -> None:
@@ -1848,6 +1905,8 @@ def test_live_cli_check_psm2010_full_plan_only_covers_v2_candidates() -> None:
     assert report["candidate_evidence_only"] is True
     assert report["promotes_live_support"] is False
     assert report["failures"] == []
+    assert report["transport_scope"] == "asrl"
+    assert report["backend_scope"] == "system_visa"
     assert "Support policy mode: `validation`" in summary
     assert "Pending live support allowed: `true`" in summary
     assert "Candidate evidence only: `true`" in summary
@@ -1878,6 +1937,19 @@ def test_live_cli_check_psm2010_full_plan_only_covers_v2_candidates() -> None:
             "measure-all", "trigger-status", "trigger-step", "trigger-list",
             "trigger-fire", "trigger-abort", "trigger-pulse",
         }
+    )
+    planned_by_name = {case["name"]: case for case in report["planned_live_cases"]}
+    assert planned_by_name["protection-set-ocp-delay-max-acceptance"]["arguments"][
+        planned_by_name["protection-set-ocp-delay-max-acceptance"]["arguments"].index("--ocp-delay") + 1
+    ] == "10.0"
+    assert planned_by_name["protection-set-all"]["arguments"][
+        planned_by_name["protection-set-all"]["arguments"].index("--ocp-delay") + 1
+    ] == "0.1"
+    assert planned_by_name["protection-set-ocp-delay-max-errors"]["validation_kind"] == "empty-errors"
+    assert planned_by_name["protection-set-ocp-delay-min-errors"]["validation_kind"] == "empty-errors"
+    assert not any(
+        "--ocp-delay-trigger" in case["arguments"]
+        for case in report["planned_live_cases"]
     )
     assert "hardware_touched" not in json.dumps(report)
     private_payloads = list(

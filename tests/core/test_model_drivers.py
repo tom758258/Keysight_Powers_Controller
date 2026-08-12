@@ -197,7 +197,6 @@ def test_psm2010_driver_maps_protection_status_settings_and_clear() -> None:
             "CURR:PROT:TRIP?": "0",
             "VOLT:PROT?": "21",
             "CURR:PROT:STAT?": "ON",
-            "CURR:PROT:DEL?": "0.1",
         }
     )
     power_supply = PSM2010PowerSupply(session)
@@ -206,7 +205,6 @@ def test_psm2010_driver_maps_protection_status_settings_and_clear() -> None:
     assert power_supply.over_current_protection_tripped(channel=1) is False
     assert power_supply.over_voltage_protection_level(channel=1) == 21.0
     assert power_supply.over_current_protection_enabled(channel=1) is True
-    assert power_supply.over_current_protection_delay(channel=1) == 0.1
     power_supply.set_over_voltage_protection(channel=1, voltage=21.5)
     power_supply.set_over_current_protection_enabled(channel=1, enabled=True)
     power_supply.set_over_current_protection_delay(channel=1, seconds=10.0)
@@ -219,6 +217,28 @@ def test_psm2010_driver_maps_protection_status_settings_and_clear() -> None:
         "CURR:PROT:CLE",
         "VOLT:PROT:CLE",
     ]
+
+
+def test_psm2010_driver_rejects_ocp_delay_readback_without_io() -> None:
+    session = FakeSession()
+    power_supply = PSM2010PowerSupply(session)
+
+    with pytest.raises(ValueError, match="does not support OCP delay readback"):
+        power_supply.over_current_protection_delay(channel=1)
+
+    assert session.commands == []
+    assert "CURR:PROT:DEL?" not in session.commands
+
+
+def test_psm2010_driver_rejects_invalid_ocp_delay_readback_channel_without_io() -> None:
+    session = FakeSession()
+    power_supply = PSM2010PowerSupply(session)
+
+    with pytest.raises(ValueError, match="PSM-2010 channel must be 1"):
+        power_supply.over_current_protection_delay(channel=2)
+
+    assert session.commands == []
+    assert "CURR:PROT:DEL?" not in session.commands
 
 
 @pytest.mark.parametrize("voltage", [-0.1, float("nan"), float("inf"), 22.1])
