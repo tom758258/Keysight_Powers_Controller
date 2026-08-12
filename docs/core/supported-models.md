@@ -32,7 +32,7 @@ The current `live_validated_full_suite` command inventories are:
 | `keysight-e36312a` (Keysight E36312A) | USB + system VISA; TCPIP + system VISA | `measure`, `output-state`, `read-status`, `readback`, `validate-readonly`, `capabilities`, `set`, `output-on`, `output-off`, `safe-off`, `cycle-output`, `apply`, `ramp`, `smoke-output`, `ramp-list`, `sequence`, `protection-status`, `protection-set`, `clear-protection`, `snapshot`, `restore-from-snapshot`, `measure-all`, `log`, `doctor`, `trigger-status`, `trigger-step`, `trigger-list`, `trigger-abort`, `trigger-fire`, `trigger-pulse` |
 | `keysight-edu36311a` (Keysight EDU36311A) | USB + system VISA; TCPIP + system VISA | `measure`, `output-state`, `read-status`, `readback`, `validate-readonly`, `capabilities`, `set`, `output-on`, `output-off`, `safe-off`, `cycle-output`, `apply`, `ramp`, `smoke-output`, `ramp-list`, `sequence`, `protection-status`, `protection-set`, `clear-protection`, `log`, `doctor` |
 | `keysight-e3646a` (Keysight E3646A) | ASRL / RS-232 + system VISA | `measure`, `output-state`, `read-status`, `readback`, `capabilities`, `set`, `output-on`, `output-off`, `safe-off`, `cycle-output`, `apply`, `ramp`, `smoke-output`, `ramp-list`, `sequence`, `log`, `doctor` |
-| `gw-instek-psm-2010` (GW Instek PSM-2010) | ASRL / RS-232 + system VISA | `measure`, `output-state`, `read-status`, `readback`, `capabilities`, `output-off`, `safe-off` |
+| `gw-instek-psm-2010` (GW Instek PSM-2010) | ASRL / RS-232 + system VISA | `measure`, `output-state`, `read-status`, `readback`, `validate-readonly`, `capabilities`, `set`, `output-on`, `output-off`, `safe-off`, `cycle-output`, `apply`, `ramp`, `smoke-output`, `ramp-list`, `sequence`, `protection-status`, `protection-set`, `clear-protection`, `snapshot`, `restore-from-snapshot`, `log`, `doctor` |
 
 `list-resources`, `verify`, `identify`, `error`, and `clear` are explicit
 diagnostic exemptions. Their success proves only that diagnostic operation; it
@@ -120,7 +120,7 @@ placeholders and must not imply a model.
 | `keysight-e36312a` | `USB0::SIM::E36312A::INSTR` | CH1, CH2, CH3 | Per-channel output control; `all` expands to CH1-CH3 | Trigger workflows and native LIST are E36312A-only and Product-open on supported live E36312A paths. Protection read/write paths are supported. |
 | `keysight-edu36311a` | `USB0::SIM::EDU36311A::INSTR` | CH1, CH2, CH3 | Per-channel output control; `all` expands to CH1-CH3 | Protection read/write paths are supported. Trigger workflows and native LIST are not exposed in dry-run, simulate, or real mode. |
 | `keysight-e3646a` | `ASRL1::SIM::E3646A::INSTR` | CH1, CH2 | Global output enable/disable; channel selection is used for setpoints and readback | RS-232 / ASRL output workflows are Product-open within the exact scope. Protection writes, trigger workflows, snapshot restore, completion pulses, and native LIST are disabled. |
-| `gw-instek-psm-2010` | `ASRL1::SIM::PSM2010::INSTR` | CH1 | Global output control | Product LIVE is limited to the seven read-only/status and output-OFF commands in the exact-scope matrix. Powers trigger workflows are not supported by the model profile. Setpoint writes, output enable, protection, snapshot, ramp, and sequence workflows are disabled. |
+| `gw-instek-psm-2010` | `ASRL1::SIM::PSM2010::INSTR` | CH1 | Global output control | Product LIVE includes the exact read-only, output, protection, snapshot/restore, ramp, and software-sequence commands in the matrix. LOW and HIGH ranges remain distinct. Powers trigger workflows are not supported by the model profile. |
 | `generic-scpi` planning profile | None; use explicit `--profile generic-scpi` in dry-run | CH1 | Unknown | Conservative no-hardware planning only. Trigger workflows, native LIST, and protection writes are not exposed. |
 
 Live hardware uses manufacturer-plus-model IDN resolution. In live mode,
@@ -234,10 +234,14 @@ command-level facts:
   They are sent only when `--serial-remote` or `--serial-local-on-close` is
   explicitly requested for an ASRL resource.
 - PSM-2010 Product execution is limited to ASRL / RS-232 + system VISA and the
-  seven exact commands in the matrix above. `output-off` and `safe-off` may
-  turn output OFF; they do not enable output or write setpoints. Setpoint,
-  output-enable, protection, trigger, snapshot, ramp, and sequence commands
-  remain closed, as do all other transports and VISA backends.
+  exact commands in the matrix above. It uses CH1, global output control, and
+  distinct LOW/HIGH operating ranges. Its Product-open `sequence` actions are
+  `apply`, `cycle-output`, `measure`, `output-off`, `output-on`,
+  `output-state`, `readback`, `safe-off`, and `set`; `wait` and `log`
+  remain host-only. The protection command family supports OVP configuration,
+  OCP enable/status/trip behavior, and protection clear. OCP delay
+  configuration, readback, and trigger remain unsupported. Powers trigger
+  commands, all other transports, and all other VISA backends remain closed.
 - No-hardware output-family, Ramp List, Sequence, `protection-set`,
   `clear-protection`, and trigger plans use strict planning identity.
   `--dry-run` and `--simulate` require either an explicit physical `--model`

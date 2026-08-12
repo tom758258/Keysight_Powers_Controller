@@ -284,9 +284,10 @@ VISA runtime。
 的 exact Product scope 決定。Product-open command 不代表整個 feature family 開放；missing 或 pending feature
 scopes 仍會 fail closed。CLI model list 僅包含 Product-active models。</p>
 <p>GW Instek PSM-2010 的 Product LIVE scope 僅限 ASRL / RS-232 + system VISA，
-以及 <code>measure</code>、<code>output-state</code>、<code>read-status</code>、<code>readback</code>、<code>capabilities</code>、
-<code>output-off</code>、<code>safe-off</code>。其中輸出命令只會關閉輸出，不會啟用輸出或寫入
-setpoint；其他命令、transport 與 backend 仍會 fail closed。</p>
+並開放 Core Product matrix 所列的 23 個 model-aware commands，包括
+setpoint／output、protection、snapshot／restore、ramp 與 software sequence
+workflows。Powers Trigger commands 與 OCP delay 設定、讀回及 trigger 仍不支援；
+USB、TCPIP、GPIB、pyvisa-py、pyvisa-bt 與 custom VISA scopes 仍會 fail closed。</p>
 <h2 id="測試">測試</h2>
 <p>預設 CLI 測試不需要硬體：</p>
 <div class="code-wrapper"><pre><code class="language-powershell">.\.venv\Scripts\python.exe -m pytest tests\cli -q -p no:cacheprovider

@@ -68,19 +68,26 @@ def test_supported_models_matrix_matches_cli_support(capsys):
         assert psm[command]["real"] is True
     assert psm_data["hardware_validation"] == {
         "read_only": "rs232_read_only",
-        "output": "validated_off_only",
-        "protection": "not_enabled",
+        "output": "validated",
+        "protection": "validated",
         "trigger": "not_supported_by_model",
     }
     for command in {
-        "identify", "measure", "output-state", "read-status", "readback", "capabilities",
+        "identify", "measure", "output-state", "read-status", "readback",
+        "capabilities", "validate-readonly", "log",
     }:
         assert psm[command]["hardware_validation"] == "rs232_read_only"
-    for command in {"output-off", "safe-off"}:
+    for command in {
+        "set", "output-off", "safe-off", "ramp", "ramp-list", "sequence",
+        "protection-status", "protection-set", "clear-protection", "snapshot",
+        "restore-from-snapshot",
+    }:
         assert psm[command]["hardware_validation"] == "validated"
-    for command in {"set", "output-on"}:
+    for command in {"output-on", "cycle-output", "apply", "smoke-output"}:
         assert psm[command]["real"] is True
-        assert psm[command]["hardware_validation"] == "not_enabled"
+        assert psm[command]["hardware_validation"] == (
+            "validated_confirm_threshold_conditional"
+        )
     assert psm["doctor"]["real"] is True
     assert psm["doctor"]["hardware_validation"] == "not_applicable"
     for command in {

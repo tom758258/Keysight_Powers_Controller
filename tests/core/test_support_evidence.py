@@ -16,6 +16,7 @@ from powers_tool_core.support_evidence import (
     SUPPORT_EVIDENCE_RECORDS,
     validate_support_evidence_manifest,
     validate_support_evidence_metadata,
+    validate_support_evidence_registry,
 )
 from powers_tool_core.support_policy import (
     BACKEND_PYVISA_PY,
@@ -85,8 +86,9 @@ EXPECTED_VERIFIED_EVIDENCE = {
     ),
 }
 NEW_E3646A_LOG_EVIDENCE_ID = "keysight-e3646a-asrl-system-visa-20260807-full"
-PSM2010_EVIDENCE_ID = "gw-instek-psm-2010-asrl-system-visa-20260811-full"
-PSM2010_VALIDATED_COMMANDS = frozenset(
+PSM2010_V1_EVIDENCE_ID = "gw-instek-psm-2010-asrl-system-visa-20260811-full"
+PSM2010_V2_EVIDENCE_ID = "gw-instek-psm-2010-asrl-system-visa-20260812-full"
+PSM2010_V1_COMMANDS = frozenset(
     {
         "measure",
         "output-state",
@@ -95,6 +97,21 @@ PSM2010_VALIDATED_COMMANDS = frozenset(
         "capabilities",
         "output-off",
         "safe-off",
+    }
+)
+PSM2010_V2_COMMANDS = frozenset(
+    {
+        "validate-readonly", "log", "doctor", "set", "output-on",
+        "cycle-output", "apply", "ramp", "smoke-output", "ramp-list",
+        "sequence", "protection-status", "protection-set",
+        "clear-protection", "snapshot", "restore-from-snapshot",
+    }
+)
+PSM2010_SEQUENCE_FEATURES = frozenset(
+    ("sequence_action", value)
+    for value in {
+        "apply", "cycle-output", "measure", "output-off", "output-on",
+        "output-state", "readback", "safe-off", "set",
     }
 )
 
@@ -138,7 +155,7 @@ EXPECTED_PROMOTED_COMMANDS = {
     ),
     "keysight-edu36311a": frozenset({"output-on", "log", "doctor"}),
     "keysight-e3646a": frozenset({"output-on", "doctor", "log"}),
-    "gw-instek-psm-2010": PSM2010_VALIDATED_COMMANDS,
+    "gw-instek-psm-2010": PSM2010_V1_COMMANDS | PSM2010_V2_COMMANDS,
 }
 
 EXPECTED_FEATURES_BY_MODEL = {
@@ -227,12 +244,16 @@ def test_evidence_manifest_and_registry_cannot_drift() -> None:
 
 
 def test_registered_evidence_identities_are_exact() -> None:
-    assert len(SUPPORT_EVIDENCE_RECORDS) == 12
-    assert len(SUPPORT_EVIDENCE_BY_ID) == 12
+    assert len(SUPPORT_EVIDENCE_RECORDS) == 13
+    assert len(SUPPORT_EVIDENCE_BY_ID) == 13
     assert set(SUPPORT_EVIDENCE_BY_ID) == (
         set(EXPECTED_EVIDENCE)
         | set(EXPECTED_VERIFIED_EVIDENCE)
-        | {NEW_E3646A_LOG_EVIDENCE_ID, PSM2010_EVIDENCE_ID}
+        | {
+            NEW_E3646A_LOG_EVIDENCE_ID,
+            PSM2010_V1_EVIDENCE_ID,
+            PSM2010_V2_EVIDENCE_ID,
+        }
     )
     for evidence_id, (model_id, transport, artifact_directory) in EXPECTED_EVIDENCE.items():
         record = SUPPORT_EVIDENCE_BY_ID[evidence_id]
@@ -332,8 +353,8 @@ def test_new_e3646a_log_evidence_is_exact_and_historical_record_is_unchanged() -
     assert "log" not in historical.accepted_commands
 
 
-def test_psm2010_verified_evidence_is_exact_and_immutable() -> None:
-    record = SUPPORT_EVIDENCE_BY_ID[PSM2010_EVIDENCE_ID]
+def test_psm2010_20260811_verified_evidence_is_unchanged() -> None:
+    record = SUPPORT_EVIDENCE_BY_ID[PSM2010_V1_EVIDENCE_ID]
     assert (record.model_id, record.transport_scope, record.backend_scope) == (
         "gw-instek-psm-2010",
         "asrl",
@@ -352,9 +373,40 @@ def test_psm2010_verified_evidence_is_exact_and_immutable() -> None:
         "7621936dd5ffc46cdc826370f5a3cb1c65973377e036cab96f79ab0a3fb413a8"
     )
     assert record.source_availability == SOURCE_AVAILABILITY_VERIFIED_LOCAL
-    assert record.accepted_commands == PSM2010_VALIDATED_COMMANDS
+    assert record.accepted_commands == PSM2010_V1_COMMANDS
     assert record.accepted_features_by_command == {}
     assert isinstance(record.accepted_features_by_command, MappingProxyType)
+
+
+def test_psm2010_20260812_verified_evidence_is_exact_and_immutable() -> None:
+    record = SUPPORT_EVIDENCE_BY_ID[PSM2010_V2_EVIDENCE_ID]
+    assert (record.model_id, record.transport_scope, record.backend_scope) == (
+        "gw-instek-psm-2010",
+        "asrl",
+        "system_visa",
+    )
+    assert record.evidence_date == "2026-08-12"
+    assert record.evidence_kind == EVIDENCE_KIND_VERIFIED_FULL_SUITE
+    assert record.artifact_directory == (
+        ".tmp_tests/live_cli_check/"
+        "20260812_211039_gw-instek-psm-2010_ASRL_full/shareable"
+    )
+    assert record.report_path == f"{record.artifact_directory}/report.json"
+    assert record.summary_path == f"{record.artifact_directory}/summary.md"
+    assert record.artifact_schema_version == "2.0"
+    assert record.report_sha256 == (
+        "922a27d22d433b526dcf2a84ad8ceb86e4459fa23bf5b8712ec90687ff687d69"
+    )
+    assert record.source_availability == SOURCE_AVAILABILITY_VERIFIED_LOCAL
+    assert record.accepted_commands == PSM2010_V2_COMMANDS
+    assert record.accepted_features_by_command == {
+        "sequence": PSM2010_SEQUENCE_FEATURES
+    }
+    assert isinstance(record.accepted_features_by_command, MappingProxyType)
+    with pytest.raises(AttributeError):
+        record.accepted_commands.add("measure")  # type: ignore[attr-defined]
+    with pytest.raises(TypeError):
+        record.accepted_features_by_command["sequence"] = frozenset()  # type: ignore[index]
 
 
 def test_evidence_registry_alias_is_rejected() -> None:
@@ -399,6 +451,7 @@ def test_production_evidence_registry_keys_are_exact() -> None:
         assert evidence_id == record.evidence_id
 
     validate_support_evidence_metadata()
+    validate_support_evidence_registry(SUPPORT_EVIDENCE_BY_ID)
     validate_live_support_metadata()
 
 
@@ -529,7 +582,11 @@ def test_each_promoted_command_references_its_exact_verified_evidence() -> None:
                 if scope.validation_status != VALIDATION_STATUS_LIVE_VALIDATED_FULL_SUITE:
                     continue
                 if model_policy.model_id == "gw-instek-psm-2010":
-                    expected_id = PSM2010_EVIDENCE_ID
+                    expected_id = (
+                        PSM2010_V1_EVIDENCE_ID
+                        if command_policy.command in PSM2010_V1_COMMANDS
+                        else PSM2010_V2_EVIDENCE_ID
+                    )
                 elif (
                     model_policy.model_id == "keysight-e3646a"
                     and command_policy.command == "log"

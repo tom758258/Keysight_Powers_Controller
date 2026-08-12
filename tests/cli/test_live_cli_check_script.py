@@ -1773,7 +1773,7 @@ def test_live_cli_check_readonly_plan_only_succeeds_without_hardware(
     assert "hardware_touched" not in json.dumps(report)
 
 
-def test_live_cli_check_psm2010_suite_composition_marks_v2_candidates() -> None:
+def test_live_cli_check_psm2010_suite_composition_uses_product_support() -> None:
     command = r'''
 $env:POWERS_TOOL_LIVE_CLI_CHECK_IMPORT_ONLY = "1"
 . .\scripts\live-cli-check.ps1
@@ -1781,7 +1781,7 @@ $script:NormalizedTarget = "gw-instek-psm-2010"
 $script:TransportScope = "asrl"
 $script:BackendArtifact = Get-BackendArtifactFields -Value $null
 $script:RawResource = "ASRL1::SIM::PSM2010::INSTR"
-$script:PrivateArtifactDir = Join-Path (Get-Location) ".tmp_tests\psm-v2-composition"
+$script:PrivateArtifactDir = Join-Path (Get-Location) ".tmp_tests\psm-product-composition"
 Load-CoreSupportPolicyInventory
 $readonly = @(Get-ReadOnlyCases -Model $script:NormalizedTarget -Live:$true | ForEach-Object {
     [pscustomobject]@{
@@ -1835,9 +1835,7 @@ $nonmatchingCandidateCount = @(
 
     assert result.returncode == 0, result.stdout + result.stderr
     composition = json.loads(result.stdout)
-    assert composition["inventory"]["gw-instek-psm-2010"]["connections"] == [
-        ["asrl", "system_visa"]
-    ]
+    assert "gw-instek-psm-2010" not in composition["inventory"]
     assert composition["nonmatching_candidate_count"] == 0
 
     readonly = composition["readonly"]
@@ -1856,9 +1854,7 @@ $nonmatchingCandidateCount = @(
         "doctor-resource",
         "log-one-sample",
     ]
-    assert {
-        case["command"] for case in readonly if case["candidate"]
-    } == {"validate-readonly", "protection-status", "doctor", "log"}
+    assert all(case["candidate"] is False for case in readonly)
 
     safe_state = composition["safe_state"]
     assert [case["name"] for case in safe_state] == [
@@ -1896,7 +1892,7 @@ $nonmatchingCandidateCount = @(
         "protection-status-after-clear",
     ]
     by_name = {case["name"]: case for case in protection}
-    assert by_name["protection-set-all"]["candidate"] is True
+    assert all(case["candidate"] is False for case in protection)
     assert not any("--ocp-delay" in case["arguments"] for case in protection)
     assert not any("--ocp-delay-trigger" in case["arguments"] for case in protection)
 
@@ -1992,7 +1988,7 @@ def test_live_cli_check_safe_state_summary_excludes_low_power_setpoints() -> Non
     )
 
 
-def test_live_cli_check_psm2010_full_plan_only_covers_v2_candidates() -> None:
+def test_live_cli_check_psm2010_full_plan_only_covers_product_commands() -> None:
     result = _run_live_cli_check(
         "-Target",
         "gw-instek-psm-2010",
@@ -2021,19 +2017,19 @@ def test_live_cli_check_psm2010_full_plan_only_covers_v2_candidates() -> None:
     assert report["state_changing"] is True
     assert report["plan_only"] is True
     assert report["live_executed"] is False
-    assert report["support_policy_mode"] == "validation"
-    assert report["pending_live_support_allowed"] is True
-    assert report["candidate_evidence_only"] is True
+    assert report["support_policy_mode"] == "product"
+    assert report["pending_live_support_allowed"] is False
+    assert report["candidate_evidence_only"] is False
     assert report["promotes_live_support"] is False
     assert report["failures"] == []
     assert report["transport_scope"] == "asrl"
     assert report["backend_scope"] == "system_visa"
-    assert "Support policy mode: `validation`" in summary
-    assert "Pending live support allowed: `true`" in summary
-    assert "Candidate evidence only: `true`" in summary
+    assert "Support policy mode: `product`" in summary
+    assert "Pending live support allowed: `false`" in summary
+    assert "Candidate evidence only: `false`" in summary
     assert "Promotes product support: `false`" in summary
-    assert "candidate validation evidence only" in summary
-    assert "regression validation of an already Product-open exact scope" not in summary
+    assert "candidate validation evidence only" not in summary
+    assert "regression validation of an already Product-open exact scope" in summary
 
     expected_product_commands = {
         "measure",
@@ -2043,8 +2039,6 @@ def test_live_cli_check_psm2010_full_plan_only_covers_v2_candidates() -> None:
         "capabilities",
         "output-off",
         "safe-off",
-    }
-    expected_candidate_commands = {
         "validate-readonly", "log", "doctor", "set", "output-on",
         "cycle-output", "apply", "ramp", "smoke-output", "ramp-list",
         "sequence", "protection-status", "protection-set",
@@ -2052,7 +2046,10 @@ def test_live_cli_check_psm2010_full_plan_only_covers_v2_candidates() -> None:
     }
     planned_commands = {case["command"] for case in report["planned_live_cases"]}
     assert planned_commands & expected_product_commands == expected_product_commands
-    assert planned_commands & expected_candidate_commands == expected_candidate_commands
+    assert not any(
+        "--validation-allow-pending-live-support" in case["arguments"]
+        for case in report["planned_live_cases"]
+    )
     assert planned_commands.isdisjoint(
         {
             "measure-all", "trigger-status", "trigger-step", "trigger-list",

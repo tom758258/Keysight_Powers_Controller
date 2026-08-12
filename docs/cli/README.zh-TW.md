@@ -143,9 +143,10 @@ Product-open command 不代表整個 feature family 開放；missing 或 pending
 scopes 仍會 fail closed。CLI model list 僅包含 Product-active models。
 
 GW Instek PSM-2010 的 Product LIVE scope 僅限 ASRL / RS-232 + system VISA，
-以及 `measure`、`output-state`、`read-status`、`readback`、`capabilities`、
-`output-off`、`safe-off`。其中輸出命令只會關閉輸出，不會啟用輸出或寫入
-setpoint；其他命令、transport 與 backend 仍會 fail closed。
+並開放 Core Product matrix 所列的 23 個 model-aware commands，包括
+setpoint／output、protection、snapshot／restore、ramp 與 software sequence
+workflows。Powers Trigger commands 與 OCP delay 設定、讀回及 trigger 仍不支援；
+USB、TCPIP、GPIB、pyvisa-py、pyvisa-bt 與 custom VISA scopes 仍會 fail closed。
 
 ## 測試
 

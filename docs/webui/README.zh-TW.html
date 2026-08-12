@@ -245,10 +245,10 @@
 <p>WebUI 與 CLI 是建立在共用 Core runtime 之上的平行產品介面。</p>
 <h2 id="product-支援邊界">Product 支援邊界</h2>
 <p>Product model selector 僅包含 Product-active 型號。GW Instek PSM-2010 的
-Product LIVE scope 僅限 ASRL / RS-232 + system VISA，以及 <code>measure</code>、
-<code>output-state</code>、<code>read-status</code>、<code>readback</code>、<code>capabilities</code>、<code>output-off</code>、
-<code>safe-off</code>。其中輸出命令只會關閉輸出，不會啟用輸出或寫入 setpoint；
-其他命令、transport 與 backend 仍會 fail closed。完整範圍以
+Product LIVE scope 僅限 ASRL / RS-232 + system VISA，並開放 Core Product
+matrix 所列的 23 個 model-aware commands，包括 setpoint／output、protection、
+snapshot／restore、ramp 與 software sequence workflows。Powers Trigger
+commands 仍不支援；其他 transport 與 backend 仍會 fail closed。完整範圍以
 <a href="../core/supported-models.md">Supported Models</a> 為準。</p>
 <p>WebUI 內建於單一 <code>powers-tool</code> 發行套件中，同時保留 <code>powers_tool_webui</code> 的 import 邊界。前端由靜態 HTML/CSS 與以 <code>app.js</code> 為 composition root 的原生 JavaScript modules 組成，不需要 bundler 或 npm build pipeline；各功能則分散到 API、execution context、state、device/resource、command form、results、jobs、Live Data、JSON files、workflow editors、i18n 與 locale UI 等聚焦模組。</p>
 <h2 id="section-1">套件與進入點 (Package And Entry Point)</h2>

@@ -184,49 +184,51 @@ def test_command_support_e3646a_rs232_read_only_boundary() -> None:
 def test_command_support_psm2010_product_boundary() -> None:
     assert capabilities.hardware_validation_status("gw-instek-psm-2010") == {
         "read_only": "rs232_read_only",
-        "output": "validated_off_only",
-        "protection": "not_enabled",
+        "output": "validated",
+        "protection": "validated",
         "trigger": "not_supported_by_model",
     }
 
     support = capabilities.command_support("gw-instek-psm-2010")
 
-    expected_dry_run = {
+    readonly_commands = {
         "identify": True,
         "measure": False,
         "output-state": True,
         "readback": False,
         "read-status": False,
         "capabilities": False,
-        "output-off": True,
-        "safe-off": True,
+        "validate-readonly": False,
+        "log": False,
     }
-    for command, dry_run in expected_dry_run.items():
+    for command, dry_run in readonly_commands.items():
         assert support[command]["real"] is True
         assert support[command]["simulate"] is True
         assert support[command]["dry_run"] is dry_run
-        expected_validation = (
-            "validated"
-            if command in {"output-off", "safe-off"}
-            else "rs232_read_only"
-        )
-        assert support[command]["hardware_validation"] == expected_validation
+        assert support[command]["hardware_validation"] == "rs232_read_only"
 
     dry_run_commands = {
-        "set", "apply", "output-on", "cycle-output", "ramp", "ramp-list",
-        "sequence", "smoke-output", "protection-set", "clear-protection",
-        "restore-from-snapshot",
+        "set", "apply", "output-on", "output-off", "safe-off", "cycle-output",
+        "ramp", "ramp-list", "sequence", "smoke-output", "protection-set",
+        "clear-protection", "restore-from-snapshot",
     }
     for command in (
-        "validate-readonly", "set", "apply", "output-on", "cycle-output",
-        "ramp", "ramp-list", "sequence", "smoke-output", "log",
+        "set", "output-off", "safe-off", "ramp", "ramp-list", "sequence",
         "protection-status", "protection-set", "clear-protection", "snapshot",
         "restore-from-snapshot",
     ):
         assert support[command]["real"] is True
         assert support[command]["simulate"] is True
         assert support[command]["dry_run"] is (command in dry_run_commands)
-        assert support[command]["hardware_validation"] == "not_enabled"
+        assert support[command]["hardware_validation"] == "validated"
+
+    for command in ("output-on", "cycle-output", "apply", "smoke-output"):
+        assert support[command]["real"] is True
+        assert support[command]["simulate"] is True
+        assert support[command]["dry_run"] is True
+        assert support[command]["hardware_validation"] == (
+            "validated_confirm_threshold_conditional"
+        )
 
     assert support["doctor"] == {
         "real": True,

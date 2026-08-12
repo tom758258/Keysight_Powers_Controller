@@ -581,8 +581,9 @@ scoped; only commands in the Core exact matrix are opened:
 Only exact commands in the Core product matrix are opened on those
 connections. E3646A and PSM-2010 remain restricted to ASRL / RS-232 + system
 VISA; their USB and LAN paths remain outside the current scope. PSM-2010 opens
-only `measure`, `output-state`, `read-status`, `readback`, `capabilities`,
-`output-off`, and `safe-off`; setpoint and output-enable commands remain closed.
+the exact 23 model-aware commands in the Core Product matrix, including
+setpoint/output, protection, snapshot/restore, ramp, and software-sequence
+workflows. Powers Trigger commands remain unsupported.
 
 | Model | USB | LAN | ASRL / RS-232 |
 | --- | --- | --- | --- |

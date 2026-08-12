@@ -96,6 +96,41 @@ _PSM2010_VERIFIED_COMMANDS = frozenset(
         "safe-off",
     }
 )
+_PSM2010_20260812_VERIFIED_COMMANDS = frozenset(
+    {
+        "validate-readonly",
+        "log",
+        "doctor",
+        "set",
+        "output-on",
+        "cycle-output",
+        "apply",
+        "ramp",
+        "smoke-output",
+        "ramp-list",
+        "sequence",
+        "protection-status",
+        "protection-set",
+        "clear-protection",
+        "snapshot",
+        "restore-from-snapshot",
+    }
+)
+_PSM2010_20260812_VERIFIED_FEATURES = {
+    "sequence": frozenset(
+        {
+            (FEATURE_KIND_SEQUENCE_ACTION, "apply"),
+            (FEATURE_KIND_SEQUENCE_ACTION, "cycle-output"),
+            (FEATURE_KIND_SEQUENCE_ACTION, "measure"),
+            (FEATURE_KIND_SEQUENCE_ACTION, "output-off"),
+            (FEATURE_KIND_SEQUENCE_ACTION, "output-on"),
+            (FEATURE_KIND_SEQUENCE_ACTION, "output-state"),
+            (FEATURE_KIND_SEQUENCE_ACTION, "readback"),
+            (FEATURE_KIND_SEQUENCE_ACTION, "safe-off"),
+            (FEATURE_KIND_SEQUENCE_ACTION, "set"),
+        }
+    )
+}
 
 _E36312A_ACCEPTED_FEATURES = {
     "sequence": frozenset(
@@ -369,6 +404,16 @@ SUPPORT_EVIDENCE_RECORDS = (
         _PSM2010_VERIFIED_COMMANDS,
         {},
         evidence_date="2026-08-11",
+    ),
+    _verified_record(
+        "gw-instek-psm-2010-asrl-system-visa-20260812-full",
+        "gw-instek-psm-2010",
+        "asrl",
+        ".tmp_tests/live_cli_check/20260812_211039_gw-instek-psm-2010_ASRL_full/shareable",
+        "922a27d22d433b526dcf2a84ad8ceb86e4459fa23bf5b8712ec90687ff687d69",
+        _PSM2010_20260812_VERIFIED_COMMANDS,
+        _PSM2010_20260812_VERIFIED_FEATURES,
+        evidence_date="2026-08-12",
     ),
 )
 

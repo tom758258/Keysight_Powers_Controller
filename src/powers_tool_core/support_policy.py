@@ -108,35 +108,10 @@ _PENDING_STATUSES = frozenset({VALIDATION_STATUS_TRANSPORT_PENDING})
 
 # Internal-only admission for exact live-validation candidates. These entries
 # are deliberately absent from public support metadata and accepted evidence.
-_VALIDATION_ONLY_COMMAND_CANDIDATES: Mapping[str, frozenset[str]] = {
-    "gw-instek-psm-2010": frozenset(
-        {
-            "validate-readonly",
-            "log",
-            "doctor",
-            "set",
-            "output-on",
-            "cycle-output",
-            "apply",
-            "ramp",
-            "smoke-output",
-            "ramp-list",
-            "sequence",
-            "protection-status",
-            "protection-set",
-            "clear-protection",
-            "snapshot",
-            "restore-from-snapshot",
-        }
-    )
-}
+_VALIDATION_ONLY_COMMAND_CANDIDATES: Mapping[str, frozenset[str]] = {}
 _VALIDATION_ONLY_EXACT_CONNECTIONS: Mapping[
     str, frozenset[tuple[str, str]]
-] = {
-    "gw-instek-psm-2010": frozenset(
-        {(TRANSPORT_ASRL, BACKEND_SYSTEM_VISA)}
-    )
-}
+] = {}
 
 
 def internal_validation_candidate_inventory() -> Mapping[str, Mapping[str, tuple]]:
@@ -1116,19 +1091,7 @@ _VERIFIED_EVIDENCE_IDS = {
     ),
 }
 
-_VERIFIED_COMMAND_EVIDENCE_IDS = {
-    (
-        "keysight-e3646a",
-        TRANSPORT_ASRL,
-        "log",
-    ): "keysight-e3646a-asrl-system-visa-20260807-full",
-}
-
-_VERIFIED_COMMAND_NOTES = {
-    ("keysight-e3646a", TRANSPORT_ASRL, "log"): _E3646A_LOG_VERIFIED_BACKEND_NOTE,
-}
-
-_PSM2010_VALIDATED_COMMANDS = frozenset(
+_PSM2010_V1_PRODUCT_COMMANDS = frozenset(
     {
         "measure",
         "output-state",
@@ -1139,6 +1102,35 @@ _PSM2010_VALIDATED_COMMANDS = frozenset(
         "safe-off",
     }
 )
+_PSM2010_V2_PRODUCT_COMMANDS = frozenset(
+    {
+        "validate-readonly", "log", "doctor", "set", "output-on",
+        "cycle-output", "apply", "ramp", "smoke-output", "ramp-list",
+        "sequence", "protection-status", "protection-set",
+        "clear-protection", "snapshot", "restore-from-snapshot",
+    }
+)
+_PSM2010_PRODUCT_COMMANDS = (
+    _PSM2010_V1_PRODUCT_COMMANDS | _PSM2010_V2_PRODUCT_COMMANDS
+)
+
+_VERIFIED_COMMAND_EVIDENCE_IDS = {
+    (
+        "keysight-e3646a",
+        TRANSPORT_ASRL,
+        "log",
+    ): "keysight-e3646a-asrl-system-visa-20260807-full",
+    **{
+        ("gw-instek-psm-2010", TRANSPORT_ASRL, command): (
+            "gw-instek-psm-2010-asrl-system-visa-20260812-full"
+        )
+        for command in _PSM2010_V2_PRODUCT_COMMANDS
+    },
+}
+
+_VERIFIED_COMMAND_NOTES = {
+    ("keysight-e3646a", TRANSPORT_ASRL, "log"): _E3646A_LOG_VERIFIED_BACKEND_NOTE,
+}
 
 _PROMOTED_COMMANDS = {
     "keysight-e36312a": frozenset(
@@ -1149,7 +1141,7 @@ _PROMOTED_COMMANDS = {
     ),
     "keysight-edu36311a": frozenset({"output-on", "log", "doctor"}),
     "keysight-e3646a": frozenset({"output-on", "doctor", "log"}),
-    "gw-instek-psm-2010": _PSM2010_VALIDATED_COMMANDS,
+    "gw-instek-psm-2010": _PSM2010_PRODUCT_COMMANDS,
 }
 
 _VALIDATED_COMMANDS = {
@@ -1179,7 +1171,7 @@ _VALIDATED_COMMANDS = {
             "ramp-list", "sequence", "output-on", "doctor", "log",
         }
     ),
-    "gw-instek-psm-2010": _PSM2010_VALIDATED_COMMANDS,
+    "gw-instek-psm-2010": _PSM2010_PRODUCT_COMMANDS,
 }
 
 _VALIDATED_TRANSPORTS = {

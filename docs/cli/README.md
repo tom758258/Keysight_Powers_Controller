@@ -244,8 +244,8 @@ The complete Product-open command inventory remains the
 Only exact commands in that matrix are opened for normal LIVE use on those
 connections. E3646A and PSM-2010 live use remains restricted to ASRL /
 RS-232 + system VISA; their USB and LAN paths remain outside the current scope.
-PSM-2010 is Product-open only for `measure`, `output-state`, `read-status`,
-`readback`, `capabilities`, `output-off`, and `safe-off`.
+PSM-2010 is Product-open for the exact 23 model-aware commands listed in the
+Core Product matrix.
 Sequence actions and Trigger Step/List sources are also exact feature-policy
 requirements. Missing or pending feature entries remain closed in normal CLI
 Product mode; a Product-open command does not imply that an unregistered action
@@ -683,12 +683,11 @@ the aliases when you need actual control characters.
 ### PSM-2010 RS-232 / ASRL Scope
 
 PSM-2010 Product LIVE support is ASRL/RS-232 + system VISA only. Its exact
-model-aware command scope is `measure`, `output-state`, `read-status`,
-`readback`, `capabilities`, `output-off`, and `safe-off`. The two output
-commands may turn output OFF but do not enable output or write setpoints.
-Setpoint, output-enable, protection, trigger, snapshot, ramp, and sequence
-commands remain closed, as do USB, TCPIP, pyvisa-py, pyvisa-bt, and custom VISA
-scopes.
+model-aware scope includes the 23 commands in the Core Product matrix,
+including setpoint/output, protection, snapshot/restore, ramp, and software
+sequence workflows. Powers Trigger commands and OCP delay
+configuration/readback/trigger remain unsupported. USB, TCPIP, GPIB,
+pyvisa-py, pyvisa-bt, and custom VISA scopes remain closed.
 
 ### Read-Only Command Examples
 
