@@ -380,7 +380,7 @@ def validate_sequence_step(request: SequenceRequest, step: dict[str, Any]) -> No
         voltage = parameters["voltage"]
         current = parameters["current"]
         limits = _safety_limits(request)
-        channels = (1, 2, 3) if channel == "all" else (channel,)
+        channels = _early_validation_channels(request, channel)
         try:
             for selected_channel in channels:
                 validate_setpoint(channel=selected_channel, voltage=voltage, current=current, limits=limits)
@@ -393,7 +393,7 @@ def validate_sequence_step(request: SequenceRequest, step: dict[str, Any]) -> No
         if action == "cycle-output" and duration_ms < 1:
             raise CoreValidationError("cycle-output duration_ms must be at least 1")
         try:
-            for selected_channel in sequence_preview_channels(channel):
+            for selected_channel in _early_validation_channels(request, channel):
                 validate_channel(selected_channel, _safety_limits(request))
         except (SafetyConfigError, SafetyValidationError) as exc:
             raise CoreValidationError(str(exc)) from exc
@@ -699,6 +699,24 @@ def _preflight_sequence(request: SequenceRequest, power_supply: Any, plan: dict[
     state: dict[int, dict[str, float]] = {}
     enable_channels: set[int] = set()
     for step in plan["steps"]:
+        if step["action"] == "output-off":
+            selected = sequence_channel(
+                step["parameters"].get("channel", 1),
+                allow_all=True,
+            )
+            for channel in sequence_channels(selected, power_supply.capabilities.channels):
+                try:
+                    validate_channel(
+                        channel,
+                        _safety_limits_for_channel(
+                            request,
+                            model=model,
+                            channel=channel,
+                        ),
+                    )
+                except (SafetyConfigError, SafetyValidationError) as exc:
+                    raise CoreValidationError(str(exc)) from exc
+    for step in plan["steps"]:
         if step["action"] in {"output-on", "cycle-output"} or (
             step["action"] == "apply" and not step["parameters"].get("no_output", False)
         ):
@@ -832,6 +850,18 @@ def _validate_no_hardware_sequence_channels(request: SequenceRequest, channel: i
         return
     if int(channel) not in supported:
         raise CoreValidationError(f"channel {channel} is not supported; supported: {supported}")
+
+
+def _early_validation_channels(
+    request: SequenceRequest,
+    channel: int | str,
+) -> tuple[int, ...]:
+    if channel != "all":
+        return (int(channel),)
+    model_id = request.runtime.planning_model_id or request.runtime.expected_model_id
+    if model_id is None and request.runtime.planning_profile_id is None:
+        return ()
+    return no_hardware_channels(model_id, request.runtime.planning_profile_id)
 
 
 def _safety_limits(request: SequenceRequest) -> Any:

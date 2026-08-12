@@ -244,6 +244,75 @@ def test_psm2010_sequence_dry_run_uses_single_output_scpi_preview() -> None:
     assert data["plan"]["steps"][0]["preview"]["commands"] == ["CURR 0.1", "VOLT 1"]
 
 
+@pytest.mark.parametrize(
+    "step",
+    [
+        {"action": "apply", "channel": "all", "voltage": 1.0, "current": 0.1},
+        {"action": "output-on", "channel": "all"},
+        {"action": "output-off", "channel": "all"},
+        {"action": "cycle-output", "channel": "all", "duration_ms": 10},
+    ],
+)
+def test_psm2010_sequence_all_uses_single_channel_safety_inventory(
+    tmp_path,
+    step: dict[str, object],
+) -> None:
+    safety_config = tmp_path / "safety.toml"
+    safety_config.write_text("[safety]\nallowed_channels = [1]\n", encoding="utf-8")
+
+    data = run_sequence(
+        request(
+            {"version": 1, "steps": [step]},
+            resource="ASRL1::SIM::PSM2010::INSTR",
+            dry_run=True,
+            planning_model_id="gw-instek-psm-2010",
+            safety_config=str(safety_config),
+        )
+    )
+
+    assert data["status"] == "planned"
+    assert all("@2" not in command and "@3" not in command for command in data["plan"]["steps"][0]["preview"]["commands"])
+
+
+def test_psm2010_sequence_rejects_unsupported_explicit_channel() -> None:
+    with pytest.raises(CoreValidationError, match="channel 2"):
+        run_sequence(
+            request(
+                {
+                    "version": 1,
+                    "steps": [
+                        {"action": "apply", "channel": 2, "voltage": 1.0, "current": 0.1}
+                    ],
+                },
+                resource="ASRL1::SIM::PSM2010::INSTR",
+                dry_run=True,
+                planning_model_id="gw-instek-psm-2010",
+            )
+        )
+
+
+def test_psm2010_live_output_off_all_defers_to_driver_channel_inventory(tmp_path) -> None:
+    safety_config = tmp_path / "safety.toml"
+    safety_config.write_text("[safety]\nallowed_channels = [1]\n", encoding="utf-8")
+    session = PSM2010Session()
+
+    data = run_sequence(
+        request(
+            {
+                "version": 1,
+                "steps": [{"action": "output-off", "channel": "all"}],
+            },
+            resource="ASRL1::INSTR",
+            safety_config=str(safety_config),
+            support_policy_mode=SUPPORT_POLICY_MODE_VALIDATION,
+        ),
+        opener=lambda *args, **kwargs: session,
+    )
+
+    assert data["status"] == "completed"
+    assert session.writes == ["OUTP OFF"]
+
+
 def test_psm2010_sequence_uses_shared_range_resolution() -> None:
     session = PSM2010Session()
     data = run_sequence(

@@ -149,3 +149,67 @@ def test_psm2010_protection_plan_rejects_delay_trigger_before_open() -> None:
         )
 
     assert opened is False
+
+
+@pytest.mark.parametrize(
+    ("parameters", "message"),
+    [
+        ({"ocp_delay_trigger": "setting-change"}, "does not support the ocp_delay_trigger"),
+        ({"ocp_delay": 0.09}, "0.1 through 10"),
+        ({"ocp_delay": 10.1}, "0.1 through 10"),
+    ],
+)
+def test_psm2010_expected_model_prevalidates_protection_before_open(
+    parameters: dict[str, object],
+    message: str,
+) -> None:
+    opened = False
+
+    def opener(*_args, **_kwargs):
+        nonlocal opened
+        opened = True
+        raise AssertionError("opener must not run")
+
+    with pytest.raises(CoreValidationError, match=message):
+        run_protection(
+            OperationRequest(
+                "protection-set",
+                RuntimeOptions(
+                    resource="ASRL1::fixture::INSTR",
+                    expected_model_id="gw-instek-psm-2010",
+                    confirm=True,
+                ),
+                {"channel": 1, **parameters},
+            ),
+            opener=opener,
+        )
+
+    assert opened is False
+
+
+@pytest.mark.parametrize("ocp_delay", [0.1, 10.0])
+def test_psm2010_expected_model_accepts_ocp_delay_boundaries_before_open(
+    ocp_delay: float,
+) -> None:
+    opened = False
+
+    def opener(*_args, **_kwargs):
+        nonlocal opened
+        opened = True
+        raise AssertionError("boundary reached opener")
+
+    with pytest.raises(AssertionError, match="boundary reached opener"):
+        run_protection(
+            OperationRequest(
+                "protection-set",
+                RuntimeOptions(
+                    resource="ASRL1::fixture::INSTR",
+                    expected_model_id="gw-instek-psm-2010",
+                    confirm=True,
+                ),
+                {"channel": 1, "ocp_delay": ocp_delay},
+            ),
+            opener=opener,
+        )
+
+    assert opened is True

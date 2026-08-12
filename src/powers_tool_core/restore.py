@@ -17,6 +17,7 @@ from powers_tool_core.drivers.e36312a import E36312APowerSupply
 from powers_tool_core.drivers.psm2010 import (
     PSM2010PowerSupply,
     _compatible_programming_ranges,
+    _validate_psm2010_ovp_level,
 )
 from powers_tool_core.errors import VisaConnectionError
 from powers_tool_core.factory import create_power_supply
@@ -26,6 +27,7 @@ from powers_tool_core.model_resolution import resolve_no_hardware_runtime
 from powers_tool_core.live_support import enforce_live_support_for_idn
 from powers_tool_core.operations import IDN_QUERY, ScpiLoggingSession
 from powers_tool_core.parameter_constraints import strict_boolean_parameter, strict_channel_parameter
+from powers_tool_core.safety import SafetyValidationError
 from powers_tool_core.setpoint_limits import validate_effective_setpoint
 from powers_tool_core.testing.simulator import SimulatedResourceManager
 from powers_tool_core.snapshot import SNAPSHOT_KIND, SNAPSHOT_SCHEMA_VERSION
@@ -690,6 +692,11 @@ def _validate_protection_records(
                 ovp_voltage,
                 "snapshot protection_settings[].protection.ovp_voltage",
             )
+            if psm2010:
+                try:
+                    _validate_psm2010_ovp_level(float(ovp_voltage))
+                except SafetyValidationError as exc:
+                    raise CoreValidationError(str(exc)) from exc
         ocp_enabled = protection.get("ocp_enabled")
         if ocp_enabled is not None and type(ocp_enabled) is not bool:
             raise CoreValidationError("snapshot ocp_enabled must be a boolean or null")

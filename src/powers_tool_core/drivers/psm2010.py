@@ -152,15 +152,12 @@ class PSM2010PowerSupply(GenericScpiPowerSupply):
 
     def set_over_voltage_protection(self, *, channel: Channel = None, voltage: float) -> None:
         selected_channel = _psm2010_channel(channel)
+        _validate_psm2010_ovp_level(voltage)
         validate_setpoint(
             channel=selected_channel,
             voltage=voltage,
             limits=self._safety_limits,
         )
-        if voltage > 22.0:
-            raise SafetyValidationError(
-                f"over-voltage protection level {voltage:g} exceeds PSM-2010 maximum 22 V"
-            )
         self._write(f"VOLT:PROT {_format_number(voltage)}", channel=selected_channel)
 
     def set_over_current_protection_delay(self, *, channel: Channel = None, seconds: float) -> None:
@@ -211,6 +208,20 @@ def _psm2010_channel(channel: Channel) -> int:
     if channel in (None, 1, "1"):
         return 1
     raise ValueError("PSM-2010 channel must be 1")
+
+
+def _validate_psm2010_ovp_level(voltage: float) -> float:
+    """Validate the instrument's fixed OVP programming boundary."""
+
+    try:
+        numeric = float(voltage)
+    except (TypeError, ValueError) as exc:
+        raise SafetyValidationError("PSM-2010 OVP level must be a finite number") from exc
+    if not math.isfinite(numeric):
+        raise SafetyValidationError("PSM-2010 OVP level must be a finite number")
+    if not 0.0 <= numeric <= 22.0:
+        raise SafetyValidationError("PSM-2010 OVP level must be from 0 through 22 V")
+    return numeric
 
 
 def _canonical_output_range(output_range: str) -> str:

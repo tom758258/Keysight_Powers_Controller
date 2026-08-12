@@ -148,7 +148,7 @@ def _run_set(request: OperationRequest, *, opener: Callable[..., Any], scpi_logg
     ocp_delay = _optional_ocp_delay(p.get("ocp_delay"))
     ocp_delay_trigger = _optional_ocp_delay_trigger(p.get("ocp_delay_trigger"))
     _validate_psm_protection_options(
-        request.runtime.planning_model_id == "gw-instek-psm-2010",
+        _known_runtime_model_id(request) == "gw-instek-psm-2010",
         ocp_delay=ocp_delay,
         ocp_delay_trigger=ocp_delay_trigger,
     )
@@ -379,6 +379,10 @@ def _validate_psm_protection_options(
         raise CoreValidationError(
             "PSM-2010 ocp_delay must be from 0.1 through 10 seconds"
         )
+
+
+def _known_runtime_model_id(request: OperationRequest) -> str | None:
+    return request.runtime.planning_model_id or request.runtime.expected_model_id
 
 
 def _safety_limits(request: OperationRequest):

@@ -221,6 +221,26 @@ def test_psm2010_driver_maps_protection_status_settings_and_clear() -> None:
     ]
 
 
+@pytest.mark.parametrize("voltage", [-0.1, float("nan"), float("inf"), 22.1])
+def test_psm2010_driver_rejects_invalid_ovp_without_io(voltage) -> None:
+    session = FakeSession()
+    power_supply = PSM2010PowerSupply(session)
+
+    with pytest.raises(SafetyValidationError, match="PSM-2010 OVP|must be finite"):
+        power_supply.set_over_voltage_protection(channel=1, voltage=voltage)
+
+    assert session.commands == []
+
+
+def test_psm2010_driver_accepts_ovp_maximum() -> None:
+    session = FakeSession()
+    power_supply = PSM2010PowerSupply(session)
+
+    power_supply.set_over_voltage_protection(channel=1, voltage=22.0)
+
+    assert session.commands == ["VOLT:PROT 22"]
+
+
 @pytest.mark.parametrize("delay", [0.0, 10.1])
 def test_psm2010_driver_rejects_ambiguous_or_out_of_range_ocp_delay(delay) -> None:
     session = FakeSession()

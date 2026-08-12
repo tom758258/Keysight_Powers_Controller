@@ -310,6 +310,49 @@ def test_psm2010_restore_plan_defensively_requires_output_range() -> None:
         )
 
 
+@pytest.mark.parametrize("ovp_voltage", [-0.1, float("nan"), float("inf"), 22.1])
+def test_psm2010_restore_rejects_invalid_ovp_before_open(ovp_voltage: float) -> None:
+    snapshot = deepcopy(_psm_snapshot())
+    snapshot["protection_settings"][0]["protection"]["ovp_voltage"] = ovp_voltage
+    opened = False
+
+    def forbidden_opener(*args: object, **kwargs: object) -> object:
+        nonlocal opened
+        opened = True
+        raise AssertionError("opener must not be called")
+
+    with pytest.raises(CoreValidationError, match="OVP|finite number"):
+        run_core_command(
+            OperationRequest(
+                "restore-from-snapshot",
+                RuntimeOptions(
+                    resource="ASRL1::fixture::INSTR",
+                    expected_model_id="gw-instek-psm-2010",
+                    confirm=True,
+                ),
+                {"document": snapshot, "channel": 1},
+            ),
+            opener=forbidden_opener,
+        )
+
+    assert opened is False
+
+
+def test_psm2010_restore_accepts_ovp_maximum_during_admission() -> None:
+    snapshot = deepcopy(_psm_snapshot())
+    snapshot["protection_settings"][0]["protection"]["ovp_voltage"] = 22.0
+
+    admitted = validate_request_admission(
+        OperationRequest(
+            "restore-from-snapshot",
+            RuntimeOptions(dry_run=True),
+            {"document": snapshot, "channel": 1},
+        )
+    )
+
+    assert admitted.parameters["document"]["protection_settings"][0]["protection"]["ovp_voltage"] == 22.0
+
+
 @pytest.mark.parametrize(
     "runtime",
     [
