@@ -1461,7 +1461,7 @@ function Get-SnapshotCases {
         $cases.Add((New-CommandCase -Name "restore-off-save-a" -Suite "snapshot" -Phase $phase -Args @("snapshot", "--json", "--resource", $resource, "--snapshot-json", $snapshotA, "--log-scpi") -LiveHardwareExpected:$true -GeneratedArtifacts @($snapshotA) -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "snapshot")))
         $cases.Add((New-CommandCase -Name "restore-off-mutate-setpoints" -Suite "snapshot" -Phase $phase -Args (@("apply") + $commonAll + @("--voltage", "0.5", "--current", "0.04", "--no-output")) -StateChanging:$true -LiveHardwareExpected:$true -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "apply")))
         $cases.Add((New-CommandCase -Name "restore-off-mutate-protection" -Suite "snapshot" -Phase $phase -Args @("protection-set", "--json", "--resource", $resource, "--channel", "all", "--ovp-voltage", "4", "--ocp", "off", "--confirm", "--log-scpi") -StateChanging:$true -LiveHardwareExpected:$true -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "protection-set")))
-        $cases.Add((New-CommandCase -Name "restore-off-save-b" -Suite "snapshot" -Phase $phase -Args @("snapshot", "--json", "--resource", $resource, "--snapshot-json", $snapshotB, "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "snapshot-mutation" -GeneratedArtifacts @($snapshotB) -CompareSnapshotPaths @($snapshotA,$snapshotB) -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "snapshot")))
+        $cases.Add((New-CommandCase -Name "restore-off-save-b" -Suite "snapshot" -Phase $phase -Args @("snapshot", "--json", "--resource", $resource, "--snapshot-json", $snapshotB, "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "snapshot-mutation" -ExpectedChannels $expectedChannels -GeneratedArtifacts @($snapshotB) -CompareSnapshotPaths @($snapshotA,$snapshotB) -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "snapshot")))
         $cases.Add((New-CommandCase -Name "restore-off-execute" -Suite "snapshot" -Phase $phase -Args @("restore-from-snapshot", "--json", "--resource", $resource, "--snapshot", $snapshotA, "--channel", "all", "--confirm", "--log-scpi") -StateChanging:$true -LiveHardwareExpected:$true -ValidationKind "restore" -ExpectedChannels $expectedChannels -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "restore-from-snapshot")))
         $cases.Add((New-CommandCase -Name "restore-off-save-c" -Suite "snapshot" -Phase $phase -Args @("snapshot", "--json", "--resource", $resource, "--snapshot-json", $snapshotC, "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "snapshot-compare" -GeneratedArtifacts @($snapshotC) -CompareSnapshotPaths @($snapshotA,$snapshotC) -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "snapshot")))
         $cases.Add((New-CommandCase -Name "restore-off-assert-outputs" -Suite "snapshot" -Phase $phase -Args @("output-state", "--json", "--resource", $resource, "--channel", "all", "--log-scpi") -LiveHardwareExpected:$true -ValidationKind "output-state" -ExpectedChannels $expectedChannels -ExpectedOutputEnabled $false))
@@ -1794,28 +1794,33 @@ function Get-CaseAssertionFailures {
         }
     }
     elseif ($kind -eq "snapshot-mutation") {
-        try {
-            $left = Get-Content -LiteralPath $Case.compare_snapshot_paths[0] -Raw | ConvertFrom-Json
-            $right = Get-Content -LiteralPath $Case.compare_snapshot_paths[1] -Raw | ConvertFrom-Json
-            foreach ($channel in @(1,2,3)) {
-                $leftReadback = @($left.readback | Where-Object { $_.channel -eq $channel })
-                $rightReadback = @($right.readback | Where-Object { $_.channel -eq $channel })
-                $leftProtection = @($left.protection_settings | Where-Object { $_.channel -eq $channel })
-                $rightProtection = @($right.protection_settings | Where-Object { $_.channel -eq $channel })
-                if ($leftReadback.Count -ne 1 -or $rightReadback.Count -ne 1 -or
-                    $leftReadback[0].setpoints.voltage -eq $rightReadback[0].setpoints.voltage -or
-                    $leftReadback[0].setpoints.current -eq $rightReadback[0].setpoints.current) {
-                    $failures.Add("$($Case.name) did not prove changed setpoints for channel $channel.")
-                }
-                if ($leftProtection.Count -ne 1 -or $rightProtection.Count -ne 1 -or
-                    $leftProtection[0].protection.ovp_voltage -eq $rightProtection[0].protection.ovp_voltage -or
-                    $leftProtection[0].protection.ocp_enabled -eq $rightProtection[0].protection.ocp_enabled) {
-                    $failures.Add("$($Case.name) did not prove changed OVP and OCP state for channel $channel.")
+        if (@($Case.expected_channels).Count -eq 0) {
+            $failures.Add("$($Case.name) snapshot-mutation requires expected channels.")
+        }
+        else {
+            try {
+                $left = Get-Content -LiteralPath $Case.compare_snapshot_paths[0] -Raw | ConvertFrom-Json
+                $right = Get-Content -LiteralPath $Case.compare_snapshot_paths[1] -Raw | ConvertFrom-Json
+                foreach ($channel in $Case.expected_channels) {
+                    $leftReadback = @($left.readback | Where-Object { $_.channel -eq $channel })
+                    $rightReadback = @($right.readback | Where-Object { $_.channel -eq $channel })
+                    $leftProtection = @($left.protection_settings | Where-Object { $_.channel -eq $channel })
+                    $rightProtection = @($right.protection_settings | Where-Object { $_.channel -eq $channel })
+                    if ($leftReadback.Count -ne 1 -or $rightReadback.Count -ne 1 -or
+                        $leftReadback[0].setpoints.voltage -eq $rightReadback[0].setpoints.voltage -or
+                        $leftReadback[0].setpoints.current -eq $rightReadback[0].setpoints.current) {
+                        $failures.Add("$($Case.name) did not prove changed setpoints for channel $channel.")
+                    }
+                    if ($leftProtection.Count -ne 1 -or $rightProtection.Count -ne 1 -or
+                        $leftProtection[0].protection.ovp_voltage -eq $rightProtection[0].protection.ovp_voltage -or
+                        $leftProtection[0].protection.ocp_enabled -eq $rightProtection[0].protection.ocp_enabled) {
+                        $failures.Add("$($Case.name) did not prove changed OVP and OCP state for channel $channel.")
+                    }
                 }
             }
-        }
-        catch {
-            $failures.Add("$($Case.name) could not prove the pre-restore snapshot mutation.")
+            catch {
+                $failures.Add("$($Case.name) could not prove the pre-restore snapshot mutation.")
+            }
         }
     }
     elseif ($kind -eq "snapshot-readback") {

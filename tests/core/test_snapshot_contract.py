@@ -4,6 +4,7 @@ from copy import deepcopy
 
 import pytest
 
+import powers_tool_core.restore as restore_module
 from powers_tool_core.command_runner import run_core_command, validate_request_admission
 from powers_tool_core.core import CoreValidationError, OperationRequest, RuntimeOptions
 from powers_tool_core.models import parse_idn
@@ -290,6 +291,103 @@ def test_psm2010_restore_plan_orders_range_before_protection_and_setpoints() -> 
         "OUTP ON",
     ]
     assert not any(step["command"].startswith("CURR:PROT:DEL ") for step in plan["steps"])
+
+
+@pytest.mark.parametrize("ocp_delay", [0.1, 10.0])
+def test_psm2010_snapshot_rejects_non_null_ocp_delay(ocp_delay: float) -> None:
+    snapshot = deepcopy(_psm_snapshot())
+    snapshot["protection_settings"][0]["protection"]["ocp_delay"] = ocp_delay
+
+    with pytest.raises(
+        CoreValidationError,
+        match="PSM-2010 snapshot ocp_delay must be null",
+    ):
+        validate_snapshot_document(snapshot)
+
+
+def test_psm2010_restore_rejects_non_null_ocp_delay_before_open() -> None:
+    snapshot = deepcopy(_psm_snapshot())
+    snapshot["protection_settings"][0]["protection"]["ocp_delay"] = 0.1
+    opened = False
+
+    def forbidden_opener(*args: object, **kwargs: object) -> object:
+        nonlocal opened
+        opened = True
+        raise AssertionError("opener must not be called")
+
+    with pytest.raises(
+        CoreValidationError,
+        match="PSM-2010 snapshot ocp_delay must be null",
+    ):
+        run_core_command(
+            OperationRequest(
+                "restore-from-snapshot",
+                RuntimeOptions(
+                    resource="ASRL1::fixture::INSTR",
+                    expected_model_id="gw-instek-psm-2010",
+                    confirm=True,
+                ),
+                {"document": snapshot, "channel": 1},
+            ),
+            opener=forbidden_opener,
+        )
+
+    assert opened is False
+
+
+def test_psm2010_restore_plan_rejects_non_null_ocp_delay_before_steps(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    snapshot = deepcopy(_psm_snapshot())
+    snapshot["protection_settings"][0]["protection"]["ocp_delay"] = 0.1
+    created_steps = []
+
+    def recording_restore_step(*args: object, **kwargs: object) -> dict[str, object]:
+        created_steps.append((args, kwargs))
+        return {}
+
+    monkeypatch.setattr(restore_module, "_restore_step", recording_restore_step)
+
+    with pytest.raises(
+        CoreValidationError,
+        match="PSM-2010 snapshot ocp_delay must be null",
+    ):
+        restore_plan(
+            snapshot,
+            resource="ASRL1::fixture::INSTR",
+            channels=(1,),
+            restore_output_state=False,
+            allow_output_on=False,
+        )
+
+    assert created_steps == []
+
+
+def test_e36312a_restore_plan_keeps_non_null_ocp_delay() -> None:
+    snapshot = _snapshot()
+
+    plan = restore_plan(
+        snapshot,
+        resource="USB0::SIM::E36312A::INSTR",
+        channels=(1,),
+        restore_output_state=False,
+        allow_output_on=False,
+    )
+
+    delay_steps = [
+        step
+        for step in plan["steps"]
+        if step["action"] == "set_over_current_protection_delay"
+    ]
+    assert delay_steps == [
+        {
+            "index": 4,
+            "type": "driver_action",
+            "action": "set_over_current_protection_delay",
+            "command": "CURR:PROT:DEL 0.08,(@1)",
+            "parameters": {"channel": 1, "seconds": 0.08},
+        }
+    ]
 
 
 @pytest.mark.parametrize("output_range", [None, "P8V", "AUTO", "low"])

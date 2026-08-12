@@ -695,6 +695,121 @@ $record | ConvertTo-Json -Depth 10 -Compress
     assert (record["assertion_failures"] == []) is (expected_result == "passed")
 
 
+def test_snapshot_mutation_cases_use_model_aware_channels() -> None:
+    command = r'''
+$env:POWERS_TOOL_LIVE_CLI_CHECK_IMPORT_ONLY = "1"
+. .\scripts\live-cli-check.ps1
+$script:RawResource = "ASRL1::FIXTURE::INSTR"
+$script:PrivateArtifactDir = Join-Path (Get-Location) ".tmp_tests\snapshot-mutation-composition"
+$script:CandidateInventory = $null
+$psm = @(Get-SnapshotCases -Model "gw-instek-psm-2010" -Live $true | Where-Object { $_.name -eq "restore-off-save-b" })[0]
+$e36312a = @(Get-SnapshotCases -Model "keysight-e36312a" -Live $true | Where-Object { $_.name -eq "restore-off-save-b" })[0]
+[pscustomobject]@{
+    psm_kind = $psm.validation_kind
+    psm_channels = @($psm.expected_channels)
+    e36312a_kind = $e36312a.validation_kind
+    e36312a_channels = @($e36312a.expected_channels)
+} | ConvertTo-Json -Depth 5 -Compress
+'''
+    result = _run_powershell_command(command)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    composition = json.loads(result.stdout)
+    assert composition == {
+        "psm_kind": "snapshot-mutation",
+        "psm_channels": [1],
+        "e36312a_kind": "snapshot-mutation",
+        "e36312a_channels": [1, 2, 3],
+    }
+
+
+def _snapshot_mutation_failures(
+    tmp_path: Path,
+    *,
+    changed: bool,
+    expected_channels: tuple[int, ...],
+) -> list[str]:
+    before_path = tmp_path / "before.json"
+    after_path = tmp_path / "after.json"
+
+    def document(*, mutated: bool) -> dict[str, object]:
+        return {
+            "readback": [
+                {
+                    "channel": 1,
+                    "setpoints": {
+                        "voltage": 0.5 if mutated else 1.0,
+                        "current": 0.04 if mutated else 0.05,
+                    },
+                }
+            ],
+            "protection_settings": [
+                {
+                    "channel": 1,
+                    "protection": {
+                        "ovp_voltage": 4.0 if mutated else 5.0,
+                        "ocp_enabled": False if mutated else True,
+                    },
+                }
+            ],
+        }
+
+    before_path.write_text(json.dumps(document(mutated=False)), encoding="utf-8")
+    after_path.write_text(json.dumps(document(mutated=changed)), encoding="utf-8")
+    channels = ",".join(str(channel) for channel in expected_channels)
+    command = rf'''
+$env:POWERS_TOOL_LIVE_CLI_CHECK_IMPORT_ONLY = "1"
+. .\scripts\live-cli-check.ps1
+$case = New-CommandCase -Name "restore-off-save-b" -Suite "snapshot" -Phase "live" -Args @("snapshot") -ValidationKind "snapshot-mutation" -ExpectedChannels @({channels}) -CompareSnapshotPaths @("{before_path.as_posix()}","{after_path.as_posix()}")
+$payload = '{{"data":{{}}}}' | ConvertFrom-Json
+$failures = @(Get-CaseAssertionFailures -Case $case -Payload $payload -Identity $null -OutputStates $null -InstrumentErrors $null -StderrPath "{(tmp_path / 'empty.stderr').as_posix()}")
+[pscustomobject]@{{ failures = @($failures) }} | ConvertTo-Json -Depth 5 -Compress
+'''
+    result = _run_powershell_command(command)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    failures = json.loads(result.stdout)["failures"]
+    if isinstance(failures, str):
+        return [failures]
+    return failures
+
+
+def test_snapshot_mutation_accepts_changed_psm_channel_only(tmp_path) -> None:
+    failures = _snapshot_mutation_failures(
+        tmp_path,
+        changed=True,
+        expected_channels=(1,),
+    )
+
+    assert failures == []
+    assert not any("channel 2" in failure or "channel 3" in failure for failure in failures)
+
+
+def test_snapshot_mutation_still_rejects_unchanged_psm_channel(tmp_path) -> None:
+    failures = _snapshot_mutation_failures(
+        tmp_path,
+        changed=False,
+        expected_channels=(1,),
+    )
+
+    assert failures == [
+        "restore-off-save-b did not prove changed setpoints for channel 1.",
+        "restore-off-save-b did not prove changed OVP and OCP state for channel 1.",
+    ]
+
+
+def test_snapshot_mutation_rejects_empty_expected_channels(tmp_path) -> None:
+    failures = _snapshot_mutation_failures(
+        tmp_path,
+        changed=True,
+        expected_channels=(),
+    )
+
+    assert failures == [
+        "restore-off-save-b snapshot-mutation requires expected channels."
+    ]
+
+
 def _snapshot_workflow_fixture_cli_path(tmp_path: Path) -> Path:
     fixture_cli = tmp_path / "powers_tool_cli"
     fixture_cli.mkdir()

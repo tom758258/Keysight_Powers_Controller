@@ -171,6 +171,9 @@ def restore_plan(
             raise CoreValidationError(
                 f"snapshot output_ranges does not contain channel {channel}"
             )
+        protection_record = protection[channel]["protection"]
+        if psm2010 and protection_record.get("ocp_delay") is not None:
+            raise CoreValidationError("PSM-2010 snapshot ocp_delay must be null")
         steps.append(_restore_step("output_off", _restore_scpi("OUTP OFF", channel, psm2010), channel=channel))
         if psm2010:
             output_range = output_ranges[channel]["range"]
@@ -182,7 +185,6 @@ def restore_plan(
                     output_range=output_range,
                 )
             )
-        protection_record = protection[channel]["protection"]
         ovp_voltage = protection_record.get("ovp_voltage")
         if ovp_voltage is not None:
             steps.append(_restore_step("set_over_voltage_protection", _restore_scpi(f"VOLT:PROT {_format_value(ovp_voltage)}", channel, psm2010), channel=channel, voltage=ovp_voltage))
@@ -701,6 +703,8 @@ def _validate_protection_records(
         if ocp_enabled is not None and type(ocp_enabled) is not bool:
             raise CoreValidationError("snapshot ocp_enabled must be a boolean or null")
         ocp_delay = protection.get("ocp_delay")
+        if psm2010 and ocp_delay is not None:
+            raise CoreValidationError("PSM-2010 snapshot ocp_delay must be null")
         if ocp_delay is not None:
             _require_finite_number(
                 ocp_delay,
@@ -708,10 +712,6 @@ def _validate_protection_records(
             )
             if float(ocp_delay) < 0:
                 raise CoreValidationError("snapshot ocp_delay must be non-negative")
-            if psm2010 and not 0.1 <= float(ocp_delay) <= 10.0:
-                raise CoreValidationError(
-                    "PSM-2010 snapshot ocp_delay must be from 0.1 through 10 seconds"
-                )
         ocp_delay_trigger = protection.get("ocp_delay_trigger")
         if ocp_delay_trigger is not None and ocp_delay_trigger not in {
             "setting-change",
