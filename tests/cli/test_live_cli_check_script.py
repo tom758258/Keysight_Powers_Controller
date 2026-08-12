@@ -9,7 +9,13 @@ from pathlib import Path
 import pytest
 
 from powers_tool_cli import cli
+from powers_tool_core.core import RuntimeOptions, SequenceRequest
 from powers_tool_core.identity import PHYSICAL_MODELS, VENDORS
+from powers_tool_core.sequence import load_sequence_document, sequence_plan
+from powers_tool_core.support_features import (
+    HOST_ONLY_SEQUENCE_ACTIONS,
+    supported_sequence_actions_for_model_id,
+)
 from powers_tool_core.support_evidence import SUPPORT_EVIDENCE_MANIFEST
 
 
@@ -2054,6 +2060,13 @@ def test_live_cli_check_psm2010_full_plan_only_covers_v2_candidates() -> None:
         }
     )
     planned_by_name = {case["name"]: case for case in report["planned_live_cases"]}
+    feature_case = planned_by_name["sequence-live-psm-feature-coverage"]
+    assert feature_case["suite"] == "software-sequence"
+    assert feature_case["command"] == "sequence"
+    planned_names = [case["name"] for case in report["planned_live_cases"]]
+    assert planned_names.index("sequence-live-psm-feature-coverage") < planned_names.index(
+        "safe-off-after-software-sequence"
+    )
     assert planned_by_name["protection-set-all"]["command"] == "protection-set"
     assert not any(
         "--ocp-delay" in case["arguments"]
@@ -2072,6 +2085,121 @@ def test_live_cli_check_psm2010_full_plan_only_covers_v2_candidates() -> None:
         json.loads(path.read_text(encoding="utf-8"))["execution"]["hardware_touched"]
         is False
         for path in private_payloads
+    )
+
+
+def _psm_software_sequence_composition(tmp_path: Path) -> dict[str, object]:
+    output_dir = tmp_path / "out"
+    command = rf'''
+$env:POWERS_TOOL_LIVE_CLI_CHECK_IMPORT_ONLY = "1"
+. .\scripts\live-cli-check.ps1
+$script:OutputDir = "{output_dir.as_posix()}"
+$script:NormalizedTarget = "gw-instek-psm-2010"
+$script:RawResource = "ASRL1::SIM::PSM2010::INSTR"
+$script:TransportScope = "asrl"
+$script:BackendArtifact = Get-BackendArtifactFields -Value $null
+$script:CandidateInventory = '{{"gw-instek-psm-2010":{{"commands":["sequence","ramp-list"],"connections":[["asrl","system_visa"]]}}}}' | ConvertFrom-Json
+$liveCases = @(Get-SoftwareSequenceCases -Model "gw-instek-psm-2010" -Live $true | ForEach-Object {{
+    [pscustomobject]@{{
+        name = $_.name
+        suite = $_.suite
+        command = $_.args[0]
+        arguments = @($_.args)
+        state_changing = [bool]$_.state_changing
+    }}
+}})
+$preflightCases = @(Get-SoftwareSequenceCases -Model "gw-instek-psm-2010" -Live $false | ForEach-Object {{
+    [pscustomobject]@{{
+        name = $_.name
+        expected_success = [bool]$_.expected_success
+        expected_error_contains = $_.expected_error_contains
+    }}
+}})
+[pscustomobject]@{{ live = $liveCases; preflight = $preflightCases }} | ConvertTo-Json -Depth 10 -Compress
+'''
+    result = _run_powershell_command(command)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    return json.loads(result.stdout)
+
+
+def _sequence_documents_from_cases(cases: list[dict[str, object]]) -> dict[str, dict[str, object]]:
+    documents = {}
+    for case in cases:
+        arguments = case["arguments"]
+        if case["command"] != "sequence" or "--file" not in arguments:
+            continue
+        path = arguments[arguments.index("--file") + 1]
+        documents[case["name"]] = load_sequence_document(path)
+    return documents
+
+
+def test_psm_software_sequence_live_cases_cover_canonical_instrument_actions(
+    tmp_path: Path,
+) -> None:
+    composition = _psm_software_sequence_composition(tmp_path)
+    documents = _sequence_documents_from_cases(composition["live"])
+    actual_actions = {
+        step["action"]
+        for document in documents.values()
+        for step in document["steps"]
+    } - HOST_ONLY_SEQUENCE_ACTIONS
+    expected_actions = supported_sequence_actions_for_model_id(
+        "gw-instek-psm-2010"
+    )
+
+    assert actual_actions == expected_actions
+    assert "trigger-pulse" not in actual_actions
+
+    preflight = {case["name"]: case for case in composition["preflight"]}
+    for name in (
+        "sequence-unsupported-trigger-dry-run",
+        "sequence-unsupported-trigger-simulate",
+    ):
+        assert preflight[name]["expected_success"] is False
+        assert preflight[name]["expected_error_contains"] == "trigger-list"
+
+
+def test_psm_sequence_feature_fixture_is_valid_and_low_power(tmp_path: Path) -> None:
+    composition = _psm_software_sequence_composition(tmp_path)
+    live_cases = composition["live"]
+    documents = _sequence_documents_from_cases(live_cases)
+    feature_document = documents["sequence-live-psm-feature-coverage"]
+    plan = sequence_plan(
+        SequenceRequest(
+            runtime=RuntimeOptions(
+                dry_run=True,
+                resource="ASRL1::SIM::PSM2010::INSTR",
+                planning_model_id="gw-instek-psm-2010",
+            ),
+            parameters={"document": feature_document},
+        ),
+        feature_document,
+    )
+    steps = plan["steps"]
+
+    assert [step["action"] for step in steps] == [
+        "safe-off",
+        "apply",
+        "measure",
+        "cycle-output",
+        "safe-off",
+    ]
+    assert steps[1]["parameters"] == {
+        "channel": "all",
+        "voltage": 1,
+        "current": 0.05,
+        "no_output": True,
+    }
+    assert steps[1]["parameters"]["voltage"] <= 1
+    assert steps[1]["parameters"]["current"] <= 0.05
+    assert steps[3]["parameters"] == {"channel": "all", "duration_ms": 500}
+
+    live_by_name = {case["name"]: case for case in live_cases}
+    assert live_by_name["sequence-live-psm-feature-coverage"]["state_changing"] is True
+    live_names = [case["name"] for case in live_cases]
+    assert live_names.index("sequence-live-psm-feature-coverage") < live_names.index(
+        "safe-off-after-software-sequence"
     )
 
 

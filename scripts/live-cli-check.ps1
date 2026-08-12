@@ -1526,6 +1526,27 @@ function Get-SoftwareSequenceCases {
         "  - action: output-off",
         "    channel: 1"
     )
+    $featureSequence = $null
+    if ($Live -and $Model -eq "gw-instek-psm-2010") {
+        $featureSequence = New-ValidationSequenceFile -Name "sequence-psm-feature-coverage" -Lines @(
+            "version: 1",
+            "steps:",
+            "  - action: safe-off",
+            "    channel: all",
+            "  - action: apply",
+            "    channel: all",
+            "    voltage: 1",
+            "    current: 0.05",
+            "    no_output: true",
+            "  - action: measure",
+            "    channel: 1",
+            "  - action: cycle-output",
+            "    channel: all",
+            "    duration_ms: 500",
+            "  - action: safe-off",
+            "    channel: all"
+        )
+    }
     $rampListArgs = @("--segment", "1", "0.05", "0", "1", "0.25", "100", "0")
     $cases = New-Object System.Collections.Generic.List[object]
     if ($Live) {
@@ -1534,6 +1555,9 @@ function Get-SoftwareSequenceCases {
         $cases.Add((New-CommandCase -Name "ramp-list-live-low-power" -Suite "software-sequence" -Phase $phase -Args (@("ramp-list", "--json", "--resource", $resource) + $rampListArgs + @("--log-scpi")) -StateChanging:$true -LiveHardwareExpected:$true -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "ramp-list")))
         $cases.Add((New-CommandCase -Name "sequence-live-readonly" -Suite "software-sequence" -Phase $phase -Args @("sequence", "--json", "--resource", $resource, "--file", $readOnlySequence, "--log-scpi") -LiveHardwareExpected:$true -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "sequence")))
         $cases.Add((New-CommandCase -Name "sequence-live-output-low-power" -Suite "software-sequence" -Phase $phase -Args @("sequence", "--json", "--resource", $resource, "--file", $outputSequence, "--log-scpi") -StateChanging:$true -LiveHardwareExpected:$true -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "sequence")))
+        if ($null -ne $featureSequence) {
+            $cases.Add((New-CommandCase -Name "sequence-live-psm-feature-coverage" -Suite "software-sequence" -Phase $phase -Args @("sequence", "--json", "--resource", $resource, "--file", $featureSequence, "--log-scpi") -StateChanging:$true -LiveHardwareExpected:$true -CandidateScopeRequired:(Test-CurrentConnectionSupportsCandidates -Command "sequence")))
+        }
         $cases.Add((New-CommandCase -Name "safe-off-after-software-sequence" -Suite "software-sequence" -Phase $phase -Args $safeOffArgs -StateChanging:$true -LiveHardwareExpected:$true))
     }
     else {
