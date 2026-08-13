@@ -606,17 +606,18 @@ def _live_panel_sample_from_reading(reading: dict[str, Any], runtime: dict[str, 
         setpoints = live_channel.get("setpoints") or readback.get(channel, {}).get("setpoints") or {}
         measured = live_channel.get("measurements") or measurements.get(channel, {}).get("measurements") or {}
         output_enabled = _first_output_state_bool_or_none(live_channel.get("output_enabled"), output.get("enabled"))
-        channels.append(
-            {
-                "channel": channel,
-                "output_enabled": output_enabled,
-                "measured_voltage": _number_or_none(measured.get("voltage")),
-                "measured_current": _number_or_none(measured.get("current")),
-                "set_voltage": _number_or_none(setpoints.get("voltage")),
-                "set_current": _number_or_none(setpoints.get("current")),
-                **_protection_fields(live_channel),
-            }
-        )
+        channel_sample = {
+            "channel": channel,
+            "output_enabled": output_enabled,
+            "measured_voltage": _number_or_none(measured.get("voltage")),
+            "measured_current": _number_or_none(measured.get("current")),
+            "set_voltage": _number_or_none(setpoints.get("voltage")),
+            "set_current": _number_or_none(setpoints.get("current")),
+            **_protection_fields(live_channel),
+        }
+        if "output_range" in live_channel:
+            channel_sample["output_range"] = _output_range_or_none(live_channel.get("output_range"))
+        channels.append(channel_sample)
     sample = {
         "timestamp": time.time(),
         "resource": reading.get("resource") or runtime.get("resource"),
@@ -661,6 +662,13 @@ def _number_or_none(value: Any) -> float | int | None:
             return None
         return parsed if math.isfinite(parsed) else None
     return None
+
+
+def _output_range_or_none(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip().upper()
+    return normalized if normalized in {"LOW", "HIGH"} else None
 
 
 def _stale_live_panel_sample(

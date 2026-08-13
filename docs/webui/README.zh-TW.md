@@ -223,6 +223,7 @@ Trigger List 使用專屬的三通道工作區編輯器。每個通道保有自�
 
 當選擇了 Wait complete 且關閉 Leave configured 時，完成後會寫回執行前的 Trigger 設定與 LIST 表格。執行中的表格在還原前可能會短暫可見。選擇 Leave configured 可保留新表格與 Trigger 設定。
 Live Data 樣本包含已解析的型號身分及各通道的 OVP/OCP 觸發狀態 (trip state)。有效的 Live Data 型號能修復所選資源的命令支援快取；缺乏型號的結果不會取代已知的型號。
+PSM-2010 的 CH1 卡片會額外顯示目前實際 LOW/HIGH 輸出檔位的唯讀 badge。尚未知或尚未取得資料時顯示 `--`；其他型號不顯示此 badge。
 
 最新、明確的通道觸發狀態會針對該通道的直接輸出命令加入 WebUI 軟體保護 (soft guard)。過時或未知的觸發狀態則不會加入保護。Safe/off 及復原命令仍然可用。
 

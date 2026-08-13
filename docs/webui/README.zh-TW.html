@@ -327,6 +327,7 @@ commands 仍不支援；其他 transport 與 backend 仍會 fail closed。完整
 <h3>Trigger List 工作區</h3>
 <p>Trigger List 使用三通道工作區，每個通道保留自己的 count 與 1 至 100 個 step row，包含 Voltage、Current、Dwell、BOST 與 EOST。Run 只提交所選通道；Load/Save 使用 strict <code>powers-tool-trigger-list-workspace</code> version 1 JSON。</p>
 <p>Live Data 樣本包含解析後型號與各通道 OVP/OCP trip state。新鮮且明確的 trip 狀態會對該通道的直接輸出命令加入 WebUI soft guard；safe/off 與復原命令仍可用。Advanced Diagnostics 提供 Clear Status / Errors、Get capabilities、Read device information 與 Read errors。</p>
+<p>PSM-2010 的 CH1 卡片會額外顯示目前實際 LOW/HIGH 輸出檔位的唯讀 badge。尚未知或尚未取得資料時顯示 <code>--</code>；其他型號不顯示此 badge。</p>
 <h2 id="section-10">限制</h2>
 <p>不在 WebUI 介面範圍內的命令會由 <code>/api/commands</code> 標示停用，直接提交時回傳 <code>not_implemented_in_webui</code>。後端／Core 也會拒絕不支援型號、命令、模式與必要功能的直接請求；瀏覽器顯示不是安全邊界。</p>
 <p>實機驗證 evidence 由 CLI suite artifact 記錄，不會因瀏覽器選擇器而建立或提升。權威命令清單請參閱 <a href="../core/supported-models.md#product-live-exact-scope-matrix" rel="noopener noreferrer" target="_blank">Product LIVE exact-scope matrix</a>。目前連線範圍為：</p>

@@ -200,6 +200,9 @@ Use Live Data before output commands to confirm:
 
 Live Data may refresh once after successful real hardware commands. It remains
 read-only and should be treated as the source of displayed instrument state.
+For PSM-2010, the CH1 card also shows the current actual LOW/HIGH output range
+as a read-only badge. It shows `--` when the range is unknown or not yet
+available; other models do not show this badge.
 
 ## Basic Commands
 

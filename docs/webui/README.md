@@ -543,6 +543,9 @@ table and Trigger settings.
 Live Data samples include parsed model identity and channel-local OVP/OCP trip
 state. A valid Live Data model can repair the selected resource's command
 support cache; results without a model do not replace an already known model.
+For PSM-2010, the CH1 card also shows the current actual LOW/HIGH output range
+as a read-only badge. It shows `--` when the range is unknown or not yet
+available; other models do not show this badge.
 
 Fresh, explicit channel trip state adds a WebUI soft guard for direct output
 commands targeting that channel. Stale or unknown trip state does not add a

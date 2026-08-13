@@ -1531,6 +1531,30 @@ canvas {
   color: var(--muted);
 }
 
+.range-badge {
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 1px solid #cbd3dc;
+  border-radius: 999px;
+  background: #f7f9fb;
+}
+
+.range-badge.low,
+.range-badge.high {
+  border-color: #b8d7c5;
+  background: #f1fbf5;
+}
+
+.range-badge.low .indicator-dot,
+.range-badge.high .indicator-dot {
+  background: var(--ok);
+}
+
+.range-badge.unknown .indicator-dot {
+  background: transparent;
+  border: 1px dashed #9aa6b2;
+}
+
 .output-status {
   min-height: 38px;
   gap: 9px;

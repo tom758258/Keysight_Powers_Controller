@@ -143,6 +143,7 @@ storage 不可用，WebUI 會安全 fallback，不影響正常操作。
 - 支援 OVP/OCP 時可看見其觸發 (trip) 狀態。
 
 成功的實機硬體命令執行後，Live Data 可能會更新一次。它維持唯讀屬性，應被視為所顯示儀器狀態的來源真相。
+PSM-2010 的 CH1 卡片會額外顯示目前實際 LOW/HIGH 輸出檔位的唯讀 badge。尚未知或尚未取得資料時顯示 `--`；其他型號不顯示此 badge。
 
 ## 基本命令 (Basic Commands)
 

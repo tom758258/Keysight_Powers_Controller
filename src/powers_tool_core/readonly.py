@@ -183,9 +183,13 @@ def run_live_panel_read(
                 ):
                     enforce_live_support_for_idn(request, idn_raw, command=required_command)
             power_supply = create_power_supply(instrument, idn_raw)
-            if not isinstance(power_supply, (E36312APowerSupply, E3646APowerSupply, EDU36311APowerSupply)):
+            supported_types = (E36312APowerSupply, E3646APowerSupply, EDU36311APowerSupply)
+            if not request.runtime.simulate:
+                supported_types = (*supported_types, PSM2010PowerSupply)
+            if not isinstance(power_supply, supported_types):
                 raise UnsupportedModelError(
-                    f"live-panel is only supported for E36312A, E3646A, or EDU36311A; "
+                    f"live-panel is only supported for E36312A, E3646A, EDU36311A, "
+                    f"or PSM-2010 in Real mode; "
                     f"found {type(power_supply).__name__} from *IDN? response"
                 )
 
@@ -278,7 +282,7 @@ def live_panel_plan(request: OperationRequest) -> dict[str, object]:
 def _live_channel_payload(power_supply: Any, channel: int) -> dict[str, Any]:
     over_voltage_tripped = power_supply.over_voltage_protection_tripped(channel=channel)
     over_current_tripped = power_supply.over_current_protection_tripped(channel=channel)
-    return {
+    payload = {
         "channel": channel,
         "output_enabled": power_supply.output_state(channel=channel),
         "over_voltage_tripped": over_voltage_tripped,
@@ -295,6 +299,12 @@ def _live_channel_payload(power_supply: Any, channel: int) -> dict[str, Any]:
             "current": power_supply.measure_current(channel=channel),
         },
     }
+    if isinstance(power_supply, PSM2010PowerSupply):
+        try:
+            payload["output_range"] = power_supply.output_range(channel=channel)
+        except (VisaConnectionError, ValueError):
+            payload["output_range"] = None
+    return payload
 
 
 def _e3646a_live_channel_payload(power_supply: Any, channel: int) -> dict[str, Any]:

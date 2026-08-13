@@ -51,7 +51,7 @@ export function mergeLiveChannel(previous, incoming, preservePreviousValues) {
   [
     "output_enabled", "measured_voltage", "measured_current", "set_voltage", "set_current",
     "over_voltage_tripped", "over_current_tripped", "protection_tripped",
-    "over_voltage_protection_level", "over_current_protection_enabled"
+    "over_voltage_protection_level", "over_current_protection_enabled", "output_range"
   ].forEach((key) => {
     if (incoming[key] === null || incoming[key] === undefined) next[key] = previous[key];
   });
@@ -104,6 +104,7 @@ export function renderChannelCard(channel, sample, helpers) {
       : "--";
   const protectionClass = channel.protection_tripped === true ? "protection-tripped" : "";
   card.className = `live-card ${sample.stale ? "stale" : ""} ${sample.status === "error" ? "error" : ""} ${protectionClass}`;
+  const showRange = sample.model_id === "gw-instek-psm-2010" && channel.channel === 1;
   replaceCardContent(card, channel, {
     outputClass,
     outputText: t("live_data.output.summary", { state: outputText }),
@@ -115,7 +116,9 @@ export function renderChannelCard(channel, sample, helpers) {
     overCurrentTripped: channel.over_current_tripped,
     overVoltageLevel: helpers.formatProtectionVoltage(channel.over_voltage_protection_level),
     overCurrentEnabled: helpers.formatProtectionState(channel.over_current_protection_enabled),
-    showClearProtection: channel.protection_tripped === true && !sample.stale
+    showClearProtection: channel.protection_tripped === true && !sample.stale,
+    showRange,
+    outputRange: showRange ? channel.output_range : null
   });
   const shortcut = card.querySelector("[data-clear-protection-channel]");
   if (shortcut) shortcut.addEventListener("click", () => helpers.openClearProtection(channel.channel));
@@ -133,13 +136,24 @@ export function protectionBadge(label, tripped) {
   return badge;
 }
 
+export function rangeBadge(outputRange) {
+  const stateClass = outputRange === "LOW" || outputRange === "HIGH" ? outputRange.toLowerCase() : "unknown";
+  const rangeText = outputRange === "LOW"
+    ? t("live_data.range.low")
+    : outputRange === "HIGH"
+      ? t("live_data.range.high")
+      : t("live_data.range.unknown");
+  const badge = element("span", `range-badge status-indicator ${stateClass}`);
+  badge.append(indicatorDot(), element("span", "indicator-text", t("live_data.range.label", { range: rangeText })));
+  return badge;
+}
+
 function replaceCardContent(card, channel, presentation) {
   card.replaceChildren();
   const head = element("div", "live-card-head");
-  head.append(
-    element("strong", "", `CH${channel.channel}`),
-    statusIndicator(`status-badge status-indicator output-status ${presentation.outputClass}`, presentation.outputText)
-  );
+  head.append(element("strong", "", `CH${channel.channel}`));
+  if (presentation.showRange) head.append(rangeBadge(presentation.outputRange));
+  head.append(statusIndicator(`status-badge status-indicator output-status ${presentation.outputClass}`, presentation.outputText));
   const output = element("div", "live-output-section");
   const measured = element("div", "live-measured");
   measured.append(

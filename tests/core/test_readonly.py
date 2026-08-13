@@ -48,6 +48,45 @@ class E3646AStatusSession:
     def close(self) -> None:
         pass
 
+
+class PSM2010LiveSession:
+    def __init__(self, range_response: str) -> None:
+        self.range_response = range_response
+        self.events: list[str] = []
+
+    def __enter__(self) -> "PSM2010LiveSession":
+        return self
+
+    def __exit__(self, exc_type: object, exc: object, traceback: object) -> None:
+        pass
+
+    def write(self, command: str) -> None:
+        self.events.append(f"write:{command}")
+
+    def query(self, command: str) -> str:
+        self.events.append(f"query:{command}")
+        responses = {
+            "*IDN?": "GW.Inc,PSM-2010,SERIAL0000,1.0",
+            "VOLT:PROT:TRIP?": "0",
+            "CURR:PROT:TRIP?": "0",
+            "OUTP?": "0",
+            "VOLT:PROT?": "5.0",
+            "CURR:PROT:STAT?": "1",
+            "VOLT?": "1.0",
+            "CURR?": "0.1",
+            "MEAS?": "0.0",
+            "MEAS:CURR?": "0.0",
+        }
+        if command == "VOLT:RANG?":
+            return self.range_response
+        try:
+            return responses[command]
+        except KeyError as exc:
+            raise AssertionError(f"unexpected query {command!r}") from exc
+
+    def close(self) -> None:
+        pass
+
 def test_readonly_simulate_status():
     runtime = RuntimeOptions(resource="USB0::SIM::E36312A::INSTR", simulate=True)
     req = OperationRequest(command="read-status", runtime=runtime, parameters={"channel": "all"})
@@ -223,6 +262,50 @@ def test_live_panel_read_returns_only_panel_fields():
     assert "protection_settings" not in res
     assert "errors" not in res
     assert "read_count" not in res
+
+
+@pytest.mark.parametrize(
+    ("range_response", "expected_range"),
+    [("P8V", "LOW"), ("P20V", "HIGH")],
+)
+def test_live_panel_read_psm_projects_driver_output_range(
+    range_response: str,
+    expected_range: str,
+):
+    session = PSM2010LiveSession(range_response)
+    runtime = RuntimeOptions(resource="ASRL1::INSTR", simulate=False)
+    req = OperationRequest(command="live-panel", runtime=runtime)
+
+    res = run_live_panel_read(req, opener=lambda *args, **kwargs: session)
+
+    assert res["idn"]["model"] == "PSM-2010"
+    assert res["channels"] == [
+        {
+            "channel": 1,
+            "output_enabled": False,
+            "over_voltage_tripped": False,
+            "over_current_tripped": False,
+            "protection_tripped": False,
+            "over_voltage_protection_level": 5.0,
+            "over_current_protection_enabled": True,
+            "setpoints": {"voltage": 1.0, "current": 0.1},
+            "measurements": {"voltage": 0.0, "current": 0.0},
+            "output_range": expected_range,
+        }
+    ]
+    assert session.events.count("query:VOLT:RANG?") == 1
+    assert not any(event.startswith("write:") for event in session.events)
+
+
+def test_live_panel_read_psm_unknown_output_range_is_none():
+    session = PSM2010LiveSession("P12V")
+    runtime = RuntimeOptions(resource="ASRL1::INSTR", simulate=False)
+    req = OperationRequest(command="live-panel", runtime=runtime)
+
+    res = run_live_panel_read(req, opener=lambda *args, **kwargs: session)
+
+    assert res["channels"][0]["output_range"] is None
+    assert session.events.count("query:VOLT:RANG?") == 1
 
 
 def test_live_panel_read_reports_protection_by_channel(monkeypatch):

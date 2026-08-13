@@ -259,6 +259,40 @@ def test_live_data_panel_sample_normalizes_numeric_values():
     assert sample["channels"][1]["over_current_protection_enabled"] is False
 
 
+@pytest.mark.parametrize(
+    ("raw_range", "expected_range"),
+    [("LOW", "LOW"), (" high ", "HIGH"), ("P8V", None), (None, None)],
+)
+def test_live_data_panel_sample_normalizes_psm_output_range(
+    raw_range: str | None,
+    expected_range: str | None,
+):
+    from powers_tool_webui.app import _live_panel_sample_from_reading
+
+    sample = _live_panel_sample_from_reading(
+        {
+            "resource": "ASRL1::FAKE::PSM2010::INSTR",
+            "idn": {"manufacturer": "GW.Inc", "model": "PSM-2010"},
+            "channels": [
+                {
+                    "channel": 1,
+                    "output_range": raw_range,
+                    "output_enabled": False,
+                    "setpoints": {"voltage": "1.0", "current": "0.1"},
+                    "measurements": {"voltage": "0.0", "current": "0.0"},
+                }
+            ],
+        },
+        {"resource": "ASRL1::FAKE::PSM2010::INSTR"},
+    )
+
+    assert sample["model_id"] == "gw-instek-psm-2010"
+    assert sample["channels"][0]["output_range"] == expected_range
+    assert sample["channels"][0]["measured_voltage"] == 0.0
+    assert sample["channels"][0]["set_current"] == 0.1
+    assert sample["channels"][0]["output_enabled"] is False
+
+
 def test_live_data_real_mode_reports_busy_without_live_panel_call(client: TestClient, monkeypatch: pytest.MonkeyPatch):
     from powers_tool_webui import commands
     from powers_tool_webui.jobs import job_manager
