@@ -173,6 +173,7 @@ $env:POWERS_TOOL_ASRL_RESOURCE = "ASRL1::INSTR"
 <code>1</code> 是一般單次執行，<code>2</code> 代表重新執行一次，最大值為 <code>10,000</code>。小於 <code>1</code>、
 大於 <code>10,000</code> 或不是嚴格整數的值都會被拒絕。對 Ramp List 與 Sequence 文件，
 明確提供的 CLI 值優先；否則使用文件值，再以舊版支援文件的預設值 <code>1</code> 收尾。</p>
+<p>Ramp List v5 是目前的文件格式。每個 Segment 使用 <code>channels</code>，可選擇不同的通道組合；所選通道共用該 Segment 的電流與電壓路徑，並以 lockstep 前進。使用單一 <code>channel</code> 的 v2/v3/v4 文件仍可載入與執行。</p>
 <h2 id="e3646a-rs-232-asrl">E3646A RS-232 / ASRL</h2>
 <p>E3646A 的 Product LIVE 支援僅限 ASRL／RS-232 transport 與 system VISA backend；目前
 可用的 command inventory 請以 <a href="../core/supported-models.md#product-live-exact-scope-matrix" rel="noopener noreferrer" target="_blank">Product LIVE exact-scope matrix</a>

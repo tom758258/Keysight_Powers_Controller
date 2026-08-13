@@ -54,11 +54,11 @@ from powers_tool_core.command_contract import validate_and_normalize_request
 RAMP_LIST_KIND = "powers-tool-ramp-list"
 RAMP_LIST_VERSION_V2 = 2
 RAMP_LIST_VERSION_V3 = 3
-RAMP_LIST_VERSION = 4
+RAMP_LIST_VERSION_V4 = 4
+RAMP_LIST_VERSION = 5
 MAX_RAMP_SEGMENTS = 10
-SEGMENT_FIELDS = frozenset(
+SEGMENT_VALUE_FIELDS = frozenset(
     {
-        "channel",
         "current",
         "start_voltage",
         "stop_voltage",
@@ -201,17 +201,23 @@ def ramp_list_plan(request: OperationRequest, document: dict[str, Any]) -> dict[
     if document.get("kind") != RAMP_LIST_KIND:
         raise CoreValidationError(f"ramp-list kind must be {RAMP_LIST_KIND!r}")
     version = document.get("version")
-    if type(version) is not int or version not in {RAMP_LIST_VERSION_V2, RAMP_LIST_VERSION_V3, RAMP_LIST_VERSION}:
+    supported_versions = {
+        RAMP_LIST_VERSION_V2,
+        RAMP_LIST_VERSION_V3,
+        RAMP_LIST_VERSION_V4,
+        RAMP_LIST_VERSION,
+    }
+    if type(version) is not int or version not in supported_versions:
         raise CoreValidationError(f"unsupported ramp-list version: {version!r}")
     allowed_fields = {"kind", "version", "completion_pulse", "segments"}
-    if version in {RAMP_LIST_VERSION_V3, RAMP_LIST_VERSION}:
+    if version in {RAMP_LIST_VERSION_V3, RAMP_LIST_VERSION_V4, RAMP_LIST_VERSION}:
         allowed_fields.add("enable_output")
-    if version == RAMP_LIST_VERSION:
+    if version in {RAMP_LIST_VERSION_V4, RAMP_LIST_VERSION}:
         allowed_fields.add("loop_count")
     unknown = sorted(set(document) - allowed_fields)
     if unknown:
         raise CoreValidationError(f"unsupported ramp-list field(s): {', '.join(unknown)}")
-    if version in {RAMP_LIST_VERSION_V3, RAMP_LIST_VERSION}:
+    if version in {RAMP_LIST_VERSION_V3, RAMP_LIST_VERSION_V4, RAMP_LIST_VERSION}:
         if "enable_output" not in document:
             raise CoreValidationError(f"ramp-list version {version} requires enable_output")
         if type(document["enable_output"]) is not bool:
@@ -219,11 +225,11 @@ def ramp_list_plan(request: OperationRequest, document: dict[str, Any]) -> dict[
         enable_output = document["enable_output"]
     else:
         enable_output = False
-    if version == RAMP_LIST_VERSION and "loop_count" not in document:
-        raise CoreValidationError("ramp-list version 4 requires loop_count")
+    if version in {RAMP_LIST_VERSION_V4, RAMP_LIST_VERSION} and "loop_count" not in document:
+        raise CoreValidationError(f"ramp-list version {version} requires loop_count")
     document_loop_count = (
         normalize_loop_count(document["loop_count"], field="ramp-list loop_count")
-        if version == RAMP_LIST_VERSION
+        if version in {RAMP_LIST_VERSION_V4, RAMP_LIST_VERSION}
         else 1
     )
     override = request.parameters.get("loop_count")
@@ -232,7 +238,11 @@ def ramp_list_plan(request: OperationRequest, document: dict[str, Any]) -> dict[
         if override is not None
         else document_loop_count
     )
-    plan_version = RAMP_LIST_VERSION if override is not None else version
+    plan_version = (
+        RAMP_LIST_VERSION_V4
+        if override is not None and version < RAMP_LIST_VERSION
+        else version
+    )
     raw_segments = document.get("segments")
     if not isinstance(raw_segments, list) or not raw_segments:
         raise CoreValidationError("ramp-list requires 1 to 10 segments")
@@ -240,7 +250,7 @@ def ramp_list_plan(request: OperationRequest, document: dict[str, Any]) -> dict[
         raise CoreValidationError("ramp-list supports at most 10 segments")
 
     segments = [
-        normalize_ramp_segment(request, index, raw_segment)
+        normalize_ramp_segment(request, version, index, raw_segment)
         for index, raw_segment in enumerate(raw_segments, start=1)
     ]
     completion_pulse = normalize_completion_pulse(document.get("completion_pulse"))
@@ -302,17 +312,23 @@ def normalize_completion_pulse(raw: Any) -> dict[str, Any] | None:
     return {"timing": timing, "pins": list(pins), "polarity": polarity}
 
 
-def normalize_ramp_segment(request: OperationRequest, index: int, raw_segment: Any) -> dict[str, Any]:
+def normalize_ramp_segment(
+    request: OperationRequest,
+    version: int,
+    index: int,
+    raw_segment: Any,
+) -> dict[str, Any]:
     if not isinstance(raw_segment, dict):
         raise CoreValidationError(f"ramp-list segment {index} must be a JSON object")
-    unknown = sorted(set(raw_segment) - SEGMENT_FIELDS)
-    missing = sorted(SEGMENT_FIELDS - set(raw_segment))
+    selector = "channels" if version == RAMP_LIST_VERSION else "channel"
+    fields = SEGMENT_VALUE_FIELDS | {selector}
+    unknown = sorted(set(raw_segment) - fields)
+    missing = sorted(fields - set(raw_segment))
     if unknown:
         raise CoreValidationError(f"ramp-list segment {index} has unsupported field(s): {', '.join(unknown)}")
     if missing:
         raise CoreValidationError(f"ramp-list segment {index} is missing field(s): {', '.join(missing)}")
     try:
-        channel = _strict_integer(raw_segment["channel"])
         current = _strict_number(raw_segment["current"])
         start_voltage = _strict_number(raw_segment["start_voltage"])
         stop_voltage = _strict_number(raw_segment["stop_voltage"])
@@ -321,26 +337,7 @@ def normalize_ramp_segment(request: OperationRequest, index: int, raw_segment: A
         hold_ms = _strict_integer(raw_segment["hold_ms"])
     except (TypeError, ValueError) as exc:
         raise CoreValidationError(f"ramp-list segment {index} contains an invalid numeric value") from exc
-    if channel < 1:
-        raise CoreValidationError(f"ramp-list segment {index} channel must be a positive integer")
-    if (
-        (request.runtime.dry_run or request.runtime.simulate)
-        and (
-            request.runtime.planning_model_id is not None
-            or request.runtime.planning_profile_id is not None
-        )
-        and channel not in no_hardware_channels(
-            request.runtime.planning_model_id,
-            request.runtime.planning_profile_id,
-        )
-    ):
-        supported = no_hardware_channels(
-            request.runtime.planning_model_id,
-            request.runtime.planning_profile_id,
-        )
-        raise CoreValidationError(
-            f"ramp-list segment {index} channel {channel} is not supported; supported: {supported}"
-        )
+    channels = _normalize_segment_channels(request, version, index, raw_segment[selector])
     if delay_ms < 0:
         raise CoreValidationError(f"ramp-list segment {index} delay_ms must be non-negative")
     if hold_ms < 0:
@@ -351,15 +348,15 @@ def normalize_ramp_segment(request: OperationRequest, index: int, raw_segment: A
         voltages = ramp_voltages(start_voltage, stop_voltage, step_voltage)
     except CoreValidationError as exc:
         raise CoreValidationError(f"ramp-list segment {index}: {exc}") from exc
-    limits = _safety_limits(request, channel=channel, model=None)
     try:
-        for voltage in voltages:
-            validate_setpoint(channel=channel, voltage=voltage, current=current, limits=limits)
+        for channel in channels:
+            limits = _safety_limits(request, channel=channel, model=None)
+            for voltage in voltages:
+                validate_setpoint(channel=channel, voltage=voltage, current=current, limits=limits)
     except (SafetyConfigError, SafetyValidationError) as exc:
         raise CoreValidationError(f"ramp-list segment {index}: {exc}") from exc
-    return {
+    normalized = {
         "index": index,
-        "channel": channel,
         "current": current,
         "start_voltage": start_voltage,
         "stop_voltage": stop_voltage,
@@ -369,6 +366,68 @@ def normalize_ramp_segment(request: OperationRequest, index: int, raw_segment: A
         "voltage_count": len(voltages),
         "voltages": voltages,
     }
+    normalized[selector] = list(channels) if selector == "channels" else channels[0]
+    return normalized
+
+
+def _normalize_segment_channels(
+    request: OperationRequest,
+    version: int,
+    index: int,
+    raw_selector: Any,
+) -> tuple[int, ...]:
+    if version == RAMP_LIST_VERSION:
+        if not isinstance(raw_selector, list) or not raw_selector:
+            raise CoreValidationError(
+                f"ramp-list segment {index} channels must be a non-empty list"
+            )
+        try:
+            selected = tuple(_strict_integer(channel) for channel in raw_selector)
+        except ValueError as exc:
+            raise CoreValidationError(
+                f"ramp-list segment {index} channels must contain positive integers"
+            ) from exc
+        if any(channel < 1 for channel in selected):
+            raise CoreValidationError(
+                f"ramp-list segment {index} channels must contain positive integers"
+            )
+        if len(set(selected)) != len(selected):
+            raise CoreValidationError(
+                f"ramp-list segment {index} channels must not contain duplicates"
+            )
+    else:
+        try:
+            channel = _strict_integer(raw_selector)
+        except ValueError as exc:
+            raise CoreValidationError(
+                f"ramp-list segment {index} contains an invalid numeric value"
+            ) from exc
+        if channel < 1:
+            raise CoreValidationError(
+                f"ramp-list segment {index} channel must be a positive integer"
+            )
+        selected = (channel,)
+
+    if not (
+        (request.runtime.dry_run or request.runtime.simulate)
+        and (
+            request.runtime.planning_model_id is not None
+            or request.runtime.planning_profile_id is not None
+        )
+    ):
+        return selected
+    supported = no_hardware_channels(
+        request.runtime.planning_model_id,
+        request.runtime.planning_profile_id,
+    )
+    unsupported = tuple(channel for channel in selected if channel not in supported)
+    if unsupported:
+        label = "channels" if version == RAMP_LIST_VERSION else "channel"
+        value = unsupported if version == RAMP_LIST_VERSION else unsupported[0]
+        raise CoreValidationError(
+            f"ramp-list segment {index} {label} {value} is not supported; supported: {supported}"
+        )
+    return tuple(channel for channel in supported if channel in selected)
 
 
 def execute_ramp_list(
@@ -422,7 +481,60 @@ def execute_ramp_list(
             completed_segments = 0
             completed_segment_executions = 0
             loop_trigger: dict[str, Any] | None = None
+            if plan["enable_output"] and isinstance(power_supply, E3646APowerSupply):
+                try:
+                    raise_if_cancelled(stop_requested)
+                    _prestage_e3646a_output(
+                        power_supply,
+                        plan,
+                        stop_requested=stop_requested,
+                    )
+                    enabled_channels.extend(
+                        _ordered_plan_channels(
+                            plan,
+                            supported=power_supply.capabilities.channels,
+                        )
+                    )
+                except (CommandCancelled, KeyboardInterrupt) as exc:
+                    cancel_workflow_with_safe_off(
+                        power_supply,
+                        partial_result={
+                            "ramp_list_version": plan["version"],
+                            "loop_count": plan["loop_count"],
+                            "completed_loops": 0,
+                            "enable_output": True,
+                            "output_enable_executed": False,
+                            "enabled_channels": [],
+                            "completed_segments": 0,
+                            "completed_segment_executions": 0,
+                            "segments": [],
+                            "failed_segment": {
+                                "loop_index": 1,
+                                "code": "interrupted",
+                                "message": str(exc),
+                                "failure_phase": "output_pre_stage",
+                            },
+                            "progress": progress.snapshot(),
+                        },
+                        reporter=cleanup_reporter,
+                    )
+                except (VisaConnectionError, ValueError, CoreValidationError, CoreExecutionError) as exc:
+                    details = exc.data if isinstance(exc, CoreExecutionError) else None
+                    failed_segment = {
+                        "loop_index": 1,
+                        "index": (details or {}).get("segment_index"),
+                        "channels": (details or {}).get("channels", []),
+                        "code": "segment_failed",
+                        "message": str(exc),
+                        "failure_phase": "output_pre_stage",
+                    }
+                    if details:
+                        for name in ("failed_channel", "completed_channels"):
+                            if name in details:
+                                failed_segment[name] = details[name]
             for loop_index in range(1, plan["loop_count"] + 1):
+                if failed_segment is not None:
+                    break
                 completed_segments = 0
                 for segment in plan["segments"]:
                     try:
@@ -431,9 +543,14 @@ def execute_ramp_list(
                             power_supply,
                             segment,
                             completion_pulse=(None if (plan.get("completion_pulse") or {}).get("timing") == "loop" else plan.get("completion_pulse")),
-                            enable_channel=(
-                                plan["enable_output"]
-                                and segment["channel"] not in enabled_channels
+                            enable_channels=(
+                                []
+                                if isinstance(power_supply, E3646APowerSupply)
+                                else [
+                                    channel
+                                    for channel in _segment_channels(segment)
+                                    if plan["enable_output"] and channel not in enabled_channels
+                                ]
                             ),
                             on_channel_enabled=(
                                 lambda channel: enabled_channels.append(channel)
@@ -471,9 +588,18 @@ def execute_ramp_list(
                                 "failed_segment": {
                                     "loop_index": loop_index,
                                     "index": segment["index"],
-                                    "channel": segment["channel"],
+                                    **_segment_selection_payload(segment),
                                     "code": "interrupted",
                                     "message": str(exc),
+                                    **(
+                                        {
+                                            name: exc.data[name]
+                                            for name in ("failed_channel", "completed_channels")
+                                            if exc.data and name in exc.data
+                                        }
+                                        if isinstance(exc, CoreExecutionError)
+                                        else {}
+                                    ),
                                 },
                                 "trigger": pending_trigger,
                                 "progress": progress.snapshot(),
@@ -484,10 +610,14 @@ def execute_ramp_list(
                         failed_segment = {
                             "loop_index": loop_index,
                             "index": segment["index"],
-                            "channel": segment["channel"],
+                            **_segment_selection_payload(segment),
                             "code": "segment_failed",
                             "message": str(exc),
                         }
+                        if isinstance(exc, CoreExecutionError) and exc.data:
+                            for name in ("failed_channel", "completed_channels"):
+                                if name in exc.data:
+                                    failed_segment[name] = exc.data[name]
                         if isinstance(exc, CoreExecutionError) and exc.trigger is not None:
                             failed_segment["trigger"] = exc.trigger
                         break
@@ -512,7 +642,10 @@ def execute_ramp_list(
                         "verified": False,
                         "unchanged_by_workflow": not plan["enable_output"],
                     }
-                    for channel in _ordered_plan_channels(plan)
+                    for channel in _ordered_plan_channels(
+                        plan,
+                        supported=power_supply.capabilities.channels,
+                    )
                 ]
             )
             if plan["enable_output"] and failed_segment is None:
@@ -603,7 +736,7 @@ def execute_ramp_list(
                     reporter=cleanup_reporter,
                 )
             if failed_segment is None and (plan.get("completion_pulse") or {}).get("timing") == "loop":
-                last_channel = plan["segments"][-1]["channel"]
+                last_channel = _segment_channels(plan["segments"][-1])[0]
                 try:
                     loop_trigger = run_post_action_completion_pulse(
                         power_supply,
@@ -677,7 +810,7 @@ def _pending_ramp_list_loop_pulse(plan: dict[str, Any]) -> dict[str, Any]:
     return trigger_result_payload(
         mode="completion-pulse",
         native=False,
-        channel=plan["segments"][-1]["channel"],
+        channel=_segment_channels(plan["segments"][-1])[0],
         pins=tuple(pulse["pins"]),
         polarity=pulse["polarity"],
         source="bus",
@@ -695,48 +828,74 @@ def execute_ramp_segment(
     segment: dict[str, Any],
     *,
     completion_pulse: dict[str, Any] | None,
-    enable_channel: bool,
+    enable_channels: list[int],
     on_channel_enabled: Callable[[int], None],
     sleep: Callable[[float], None],
     stop_requested: Callable[[], bool] | None,
     unit_completed: Callable[[], None] | None = None,
 ) -> dict[str, Any]:
-    channel = segment["channel"]
+    channels = _segment_channels(segment)
+    pulse_channel = channels[0]
     triggers = BoundedResultDetails[dict[str, Any]]()
     trigger: dict[str, Any] | None = None
     raise_if_cancelled(stop_requested)
     first_voltage = segment["voltages"][0]
     if isinstance(power_supply, PSM2010PowerSupply):
         power_supply.set_output_pair(
-            channel=channel,
+            channel=pulse_channel,
             voltage=first_voltage,
             current=segment["current"],
         )
     else:
-        power_supply.set_current_limit(channel=channel, current=segment["current"])
+        for channel in channels:
+            power_supply.set_current_limit(channel=channel, current=segment["current"])
     for voltage_index, voltage in enumerate(segment["voltages"]):
         raise_if_cancelled(stop_requested)
-        if not (isinstance(power_supply, PSM2010PowerSupply) and voltage_index == 0):
-            power_supply.set_voltage(channel=channel, voltage=voltage)
+        completed_channels: list[int] = []
+        for channel in channels:
+            if not (isinstance(power_supply, PSM2010PowerSupply) and voltage_index == 0):
+                try:
+                    power_supply.set_voltage(channel=channel, voltage=voltage)
+                except CoreExecutionError as exc:
+                    exc.data = {
+                        **(exc.data or {}),
+                        "failed_channel": channel,
+                        "completed_channels": list(completed_channels),
+                    }
+                    raise
+                except Exception as exc:
+                    raise CoreExecutionError(
+                        f"ramp-list voltage write failed on channel {channel}: {exc}",
+                        data={
+                            "failed_channel": channel,
+                            "completed_channels": list(completed_channels),
+                        },
+                    ) from exc
+            completed_channels.append(channel)
         if unit_completed is not None:
             unit_completed()
-        if voltage_index == 0 and enable_channel:
-            power_supply.output_on(channel=channel)
-            if power_supply.output_state(channel=channel) is not True:
-                raise CoreVerificationError(
-                    "ramp-list output-on verification failed",
-                    verification={
-                        "operation": "ramp-list-output-on",
-                        "passed": False,
-                        "checks": [{"channel": channel, "expected": True}],
-                        "differences": [{"channel": channel, "expected": True}],
-                    },
-                )
-            on_channel_enabled(channel)
+        if voltage_index == 0:
+            for channel in enable_channels:
+                power_supply.output_on(channel=channel)
+                if power_supply.output_state(channel=channel) is not True:
+                    raise CoreVerificationError(
+                        "ramp-list output-on verification failed",
+                        verification={
+                            "operation": "ramp-list-output-on",
+                            "passed": False,
+                            "checks": [{"channel": channel, "expected": True}],
+                            "differences": [{"channel": channel, "expected": True}],
+                        },
+                        data={
+                            "failed_channel": channel,
+                            "completed_channels": list(channels),
+                        },
+                    )
+                on_channel_enabled(channel)
         if completion_pulse and completion_pulse["timing"] == "step":
             pulse = run_post_action_completion_pulse(
                 power_supply,
-                channel=channel,
+                channel=pulse_channel,
                 pins=completion_pulse["pins"],
                 polarity=completion_pulse["polarity"],
             )
@@ -748,7 +907,7 @@ def execute_ramp_segment(
     if completion_pulse and completion_pulse["timing"] == "segment":
         trigger = run_post_action_completion_pulse(
             power_supply,
-            channel=channel,
+            channel=pulse_channel,
             pins=completion_pulse["pins"],
             polarity=completion_pulse["polarity"],
         )
@@ -757,7 +916,7 @@ def execute_ramp_segment(
         raise ValueError(f"instrument errors: {errors}")
     result = {
         "index": segment["index"],
-        "channel": channel,
+        **_segment_selection_payload(segment),
         "current": segment["current"],
         "start_voltage": segment["start_voltage"],
         "stop_voltage": segment["stop_voltage"],
@@ -782,34 +941,120 @@ def _validate_plan_for_power_supply(
 ) -> None:
     model = parse_idn(idn_raw).model
     for segment in plan["segments"]:
-        channel = segment["channel"]
-        if channel not in power_supply.capabilities.channels:
+        selected = _segment_channels(segment)
+        unsupported = tuple(
+            channel
+            for channel in selected
+            if channel not in power_supply.capabilities.channels
+        )
+        if unsupported:
+            label = "channels" if "channels" in segment else "channel"
+            value = unsupported if "channels" in segment else unsupported[0]
             raise CoreValidationError(
-                f"ramp-list segment {segment['index']} channel {channel} is not supported; "
+                f"ramp-list segment {segment['index']} {label} {value} is not supported; "
                 f"supported: {power_supply.capabilities.channels}"
             )
-        limits = _safety_limits(request, channel=channel, model=model)
+        canonical = tuple(
+            channel
+            for channel in power_supply.capabilities.channels
+            if channel in selected
+        )
+        if "channels" in segment:
+            segment["channels"] = list(canonical)
         try:
-            for voltage in segment["voltages"]:
-                validate_setpoint(channel=channel, voltage=voltage, current=segment["current"], limits=limits)
-                validate_effective_setpoint(
-                    model=model,
-                    channel=channel,
-                    electrical_ratings=power_supply.capabilities.electrical_ratings,
-                    safety_limits=limits,
-                    voltage=voltage,
-                    current=segment["current"],
-                )
-                if plan["enable_output"]:
-                    _require_confirmation_if_needed(
-                        request,
-                        voltage,
-                        segment["current"],
-                        channel,
-                        idn_raw,
+            for channel in canonical:
+                limits = _safety_limits(request, channel=channel, model=model)
+                for voltage in segment["voltages"]:
+                    validate_setpoint(channel=channel, voltage=voltage, current=segment["current"], limits=limits)
+                    validate_effective_setpoint(
+                        model=model,
+                        channel=channel,
+                        electrical_ratings=power_supply.capabilities.electrical_ratings,
+                        safety_limits=limits,
+                        voltage=voltage,
+                        current=segment["current"],
                     )
+                    if plan["enable_output"]:
+                        _require_confirmation_if_needed(
+                            request,
+                            voltage,
+                            segment["current"],
+                            channel,
+                            idn_raw,
+                        )
         except (SafetyConfigError, SafetyValidationError) as exc:
             raise CoreValidationError(f"ramp-list segment {segment['index']}: {exc}") from exc
+
+
+def _prestage_e3646a_output(
+    power_supply: E3646APowerSupply,
+    plan: dict[str, Any],
+    *,
+    stop_requested: Callable[[], bool] | None = None,
+) -> None:
+    first_setpoints: dict[int, tuple[dict[str, Any], float]] = {}
+    for segment in plan["segments"]:
+        for channel in _segment_channels(segment):
+            first_setpoints.setdefault(channel, (segment, segment["voltages"][0]))
+    ordered_channels = tuple(
+        channel
+        for channel in power_supply.capabilities.channels
+        if channel in first_setpoints
+    )
+    completed_channels: list[int] = []
+    for channel in ordered_channels:
+        raise_if_cancelled(stop_requested)
+        segment, voltage = first_setpoints[channel]
+        try:
+            power_supply.set_current_limit(channel=channel, current=segment["current"])
+            power_supply.set_voltage(channel=channel, voltage=voltage)
+        except CoreExecutionError as exc:
+            exc.data = {
+                **(exc.data or {}),
+                "segment_index": segment["index"],
+                "channels": list(_segment_channels(segment)),
+                "failed_channel": channel,
+                "completed_channels": list(completed_channels),
+            }
+            raise
+        except Exception as exc:
+            raise CoreExecutionError(
+                f"ramp-list output pre-stage failed on channel {channel}: {exc}",
+                data={
+                    "segment_index": segment["index"],
+                    "channels": list(_segment_channels(segment)),
+                    "failed_channel": channel,
+                    "completed_channels": list(completed_channels),
+                },
+            ) from exc
+        completed_channels.append(channel)
+    raise_if_cancelled(stop_requested)
+    power_supply.output_on(channel=ordered_channels[0])
+    checks = [
+        {
+            "channel": channel,
+            "expected": True,
+            "actual": power_supply.output_state(channel=channel),
+        }
+        for channel in ordered_channels
+    ]
+    differences = [check for check in checks if check["actual"] is not True]
+    if differences:
+        raise CoreVerificationError(
+            "ramp-list output-on verification failed",
+            verification={
+                "operation": "ramp-list-output-on",
+                "passed": False,
+                "checks": checks,
+                "differences": differences,
+            },
+            data={
+                "segment_index": first_setpoints[differences[0]["channel"]][0]["index"],
+                "channels": list(ordered_channels),
+                "failed_channel": differences[0]["channel"],
+                "completed_channels": list(ordered_channels),
+            },
+        )
 
 
 def _safety_limits(request: OperationRequest, *, channel: int, model: str | None) -> Any:
@@ -850,24 +1095,51 @@ def _validate_known_simulated_plan(request: OperationRequest, plan: dict[str, An
     if ratings is None:
         return
     for segment in plan["segments"]:
-        limits = _safety_limits(request, channel=segment["channel"], model=model)
         try:
-            for voltage in segment["voltages"]:
-                validate_effective_setpoint(
-                    model=model,
-                    channel=segment["channel"],
-                    electrical_ratings=ratings,
-                    safety_limits=limits,
-                    voltage=voltage,
-                    current=segment["current"],
-                )
+            for channel in _segment_channels(segment):
+                limits = _safety_limits(request, channel=channel, model=model)
+                for voltage in segment["voltages"]:
+                    validate_effective_setpoint(
+                        model=model,
+                        channel=channel,
+                        electrical_ratings=ratings,
+                        safety_limits=limits,
+                        voltage=voltage,
+                        current=segment["current"],
+                    )
         except SafetyValidationError as exc:
             raise CoreValidationError(f"ramp-list segment {segment['index']}: {exc}") from exc
 
 
-def _ordered_plan_channels(plan: dict[str, Any]) -> list[int]:
+def _segment_channels(segment: dict[str, Any]) -> tuple[int, ...]:
+    if "channels" in segment:
+        return tuple(segment["channels"])
+    return (segment["channel"],)
+
+
+def _segment_selection_payload(segment: dict[str, Any]) -> dict[str, Any]:
+    if "channels" in segment:
+        return {"channels": list(segment["channels"])}
+    return {"channel": segment["channel"]}
+
+
+def _ordered_plan_channels(
+    plan: dict[str, Any],
+    *,
+    supported: tuple[int, ...] | None = None,
+) -> list[int]:
     channels: list[int] = []
     for segment in plan["segments"]:
-        if segment["channel"] not in channels:
-            channels.append(segment["channel"])
-    return channels
+        for channel in _segment_channels(segment):
+            if channel not in channels:
+                channels.append(channel)
+    if supported is None:
+        target = plan.get("target", {})
+        if target.get("planning_model_id") is not None or target.get("planning_profile_id") is not None:
+            supported = no_hardware_channels(
+                target.get("planning_model_id"),
+                target.get("planning_profile_id"),
+            )
+    if supported is None:
+        return channels
+    return [channel for channel in supported if channel in channels]

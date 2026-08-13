@@ -64,7 +64,8 @@ def test_frontend_rating_guard_remains_unchanged_for_workflow_and_restore_paths(
     assertions = r"""
 const strictAssert = require("node:assert/strict");
 const identity = { value: "model-a" };
-document.getElementById = (id) => id === "expected-model-id" ? identity : null;
+const resource = { value: "RESOURCE" };
+document.getElementById = (id) => id === "expected-model-id" ? identity : id === "resource" ? resource : null;
 state.executionMode = "simulate";
 state.physicalModels = [{ model_id: "model-a", display_name: "Model A" }];
 state.electricalRatingsByModel = {
@@ -73,8 +74,14 @@ state.electricalRatingsByModel = {
 const expected = "Voltage 7 exceeds official DC output rating 6 V for Model A channel 1.";
 strictAssert.equal(electricalRatingGuardReason("ramp", { channel: 1, start_voltage: 0, stop_voltage: 7, current: 1 }), expected);
 strictAssert.equal(electricalRatingGuardReason("ramp", { channels: [1, 2], start_voltage: 0, stop_voltage: 7, current: 1 }), expected);
-state.rampListSegments = [{ channel: 1, start_voltage: 0, stop_voltage: 7, current: 1 }];
+state.rampListSegments = [{ channels: [2, 1], start_voltage: 0, stop_voltage: 7, current: 1 }];
 strictAssert.equal(electricalRatingGuardReason("ramp-list", {}), expected);
+state.livePanel = { resource: "RESOURCE", stale: false, channels: [
+  { channel: 1, protection_tripped: true }, { channel: 2, protection_tripped: false }
+] };
+strictAssert.match(tripGuardReason("ramp-list", {
+  document: { segments: [{ channels: [2, 1] }] }
+}), /CH1/);
 strictAssert.equal(electricalRatingGuardReason("trigger-step", { channel: 1, voltage: 7, current: 1 }), expected);
 strictAssert.equal(electricalRatingGuardReason("trigger-list", { channel: 1, voltage_list: [7], current_list: [1] }), expected);
 state.sequenceSteps = [{ action: "set", channel: 1, voltage: 7, current: 1 }];

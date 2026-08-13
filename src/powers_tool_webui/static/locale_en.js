@@ -564,6 +564,7 @@ export const EN_MESSAGES = Object.freeze({
   "workflow.guidance.waiting_cleanup": "Waiting for safe-off and cleanup",
   "ramp_list.aria.enable_each_channel": "Auto-enable output for each channel on first use",
   "ramp_list.help.enable_each_channel": "On first use of each channel, the workflow writes the first safe setpoint, enables OUTPUT, and verifies that OUTPUT is ON. OUTPUT remains ON after normal completion. Stop uses the existing safe shutdown flow. Real hardware still requires confirmation.",
+  "ramp_list.note.e3646a_global_output": "E3646A output enable is global. Ramp List pre-stages the first safe setpoint for every channel used in the list before enabling output once.",
   "workflow.field.voltage": "Voltage (V)",
   "workflow.field.wait_complete": "Wait complete",
   "workflow.field.wait_timeout_ms": "Timeout (ms)",

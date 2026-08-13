@@ -169,9 +169,11 @@ Live Data 狀態列對 WebUI 狀態 (WebUI State)、命令狀態 (Command State)
 
 前端保留一個工作 SSE 控制器與一個即時資料 SSE 控制器。
 Ramp List 使用專屬的區段卡片 (segment-card) 編輯器，具備版本化 JSON 載入/儲存功能。
-它可載入 v2/v3 文件並視為單次執行，儲存時使用 strict v4，明確包含
-`enable_output` 與 `loop_count`（即使 Loop 關閉也會儲存有效值 `1`）。編輯器
-最多支援 10 個有序區段，並在送出前具備全清單觸發保護 (full-list trip guarding) 機制。
+它可載入 v2/v3/v4/v5，儲存時一律使用 strict v5，明確包含 `enable_output`、
+`loop_count` 與每個 Segment 的 `channels`（即使 Loop 關閉也會儲存有效值 `1`）。
+每個 Segment 可依目前型號 metadata 選擇不同通道組合；All 會儲存為明確的 canonical
+channel list。編輯器最多支援 10 個有序區段，並在送出前檢查所有所選通道的支援、
+額定值與 protection-trip 狀態。
 Sequence (序列) 使用可折疊的步進卡片搭配 JSON 載入/儲存，在 WebUI 中最高支援
 250 個步驟。它可載入 v1 並視為單次執行，儲存與執行時使用 strict v2：
 `{"version": 2, "loop_count": N, "steps": [...]}`。CLI 與 Core 不受 WebUI
@@ -184,6 +186,9 @@ Cycle Output 提供可選的完成脈波 (finished pulse)。Ramp 的 Pulse timin
 None、Every step、Ramp complete 或 Loop complete；Ramp List 的選項為 None、
 Every step、Segment complete 或 Loop complete。Sequence 只有既有的 per-Step
 `trigger-pulse` action，沒有 top-level completion pulse。
+多通道 Ramp List 的 Every-step 與 Segment-complete 每次只發一個脈波，內部使用該
+Segment 第一個 canonical channel；Loop-complete 使用最後一個 Segment 的第一個
+canonical channel。使用者不需要也不能設定此 trigger channel。
 
 Ramp 的 Channel selector 會依目前型號 metadata 動態顯示單一通道、通道組合與
 All。單一選項送出 `channel`；組合與 All 送出明確、canonical 的 `channels` 清單。
@@ -197,6 +202,10 @@ logical execution units，超過 100,000 時 adapter 會顯示 long-running warn
 完整執行。Loop 關閉時會使 Loop complete 回到 None，且該選項會停用。
 
 脈波的後面板腳位與輸出通道相互獨立，並且僅限 E36312A。當已知所選資源為其他型號時，這些控制項會停用。Cycle Output 與 Ramp 中的脈波詳情欄位僅在脈波選項啟用後顯示。後面板腳位欄位提供所有有效腳位組合的選擇器，包含 All。Ramp 與 Ramp List 每一步驟的脈波接受額外的零毫秒延遲。
+
+Ramp List 在 E3646A context 會於自動啟用輸出附近顯示提示。由於 E3646A 的輸出啟用
+是全域控制，Core 會先為清單中會使用到的每個通道寫入第一組安全設定值，再一次啟用
+全域輸出。
 
 工作流程的完成脈波是軟體排程的後續動作 `*TRG` 脈波，而非原生的 LIST 執行。它們會短暫修改並還原觸發/後面板腳位設定，且全域的 `*TRG` 可能會影響其他已經 arm 的 BUS 行為。Sequence Trigger pulse 的 `Leave configured` 僅控制這些設定是否在脈波後被還原；它不會讓脈波觸發保持 armed 狀態，且可能影響後續的 Sequence 步驟或其他 BUS 觸發。
 

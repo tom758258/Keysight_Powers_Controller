@@ -439,9 +439,12 @@ readback and one-shot post-command refreshes.
 
 The frontend keeps one job SSE controller and one live-data SSE controller.
 Ramp List uses a dedicated segment-card editor with versioned JSON Load/Save.
-It loads v2/v3 as one execution and saves strict v4 with explicit
-`enable_output` and `loop_count`, including 1. The editor supports up to 10
-ordered segments and full-list trip guarding before submission.
+It loads v2/v3/v4/v5 and always saves strict v5 with explicit `enable_output`,
+`loop_count`, and `channels`, including loop count 1. Each Segment has a
+model-aware channel-combination selector and may use a different combination;
+All is saved as the model's explicit canonical channel list. The editor supports
+up to 10 ordered segments and full-list channel/rating/trip guarding before
+submission.
 For Ramp and each Ramp List segment, `Wait between steps (ms)` applies only
 after a non-final voltage step. Ramp List `Wait after final step (ms)` applies
 after the final voltage step and before that segment completes.
@@ -458,6 +461,9 @@ Cycle Output exposes an optional finished pulse. Ramp uses one Pulse timing
 selector: None, Every step, Ramp complete, or Loop complete. Ramp List uses
 None, Every step, Segment complete, or Loop complete. Sequence retains only
 its per-Step Trigger pulse action.
+For a multi-channel Ramp List Segment, Every-step and Segment-complete fire once
+using the first canonical selected channel as an internal anchor. Loop-complete
+uses the last Segment's first canonical channel. The anchor is not configurable.
 
 Ramp places Enable output first, then Enable loop, Channel/Current, Ramp
 setpoints, and Pulse timing. Its Channel selector is generated from the
@@ -494,6 +500,10 @@ Pulse detail fields in Cycle Output and Ramp appear only after a pulse option
 is enabled. Rear-pin fields use a selector for every valid pin combination,
 including All. Ramp and Ramp List Every-step pulse accept a zero millisecond
 additional delay.
+
+E3646A Ramp List shows a model-aware note beside Auto-enable output. Because
+this model's output enable is global, Core pre-stages the first safe setpoint
+for every channel used by the list before enabling output once.
 
 Workflow completion pulses are software-scheduled post-action `*TRG` pulses,
 not native LIST execution. They temporarily modify and restore trigger/rear-pin

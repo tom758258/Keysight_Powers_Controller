@@ -245,6 +245,8 @@ var {
   selectedChannelRating,
   selectedChannelRatingFor,
   selectedInputElectricalConstraint,
+  rampChannelOptions,
+  rampChannelOptionLabel,
   refreshElectricalRatingConstraints,
   validateConstrainedInputs,
   refreshBasicInputConstraints,
@@ -436,6 +438,10 @@ const workflows = webuiWorkflows.createWorkflows({
   pulseTimingDisplayName: (...args) => pulseTimingDisplayName(...args),
   pinsSelectValue: (...args) => pinsSelectValue(...args),
   applyParameterConstraint: (...args) => applyParameterConstraint(...args),
+  supportedChannelsForCurrentModel: (...args) => supportedChannelsForCurrentModel(...args),
+  rampChannelOptions: (...args) => rampChannelOptions(...args),
+  rampChannelOptionLabel: (...args) => rampChannelOptionLabel(...args),
+  selectedChannelModel: (...args) => selectedChannelModel(...args),
   updateWorkflowDocumentValidity: (...args) => updateWorkflowDocumentValidity(...args),
   updateRampListPulse: (...args) => updateRampListPulse(...args)
 });
@@ -1834,7 +1840,7 @@ function electricalRatingGuardReason(command, parameters) {
   };
   if (["set", "apply", "smoke-output"].includes(command)) return check(parameters.channel, parameters.voltage, parameters.current);
   if (command === "ramp") return check(parameters.channels || parameters.channel, Math.max(Number(parameters.start_voltage), Number(parameters.stop_voltage)), parameters.current);
-  if (command === "ramp-list") for (const segment of state.rampListSegments) { const reason = check(segment.channel, Math.max(Number(segment.start_voltage), Number(segment.stop_voltage)), segment.current); if (reason) return reason; }
+  if (command === "ramp-list") for (const segment of state.rampListSegments) { const reason = check(segment.channels, Math.max(Number(segment.start_voltage), Number(segment.stop_voltage)), segment.current); if (reason) return reason; }
   if (command === "trigger-step") return check(parameters.channel, parameters.voltage, parameters.current);
   if (command === "trigger-list") for (const voltage of parameters.voltage_list || []) for (const current of parameters.current_list || []) { const reason = check(parameters.channel, voltage, current); if (reason) return reason; }
   if (command === "sequence") for (const step of state.sequenceSteps) if (["set", "apply"].includes(step.action)) { const reason = check(step.channel ?? 1, step.voltage, step.current); if (reason) return reason; }
@@ -1914,7 +1920,7 @@ function tripGuardReason(command, parameters) {
   if (!tripped.length) return "";
   const selected = parameters.channels || parameters.channel;
   const rampListChannels = command === "ramp-list"
-    ? [...new Set((parameters.document?.segments || []).map((segment) => Number(segment.channel)))]
+    ? [...new Set((parameters.document?.segments || []).flatMap((segment) => segment.channels || [segment.channel]).map(Number))]
     : [];
   const blocked = command === "ramp-list"
     ? tripped.filter((channel) => rampListChannels.includes(channel))

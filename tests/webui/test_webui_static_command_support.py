@@ -49,6 +49,9 @@ strictAssert.deepEqual(support.supportedChannelsForCurrentModel(), [1, 2]);
 strictAssert.equal(support.channelUnsupportedReason(3), "model-a does not support channel 3");
 strictAssert.equal(support.channelAvailabilityGuardReason("set", { channel: "3" }), "model-a does not support channel 3");
 strictAssert.equal(support.channelAvailabilityGuardReason("ramp", { channels: [1, 3] }), "model-a does not support channel 3");
+strictAssert.equal(support.channelAvailabilityGuardReason("ramp-list", {
+  document: { segments: [{ channels: [1, 3] }] }
+}), "model-a does not support channel 3");
 strictAssert.equal(support.transportScopeLabel("tcpip"), "TCPIP");
 
 i18n.setLocale("zh-TW");

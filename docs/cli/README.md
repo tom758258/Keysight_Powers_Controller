@@ -433,8 +433,12 @@ return JSON error code `verification_failed` and exit `3`.
 
 `ramp-list` runs 1 to 10 ordered software-setpoint ramp segments through one
 VISA session. It validates the complete versioned JSON document and all
-generated setpoints before the first hardware write. It does not enable or
-disable output, use native LIST, or perform automatic safe-off on failure.
+generated setpoints before the first hardware write. By default it does not
+enable or disable output; explicit `enable_output: true` enables each workflow
+channel once. It does not use native LIST or perform automatic safe-off on
+ordinary execution failure.
+Ramp List v5 lets each Segment select one or more channels. Those channels share
+the Segment current and voltage path and advance in canonical lockstep order.
 
 Ramp `--completion-pulse-timing segment` emits once after each complete Ramp
 iteration. `--completion-pulse-timing step` emits after every voltage write,
@@ -456,9 +460,13 @@ then 1. Ramp List v2/v3 and Sequence v1 imply 1.
 Ramp List version 2 remains accepted with `enable_output: false` and one
 iteration. Version 3 requires `enable_output` and implies one iteration.
 Version 4 requires exact `enable_output` and `loop_count` fields and may
-contain a global `completion_pulse` object. Version 1, malformed values,
-unknown fields, and future versions are rejected without fallback. Inline
-segments always build v4 and explicitly store `loop_count`, including 1.
+contain a global `completion_pulse` object. These versions use one `channel` per
+Segment. Version 5 is the latest format and requires `channels`,
+`enable_output`, and `loop_count`; `channels` is a non-empty list of unique
+positive integers. Version 1, malformed values, unknown fields, and future
+versions are rejected without fallback. Inline `--segment CHANNEL ...` syntax
+is unchanged, but it builds v5 with `channels: [CHANNEL]` and explicitly stores
+`loop_count`, including 1.
 
 Core limits Ramp, Ramp List, and Sequence to 1,000,000 logical execution
 units. The CLI prints an execution summary before text-mode execution and

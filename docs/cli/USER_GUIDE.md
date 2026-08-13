@@ -137,6 +137,11 @@ and 10,000 is the maximum. Values outside the strict integer range 1 through 10,
 are rejected. For Ramp List and Sequence files, an explicit CLI value wins;
 otherwise the file value is used, then 1 for older supported file versions.
 
+Ramp List v5 is the current file format. Each Segment uses `channels` and may
+select a different channel combination. Selected channels share that Segment's
+current and voltage path and advance in lockstep; v2/v3/v4 files with one
+`channel` per Segment remain supported.
+
 Ramp can pulse after every step, after each complete Ramp iteration, or once
 after all loops. Ramp List can pulse after every step, after each Segment, or
 once after all loops. Loop-complete pulse timing requires at least two total

@@ -564,6 +564,7 @@ export const ZH_TW_MESSAGES = Object.freeze({
   "workflow.guidance.waiting_cleanup": "正在等待安全關閉輸出與清理",
   "ramp_list.aria.enable_each_channel": "各通道第一次使用時自動啟用輸出",
   "ramp_list.help.enable_each_channel": "各通道第一次使用時，工作流程會先寫入第一個安全設定值，再啟用 OUTPUT 並驗證輸出已開啟。正常完成後 OUTPUT 維持 ON；Stop 仍依現有安全關閉流程處理。實機硬體仍需確認。",
+  "ramp_list.note.e3646a_global_output": "E3646A 的輸出啟用為全域控制。Ramp List 會先為清單中會使用到的每個通道寫入其第一組安全設定值，再一次啟用全域輸出。",
   "workflow.field.voltage": "電壓 (V)",
   "workflow.field.wait_complete": "等待完成",
   "workflow.field.wait_timeout_ms": "逾時 (ms)",

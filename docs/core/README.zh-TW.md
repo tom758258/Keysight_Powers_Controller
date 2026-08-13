@@ -158,7 +158,7 @@ voltage step 一次計算。未指定 completion-pulse anchor 時，使用第一
 selected channel。
 
 Ramp、Ramp List 與 Sequence 支援 strict `loop_count` 總執行次數 `1..10000`。
-舊 Ramp List v2/v3 與 Sequence v1 代表一次執行；Ramp List v4 與 Sequence v2
+舊 Ramp List v2/v3 與 Sequence v1 代表一次執行；Ramp List v4/v5 與 Sequence v2
 會保存 `loop_count`。結果的 `segment_count` 與 `step_count` 仍以單次 iteration
 計算；`completed_loops` 只計算完整成功的 iteration，而 segment/step execution
 計數則跨 iteration 累計。
@@ -173,8 +173,16 @@ counters 仍涵蓋完整執行。長時間工作流程透過 completed 與 total
 Completion pulses 使用 E36312A 的後面板數位腳位；後面板腳位與所選的輸出通道
 分開。Ramp 的 `step` timing 在每次 iteration 的每次 voltage write 後脈波，
 `segment` 在每次完整 Ramp iteration 後脈波，`loop` 在所有 iteration 後脈波。
-Ramp List 保留每一步驟與每個 Segment 的行為，`loop` 則使用最後一個 Segment
-channel 作為 internal trigger anchor。Every-step timing 接受 `delay_ms = 0`。
+多通道 Ramp List Segment 依 canonical channel order 前進，所有所選通道都成功寫入後
+才完成一個 logical voltage step。每一步驟與每個 Segment 只發一次脈波，並使用該
+Segment 第一個 canonical channel 作為 internal trigger anchor；`loop` 使用最後一個
+Segment 的第一個 canonical channel。此 anchor 不是文件設定。Every-step timing 接受
+`delay_ms = 0`。
 Sequence 沒有 top-level completion pulse，只有既有的 per-Step `trigger-pulse`
 action。軟體脈波會為觸發與數位腳位設定建立快照並進行還原，並可能發送全域
 `*TRG`，影響其他已經 armed 的 BUS 行為。
+
+Ramp List v2/v3/v4 的每個 Segment 使用單一 `channel`；v5 是最新格式，要求明確的
+`enable_output`、`loop_count`，以及每個 Segment 非空、不可重複的 `channels` 清單。
+E3646A 使用自動啟用輸出時，Core 會先為整份清單使用的每個通道寫入其第一次出現
+Segment 的第一組安全設定值，再一次啟用全域輸出；之後仍照常執行所有 Segment writes。

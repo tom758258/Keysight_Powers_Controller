@@ -265,8 +265,9 @@ for output commands, `"all"` is supported by `apply`, `safe-off`,
 and `smoke-output` do not accept `"all"`. Ramp instead requires exactly one of
 single `channel` or a non-empty, duplicate-free `channels` list; Core rejects
 unsupported entries and canonicalizes the list before queue admission for
-no-hardware jobs. `ramp-list` accepts `file`
-or `document`; each segment selects one positive integer channel.
+no-hardware jobs. `ramp-list` accepts `file` or `document`. Version 5 Segments
+select a non-empty, duplicate-free `channels` list; older supported versions
+continue to select one positive integer `channel`.
 
 Restore snapshot documents must contain non-empty `outputs`, `readback`, and
 `protection_settings` sections with exactly the same channel inventory. A
@@ -310,14 +311,18 @@ steps, and Sequence counts Steps, each multiplied by `loop_count`. Adapters
 warn above 100,000 units. Ramp channel count does not multiply its logical
 units or progress. Runtime detail arrays retain at most the first 100
 and last 100 entries with additive truncation metadata, and progress is
-reported by completed units, total units, and integer percent.
+reported by completed units, total units, and integer percent. Ramp List
+Segment channel count, like Ramp channel count, does not multiply logical units.
 
 Ramp List v2 documents imply `enable_output: false` and `loop_count: 1`; v3
 requires exact `enable_output` and implies one iteration; v4 requires exact
-`enable_output` and `loop_count`. Sequence v1 forbids `loop_count` and implies
+`enable_output` and `loop_count` with single-channel Segments. Ramp List v5 is
+the latest format and requires exact `enable_output`, `loop_count`, and a
+non-empty unique `channels` list in every Segment. v2/v3/v4 reject `channels`,
+and v5 rejects `channel`. Sequence v1 forbids `loop_count` and implies
 one iteration; v2 requires it. Unknown or missing strict-version fields and
-future versions are rejected. Each Ramp List segment contains `channel`,
-`current`, `start_voltage`, `stop_voltage`, `step_voltage`, `delay_ms`, and
+future versions are rejected. Each Ramp List segment also contains `current`,
+`start_voltage`, `stop_voltage`, `step_voltage`, `delay_ms`, and
 `hold_ms`. An optional global `completion_pulse` contains `timing`
 (`segment`, `step`, or `loop`), E36312A rear digital `pins`, and `polarity`.
 Loop timing requires at least two iterations.

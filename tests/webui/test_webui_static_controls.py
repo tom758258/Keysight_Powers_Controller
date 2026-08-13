@@ -931,7 +931,7 @@ def test_static_ramp_list_editor_contract():
     workflows_js = read_static_javascript("workflows.js")
 
     assert '"ramp-list": []' in app_js
-    for field in ("channel", "current", "start_voltage", "stop_voltage", "step_voltage", "delay_ms", "hold_ms"):
+    for field in ("channels", "current", "start_voltage", "stop_voltage", "step_voltage", "delay_ms", "hold_ms"):
         assert f'name: "{field}"' in ramp_list_js
     assert "state.rampListSegments.length >= 10" in workflows_js
     assert "if (state.rampListSegments.length <= 1) return;" in workflows_js
@@ -939,18 +939,18 @@ def test_static_ramp_list_editor_contract():
     assert "stop_voltage: previous.stop_voltage" in workflows_js
     assert 'kind: "powers-tool-ramp-list"' in ramp_list_js
     ramp_document = extract_js_function(ramp_list_js, "rampListDocument")
-    assert "version: 4" in ramp_document
+    assert "version: 5" in ramp_document
     assert "enable_output: state.rampListEnableOutput" in ramp_document
     validator = extract_js_function(ramp_list_js, "validateRampListDocument")
     assert 'document.kind !== "powers-tool-ramp-list"' in validator
-    assert "![2, 3, 4].includes(document.version)" in validator
+    assert "![2, 3, 4, 5].includes(document.version)" in validator
     assert 'typeof document.enable_output !== "boolean"' in validator
     assert "document.version !== 1" not in validator
     assert "return webuiRampListDocument.rampListDocument(state);" in workflows_js
     assert "return webuiRampListDocument.validateRampListDocument(document);" in workflows_js
     assert "window.showOpenFilePicker" in json_files_js
     assert "window.showSaveFilePicker" in json_files_js
-    assert "const normalized = validateRampListDocument(JSON.parse(text));" in workflows_js
+    assert "supportedChannelsForCurrentModel()" in workflows_js
     assert "state.rampListSegments = normalized.segments;" in workflows_js
     assert "state.rampListCompletionPulse = normalized.completionPulse;" in workflows_js
     assert "state.rampListEnableOutput = normalized.enableOutput;" in workflows_js

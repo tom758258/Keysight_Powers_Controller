@@ -281,7 +281,7 @@ the first canonical selected channel.
 
 Ramp, Ramp List, and Sequence support a strict `loop_count` total iteration
 count from 1 through 10,000. Old Ramp List v2/v3 and Sequence v1 documents imply
-one iteration; Ramp List v4 and Sequence v2 persist `loop_count`. Result
+one iteration; Ramp List v4/v5 and Sequence v2 persist `loop_count`. Result
 `segment_count` and `step_count` remain per iteration. `completed_loops` counts
 only whole successful iterations, while `completed_segment_executions` and
 `completed_step_executions` are cumulative across iterations.
@@ -297,9 +297,12 @@ integer-percent progress using completed and total execution units.
 Completion pulses use E36312A rear digital pins; rear pins are separate from
 the selected output channel. Ramp `step` timing pulses after every voltage
 write in every iteration, `segment` pulses once after each complete Ramp
-iteration, and `loop` pulses once after all iterations. Ramp List keeps its
-per-step and per-Segment behavior in every iteration; `loop` pulses once using
-the last Segment channel as an internal trigger anchor. Every-step timing
+iteration, and `loop` pulses once after all iterations. A multi-channel Ramp
+List Segment advances in canonical channel order and counts one logical step
+only after every selected channel write succeeds. Its per-step and per-Segment
+pulses fire once using the Segment's first canonical channel; `loop` pulses once
+using the last Segment's first canonical channel. The anchor is internal and is
+not a document setting. Every-step timing
 accepts `delay_ms = 0`. Sequence has no top-level completion pulse; its
 per-Step `trigger-pulse` action is unchanged.
 
@@ -325,11 +328,17 @@ Ramp and Ramp List leave output state unchanged by default. Optional
 `enable_output: true` enables an output only after the current limit and first
 voltage setpoint are validated and written, then requires an ON readback.
 Normal completion leaves enabled outputs ON and reads their final state again.
+For E3646A Ramp List, Core first pre-stages the first setpoint of the first
+Segment using each workflow channel, then enables the model's global output
+once. Normal Segment writes still execute afterward.
 
 Ramp List version 2 keeps `kind: "powers-tool-ramp-list"` and remains accepted
 with fixed `enable_output: false` and `loop_count: 1` semantics. Version 3
 requires an exact top-level JSON boolean `enable_output` and also implies one
-iteration. Version 4 requires both `enable_output` and `loop_count`. Sequence
+iteration. Version 4 requires both `enable_output` and `loop_count`; v2/v3/v4
+Segments use one `channel`. Version 5 is the latest format, requires those two
+top-level fields, and replaces each Segment's `channel` with a non-empty,
+duplicate-free `channels` list. Sequence
 v1 implies one iteration and forbids `loop_count`; Sequence v2 requires it.
 Missing, wrong-type, unknown, legacy, and future-version fields are rejected
 before hardware I/O. Explicit CLI loop overrides upgrade supported older

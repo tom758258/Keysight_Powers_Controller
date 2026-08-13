@@ -119,6 +119,10 @@ Ramp、Ramp List 與 Sequence 接受 `--loop-count N`。這個值代表完整執
 大於 `10,000` 或不是嚴格整數的值都會被拒絕。對 Ramp List 與 Sequence 文件，
 明確提供的 CLI 值優先；否則使用文件值，再以舊版支援文件的預設值 `1` 收尾。
 
+Ramp List v5 是目前的文件格式。每個 Segment 使用 `channels`，而且可選擇不同的通道
+組合；所選通道共用該 Segment 的電流與電壓路徑，並以 lockstep 前進。使用單一
+`channel` 的 v2/v3/v4 文件仍可載入與執行。
+
 ## E3646A RS-232 / ASRL
 
 E3646A 的 Product LIVE 支援僅限 ASRL／RS-232 transport 與 system VISA backend；目前

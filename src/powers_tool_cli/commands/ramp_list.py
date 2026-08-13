@@ -158,7 +158,7 @@ def _segment_document(values: Sequence[str]) -> dict[str, Any]:
     channel, current, start, stop, step, delay_ms, hold_ms = values
     try:
         return {
-            "channel": int(channel),
+            "channels": [int(channel)],
             "current": float(current),
             "start_voltage": float(start),
             "stop_voltage": float(stop),

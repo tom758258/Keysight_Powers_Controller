@@ -72,6 +72,10 @@ export function createWorkflows({
   pulseTimingDisplayName,
   pinsSelectValue,
   applyParameterConstraint,
+  supportedChannelsForCurrentModel,
+  rampChannelOptions,
+  rampChannelOptionLabel,
+  selectedChannelModel,
   updateWorkflowDocumentValidity,
   updateRampListPulse
 }) {
@@ -298,6 +302,17 @@ function renderRampListForm(form) {
   enableLabel.dataset.workflowCompactHelpAria = "ramp_list.aria.enable_each_channel";
   enableLabel.dataset.workflowCompactHelpDescription = "ramp_list.help.enable_each_channel";
   editor.appendChild(enableLabel);
+  if (selectedChannelModel?.() === "keysight-e3646a") {
+    const globalOutputNote = document.createElement("small");
+    globalOutputNote.id = "ramp-list-e3646a-output-note";
+    globalOutputNote.className = "field-description";
+    workflowText(
+      globalOutputNote,
+      "ramp_list.note.e3646a_global_output",
+      "E3646A output enable is global. Ramp List pre-stages the first safe setpoint for every channel used in the list before enabling output once."
+    );
+    editor.appendChild(globalOutputNote);
+  }
   editor.appendChild(renderLoopControl({
     prefix: "ramp-list",
     loopEnabled: state.rampListLoopEnabled,
@@ -393,22 +408,36 @@ function rampSegmentCard(segment, index) {
   rampSegmentDefinitions().forEach((definition) => {
     const label = document.createElement("label");
     workflowText(label, `workflow.field.${definition.name}`, definition.label);
-    const input = document.createElement(definition.name === "channel" ? "select" : "input");
-    if (definition.name === "channel") {
-      ["1", "2", "3"].forEach((value) => {
+    const input = document.createElement(definition.name === "channels" ? "select" : "input");
+    if (definition.name === "channels") {
+      const supported = supportedChannelsForCurrentModel();
+      const options = rampChannelOptions(supported);
+      const currentValue = segment.channels.join(",");
+      if (!options.includes(currentValue)) {
+        const option = document.createElement("option");
+        option.value = currentValue;
+        option.textContent = segment.channels.map((channel) => `CH${channel}`).join(" + ");
+        option.disabled = true;
+        input.appendChild(option);
+      }
+      options.forEach((value) => {
         const option = document.createElement("option");
         option.value = value;
-        option.textContent = value;
+        option.textContent = rampChannelOptionLabel(value, supported);
         input.appendChild(option);
       });
     } else {
       input.type = "number";
     }
-    input.value = String(segment[definition.name]);
+    input.value = definition.name === "channels"
+      ? segment.channels.join(",")
+      : String(segment[definition.name]);
     input.dataset.rampField = definition.name;
-    applyParameterConstraint(input, definition.name);
+    if (definition.name !== "channels") applyParameterConstraint(input, definition.name);
     input.addEventListener("input", () => {
-      state.rampListSegments[index][definition.name] = Number(input.value);
+      state.rampListSegments[index][definition.name] = definition.name === "channels"
+        ? String(input.value).split(",").map(Number)
+        : Number(input.value);
       updateSelectedCommandState();
     });
     label.appendChild(input);
@@ -426,7 +455,7 @@ function addRampSegment() {
   if (state.rampListSegments.length >= 10) return;
   const previous = state.rampListSegments[state.rampListSegments.length - 1];
   state.rampListSegments.push({
-    channel: previous.channel,
+    channels: [...previous.channels],
     current: previous.current,
     start_voltage: previous.stop_voltage,
     stop_voltage: previous.stop_voltage,
@@ -479,7 +508,10 @@ async function loadRampList() {
       description: "Ramp List JSON",
       extensions: rampListJsonExtensions
     });
-    const normalized = validateRampListDocument(JSON.parse(text));
+    const normalized = validateRampListDocument(
+      JSON.parse(text),
+      supportedChannelsForCurrentModel()
+    );
     state.rampListSegments = normalized.segments;
     state.rampListCompletionPulse = normalized.completionPulse;
     state.rampListEnableOutput = normalized.enableOutput;

@@ -5,6 +5,7 @@ from powers_tool_core.ramp_list import (
     RAMP_LIST_KIND,
     RAMP_LIST_VERSION,
     RAMP_LIST_VERSION_V2,
+    RAMP_LIST_VERSION_V4,
     run_ramp_list,
 )
 
@@ -94,6 +95,23 @@ def segment(
     }
 
 
+def v5_document(*segments, enable_output=False, loop_count=1):
+    return {
+        "kind": RAMP_LIST_KIND,
+        "version": 5,
+        "enable_output": enable_output,
+        "loop_count": loop_count,
+        "segments": list(segments),
+    }
+
+
+def v5_segment(*, channels=(1,), **overrides):
+    value = segment(**overrides)
+    value.pop("channel")
+    value["channels"] = list(channels)
+    return value
+
+
 def request(doc, **runtime):
     return OperationRequest(
         command="ramp-list",
@@ -133,7 +151,8 @@ def test_psm2010_ramp_list_uses_shared_range_resolution() -> None:
 def test_ramp_list_contract_versions_are_explicit() -> None:
     assert RAMP_LIST_KIND == "powers-tool-ramp-list"
     assert RAMP_LIST_VERSION_V2 == 2
-    assert RAMP_LIST_VERSION == 4
+    assert RAMP_LIST_VERSION_V4 == 4
+    assert RAMP_LIST_VERSION == 5
     assert type(RAMP_LIST_VERSION) is int
 
 
@@ -176,6 +195,50 @@ def test_ramp_list_execution_units_sum_segment_voltage_steps() -> None:
     data = run_ramp_list(request(doc, dry_run=True))
 
     assert data["plan"]["execution_units"] == 10
+
+
+def test_ramp_list_v5_single_and_multi_channel_plans_are_canonical() -> None:
+    runtime = RuntimeOptions(dry_run=True, planning_model_id="keysight-e36312a")
+
+    single = run_ramp_list(OperationRequest(
+        "ramp-list", runtime, {"document": v5_document(v5_segment(channels=(2,)))}
+    ))
+    multi = run_ramp_list(OperationRequest(
+        "ramp-list", runtime, {"document": v5_document(v5_segment(channels=(3, 1)))}
+    ))
+
+    assert single["segments"][0]["channels"] == [2]
+    assert multi["segments"][0]["channels"] == [1, 3]
+    assert multi["plan"]["execution_units"] == 3
+
+
+@pytest.mark.parametrize(
+    ("channels", "message"),
+    [([], "non-empty"), ([1, 1], "duplicates"), ([1, 4], "not supported")],
+)
+def test_ramp_list_v5_rejects_invalid_channel_selectors(channels, message) -> None:
+    with pytest.raises(CoreValidationError, match=message):
+        run_ramp_list(OperationRequest(
+            "ramp-list",
+            RuntimeOptions(dry_run=True, planning_model_id="keysight-e36312a"),
+            {"document": v5_document(v5_segment(channels=channels))},
+        ))
+
+
+def test_ramp_list_v5_rejects_legacy_channel_and_v4_rejects_channels() -> None:
+    v5 = v5_document(segment())
+    v4 = {
+        "kind": RAMP_LIST_KIND,
+        "version": 4,
+        "enable_output": False,
+        "loop_count": 1,
+        "segments": [v5_segment()],
+    }
+
+    with pytest.raises(CoreValidationError, match="unsupported field.*channel"):
+        run_ramp_list(request(v5, dry_run=True))
+    with pytest.raises(CoreValidationError, match="unsupported field.*channels"):
+        run_ramp_list(request(v4, dry_run=True))
 
 
 @pytest.mark.parametrize(("version", "enable_output"), [(2, False), (3, True)])
@@ -246,6 +309,109 @@ def test_ramp_list_v3_enables_each_channel_only_at_first_segment() -> None:
     assert all(item["enabled"] is True for item in data["final_output_states"])
 
 
+def test_ramp_list_v5_enables_each_selected_channel_once() -> None:
+    session = OutputTrackingSession()
+    doc = v5_document(
+        v5_segment(channels=(2, 1), stop_voltage=0),
+        v5_segment(channels=(1, 2), start_voltage=0.5, stop_voltage=0.5),
+        enable_output=True,
+    )
+
+    data = run_ramp_list(
+        request(doc),
+        opener=lambda *args, **kwargs: session,
+        sleep=lambda seconds: None,
+    )
+
+    assert session.writes.count("OUTP ON,(@1)") == 1
+    assert session.writes.count("OUTP ON,(@2)") == 1
+    assert data["enabled_channels"] == [1, 2]
+
+
+def test_e3646a_ramp_list_prestages_all_channels_before_one_global_output_on() -> None:
+    class E3646AOutputSession(FakeSession):
+        def __init__(self) -> None:
+            super().__init__()
+            self.output_enabled = False
+
+        def write(self, command: str) -> None:
+            super().write(command)
+            if command == "OUTP ON":
+                self.output_enabled = True
+
+        def query(self, command: str) -> str:
+            self.queries.append(command)
+            if command == "*IDN?":
+                return "KEYSIGHT,E3646A,SERIAL0000,1.0"
+            if command == "INST:NSEL?":
+                return "1"
+            if command == "OUTP?":
+                return "1" if self.output_enabled else "0"
+            return '0,"No error"'
+
+    session = E3646AOutputSession()
+    doc = v5_document(
+        v5_segment(channels=(1,), current=0.1, start_voltage=1, stop_voltage=1),
+        v5_segment(channels=(2,), current=0.2, start_voltage=3, stop_voltage=3),
+        enable_output=True,
+    )
+
+    data = run_ramp_list(
+        OperationRequest(
+            "ramp-list",
+            RuntimeOptions(resource="ASRL1::INSTR", confirm=True),
+            {"document": doc},
+        ),
+        opener=lambda *args, **kwargs: session,
+        sleep=lambda seconds: None,
+    )
+
+    output_index = session.writes.index("OUTP ON")
+    staged = session.writes[:output_index]
+    assert "CURR 0.1" in staged and "VOLT 1" in staged
+    assert "CURR 0.2" in staged and "VOLT 3" in staged
+    assert session.writes.count("OUTP ON") == 1
+    assert session.writes.count("CURR 0.2") == 2
+    assert session.writes.count("VOLT 3") == 2
+    assert data["enabled_channels"] == [1, 2]
+
+
+def test_e3646a_ramp_list_stop_before_prestage_never_enables_global_output() -> None:
+    class E3646AStoppedSession(FakeSession):
+        def query(self, command: str) -> str:
+            self.queries.append(command)
+            if command == "*IDN?":
+                return "KEYSIGHT,E3646A,SERIAL0000,1.0"
+            if command == "INST:NSEL?":
+                return "1"
+            if command == "OUTP?":
+                return "0"
+            return '0,"No error"'
+
+    session = E3646AStoppedSession()
+
+    with pytest.raises(CommandCancelled):
+        run_ramp_list(
+            OperationRequest(
+                "ramp-list",
+                RuntimeOptions(resource="ASRL1::INSTR", confirm=True),
+                {
+                    "document": v5_document(
+                        v5_segment(channels=(1,)),
+                        v5_segment(channels=(2,)),
+                        enable_output=True,
+                    )
+                },
+            ),
+            opener=lambda *args, **kwargs: session,
+            sleep=lambda seconds: None,
+            stop_requested=lambda: True,
+        )
+
+    assert "OUTP ON" not in session.writes
+    assert not any(command.startswith(("CURR", "VOLT")) for command in session.writes)
+
+
 def test_ramp_list_lint_validates_without_opening_visa() -> None:
     opened = False
     core_request = request(document(segment()))
@@ -301,6 +467,69 @@ def test_ramp_list_executes_cross_channel_segments_in_one_session() -> None:
     ]
     assert data["status"] == "completed"
     assert data["completed_segments"] == 2
+
+
+def test_ramp_list_v5_executes_channels_in_lockstep_with_logical_progress() -> None:
+    session = FakeSession()
+    progress = []
+
+    data = run_ramp_list(
+        request(v5_document(v5_segment(channels=(2, 1), stop_voltage=1, step_voltage=1))),
+        opener=lambda *args, **kwargs: session,
+        sleep=lambda seconds: None,
+        progress_reporter=progress.append,
+    )
+
+    assert session.writes == [
+        "CURR 0.1,(@1)",
+        "CURR 0.1,(@2)",
+        "VOLT 0,(@1)",
+        "VOLT 0,(@2)",
+        "VOLT 1,(@1)",
+        "VOLT 1,(@2)",
+    ]
+    assert data["segments"][0]["channels"] == [1, 2]
+    assert data["execution_units"] == 2
+    assert [item["completed_units"] for item in progress] == [1, 2]
+
+
+def test_ramp_list_v5_partial_write_failure_does_not_complete_logical_step() -> None:
+    session = FakeSession(fail_write="VOLT 1,(@2)")
+    progress = []
+
+    data = run_ramp_list(
+        request(v5_document(v5_segment(channels=(1, 2), stop_voltage=1, step_voltage=1))),
+        opener=lambda *args, **kwargs: session,
+        sleep=lambda seconds: None,
+        progress_reporter=progress.append,
+    )
+
+    assert data["status"] == "failed"
+    assert data["progress"]["completed_units"] == 1
+    assert data["failed_segment"]["channels"] == [1, 2]
+    assert data["failed_segment"]["failed_channel"] == 2
+    assert data["failed_segment"]["completed_channels"] == [1]
+
+
+def test_ramp_list_v5_step_pulse_runs_once_per_logical_step_on_first_channel(monkeypatch) -> None:
+    calls = []
+
+    def pulse(_power_supply, *, channel, **kwargs):
+        calls.append(channel)
+        return {"channel": channel, "completed": True}
+
+    monkeypatch.setattr("powers_tool_core.ramp_list.run_post_action_completion_pulse", pulse)
+    doc = v5_document(v5_segment(channels=(3, 1), stop_voltage=1, step_voltage=1))
+    doc["completion_pulse"] = {"timing": "step", "pins": [1], "polarity": "positive"}
+
+    data = run_ramp_list(
+        request(doc),
+        opener=lambda *args, **kwargs: FakeSession(),
+        sleep=lambda seconds: None,
+    )
+
+    assert calls == [1, 1]
+    assert len(data["segments"][0]["triggers"]) == 2
 
 
 def test_ramp_list_delay_and_final_hold_are_applied() -> None:

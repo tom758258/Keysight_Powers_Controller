@@ -282,13 +282,20 @@ Ramp, Ramp List, and Sequence provide an `Enable loop` checkbox. When enabled,
 an inline Loop count appears with a range of 2 through 10,000; this is the total
 number of workflow executions, not additional repeats. Turning Loop off hides
 the field and means one execution. Ramp and Ramp List offer Loop complete in
-Pulse timing only while Loop is enabled. Ramp List saves v4 documents and
+Pulse timing only while Loop is enabled. Ramp List saves v5 documents and
 Sequence saves v2 documents, both with explicit `loop_count`, including 1.
 
 Ramp's Channel selector follows the selected or detected model. It lists each
 channel, supported channel combinations, and All for multi-channel models.
 Selected channels share the same current and voltage settings and advance in
 lockstep; a voltage step completes only after every selected channel succeeds.
+
+Ramp List loads v2 through v5 and always saves v5. Each Segment has its own
+channel-combination selector; All is written as an explicit channel list.
+Multi-channel Segments advance in lockstep, while progress and pulses count one
+logical voltage step rather than one action per channel. Pulse trigger channels
+are selected internally. On E3646A, Auto-enable pre-stages the first safe
+setpoint for every channel used in the list before enabling global output once.
 
 ## Job Results
 

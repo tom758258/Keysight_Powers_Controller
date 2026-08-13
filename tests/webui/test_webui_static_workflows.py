@@ -176,7 +176,7 @@ const state = {
   },
   electricalRatingsByModel: {},
   rampListSegments: [{
-    channel: 2,
+    channels: [2],
     start_voltage: 1.25,
     stop_voltage: 2.5,
     step_voltage: 0.25,
@@ -195,6 +195,14 @@ let selectedUpdateCount = 0;
 let renderFormFromController;
 let updateRampListPulseFromController;
 let applyParameterConstraintFromController;
+let rampListModel = "keysight-e36312a";
+const combinationOptions = (channels) => {
+  const options = [];
+  for (let mask = 1; mask < (1 << channels.length); mask += 1) {
+    options.push(channels.filter((_channel, index) => mask & (1 << index)).join(","));
+  }
+  return options.sort((left, right) => left.split(",").length - right.split(",").length || left.localeCompare(right));
+};
 
 const loopControl = ({ prefix }) => {
   const wrapper = new FakeElement("div");
@@ -223,6 +231,12 @@ const workflows = globalThis.webuiWorkflows.createWorkflows({
     input.dataset.constraintApplied = name;
     applyParameterConstraintFromController(input, name);
   },
+  supportedChannelsForCurrentModel: () => rampListModel === "keysight-e3646a" ? [1, 2] : [1, 2, 3],
+  rampChannelOptions: combinationOptions,
+  rampChannelOptionLabel: (value, supported) => value.split(",").length === supported.length && supported.length > 1
+    ? "All"
+    : value.split(",").map((channel) => `CH${channel}`).join(" + "),
+  selectedChannelModel: () => rampListModel,
   updateWorkflowDocumentValidity: (command) => validityCalls.push(command),
   updateRampListPulse: (...args) => updateRampListPulseFromController(...args),
 });
@@ -256,15 +270,30 @@ strictAssert.ok(descendants(editor).some((node) => node.id === "ramp-list-pulse-
 strictAssert.equal(findClass("ramp-segment-card").length, 1);
 strictAssert.deepEqual(
   constrainedFields,
-  globalThis.webuiRampListDocument.rampSegmentDefinitions().map((definition) => definition.name),
+  globalThis.webuiRampListDocument.rampSegmentDefinitions().map((definition) => definition.name).filter((name) => name !== "channels"),
 );
-strictAssert.deepEqual(validityCalls, ["ramp-list"]);
+const channelSelect = descendants(editor).find((node) => node.dataset.rampField === "channels");
+strictAssert.deepEqual(channelSelect.children.map((option) => [option.value, option.textContent]), [
+  ["1", "CH1"], ["2", "CH2"], ["3", "CH3"], ["1,2", "CH1 + CH2"],
+  ["1,3", "CH1 + CH3"], ["2,3", "CH2 + CH3"], ["1,2,3", "All"]
+]);
+strictAssert.equal(descendants(editor).some((node) => node.id === "ramp-list-e3646a-output-note"), false);
+rampListModel = "keysight-e3646a";
+controller.renderForm("ramp-list");
+const e3646aEditor = commandForm.children[0];
+const twoChannelSelect = descendants(e3646aEditor).find((node) => node.dataset.rampField === "channels");
+strictAssert.deepEqual(twoChannelSelect.children.map((option) => [option.value, option.textContent]), [
+  ["1", "CH1"], ["2", "CH2"], ["1,2", "All"]
+]);
+strictAssert.ok(descendants(e3646aEditor).some((node) => node.id === "ramp-list-e3646a-output-note"));
+rampListModel = "keysight-e36312a";
+strictAssert.deepEqual(validityCalls, ["ramp-list", "ramp-list"]);
 strictAssert.ok(descendants(editor).find((node) => node.dataset.rampField === "start_voltage").dataset.constraintApplied);
 
 controller.renderForm("ramp-list");
 strictAssert.equal(state.rampListSegments, originalSegments);
 strictAssert.equal(state.rampListSegments[0].start_voltage, 1.25);
-strictAssert.deepEqual(validityCalls, ["ramp-list", "ramp-list"]);
+strictAssert.deepEqual(validityCalls, ["ramp-list", "ramp-list", "ramp-list"]);
 
 const pulseInput = (name) => descendants(commandForm).find(
   (node) => node.id === `ramp-list-pulse-${name}`
@@ -1803,16 +1832,19 @@ def test_frontend_loop_document_round_trips_use_external_schemas() -> None:
         state.rampListLoopCountDraft = "2";
         state.rampListCompletionPulse = null;
         state.rampListSegments = [{
-          channel: 1, current: 0.1, start_voltage: 0, stop_voltage: 1,
+          channels: [1], current: 0.1, start_voltage: 0, stop_voltage: 1,
           step_voltage: 1, delay_ms: 0, hold_ms: 0
         }];
         const rampList = rampListDocument();
-        strictAssert.equal(rampList.version, 4);
+        strictAssert.equal(rampList.version, 5);
         strictAssert.equal(rampList.loop_count, 1);
         strictAssert.equal(validateRampListDocument({
           kind: "powers-tool-ramp-list",
           version: 2,
-          segments: rampList.segments
+          segments: [{
+            channel: 1, current: 0.1, start_voltage: 0, stop_voltage: 1,
+            step_voltage: 1, delay_ms: 0, hold_ms: 0
+          }]
         }).loopCount, 1);
         strictAssert.equal(validateRampListDocument(rampList).loopCount, 1);
         strictAssert.throws(
@@ -1914,7 +1946,7 @@ def test_frontend_invalid_enabled_loop_counts_disable_run_and_save_without_seria
         state.rampListEnableOutput = false;
         state.rampListCompletionPulse = null;
         state.rampListSegments = [{
-          channel: 1, current: 0.1, start_voltage: 0, stop_voltage: 1,
+          channels: [1], current: 0.1, start_voltage: 0, stop_voltage: 1,
           step_voltage: 1, delay_ms: 0, hold_ms: 0
         }];
         state.sequenceSteps = [{ action: "wait", seconds: 0 }];

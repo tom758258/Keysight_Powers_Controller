@@ -250,11 +250,17 @@ Selected data mappings:
   `failed_channel`.
 - `ramp-list`: document version, per-iteration segment count, completed
   segment count, cumulative segment executions, ordered results, and failed
-  Segment details with 1-based loop context.
+  Segment details with 1-based loop context. Version 5 plan and Segment results
+  expose canonical `channels`; v2/v3/v4 retain their single `channel` shape.
+  A partial multi-channel write reports `failed_channel` and the current
+  logical step's `completed_channels` without completing that step.
 - Ramp and Ramp List every-step pulse results use ordered `triggers` entries
   containing step index, voltage, and trigger result. Ramp-complete pulses are
   emitted once per iteration. Terminal Loop-complete pulse metadata remains
   under `trigger`; Ramp List per-Segment pulse results remain per Segment.
+  Multi-channel Ramp List step and Segment pulses fire once, anchored to that
+  Segment's first canonical channel; Loop-complete uses the last Segment's
+  first canonical channel. The trigger channel is not a document setting.
 - Ramp, Ramp List, and Sequence results expose `loop_count` and
   `completed_loops`. `segment_count`/`step_count` are per iteration;
   `completed_segment_executions`/`completed_step_executions` are cumulative.

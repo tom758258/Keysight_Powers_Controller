@@ -8769,12 +8769,13 @@ def test_ramp_list_lint_inline_does_not_open_resource(monkeypatch, capsys) -> No
     payload = json.loads(capsys.readouterr().out)
     assert payload["data"]["status"] == "valid"
     assert payload["data"]["segment_count"] == 2
-    assert payload["data"]["plan"]["version"] == 4
+    assert payload["data"]["plan"]["version"] == 5
     assert payload["data"]["plan"]["loop_count"] == 1
     assert payload["data"]["segments"][1]["hold_ms"] == 250
+    assert payload["data"]["segments"][1]["channels"] == [2]
 
 
-def test_ramp_list_inline_enable_output_builds_v4(capsys) -> None:
+def test_ramp_list_inline_enable_output_builds_v5(capsys) -> None:
     assert (
         cli.main(
             [
@@ -8796,7 +8797,7 @@ def test_ramp_list_inline_enable_output_builds_v4(capsys) -> None:
     )
 
     payload = json.loads(capsys.readouterr().out)
-    assert payload["data"]["plan"]["version"] == 4
+    assert payload["data"]["plan"]["version"] == 5
     assert payload["data"]["plan"]["loop_count"] == 1
     assert payload["data"]["plan"]["enable_output"] is True
 

@@ -320,7 +320,10 @@ function channelAvailabilityGuardReason(command, parameters = {}) {
 
 function selectedChannelsForCommand(command, parameters = {}) {
   if (command === "ramp-list") {
-    return [...new Set((parameters.document?.segments || []).map((segment) => Number(segment.channel)).filter(Number.isInteger))];
+    return [...new Set((parameters.document?.segments || [])
+      .flatMap((segment) => segment.channels || [segment.channel])
+      .map(Number)
+      .filter(Number.isInteger))];
   }
   if (command === "trigger-list") return [Number(parameters.channel)].filter(Number.isInteger);
   if (command === "ramp" && Array.isArray(parameters.channels)) {

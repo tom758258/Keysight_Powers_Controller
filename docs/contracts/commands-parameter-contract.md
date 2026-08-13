@@ -66,18 +66,23 @@ message/note action with `message`; it does not collect telemetry.
   duplicates and unsupported channels, then orders `channels` by the selected
   or detected model's canonical channel order. There is no Core `all` value
   for Ramp; adapters may materialize All as an explicit list.
+- Ramp List v5 requires each Segment to contain a non-empty `channels` list of
+  unique exact positive integers. Core rejects duplicates and unsupported
+  channels, then orders the selection by the planning or detected model's
+  canonical channel order. Ramp List v2/v3/v4 Segments continue to require one
+  exact positive integer `channel`; the selector fields are not interchangeable.
 - `restore-from-snapshot` requires an explicit `channel`, accepting one exact
   positive integer or exact `"all"`; omission never defaults to all channels.
 - `step_voltage` must be finite and greater than zero.
 - Ramp and Ramp List `delay_ms` is the additional delay after each voltage
   step completes before starting the next step. It is a non-negative integer.
 - Ramp `enable_output` is an optional exact boolean and defaults to `false`.
-  Ramp List version 2 always means `false`; versions 3 and 4 require an exact
+  Ramp List version 2 always means `false`; versions 3, 4, and 5 require an exact
   top-level JSON boolean. Adapters must not coerce strings or numbers.
 - Ramp, Ramp List, and Sequence `loop_count` is the total number of complete
   workflow executions. It must be an exact integer from 1 through 10,000;
   booleans, floats, strings, null, zero, negatives, and 10,001 are rejected.
-  `1` is one normal execution, while `2` restarts once. Ramp List v4 and
+  `1` is one normal execution, while `2` restarts once. Ramp List v4/v5 and
   Sequence v2 require the field. Older supported document versions imply 1.
 - Core calculates logical execution units before opening hardware: Ramp uses
   `loop_count * voltage_step_count`, Ramp List uses `loop_count` times the sum
@@ -124,8 +129,8 @@ No unspecified maximum is added to time or read-count fields.
 
 ## Ramp Timing
 
-Ramp and Ramp List use software setpoint steps. A multi-channel Ramp writes the
-same voltage to every selected channel in canonical order; the logical step
+Ramp and Ramp List use software setpoint steps. A multi-channel Ramp or Ramp
+List Segment writes the same voltage to every selected channel in canonical order; the logical step
 completes only when every write succeeds. `delay_ms` starts only after the
 logical voltage step and any synchronous every-step completion pulse finish. It
 does not include write or pulse execution time and is not a real-time or exact
@@ -143,7 +148,10 @@ mandatory ON readback for all selected channels,
 remaining voltage steps, per-iteration Ramp-complete pulse when selected, and
 final output-state readback. E3646A performs its global output ON only once;
 its selected channel setpoints remain per-channel. Ramp List applies the same first-setpoint rule
-once per channel and does not repeat output ON in later segments or loops.
+once per channel and does not repeat output ON in later segments or loops. For
+E3646A, Ramp List pre-stages the first Segment setpoint that uses each workflow
+channel before issuing its single global output ON; normal Segment writes still
+run afterward.
 
 ## Effective Electrical Limits
 

@@ -1,11 +1,11 @@
 {
   "kind": "powers-tool-ramp-list",
-  "version": 4,
+  "version": 5,
   "enable_output": false,
   "loop_count": 1,
   "segments": [
     {
-      "channel": 1,
+      "channels": [1],
       "current": 0.1,
       "start_voltage": 0.0,
       "stop_voltage": 1.0,

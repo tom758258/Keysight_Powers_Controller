@@ -994,6 +994,8 @@ function optionDisplayName(value) {
     selectedChannelRating,
     selectedChannelRatingFor,
     selectedInputElectricalConstraint,
+    rampChannelOptions,
+    rampChannelOptionLabel,
     refreshElectricalRatingConstraints,
     validateConstrainedInputs,
     refreshBasicInputConstraints,

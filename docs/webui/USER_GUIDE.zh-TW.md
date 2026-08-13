@@ -169,6 +169,12 @@ Ramp 的 Channel selector 會依所選或偵測到的型號顯示各通道、支
 以及多通道型號的 All。所選通道共用相同電流與電壓設定並以 lockstep 前進；只有
 每個所選通道都成功後，該電壓步驟才算完成。
 
+Ramp List 可載入 v2 至 v5，儲存時一律輸出 v5。每個 Segment 都有自己的通道組合
+selector；All 會寫成明確的 channel list。多通道 Segment 以 lockstep 前進，progress
+與脈波仍以 logical voltage step 計算，不會乘上通道數；pulse trigger channel 由 Core
+內部選擇。E3646A 使用自動啟用輸出時，Ramp List 會先為清單中會使用到的每個通道
+寫入其第一組安全設定值，再一次啟用全域輸出。
+
 某些編輯器支援 JSON Load/Save (載入/儲存)，包括 Sequence (序列)、Ramp List (斜坡清單) 與 Trigger List (觸發清單) 工作區。請使用這些功能來處理可重複的工作流程，並保持儲存的檔案中沒有私人的實驗室資源字串，除非您刻意要將其限制為本機專用。
 
 ## 工作結果 (Job Results)
