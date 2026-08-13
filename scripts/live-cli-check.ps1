@@ -2117,6 +2117,13 @@ function Test-PreIoOpenFailureRecoveryEligible {
     return $true
 }
 
+function Write-ValidationCaseConsoleResult {
+    param([Parameter(Mandatory = $true)]$Record)
+
+    $status = if ($Record.result -ceq "passed") { "PASS" } else { "FAIL" }
+    Write-Host ("{0}  [{1}][{2}] {3}" -f $status, $Record.phase, $Record.suite, $Record.name)
+}
+
 function Invoke-ValidationCommand {
     param([Parameter(Mandatory = $true)]$Case)
 
@@ -2405,6 +2412,9 @@ function Invoke-ValidationCommand {
             serial_redacted = -not [string]::IsNullOrWhiteSpace([string]$serial)
             source_command = $Case.name
         }
+    }
+    if ($env:POWERS_TOOL_LIVE_CLI_CHECK_IMPORT_ONLY -ne "1") {
+        Write-ValidationCaseConsoleResult -Record $record
     }
     return $record
 }

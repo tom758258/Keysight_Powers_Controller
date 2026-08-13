@@ -1646,6 +1646,108 @@ def test_plan_only_live_cli_check_does_not_emit_single_client_warning() -> None:
     assert "Physical checks before pressing Enter" not in result.stdout
 
 
+def test_write_validation_case_console_result_formats_pass_and_fail():
+    command = r"""
+$env:POWERS_TOOL_LIVE_CLI_CHECK_IMPORT_ONLY = "1"
+. .\scripts\live-cli-check.ps1
+Write-ValidationCaseConsoleResult -Record ([pscustomobject]@{
+    result = "passed"
+    phase = "preflight"
+    suite = "readonly"
+    name = "identify-plan"
+})
+Write-ValidationCaseConsoleResult -Record ([pscustomobject]@{
+    result = "failed"
+    phase = "live"
+    suite = "output"
+    name = "output-on"
+})
+"""
+    result = _run_powershell_command(command)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "PASS  [preflight][readonly] identify-plan" in result.stdout
+    assert "FAIL  [live][output] output-on" in result.stdout
+
+
+def test_invoke_validation_command_emits_console_result_outside_import_only(tmp_path):
+    fixture_path = _fixture_cli_path(tmp_path, mode="real", hardware_touched=True)
+    output_dir = tmp_path / "out"
+    command = rf"""
+Remove-Item Env:POWERS_TOOL_LIVE_CLI_CHECK_IMPORT_ONLY -ErrorAction SilentlyContinue
+. .\scripts\live-cli-check.ps1
+$script:CliExecutable = $PythonExe
+$script:CliPrefix = @("-m", "powers_tool_cli.cli")
+$script:NormalizedTarget = "keysight-e36312a"
+$script:OutputDir = "{output_dir}"
+New-Item -ItemType Directory -Path $script:OutputDir -Force | Out-Null
+$script:RawResource = "USB0::FIXTURE::INSTR"
+$script:ResourceDisplay = "USB:<redacted-resource>"
+$script:ConnectionLabel = "USB"
+$script:TransportScope = "usb"
+$script:BackendArtifact = Get-BackendArtifactFields -Value $null
+$script:BackendValue = $null
+$script:SensitiveValues = New-Object System.Collections.Generic.List[string]
+$script:CommandRecords = New-Object System.Collections.Generic.List[object]
+$script:Failures = New-Object System.Collections.Generic.List[string]
+$case = New-CommandCase -Name "verify-live" -Suite "readonly" -Phase "live" -Args @("verify", "--json", "--resource", $script:RawResource) -LiveHardwareExpected:$true
+$record = Invoke-ValidationCommand -Case $case
+if ($record.result -ne "passed") {{ throw "expected passed, got $($record.result)" }}
+"""
+    result = _run_powershell_command(command, env={"PYTHONPATH": str(fixture_path)})
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "PASS  [live][readonly] verify-live" in result.stdout
+    assert "USB0::FIXTURE::INSTR" not in result.stdout
+
+
+def test_invoke_validation_command_skips_console_result_in_import_only_mode(tmp_path):
+    fixture_path = _fixture_cli_path(tmp_path, mode="real", hardware_touched=False)
+    output_dir = tmp_path / "out"
+    command = rf"""
+$env:POWERS_TOOL_LIVE_CLI_CHECK_IMPORT_ONLY = "1"
+. .\scripts\live-cli-check.ps1
+$script:CliExecutable = $PythonExe
+$script:CliPrefix = @("-m", "powers_tool_cli.cli")
+$script:NormalizedTarget = "keysight-e36312a"
+$script:OutputDir = "{output_dir}"
+New-Item -ItemType Directory -Path $script:OutputDir -Force | Out-Null
+$script:RawResource = "USB0::FIXTURE::INSTR"
+$script:ResourceDisplay = "USB:<redacted-resource>"
+$script:BackendValue = $null
+$script:CommandRecords = New-Object System.Collections.Generic.List[object]
+$script:Failures = New-Object System.Collections.Generic.List[string]
+$case = New-CommandCase -Name "verify-live" -Suite "readonly" -Phase "live" -Args @("verify", "--json", "--resource", $script:RawResource) -LiveHardwareExpected:$true
+$record = Invoke-ValidationCommand -Case $case
+$record | ConvertTo-Json -Depth 10 -Compress
+"""
+    result = _run_powershell_command(command, env={"PYTHONPATH": str(fixture_path)})
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "PASS  [live][readonly] verify-live" not in result.stdout
+    assert "FAIL  [live][readonly] verify-live" not in result.stdout
+    record = json.loads(result.stdout.strip())
+    assert record["result"] == "failed"
+
+
+def test_live_cli_check_plan_only_emits_preflight_pass_lines():
+    result = _run_live_cli_check(
+        "-Target",
+        "keysight-e36312a",
+        "-Connection",
+        "USB",
+        "-Resource",
+        "USB0::SIM::E36312A::INSTR",
+        "-Suite",
+        "readonly",
+        "-PlanOnly",
+        "-SkipExternalPreflight",
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "PASS  [preflight][readonly]" in result.stdout
+
+
 def test_live_cli_check_uses_phase_specific_artifact_names(tmp_path):
     fixture_path = _dynamic_fixture_cli_path(tmp_path)
     output_dir = tmp_path / "out"
