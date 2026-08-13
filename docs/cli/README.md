@@ -227,6 +227,216 @@ instrument may interfere with SCPI request/response ordering and may change
 instrument state underneath each other. Powers Tool does not enforce
 single-client ownership; this is an operator prerequisite for live validation.
 
+#### CLI preflight (`scripts\preflight-cli.ps1`)
+
+`scripts\preflight-cli.ps1` is the no-hardware CLI validation path. It requires
+the repository `.venv` CLI (`.\.venv\Scripts\powers-tool.exe`) and never opens
+VISA or touches hardware. It exercises supported dry-run and simulator CLI
+cases for the selected validation targets.
+
+Run the default preflight from the repository root:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\preflight-cli.ps1
+```
+
+The default `-Target` is `all`, so every registered validation target is
+checked. To validate one model only:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\preflight-cli.ps1 `
+  -Target keysight-e36312a
+```
+
+Accepted `-Target` values are:
+
+```text
+keysight-e36312a
+keysight-edu36311a
+keysight-e3646a
+gw-instek-psm-2010
+```
+
+Use `-Target all` explicitly to rerun all four targets. An unsupported target
+name fails with the same supported-target list.
+
+Select the preflight depth with `-Suite`:
+
+- `smoke` runs a fast subset of identity, metadata, and readonly checks.
+- `deep` runs the deeper dry-run and simulator cases. With `-Target all`, only
+  the deep representatives `keysight-e36312a` and `keysight-e3646a` run.
+- `full` (default) runs the complete no-hardware case set for each selected
+  target.
+
+Example:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\preflight-cli.ps1 `
+  -Target keysight-e3646a `
+  -Suite deep
+```
+
+Preflight artifacts default to `.tmp_tests\cli_preflight`. A custom `-OutputRoot`
+may be supplied, but it must remain under `.tmp_tests`. Each run writes a
+timestamped directory containing per-target `report.json`, `summary.md`, and
+per-command JSON/stdout/stderr artifacts.
+
+#### Live CLI validation (`scripts\live-cli-check.ps1`)
+
+`scripts\live-cli-check.ps1` is the maintained real-instrument validation
+wrapper. It requires an explicit `-Target`, `-Connection`, and `-Resource`, and
+never scans for or guesses a live resource. Running the script produces
+validation evidence only; it does not by itself promote pending support or
+change the [Product LIVE exact-scope matrix](../core/supported-models.md#product-live-exact-scope-matrix).
+
+Before using the live wrapper, copy the exact operator-selected VISA resource
+into a PowerShell session variable. Use a model- and transport-specific name so
+examples stay unambiguous:
+
+```powershell
+$env:E36312A_USB_RESOURCE = "USB0::...::INSTR"
+```
+
+The environment variable is a documentation convenience only. The wrapper does
+not discover or read it automatically; pass its value explicitly with
+`-Resource "$env:E36312A_USB_RESOURCE"`.
+
+Start with a plan-only run:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\live-cli-check.ps1 `
+  -Target keysight-e36312a `
+  -Connection usb `
+  -Resource "$env:E36312A_USB_RESOURCE" `
+  -Suite readonly `
+  -PlanOnly
+```
+
+`-PlanOnly` generates and validates the suite's CLI dry-run and simulator plans
+without opening the VISA resource. An explicit `-Resource` is still required so
+the planned commands and artifacts represent the intended connection. External
+no-hardware preflight (`preflight-cli.ps1` for the same target) still runs by
+default in plan-only mode.
+
+To generate only the live plans when preflight has already been run separately,
+`-SkipExternalPreflight` may be used with `-PlanOnly`:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\live-cli-check.ps1 `
+  -Target keysight-e36312a `
+  -Connection usb `
+  -Resource "$env:E36312A_USB_RESOURCE" `
+  -Suite readonly `
+  -PlanOnly `
+  -SkipExternalPreflight
+```
+
+`-SkipExternalPreflight` is rejected for a real live run.
+
+After reviewing the plan, run the minimal live readonly suite by removing
+`-PlanOnly`:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\live-cli-check.ps1 `
+  -Target keysight-e36312a `
+  -Connection usb `
+  -Resource "$env:E36312A_USB_RESOURCE" `
+  -Suite readonly
+```
+
+A live run first performs external preflight and generates the suite's
+no-hardware plans. It then prints possible instrument state changes and
+requires an interactive Enter confirmation before any live SCPI is executed.
+Redirected stdin cannot approve a live run. State-changing suites use bounded
+low-power cases (typically 1 V / 0.05 A) and attempt safe-off cleanup when
+`-Restore` is left at its default `$true`.
+
+Supported parameters:
+
+- `-Target`: canonical model ID. Current values are `keysight-e36312a`,
+  `keysight-edu36311a`, `keysight-e3646a`, and `gw-instek-psm-2010`.
+- `-Connection` (alias `-Transport`): `usb` or `local` for USB; `lan` or
+  `network` for LAN/TCPIP; `asrl`, `rs-232`, or `serial` for ASRL/RS-232.
+- `-Resource`: the exact operator-selected VISA resource. Mandatory even in
+  plan-only mode.
+- `-Backend`: optional PyVISA backend selector such as `@py` or `@bt`. Omit it
+  to use System VISA. Backend installation and loadability do not grant Product
+  support; model-aware live execution still requires an exact Product-open
+  `model + command + transport + backend + required feature` scope.
+- `-Suite`: `readonly` (default), `safe-state`, `output`, `protection`,
+  `snapshot`, `trigger-list`, `software-sequence`, or `full`.
+- `-PlanOnly`: validate and write no-hardware plans without opening VISA.
+- `-SkipExternalPreflight`: skip the separate preflight only with `-PlanOnly`.
+- `-Restore`: default `$true`. When `$false`, live runs may complete without
+  cleanup verification; `-Restore:$false` is not allowed with `snapshot` or
+  `trigger-list` live suites.
+
+Per-target suite availability follows the current validation metadata:
+
+- `keysight-e36312a`: `readonly`, `output`, `protection`, `snapshot`,
+  `trigger-list`, `software-sequence`, `full`.
+- `keysight-edu36311a`: `readonly`, `output`, `protection`, `software-sequence`,
+  `full`.
+- `keysight-e3646a`: `readonly`, `output`, `software-sequence`, `full`. Live
+  validation currently requires `-Connection asrl`.
+- `gw-instek-psm-2010`: `readonly`, `safe-state`, `output`, `protection`,
+  `snapshot`, `software-sequence`, `full`. Live validation currently requires
+  `-Connection asrl`.
+
+For E3646A or PSM-2010 RS-232 validation, set an ASRL resource variable and pass
+it explicitly:
+
+```powershell
+$env:E3646A_ASRL_RESOURCE = "ASRL1::INSTR"
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\live-cli-check.ps1 `
+  -Target keysight-e3646a `
+  -Connection asrl `
+  -Resource "$env:E3646A_ASRL_RESOURCE" `
+  -Suite readonly `
+  -PlanOnly
+```
+
+For LAN validation on Product-open USB/LAN scopes such as E36312A, set the LAN
+resource once per session:
+
+```powershell
+$env:E36312A_LAN_RESOURCE = "TCPIP0::...::INSTR"
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\live-cli-check.ps1 `
+  -Target keysight-e36312a `
+  -Connection lan `
+  -Resource "$env:E36312A_LAN_RESOURCE" `
+  -Suite readonly `
+  -PlanOnly
+```
+
+For contributor validation against an installed optional backend such as
+pyvisa-py on an exact registered pending scope, pass the backend selector
+explicitly:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\live-cli-check.ps1 `
+  -Target keysight-e36312a `
+  -Connection usb `
+  -Resource "$env:E36312A_USB_RESOURCE" `
+  -Backend "@py" `
+  -Suite readonly `
+  -PlanOnly
+```
+
+Live-validation output is written below `.tmp_tests\live_cli_check`:
+
+```text
+.tmp_tests\live_cli_check\<timestamp>_<target>_<connection>_<suite>\
+```
+
+Each run keeps private raw validation material under `private\` separately from
+a shareable artifact set under `shareable\`, and prints the shareable
+`report.json` and `summary.md` paths when it finishes. The validation report
+records the target, connection, backend scope, suite, package version, Git
+HEAD, no-hardware plans, executed cases, cleanup evidence, and result status.
+
 #### Build entry points
 
 These are public build entry points; detailed usage is maintained in the root

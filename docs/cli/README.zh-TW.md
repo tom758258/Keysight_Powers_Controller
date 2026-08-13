@@ -181,6 +181,200 @@ instrument resource。同一台儀器上的獨立 client 可能互相干擾 SCPI
 request/response ordering，也可能在彼此不知情下改變 instrument state。Powers
 Tool 不會強制 single-client ownership；這是 live validation 的操作前提。
 
+#### CLI preflight（`scripts\preflight-cli.ps1`）
+
+`scripts\preflight-cli.ps1` 是 no-hardware CLI validation 路徑。它需要 repository
+`.venv` CLI（`.\.venv\Scripts\powers-tool.exe`），不會開啟 VISA 或觸碰硬體。它會對
+選定 validation target 執行支援的 dry-run 與 simulator CLI cases。
+
+從 repository 根目錄執行預設 preflight：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\preflight-cli.ps1
+```
+
+預設 `-Target` 為 `all`，因此會檢查所有已註冊 validation target。若只要驗證單一
+model：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\preflight-cli.ps1 `
+  -Target keysight-e36312a
+```
+
+可接受的 `-Target` 值為：
+
+```text
+keysight-e36312a
+keysight-edu36311a
+keysight-e3646a
+gw-instek-psm-2010
+```
+
+可明確使用 `-Target all` 重新執行全部四個 target。不支援的 target 名稱會以相同
+supported-target 清單失敗。
+
+以 `-Suite` 選擇 preflight 深度：
+
+- `smoke` 執行較快的 identity、metadata 與 readonly 子集。
+- `deep` 執行較深的 dry-run 與 simulator cases。搭配 `-Target all` 時，只會執行
+  deep representative：`keysight-e36312a` 與 `keysight-e3646a`。
+- `full`（預設）對每個選定 target 執行完整 no-hardware case set。
+
+範例：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\preflight-cli.ps1 `
+  -Target keysight-e3646a `
+  -Suite deep
+```
+
+Preflight artifacts 預設寫入 `.tmp_tests\cli_preflight`。可指定自訂 `-OutputRoot`，
+但必須留在 `.tmp_tests` 之下。每次執行會建立 timestamped directory，內含 per-target
+`report.json`、`summary.md`，以及 per-command JSON/stdout/stderr artifacts。
+
+#### Live CLI validation（`scripts\live-cli-check.ps1`）
+
+`scripts\live-cli-check.ps1` 是維護中的實機 validation wrapper。它要求明確的
+`-Target`、`-Connection` 與 `-Resource`，不會掃描或猜測 live resource。執行此腳本
+只產生 validation evidence；它不會自行將 pending support 提升為 Product-open，也不會
+改變 [Product LIVE exact-scope matrix](../core/supported-models.md#product-live-exact-scope-matrix)。
+
+使用 live wrapper 前，請先把 operator 選定的 exact VISA resource 放入 PowerShell
+session 變數。請使用 model 與 transport 專用名稱，避免範例混淆：
+
+```powershell
+$env:E36312A_USB_RESOURCE = "USB0::...::INSTR"
+```
+
+環境變數只是文件上的便利做法。wrapper 不會自動探索或讀取它；必須明確以
+`-Resource "$env:E36312A_USB_RESOURCE"` 傳入。
+
+先執行 plan-only run：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\live-cli-check.ps1 `
+  -Target keysight-e36312a `
+  -Connection usb `
+  -Resource "$env:E36312A_USB_RESOURCE" `
+  -Suite readonly `
+  -PlanOnly
+```
+
+`-PlanOnly` 會產生並驗證 suite 的 CLI dry-run 與 simulator plans，但不開啟 VISA
+resource。即使 plan-only 仍必須提供 explicit `-Resource`，planned commands 與
+artifacts 才會代表預期 connection。plan-only 模式下，預設仍會執行 external
+no-hardware preflight（同一 target 的 `preflight-cli.ps1`）。
+
+若 preflight 已另行完成，只要產生 live plans，可在 `-PlanOnly` 搭配
+`-SkipExternalPreflight`：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\live-cli-check.ps1 `
+  -Target keysight-e36312a `
+  -Connection usb `
+  -Resource "$env:E36312A_USB_RESOURCE" `
+  -Suite readonly `
+  -PlanOnly `
+  -SkipExternalPreflight
+```
+
+`-SkipExternalPreflight` 不能用於真正的 live run。
+
+檢視 plan 後，移除 `-PlanOnly` 即可執行最小 live readonly suite：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\live-cli-check.ps1 `
+  -Target keysight-e36312a `
+  -Connection usb `
+  -Resource "$env:E36312A_USB_RESOURCE" `
+  -Suite readonly
+```
+
+Live run 會先執行 external preflight 並產生 suite 的 no-hardware plans，接著列出
+可能的 instrument state changes，並要求互動式 Enter 確認後才執行 live SCPI。stdin
+被 redirect 時無法核准 live run。state-changing suite 使用有界低功率 cases（通常
+1 V / 0.05 A），且 `-Restore` 維持預設 `$true` 時會嘗試 safe-off cleanup。
+
+支援的參數：
+
+- `-Target`：canonical model ID。目前為 `keysight-e36312a`、`keysight-edu36311a`、
+  `keysight-e3646a`、`gw-instek-psm-2010`。
+- `-Connection`（別名 `-Transport`）：`usb` 或 `local` 代表 USB；`lan` 或 `network`
+  代表 LAN/TCPIP；`asrl`、`rs-232` 或 `serial` 代表 ASRL/RS-232。
+- `-Resource`：operator 選定的 exact VISA resource。plan-only 模式也必填。
+- `-Backend`：選用的 PyVISA backend selector，例如 `@py` 或 `@bt`。省略則使用 System
+  VISA。backend 安裝與可載入性本身不授予 Product support；model-aware live execution
+  仍須符合 exact Product-open `model + command + transport + backend + required feature`
+  scope。
+- `-Suite`：`readonly`（預設）、`safe-state`、`output`、`protection`、`snapshot`、
+  `trigger-list`、`software-sequence`、`full`。
+- `-PlanOnly`：驗證並寫入 no-hardware plans，不開啟 VISA。
+- `-SkipExternalPreflight`：僅在 `-PlanOnly` 時可跳過 separate preflight。
+- `-Restore`：預設 `$true`。設為 `$false` 時 live run 可能完成但不驗證 cleanup；
+  `snapshot` 或 `trigger-list` live suite 不允許 `-Restore:$false`。
+
+各 target 的 suite 可用性依目前 validation metadata：
+
+- `keysight-e36312a`：`readonly`、`output`、`protection`、`snapshot`、
+  `trigger-list`、`software-sequence`、`full`。
+- `keysight-edu36311a`：`readonly`、`output`、`protection`、`software-sequence`、
+  `full`。
+- `keysight-e3646a`：`readonly`、`output`、`software-sequence`、`full`。Live
+  validation 目前要求 `-Connection asrl`。
+- `gw-instek-psm-2010`：`readonly`、`safe-state`、`output`、`protection`、`snapshot`、
+  `software-sequence`、`full`。Live validation 目前要求 `-Connection asrl`。
+
+E3646A 或 PSM-2010 的 RS-232 validation 請設定 ASRL resource 變數並明確傳入：
+
+```powershell
+$env:E3646A_ASRL_RESOURCE = "ASRL1::INSTR"
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\live-cli-check.ps1 `
+  -Target keysight-e3646a `
+  -Connection asrl `
+  -Resource "$env:E3646A_ASRL_RESOURCE" `
+  -Suite readonly `
+  -PlanOnly
+```
+
+E36312A 等 Product-open USB/LAN scope 的 LAN validation，請先設定 LAN resource：
+
+```powershell
+$env:E36312A_LAN_RESOURCE = "TCPIP0::...::INSTR"
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\live-cli-check.ps1 `
+  -Target keysight-e36312a `
+  -Connection lan `
+  -Resource "$env:E36312A_LAN_RESOURCE" `
+  -Suite readonly `
+  -PlanOnly
+```
+
+若要在 exact registered pending scope 上以已安裝的 optional backend（例如 pyvisa-py）
+做 contributor validation，請明確傳入 backend selector：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\live-cli-check.ps1 `
+  -Target keysight-e36312a `
+  -Connection usb `
+  -Resource "$env:E36312A_USB_RESOURCE" `
+  -Backend "@py" `
+  -Suite readonly `
+  -PlanOnly
+```
+
+Live-validation output 寫在 `.tmp_tests\live_cli_check` 之下：
+
+```text
+.tmp_tests\live_cli_check\<timestamp>_<target>_<connection>_<suite>\
+```
+
+每次 run 會在 `private\` 保留 private raw validation material，並在 `shareable\`
+提供可分享的 artifact set；完成時會印出 shareable `report.json` 與 `summary.md`
+路徑。validation report 會記錄 target、connection、backend scope、suite、package
+version、Git HEAD、no-hardware plans、executed cases、cleanup evidence 與 result
+status。
+
 ## 命令狀態
 
 CLI 的 planning identity 與 live expected-model guard 是不同概念。`expected_model_id`
