@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Adds multi-channel Ramp support and Ramp List v5 per-Segment channel selections while
+  preserving legacy Ramp List compatibility.
 - Clarifies Product support and contributor-validation documentation by
   removing stale implementation history and making explicit that passing
   validation evidence does not automatically open Product support.

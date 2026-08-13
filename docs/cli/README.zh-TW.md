@@ -187,6 +187,20 @@ Accepted physical planning IDs 與 live Product scope 以
 resource 必須與明確 identity 一致；CLI 不會從 fake、live-looking 或 alias-only
 resource 猜測 model。
 
+## Ramp 與 Ramp List 文件格式
+
+`ramp` 必須在 `channel` 與 `channels` 之間擇一；多通道選擇會依型號的
+canonical channel order 執行，所有所選通道共用相同的 current／voltage path，並以
+lockstep 完成 logical voltage step。通道數量不會增加 progress units 或 completion
+pulse 次數；每個 logical step 只發一次 pulse。
+
+Ramp List v5 的每個 Segment 使用非空且不重複的 `channels`，不同 Segment 可以選擇
+不同通道組合。v2/v3/v4 仍使用單一 `channel` 且可載入與執行；v5 不接受 legacy
+`channel`，舊版也不接受 `channels`。Segment pulse 使用該 Segment 第一個 canonical
+channel 作為內部 trigger anchor，loop pulse 使用最後一個 Segment 的第一個 canonical
+channel；anchor 不會暴露為使用者設定。`enable_output` 對 E3646A 仍遵守全域 output
+enable semantics；取消或清理時依既有安全流程處理已啟用的輸出通道。
+
 ## Power Worker Daemon
 
 Power Worker 以 machine mode 提供本機 lifecycle 與 command submission。`GET /status`

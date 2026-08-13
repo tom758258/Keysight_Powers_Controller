@@ -295,8 +295,8 @@ aggregate counters cover the complete execution. Long-running workflows report
 integer-percent progress using completed and total execution units.
 
 Completion pulses use E36312A rear digital pins; rear pins are separate from
-the selected output channel. Ramp `step` timing pulses after every voltage
-write in every iteration, `segment` pulses once after each complete Ramp
+the selected output channel. Ramp `step` timing pulses once after every logical
+voltage step in every iteration, `segment` pulses once after each complete Ramp
 iteration, and `loop` pulses once after all iterations. A multi-channel Ramp
 List Segment advances in canonical channel order and counts one logical step
 only after every selected channel write succeeds. Its per-step and per-Segment

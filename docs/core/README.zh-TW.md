@@ -171,7 +171,7 @@ counters 仍涵蓋完整執行。長時間工作流程透過 completed 與 total
 回報整數百分比進度。
 
 Completion pulses 使用 E36312A 的後面板數位腳位；後面板腳位與所選的輸出通道
-分開。Ramp 的 `step` timing 在每次 iteration 的每次 voltage write 後脈波，
+分開。Ramp 的 `step` timing 在每次 iteration 的每個 logical voltage step 後脈波，
 `segment` 在每次完整 Ramp iteration 後脈波，`loop` 在所有 iteration 後脈波。
 多通道 Ramp List Segment 依 canonical channel order 前進，所有所選通道都成功寫入後
 才完成一個 logical voltage step。每一步驟與每個 Segment 只發一次脈波，並使用該

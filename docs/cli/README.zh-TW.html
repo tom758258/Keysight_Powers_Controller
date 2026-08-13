@@ -440,6 +440,17 @@ uv run powers-tool doctor --simulate --json
 uv run powers-tool capabilities --simulate --json --resource "USB0::SIM::EDU36311A::INSTR" --command protection-set
 uv run powers-tool safety inspect --json --explain --safety-config examples/safety-config.toml --resource-alias sim-e36312a --channel 1
 </code></pre></div>
+<h2 id="ramp-與-ramp-list-文件格式">Ramp 與 Ramp List 文件格式</h2>
+<p><code>ramp</code> 必須在 <code>channel</code> 與 <code>channels</code> 之間擇一；多通道選擇會依型號的
+canonical channel order 執行，所有所選通道共用相同的 current／voltage path，並以
+lockstep 完成 logical voltage step。通道數量不會增加 progress units 或 completion
+pulse 次數；每個 logical step 只發一次 pulse。</p>
+<p>Ramp List v5 的每個 Segment 使用非空且不重複的 <code>channels</code>，不同 Segment 可以選擇
+不同通道組合。v2/v3/v4 仍使用單一 <code>channel</code> 且可載入與執行；v5 不接受 legacy
+<code>channel</code>，舊版也不接受 <code>channels</code>。Segment pulse 使用該 Segment 第一個 canonical
+channel 作為內部 trigger anchor，loop pulse 使用最後一個 Segment 的第一個 canonical
+channel；anchor 不會暴露為使用者設定。<code>enable_output</code> 對 E3646A 仍遵守全域 output
+enable semantics；取消或清理時依既有安全流程處理已啟用的輸出通道。</p>
 <h2 id="safety-defaults">Safety Defaults</h2>
 <ul>
 <li>影響輸出的行為必須明確要求。</li>

@@ -357,7 +357,14 @@ def test_unknown_field_remains_generic() -> None:
             OperationRequest(
                 "ramp",
                 RuntimeOptions(dry_run=True, planning_model_id="keysight-e36312a"),
-                {"invented": 1},
+                {
+                    "channel": 1,
+                    "current": 0.1,
+                    "start_voltage": 0,
+                    "stop_voltage": 1,
+                    "step_voltage": 1,
+                    "invented": 1,
+                },
             )
         )
 

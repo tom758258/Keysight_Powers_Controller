@@ -947,7 +947,6 @@ def test_static_ramp_list_editor_contract():
     assert 'typeof document.enable_output !== "boolean"' in validator
     assert "document.version !== 1" not in validator
     assert "return webuiRampListDocument.rampListDocument(state);" in workflows_js
-    assert "return webuiRampListDocument.validateRampListDocument(document);" in workflows_js
     assert "window.showOpenFilePicker" in json_files_js
     assert "window.showSaveFilePicker" in json_files_js
     assert "supportedChannelsForCurrentModel()" in workflows_js

@@ -123,6 +123,11 @@ Ramp List v5 是目前的文件格式。每個 Segment 使用 `channels`，而�
 組合；所選通道共用該 Segment 的電流與電壓路徑，並以 lockstep 前進。使用單一
 `channel` 的 v2/v3/v4 文件仍可載入與執行。
 
+Ramp 可在每個 logical step、每個完整 Ramp iteration，或所有 loops 完成後發送
+completion pulse。Ramp List 可在每個 logical step、每個 Segment，或所有 loops 完成後
+發送 pulse；loop-complete timing 至少需要兩次執行。Sequence 維持既有的 per-Step
+`trigger-pulse` action，沒有 top-level completion pulse。
+
 ## E3646A RS-232 / ASRL
 
 E3646A 的 Product LIVE 支援僅限 ASRL／RS-232 transport 與 system VISA backend；目前

@@ -441,7 +441,8 @@ Ramp List v5 lets each Segment select one or more channels. Those channels share
 the Segment current and voltage path and advance in canonical lockstep order.
 
 Ramp `--completion-pulse-timing segment` emits once after each complete Ramp
-iteration. `--completion-pulse-timing step` emits after every voltage write,
+iteration. `--completion-pulse-timing step` emits once after every logical
+voltage step,
 and `--completion-pulse-timing loop` emits once after all successful
 iterations. Every-step timing accepts `--delay-ms 0`.
 Rear pulse pins are not output channels. Pulse workflows are E36312A-only, and
