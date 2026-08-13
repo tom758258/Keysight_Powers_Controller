@@ -6,12 +6,21 @@ from pathlib import Path
 
 import powers_tool_cli.cli as cli
 
+CLI_IMPLEMENTATION_MODULES = (
+    "cli.py",
+    "cli_runtime.py",
+    "cli_request.py",
+    "commands/discovery.py",
+    "commands/readonly.py",
+    "commands/inspection.py",
+    "commands/output_run.py",
+    "commands/trigger_run.py",
+    "commands/sequence_run.py",
+)
 
-CLI_SOURCE = Path(cli.__file__).read_text(encoding="utf-8")
 
-
-def test_cli_does_not_access_driver_private_session() -> None:
-    tree = ast.parse(CLI_SOURCE)
+def _session_violations(source: str) -> list[int]:
+    tree = ast.parse(source)
     violations = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.Attribute) or node.attr != "_session":
@@ -28,6 +37,16 @@ def test_cli_does_not_access_driver_private_session() -> None:
         )
         if owner is None:
             violations.append(node.lineno)
+    return violations
+
+
+def test_cli_does_not_access_driver_private_session() -> None:
+    package_dir = Path(cli.__file__).resolve().parent
+    violations: list[str] = []
+    for relative_path in CLI_IMPLEMENTATION_MODULES:
+        source = (package_dir / relative_path).read_text(encoding="utf-8")
+        for lineno in _session_violations(source):
+            violations.append(f"{relative_path}:{lineno}")
     assert violations == []
 
 
