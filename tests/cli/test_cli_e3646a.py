@@ -1,26 +1,10 @@
 import json
-import csv
-from types import SimpleNamespace
 
 import pytest
 
-import powers_tool_core.connection as connection
 import powers_tool_cli.cli as cli
-from powers_tool_core.core import CommandCancelled, CoreExecutionError, StopCleanupError
-from powers_tool_core.errors import VisaConnectionError
 
-from tests.cli.cli_test_helpers import (
-    OUTPUT_RESOURCE,
-    SERIAL_TERMINATION_ARGS,
-    WRITE_VERIFICATION_REQUEST_DEFAULTS,
-    FakeSession,
-    assert_live_scope_rejected,
-    expected_idn,
-    expected_resource,
-    output_command_args,
-    write_safety_config,
-)
-
+from tests.cli.cli_test_helpers import FakeSession
 def test_e3646a_dry_run_all_expands_two_channels_and_rejects_three(capsys) -> None:
     assert cli.main(["output-on", "--dry-run", "--json", "--model", "keysight-e3646a", "--channel", "all"]) == 0
 
