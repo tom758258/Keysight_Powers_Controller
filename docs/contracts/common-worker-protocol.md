@@ -4,9 +4,10 @@ Schema version: `2`
 
 Compatibility policy: `v2-only`
 
-This protocol defines the current minimum lifecycle shape shared by instrument
-Workers that are launched and observed by an orchestrator. It is maintained as
-the repository-level Common Worker contract.
+This provisional protocol defines the minimum lifecycle shape shared by
+instrument Workers that are launched and observed by an orchestrator. It lives
+in this repository until a shared orchestrator repository or Common contract
+document set exists.
 
 This document is lifecycle-only. It does not define instrument configuration,
 domain commands, transport behavior, device command languages, or
