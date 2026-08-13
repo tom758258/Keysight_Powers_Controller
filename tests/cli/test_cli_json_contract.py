@@ -557,3 +557,39 @@ def test_validation_error_json_keeps_contract_and_does_not_touch_visa(
     assert payload["execution"]["hardware_touched"] is False
     assert payload["error"]["type"] == "validation"
     assert payload["error"]["code"] == "argument_error"
+
+
+def test_ramp_list_file_admission_failure_does_not_touch_hardware(
+    monkeypatch,
+    capsys,
+    tmp_path,
+) -> None:
+    ramp_file = tmp_path / "malformed.ramp-list.json"
+    ramp_file.write_text("{", encoding="utf-8")
+    opener_calls = []
+
+    def fail_open_resource(*args, **kwargs):
+        opener_calls.append((args, kwargs))
+        raise AssertionError("VISA resource must not be opened for admission failure")
+
+    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+
+    exit_code, payload = parse_json_result(
+        [
+            "ramp-list",
+            "--json",
+            "--resource",
+            "USB0::FAKE::E36312A::INSTR",
+            "--file",
+            str(ramp_file),
+        ],
+        capsys,
+    )
+
+    assert exit_code == 2
+    assert_contract_envelope(payload, command="ramp-list", ok=False)
+    assert payload["execution"]["hardware_touched"] is False
+    assert payload["error"]["type"] == "validation"
+    assert payload["error"]["code"] == "argument_error"
+    assert "could not parse ramp-list JSON" in payload["error"]["message"]
+    assert opener_calls == []

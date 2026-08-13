@@ -3217,6 +3217,7 @@ def _run_sequence(args: argparse.Namespace) -> int:
 
 def _run_ramp_list(args: argparse.Namespace) -> int:
     request = _request_for_args(args)
+    execution = _execution_for_args(args, hardware_intent=False)
     try:
         _resolve_optional_resource_alias(args)
         request = _request_for_args(args)
@@ -3224,10 +3225,17 @@ def _run_ramp_list(args: argparse.Namespace) -> int:
         core_request, execution_summary, execution_warnings = _workflow_start_summary(
             args, core_request
         )
+        base_opener = _core_opener_for_args(args)
+
+        def opener(*opener_args: Any, **opener_kwargs: Any) -> Any:
+            if execution["mode"] == "real" and not execution["dry_run"]:
+                execution["hardware_touched"] = True
+            return base_opener(*opener_args, **opener_kwargs)
+
         with _cooperative_workflow_interrupt() as stop_event:
             data = run_core_command(
                 core_request,
-                opener=_core_opener_for_args(args),
+                opener=opener,
                 stop_requested=stop_event.is_set,
                 sleep=time.sleep,
                 scpi_logger=_log_scpi,
@@ -3236,14 +3244,14 @@ def _run_ramp_list(args: argparse.Namespace) -> int:
         return _emit_workflow_interruption(
             args,
             request=request,
-            execution=_execution_for_args(args, hardware_intent=not getattr(args, "lint", False)),
+            execution=execution,
             exc=exc,
         )
     except KeyboardInterrupt:
         return _emit_workflow_interruption(
             args,
             request=request,
-            execution=_execution_for_args(args, hardware_intent=not getattr(args, "lint", False)),
+            execution=execution,
             exc=CommandCancelled("ramp-list cancelled before a VISA session was opened"),
         )
     except CoreValidationError as exc:
@@ -3254,7 +3262,7 @@ def _run_ramp_list(args: argparse.Namespace) -> int:
             code=_core_validation_code(exc),
             message=str(exc),
             retryable=False,
-            hardware_intent=not getattr(args, "lint", False),
+            hardware_intent=bool(execution["hardware_touched"]),
         )
     except (SafetyConfigError, SafetyValidationError, ValueError, OSError) as exc:
         return _emit_cli_error(
@@ -3264,13 +3272,13 @@ def _run_ramp_list(args: argparse.Namespace) -> int:
             code="argument_error",
             message=str(exc),
             retryable=False,
-            hardware_intent=not getattr(args, "lint", False),
+            hardware_intent=bool(execution["hardware_touched"]),
         )
     except CoreIoError as exc:
         return _emit_safe_io_error(
             args,
             request=request,
-            execution=_execution_for_args(args, hardware_intent=True),
+            execution=execution,
             code="ramp_list_failed" if exc.opened else "connection_failed",
             message=str(exc),
         )
@@ -3278,7 +3286,7 @@ def _run_ramp_list(args: argparse.Namespace) -> int:
         return _emit_safe_io_error(
             args,
             request=request,
-            execution=_execution_for_args(args, hardware_intent=True),
+            execution=execution,
             code="ramp_list_failed",
             message=str(exc),
             data=dict(getattr(exc, "data", {}) or {})
@@ -3295,7 +3303,7 @@ def _run_ramp_list(args: argparse.Namespace) -> int:
         if args.json:
             emit_json_error(
                 command=args.command,
-                execution=_execution_for_args(args, hardware_intent=True),
+                execution=execution,
                 request=request,
                 error_type="execution",
                 code="stopped" if data["status"] == "stopped" else "ramp_list_failed",
@@ -3308,7 +3316,7 @@ def _run_ramp_list(args: argparse.Namespace) -> int:
     if args.json:
         emit_json_success(
             command=args.command,
-            execution=_execution_for_args(args, hardware_intent=not args.lint),
+            execution=execution,
             request=request,
             data=data,
             warnings=execution_warnings,

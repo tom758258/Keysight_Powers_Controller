@@ -8998,7 +8998,13 @@ def test_ramp_list_file_and_segment_are_mutually_exclusive(tmp_path, capsys) -> 
 
 def test_ramp_list_real_executes_segments_in_order(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,E36312A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    opened = []
+
+    def fake_open_resource(*args, **kwargs):
+        opened.append((args, kwargs))
+        return session
+
+    monkeypatch.setattr(cli, "open_resource", fake_open_resource)
 
     assert (
         cli.main(
@@ -9029,6 +9035,8 @@ def test_ramp_list_real_executes_segments_in_order(monkeypatch, capsys) -> None:
     )
 
     payload = json.loads(capsys.readouterr().out)
+    assert opened
+    assert payload["execution"]["hardware_touched"] is True
     assert payload["data"]["completed_segments"] == 2
     assert session.writes == [
         "CURR 0.1,(@1)",
