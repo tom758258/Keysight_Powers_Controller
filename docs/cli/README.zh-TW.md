@@ -305,7 +305,8 @@ Live run 會先執行 external preflight 並產生 suite 的 no-hardware plans�
 - `-Backend`：選用的 PyVISA backend selector，例如 `@py` 或 `@bt`。省略則使用 System
   VISA。backend 安裝與可載入性本身不授予 Product support；model-aware live execution
   仍須符合 exact Product-open `model + command + transport + backend + required feature`
-  scope。
+  scope。`@bt` 會辨識為 `pyvisa_bt` backend identity，但目前沒有任何 Product-open
+  或已註冊 validation-candidate scope 使用它。
 - `-Suite`：`readonly`（預設）、`safe-state`、`output`、`protection`、`snapshot`、
   `trigger-list`、`software-sequence`、`full`。
 - `-PlanOnly`：驗證並寫入 no-hardware plans，不開啟 VISA。
@@ -327,7 +328,7 @@ Live run 會先執行 external preflight 並產生 suite 的 no-hardware plans�
 E3646A 或 PSM-2010 的 RS-232 validation 請設定 ASRL resource 變數並明確傳入：
 
 ```powershell
-$env:E3646A_ASRL_RESOURCE = "ASRL1::INSTR"
+$env:E3646A_ASRL_RESOURCE = "<operator-selected-ASRL-resource>"
 
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\live-cli-check.ps1 `
   -Target keysight-e3646a `
@@ -351,13 +352,16 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\live-cli-check
 ```
 
 若要在 exact registered pending scope 上以已安裝的 optional backend（例如 pyvisa-py）
-做 contributor validation，請明確傳入 backend selector：
+做 contributor validation，請明確傳入 backend selector。目前 pyvisa-py 的 registered
+pending validation scope 是 E36312A 或 EDU36311A 的 TCPIP/LAN，不是 USB：
 
 ```powershell
+$env:E36312A_LAN_RESOURCE = "TCPIP0::...::INSTR"
+
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\live-cli-check.ps1 `
   -Target keysight-e36312a `
-  -Connection usb `
-  -Resource "$env:E36312A_USB_RESOURCE" `
+  -Connection lan `
+  -Resource "$env:E36312A_LAN_RESOURCE" `
   -Backend "@py" `
   -Suite readonly `
   -PlanOnly

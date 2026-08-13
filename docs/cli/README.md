@@ -362,7 +362,9 @@ Supported parameters:
 - `-Backend`: optional PyVISA backend selector such as `@py` or `@bt`. Omit it
   to use System VISA. Backend installation and loadability do not grant Product
   support; model-aware live execution still requires an exact Product-open
-  `model + command + transport + backend + required feature` scope.
+  `model + command + transport + backend + required feature` scope. `@bt` is
+  recognized as the `pyvisa_bt` backend identity, but no current Product-open
+  or registered validation-candidate scope uses it.
 - `-Suite`: `readonly` (default), `safe-state`, `output`, `protection`,
   `snapshot`, `trigger-list`, `software-sequence`, or `full`.
 - `-PlanOnly`: validate and write no-hardware plans without opening VISA.
@@ -387,7 +389,7 @@ For E3646A or PSM-2010 RS-232 validation, set an ASRL resource variable and pass
 it explicitly:
 
 ```powershell
-$env:E3646A_ASRL_RESOURCE = "ASRL1::INSTR"
+$env:E3646A_ASRL_RESOURCE = "<operator-selected-ASRL-resource>"
 
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\live-cli-check.ps1 `
   -Target keysight-e3646a `
@@ -413,13 +415,16 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\live-cli-check
 
 For contributor validation against an installed optional backend such as
 pyvisa-py on an exact registered pending scope, pass the backend selector
-explicitly:
+explicitly. The current registered pending validation scope for pyvisa-py is
+E36312A or EDU36311A over TCPIP/LAN, not USB:
 
 ```powershell
+$env:E36312A_LAN_RESOURCE = "TCPIP0::...::INSTR"
+
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\live-cli-check.ps1 `
   -Target keysight-e36312a `
-  -Connection usb `
-  -Resource "$env:E36312A_USB_RESOURCE" `
+  -Connection lan `
+  -Resource "$env:E36312A_LAN_RESOURCE" `
   -Backend "@py" `
   -Suite readonly `
   -PlanOnly
