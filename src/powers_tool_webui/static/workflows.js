@@ -498,8 +498,8 @@ function rampListDocument() {
   return webuiRampListDocument.rampListDocument(state);
 }
 
-function validateRampListDocument(document) {
-  return webuiRampListDocument.validateRampListDocument(document);
+function validateRampListDocument(document, supportedChannels = null) {
+  return webuiRampListDocument.validateRampListDocument(document, supportedChannels);
 }
 
 async function loadRampList() {

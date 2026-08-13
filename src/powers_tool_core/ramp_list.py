@@ -477,6 +477,18 @@ def execute_ramp_list(
             if plan.get("completion_pulse") and not isinstance(power_supply, E36312APowerSupply):
                 raise CoreValidationError("ramp-list completion pulses are only supported for E36312A")
             enabled_channels: list[int] = []
+
+            def record_enabled_channels(channels: tuple[int, ...]) -> None:
+                for channel in channels:
+                    if channel not in enabled_channels:
+                        enabled_channels.append(channel)
+                if plan["version"] == RAMP_LIST_VERSION:
+                    enabled_channels[:] = [
+                        channel
+                        for channel in power_supply.capabilities.channels
+                        if channel in enabled_channels
+                    ]
+
             completed_loops = 0
             completed_segments = 0
             completed_segment_executions = 0
@@ -488,12 +500,7 @@ def execute_ramp_list(
                         power_supply,
                         plan,
                         stop_requested=stop_requested,
-                    )
-                    enabled_channels.extend(
-                        _ordered_plan_channels(
-                            plan,
-                            supported=power_supply.capabilities.channels,
-                        )
+                        on_output_enabled=record_enabled_channels,
                     )
                 except (CommandCancelled, KeyboardInterrupt) as exc:
                     cancel_workflow_with_safe_off(
@@ -523,13 +530,17 @@ def execute_ramp_list(
                     failed_segment = {
                         "loop_index": 1,
                         "index": (details or {}).get("segment_index"),
-                        "channels": (details or {}).get("channels", []),
                         "code": "segment_failed",
                         "message": str(exc),
                         "failure_phase": "output_pre_stage",
                     }
                     if details:
-                        for name in ("failed_channel", "completed_channels"):
+                        for name in (
+                            "channel",
+                            "channels",
+                            "failed_channel",
+                            "completed_channels",
+                        ):
                             if name in details:
                                 failed_segment[name] = details[name]
             for loop_index in range(1, plan["loop_count"] + 1):
@@ -552,10 +563,8 @@ def execute_ramp_list(
                                     if plan["enable_output"] and channel not in enabled_channels
                                 ]
                             ),
-                            on_channel_enabled=(
-                                lambda channel: enabled_channels.append(channel)
-                                if channel not in enabled_channels
-                                else None
+                            on_channel_enabled=lambda channel: record_enabled_channels(
+                                (channel,)
                             ),
                             sleep=sleep,
                             stop_requested=stop_requested,
@@ -991,6 +1000,7 @@ def _prestage_e3646a_output(
     plan: dict[str, Any],
     *,
     stop_requested: Callable[[], bool] | None = None,
+    on_output_enabled: Callable[[tuple[int, ...]], None],
 ) -> None:
     first_setpoints: dict[int, tuple[dict[str, Any], float]] = {}
     for segment in plan["segments"]:
@@ -1012,7 +1022,7 @@ def _prestage_e3646a_output(
             exc.data = {
                 **(exc.data or {}),
                 "segment_index": segment["index"],
-                "channels": list(_segment_channels(segment)),
+                **_segment_selection_payload(segment),
                 "failed_channel": channel,
                 "completed_channels": list(completed_channels),
             }
@@ -1022,7 +1032,7 @@ def _prestage_e3646a_output(
                 f"ramp-list output pre-stage failed on channel {channel}: {exc}",
                 data={
                     "segment_index": segment["index"],
-                    "channels": list(_segment_channels(segment)),
+                    **_segment_selection_payload(segment),
                     "failed_channel": channel,
                     "completed_channels": list(completed_channels),
                 },
@@ -1030,6 +1040,7 @@ def _prestage_e3646a_output(
         completed_channels.append(channel)
     raise_if_cancelled(stop_requested)
     power_supply.output_on(channel=ordered_channels[0])
+    on_output_enabled(ordered_channels)
     checks = [
         {
             "channel": channel,
@@ -1040,6 +1051,7 @@ def _prestage_e3646a_output(
     ]
     differences = [check for check in checks if check["actual"] is not True]
     if differences:
+        failed_segment = first_setpoints[differences[0]["channel"]][0]
         raise CoreVerificationError(
             "ramp-list output-on verification failed",
             verification={
@@ -1049,8 +1061,8 @@ def _prestage_e3646a_output(
                 "differences": differences,
             },
             data={
-                "segment_index": first_setpoints[differences[0]["channel"]][0]["index"],
-                "channels": list(ordered_channels),
+                "segment_index": failed_segment["index"],
+                **_segment_selection_payload(failed_segment),
                 "failed_channel": differences[0]["channel"],
                 "completed_channels": list(ordered_channels),
             },

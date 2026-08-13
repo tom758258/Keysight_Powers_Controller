@@ -1847,6 +1847,16 @@ def test_frontend_loop_document_round_trips_use_external_schemas() -> None:
           }]
         }).loopCount, 1);
         strictAssert.equal(validateRampListDocument(rampList).loopCount, 1);
+        const canonicalRampList = validateRampListDocument({
+          ...rampList,
+          segments: [{
+            ...rampList.segments[0],
+            channels: [3, 1]
+          }]
+        }, [1, 2, 3]);
+        strictAssert.deepEqual(canonicalRampList.segments[0].channels, [1, 3]);
+        state.rampListSegments = canonicalRampList.segments;
+        strictAssert.deepEqual(rampListDocument().segments[0].channels, [1, 3]);
         strictAssert.throws(
           () => validateRampListDocument({ ...rampList, completion_pulse: { timing: "loop", pins: [1], polarity: "positive" } }),
           /requires loop_count of at least 2/

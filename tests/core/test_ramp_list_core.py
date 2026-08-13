@@ -312,8 +312,9 @@ def test_ramp_list_v3_enables_each_channel_only_at_first_segment() -> None:
 def test_ramp_list_v5_enables_each_selected_channel_once() -> None:
     session = OutputTrackingSession()
     doc = v5_document(
-        v5_segment(channels=(2, 1), stop_voltage=0),
-        v5_segment(channels=(1, 2), start_voltage=0.5, stop_voltage=0.5),
+        v5_segment(channels=(3,), stop_voltage=0),
+        v5_segment(channels=(1,), start_voltage=0.5, stop_voltage=0.5),
+        v5_segment(channels=(3,), start_voltage=1, stop_voltage=1),
         enable_output=True,
     )
 
@@ -324,8 +325,10 @@ def test_ramp_list_v5_enables_each_selected_channel_once() -> None:
     )
 
     assert session.writes.count("OUTP ON,(@1)") == 1
-    assert session.writes.count("OUTP ON,(@2)") == 1
-    assert data["enabled_channels"] == [1, 2]
+    assert session.writes.count("OUTP ON,(@3)") == 1
+    assert [item["channels"] for item in data["segments"]] == [[3], [1], [3]]
+    assert data["enabled_channels"] == [1, 3]
+    assert [item["channel"] for item in data["final_output_states"]] == [1, 3]
 
 
 def test_e3646a_ramp_list_prestages_all_channels_before_one_global_output_on() -> None:
@@ -374,6 +377,75 @@ def test_e3646a_ramp_list_prestages_all_channels_before_one_global_output_on() -
     assert session.writes.count("CURR 0.2") == 2
     assert session.writes.count("VOLT 3") == 2
     assert data["enabled_channels"] == [1, 2]
+
+
+def test_e3646a_ramp_list_records_global_output_before_verification_failure() -> None:
+    class E3646AOutputVerificationFailureSession(FakeSession):
+        def query(self, command: str) -> str:
+            self.queries.append(command)
+            if command == "*IDN?":
+                return "KEYSIGHT,E3646A,SERIAL0000,1.0"
+            if command == "INST:NSEL?":
+                return "1"
+            if command == "OUTP?":
+                return "0"
+            return '0,"No error"'
+
+    session = E3646AOutputVerificationFailureSession()
+    data = run_ramp_list(
+        OperationRequest(
+            "ramp-list",
+            RuntimeOptions(resource="ASRL1::INSTR", confirm=True),
+            {
+                "document": v5_document(
+                    v5_segment(channels=(2,)),
+                    v5_segment(channels=(1,)),
+                    enable_output=True,
+                )
+            },
+        ),
+        opener=lambda *args, **kwargs: session,
+        sleep=lambda seconds: None,
+    )
+
+    assert session.writes.count("OUTP ON") == 1
+    assert data["status"] == "failed"
+    assert data["output_enable_executed"] is True
+    assert data["enabled_channels"] == [1, 2]
+
+
+def test_e3646a_v4_prestage_failure_preserves_legacy_channel_shape() -> None:
+    class E3646APrestageFailureSession(FakeSession):
+        def query(self, command: str) -> str:
+            self.queries.append(command)
+            if command == "*IDN?":
+                return "KEYSIGHT,E3646A,SERIAL0000,1.0"
+            if command == "INST:NSEL?":
+                return "1"
+            return '0,"No error"'
+
+    session = E3646APrestageFailureSession(fail_write="VOLT 1")
+    doc = {
+        "kind": RAMP_LIST_KIND,
+        "version": 4,
+        "enable_output": True,
+        "loop_count": 1,
+        "segments": [segment(channel=2, start_voltage=1, stop_voltage=1)],
+    }
+
+    data = run_ramp_list(
+        OperationRequest(
+            "ramp-list",
+            RuntimeOptions(resource="ASRL1::INSTR", confirm=True),
+            {"document": doc},
+        ),
+        opener=lambda *args, **kwargs: session,
+        sleep=lambda seconds: None,
+    )
+
+    assert data["status"] == "failed"
+    assert data["failed_segment"]["channel"] == 2
+    assert "channels" not in data["failed_segment"]
 
 
 def test_e3646a_ramp_list_stop_before_prestage_never_enables_global_output() -> None:
