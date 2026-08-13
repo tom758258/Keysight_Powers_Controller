@@ -484,6 +484,58 @@ def test_e3646a_ramp_list_stop_before_prestage_never_enables_global_output() -> 
     assert not any(command.startswith(("CURR", "VOLT")) for command in session.writes)
 
 
+def test_e3646a_ramp_list_cancellation_after_global_output_on_preserves_enabled_channels() -> None:
+    class E3646ACancelDuringVerificationSession(FakeSession):
+        def __init__(self) -> None:
+            super().__init__()
+            self.output_on_called = False
+            self.interrupted_once = False
+
+        def write(self, command: str) -> None:
+            super().write(command)
+            if command == "OUTP ON":
+                self.output_on_called = True
+            elif command == "OUTP OFF":
+                self.output_on_called = False
+
+        def query(self, command: str) -> str:
+            self.queries.append(command)
+            if command == "*IDN?":
+                return "KEYSIGHT,E3646A,SERIAL0000,1.0"
+            if command == "INST:NSEL?":
+                return "1"
+            if command == "OUTP?" and self.output_on_called and not self.interrupted_once:
+                self.interrupted_once = True
+                raise KeyboardInterrupt("cancellation during verification")
+            if command == "OUTP?":
+                return "1" if self.output_on_called else "0"
+            return '0,"No error"'
+
+    session = E3646ACancelDuringVerificationSession()
+    doc = v5_document(
+        v5_segment(channels=(2,), current=0.2, start_voltage=3, stop_voltage=3),
+        v5_segment(channels=(1,), current=0.1, start_voltage=1, stop_voltage=1),
+        enable_output=True,
+    )
+
+    with pytest.raises(CommandCancelled) as exc_info:
+        run_ramp_list(
+            OperationRequest(
+                "ramp-list",
+                RuntimeOptions(resource="ASRL1::INSTR", confirm=True),
+                {"document": doc},
+            ),
+            opener=lambda *args, **kwargs: session,
+            sleep=lambda seconds: None,
+        )
+
+    partial = exc_info.value.data["partial_result"]
+    assert "OUTP ON" in session.writes
+    assert partial["output_enable_executed"] is True
+    assert partial["enabled_channels"] == [1, 2]
+    assert session.writes.count("OUTP OFF") >= 1
+
+
 def test_ramp_list_lint_validates_without_opening_visa() -> None:
     opened = False
     core_request = request(document(segment()))
