@@ -1614,6 +1614,38 @@ def test_live_confirmation_warnings_use_model_neutral_snapshot_wording():
     assert "E36312A snapshot validation" not in result.stdout
 
 
+def test_live_confirmation_includes_single_client_access_warning():
+    script_text = SCRIPT.read_text(encoding="utf-8")
+    physical_checks = script_text.index('Write-Host "Physical checks before pressing Enter:"')
+    plan_only_exit = script_text.index("if ($PlanOnly) {")
+    live_prompt = script_text.index(
+        'Read-Host "Press Enter to run live suite validation, or press Ctrl+C to abort"'
+    )
+
+    warning_block = script_text[physical_checks:live_prompt]
+    assert plan_only_exit < physical_checks
+    assert "no other Powers WebUI, CLI, logger, test process, or external VISA application" in warning_block
+    assert "Concurrent clients may interfere with SCPI response ordering or instrument state." in warning_block
+
+
+def test_plan_only_live_cli_check_does_not_emit_single_client_warning() -> None:
+    result = _run_live_cli_check(
+        "-Target",
+        "keysight-e36312a",
+        "-Connection",
+        "USB",
+        "-Resource",
+        "USB0::SIM::E36312A::INSTR",
+        "-Suite",
+        "readonly",
+        "-PlanOnly",
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "Concurrent clients may interfere with SCPI response ordering" not in result.stdout
+    assert "Physical checks before pressing Enter" not in result.stdout
+
+
 def test_live_cli_check_uses_phase_specific_artifact_names(tmp_path):
     fixture_path = _dynamic_fixture_cli_path(tmp_path)
     output_dir = tmp_path / "out"

@@ -3166,6 +3166,8 @@ if ($NormalizedTarget -eq "keysight-e3646a") {
 Write-Host ""
 Write-Host "Physical checks before pressing Enter:"
 Write-Host "- Confirm this is the target $NormalizedTarget and the explicit $ConnectionLabel resource is expected."
+Write-Host "- Confirm no other Powers WebUI, CLI, logger, test process, or external VISA application is using the same physical instrument resource."
+Write-Host "- Concurrent clients may interfere with SCPI response ordering or instrument state."
 Write-Host "- Confirm no DUT is connected, or only known safe loads, for state-changing suites."
 Write-Host "- Confirm output indicators are currently OFF before state-changing suites."
 Write-Host "- Confirm no OVP/OCP/error/protection abnormal indicators are shown."

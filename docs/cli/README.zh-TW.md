@@ -174,6 +174,13 @@ support。請參閱 [Contributing](../CONTRIBUTING.md) 了解 contributor workfl
 | `scripts\release-acceptance.ps1` | No hardware 加上 build checks | 執行 release validation workflow。 |
 | `scripts\batch-validation.ps1` | 依 switches 選定 | 執行選定的 simulated 或 live validation tasks。 |
 
+以 `scripts\live-cli-check.ps1` 進行實機 validation 時，假設目標 physical
+instrument 僅由單一 client 存取。live execution 前，請確認沒有其他 Powers
+WebUI、CLI、logger、test process 或外部 VISA 應用程式正在使用同一個 physical
+instrument resource。同一台儀器上的獨立 client 可能互相干擾 SCPI
+request/response ordering，也可能在彼此不知情下改變 instrument state。Powers
+Tool 不會強制 single-client ownership；這是 live validation 的操作前提。
+
 ## 命令狀態
 
 CLI 的 planning identity 與 live expected-model guard 是不同概念。`expected_model_id`

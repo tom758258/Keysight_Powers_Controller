@@ -331,6 +331,12 @@ support。請參閱 <a href="../CONTRIBUTING.md" rel="noopener noreferrer" targe
 </tr>
 </tbody>
 </table>
+<p>以 <code>scripts\live-cli-check.ps1</code> 進行實機 validation 時，假設目標 physical
+instrument 僅由單一 client 存取。live execution 前，請確認沒有其他 Powers
+WebUI、CLI、logger、test process 或外部 VISA 應用程式正在使用同一個 physical
+instrument resource。同一台儀器上的獨立 client 可能互相干擾 SCPI
+request/response ordering，也可能在彼此不知情下改變 instrument state。Powers
+Tool 不會強制 single-client ownership；這是 live validation 的操作前提。</p>
 <h2 id="命令狀態">命令狀態</h2>
 <p>CLI 的 planning identity 與 live expected-model guard 是不同概念。<code>expected_model_id</code>
 只用來檢查 live <code>*IDN?</code> identity mismatch，不會選擇 driver、解鎖 command 或

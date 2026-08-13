@@ -280,6 +280,8 @@ scope；missing 或 pending scopes 也會 fail closed。No-hardware plan 或 fea
 
 如果找不到實機存活的資源，請檢查儀器電源、USB/LAN 纜線、VISA 驅動程式可見度，以及是否有其他程式佔用了該儀器。
 
+若 numeric/query response 意外包含類似 identity 的資料、不同命令之間的回應看起來錯位或不一致，或 instrument state 意外改變，請先確認是否有另一個獨立 client 正在與同一台 physical instrument 通訊。同一台儀器上的獨立 client 可能互相干擾 SCPI request/response ordering；獨立的 writer 也可能在彼此不知情下改變 instrument state。請先停止其他 client，或選擇可獨占的 validation 時段後再重試。
+
 如果單純的 `list-resources` 顯示舊項目，請在常規操作流程改用 `--live-only` 重新執行，或使用 `--verify` 來診斷過時的 VISA 快取項目。
 
 如果命令拒絕執行，請將其視為安全與 support policy 的結果；CLI 會在執行風險動作前，刻意拒絕不支援的型號、通道、不安全的設定點，以及缺少確認的操作。重試或加入 `--model` 不會啟用不支援的功能。

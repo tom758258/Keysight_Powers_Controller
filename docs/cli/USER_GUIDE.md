@@ -339,6 +339,14 @@ the CLI executable and use the actual filename from that folder.
 If no live resources are found, check instrument power, USB/LAN cabling, VISA
 driver visibility, and whether another program is holding the instrument.
 
+If a numeric or query response unexpectedly contains identity-like data,
+responses appear shifted or mismatched between commands, or instrument state
+changes unexpectedly, first check whether another independent client is
+communicating with the same physical instrument. Independent clients on the
+same instrument may interfere with SCPI request/response ordering; independent
+writers may also change instrument state underneath each other. Stop the other
+client or choose an exclusive validation window before retrying.
+
 If plain `list-resources` shows old entries, rerun with `--live-only` for the
 normal operator path or `--verify` to diagnose stale VISA cache entries.
 

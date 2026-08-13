@@ -219,6 +219,14 @@ Product support. See
 | `scripts\release-acceptance.ps1` | No hardware plus build checks | Runs the release validation workflow. |
 | `scripts\batch-validation.ps1` | Selected by switches | Runs selected simulated or live validation tasks. |
 
+Real-instrument validation with `scripts\live-cli-check.ps1` assumes single-client
+access to the target physical instrument. Before live execution, confirm that no
+other Powers WebUI, CLI, logger, test process, or external VISA application is
+using the same physical instrument resource. Independent clients on the same
+instrument may interfere with SCPI request/response ordering and may change
+instrument state underneath each other. Powers Tool does not enforce
+single-client ownership; this is an operator prerequisite for live validation.
+
 #### Build entry points
 
 These are public build entry points; detailed usage is maintained in the root
