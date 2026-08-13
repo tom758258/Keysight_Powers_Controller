@@ -193,9 +193,15 @@ The default CLI tests are no-hardware tests:
 Focused suites:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest tests\cli\test_cli.py -q -p no:cacheprovider
+.\.venv\Scripts\python.exe -m pytest tests\cli\test_cli_output_commands.py -q -p no:cacheprovider
+.\.venv\Scripts\python.exe -m pytest tests\cli\test_cli_trigger.py -q -p no:cacheprovider
 .\.venv\Scripts\python.exe -m pytest tests\cli\test_worker.py -q -p no:cacheprovider
 ```
+
+The former monolithic `test_cli.py` is split by command family under
+`tests/cli/` (for example `test_cli_discovery.py`, `test_cli_generic_io.py`,
+`test_cli_output_commands.py`). Shared CLI test helpers live in
+`tests/cli/cli_test_helpers.py`.
 
 Pytest uses the ignored repository-local `.tmp_pytest` directory by default,
 so tests do not depend on access to the Windows system temporary directory.

@@ -156,6 +156,19 @@ USB、TCPIP、GPIB、pyvisa-py、pyvisa-bt 與 custom VISA scopes 仍會 fail cl
 .\.venv\Scripts\python.exe -m pytest tests\cli -q -p no:cacheprovider
 ```
 
+Focused suites：
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests\cli\test_cli_output_commands.py -q -p no:cacheprovider
+.\.venv\Scripts\python.exe -m pytest tests\cli\test_cli_trigger.py -q -p no:cacheprovider
+.\.venv\Scripts\python.exe -m pytest tests\cli\test_worker.py -q -p no:cacheprovider
+```
+
+原 monolithic `test_cli.py` 已依 command family 拆到 `tests/cli/`（例如
+`test_cli_discovery.py`、`test_cli_generic_io.py`、
+`test_cli_output_commands.py`）。共用 CLI test helpers 位於
+`tests/cli/cli_test_helpers.py`。
+
 pytest 預設使用 repository-local、已忽略的 `.tmp_pytest`，因此不依賴
 Windows system temporary directory。請從 repository 根目錄執行 pytest；若需
 單次覆寫 basetemp，使用 `--basetemp .tmp_tests/<purpose>`，不要使用 `Local/`。
