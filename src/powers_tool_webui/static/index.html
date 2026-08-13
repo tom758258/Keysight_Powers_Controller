@@ -32,6 +32,45 @@
           <p id="device-resource-summary" class="device-resource-summary">No resource / not scanned / Auto-detect</p>
         </div>
         <div class="device-resource-actions">
+          <div class="supported-devices">
+            <button
+              id="supported-devices-toggle"
+              class="secondary supported-devices-button"
+              type="button"
+              aria-label="Supported devices"
+              title="Supported devices"
+              data-i18n-aria-label="accessibility.supported_devices"
+              data-i18n-title="accessibility.supported_devices"
+              aria-controls="supported-devices-panel"
+              aria-expanded="false"
+            >
+              <span data-i18n="supported_devices.button">Supported devices</span>
+            </button>
+            <div
+              id="supported-devices-panel"
+              class="device-options-panel supported-devices-panel"
+              role="dialog"
+              aria-labelledby="supported-devices-title"
+              hidden
+            >
+              <h2 id="supported-devices-title" data-i18n="supported_devices.heading">Supported devices</h2>
+              <p class="device-options-help" data-i18n="supported_devices.description">
+                Devices and connections currently supported by the WebUI.
+              </p>
+              <div class="supported-devices-table-wrap">
+                <table class="supported-devices-table">
+                  <thead>
+                    <tr>
+                      <th scope="col" data-i18n="supported_devices.vendor">Vendor</th>
+                      <th scope="col" data-i18n="supported_devices.model">Model</th>
+                      <th scope="col" data-i18n="supported_devices.connections">Connections</th>
+                    </tr>
+                  </thead>
+                  <tbody id="supported-devices-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
           <div class="device-options">
             <button
               id="device-options-toggle"

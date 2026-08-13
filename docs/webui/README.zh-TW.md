@@ -162,6 +162,8 @@ WebUI 不會 import `powers_tool_cli`，也不會執行直接的 VISA 或 SCPI �
 
 面向機器的命令 ID 保持 kebab-case（例如：`output-on`）。面向人類的 WebUI 命令名稱則使用空格與句首大寫 (sentence case)。
 
+連線區域包含 **Supported devices / 支援裝置** 唯讀清單與 Device options（裝置選項）。在 Real 模式，`Expected model` 預設為 `Auto-detect`；齒輪左側的 Supported devices 按鈕會列出目前 Product-open 且 WebUI 可使用的 `system_visa` 連線（廠商、型號、連線方式）。
+
 `set` 命令在 Basic command 與 Commands 中接受設定電壓 (Voltage)、電流 (Current) 或兩者。空白的設定點欄位將自工作 payload 中被省略，且在 Core 中不被改變；Live Data/readback (讀回) 仍是獲取儀器完整設定點狀態的來源。
 Basic output 控制項是帶有亮燈狀態的 ON 按鈕：未亮的 ON 控制項代表 OFF/未知，而亮起的 ON 控制項則代表根據最新 Live Data 的狀態為 ON。
 

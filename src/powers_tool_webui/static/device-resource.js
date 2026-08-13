@@ -68,6 +68,51 @@ function setDeviceOptionsExpanded(expanded) {
   button.setAttribute("aria-expanded", String(expanded));
 }
 
+function setSupportedDevicesExpanded(expanded) {
+  const panel = document.getElementById("supported-devices-panel");
+  const button = document.getElementById("supported-devices-toggle");
+  if (!panel || !button) {
+    return;
+  }
+  panel.hidden = !expanded;
+  button.setAttribute("aria-expanded", String(expanded));
+}
+
+function supportedDeviceConnectionLabel(connection) {
+  if (connection === "tcpip") {
+    return t("supported_devices.connection.tcpip");
+  }
+  if (connection === "asrl") {
+    return t("supported_devices.connection.asrl");
+  }
+  return t("supported_devices.connection.usb");
+}
+
+function renderSupportedDevices() {
+  const body = document.getElementById("supported-devices-body");
+  if (!body) {
+    return;
+  }
+  const devices = Array.isArray(state.supportedDevices) ? state.supportedDevices : [];
+  body.replaceChildren(
+    ...devices.map((device) => {
+      const row = document.createElement("tr");
+      for (const value of [
+        device.vendor,
+        device.model,
+        (device.connections || [])
+          .map(supportedDeviceConnectionLabel)
+          .join(t("supported_devices.connection_separator")),
+      ]) {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.appendChild(cell);
+      }
+      return row;
+    })
+  );
+}
+
 function setDeviceResourceExpanded(expanded) {
   const section = document.querySelector(".device-resource-section");
   const body = document.getElementById("device-resource-body");
@@ -542,6 +587,7 @@ function refreshDeviceResourcePresentation() {
   refreshExecutionModePresentation();
   refreshDeviceResourceExpandedPresentation();
   refreshDeviceResourceSummaryPresentation();
+  renderSupportedDevices();
   refreshHealthPresentation();
   const select = document.getElementById("resource-select");
   if (select?.options?.length === 1 && !select.options[0].value) {
@@ -589,6 +635,8 @@ function setStateIndicator(elementId, text, stateClass = "state-idle", title = "
 
   return {
     setDeviceOptionsExpanded,
+    setSupportedDevicesExpanded,
+    renderSupportedDevices,
     setDeviceResourceExpanded,
     refreshDeviceResourceExpandedPresentation,
     updateDeviceResourceSummary,

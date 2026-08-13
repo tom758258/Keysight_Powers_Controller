@@ -312,7 +312,7 @@ commands 仍不支援；其他 transport 與 backend 仍會 fail closed。完整
 <p>取消執行中的工作會先進入非終止狀態 <code>cancel_requested</code>；WebUI 保留 <code>active_job_id</code> 與硬體鎖，直到 I/O 與 Core 清理結束。之後才進入 <code>cancelled</code>；清理失敗則為 <code>failed</code>。</p>
 <h2 id="section-9">使用者介面 (UI)</h2>
 <p>靜態 UI 是三區塊儀表板：上方連線與版本區、Basic command 與可折疊 command rail、以及 Live Data、Job History 和結果 JSON 的右側面板。命令 ID 保持 kebab-case；面向使用者的名稱使用空格與 sentence case。</p>
-<p>Device options 提供 Real、Simulate、Dry-run 與 Real 模式的 <code>Expected model</code>。<code>Auto-detect</code> 依連線儀器 IDN 判定；<code>Require &lt;model&gt;</code> 只建立預期型號護欄與前端規劃提示，不會覆蓋 IDN 選出的驅動程式。頁面會分別顯示已偵測型號、Expected model、transport/backend 與支援內容。</p>
+<p>連線區域包含 <strong>Supported devices / 支援裝置</strong> 唯讀清單與 Device options（裝置選項）。Device options 提供 Real、Simulate、Dry-run 與 Real 模式的 <code>Expected model</code>。<code>Auto-detect</code> 依連線儀器 IDN 判定；<code>Require &lt;model&gt;</code> 只建立預期型號護欄與前端規劃提示，不會覆蓋 IDN 選出的驅動程式。Supported devices 列出目前 Product-open 且 WebUI 可使用的 <code>system_visa</code> 連線。頁面會分別顯示已偵測型號、Expected model、transport/backend 與支援內容。</p>
 <p>Real 模式使用頁面內的寫入授權。非空白資源會為目前的資源、Expected model 與偵測型號內容建立預設啟用的授權；Device options 可鎖定寫入。資源或身分內容改變時會建立新授權內容。標題中的 Writes locked／enabled 只是狀態顯示。</p>
 <p>前端可隱藏或停用不支援命令，但這只是 UX；直接呼叫 <code>/api/jobs</code> 仍必須通過 WebUI backend 與 Core 的精確 model/command/transport/backend/feature gate。WebUI 是 Product-only，不提供 validation override 或 backend selector。</p>
 <p>Basic <code>set</code> 可只設定 Voltage、Current 或兩者。空白欄位會從 payload 省略。E3646A 使用一個全域輸出開關：CH1／CH2 的輸出控制會顯示由 ALL 控制，但各通道的 Voltage、Current 與 Set 仍保持獨立。</p>

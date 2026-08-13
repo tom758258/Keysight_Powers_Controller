@@ -206,6 +206,7 @@ async function loadCommands() {
   state.setpointRangesByModel = payload.setpoint_ranges_by_model_id || {};
   state.physicalModels = Array.isArray(payload.physical_models) ? payload.physical_models : [];
   state.planningProfiles = payload.planning_profiles || {};
+  state.supportedDevices = Array.isArray(payload.supported_devices) ? payload.supported_devices : [];
   populateIdentitySelector();
   refreshBasicInputConstraints();
   renderCommands();

@@ -181,7 +181,8 @@ button, input, select, textarea { font: inherit; }
   flex: 0 0 auto;
 }
 
-.device-options {
+.device-options,
+.supported-devices {
   position: relative;
 }
 
@@ -191,6 +192,44 @@ button.resource-collapse-toggle {
   min-width: 32px;
   height: 32px;
   font-weight: 700;
+}
+
+.supported-devices-button {
+  min-height: 32px;
+  padding: 5px 10px;
+  box-shadow: none;
+}
+
+.supported-devices-panel {
+  width: min(440px, calc(100vw - 48px));
+}
+
+.supported-devices-table-wrap {
+  overflow-x: auto;
+}
+
+.supported-devices-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  text-align: left;
+}
+
+.supported-devices-table th,
+.supported-devices-table td {
+  border-bottom: 1px solid #d8e0e8;
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+
+.supported-devices-table th:first-child,
+.supported-devices-table td:first-child {
+  padding-left: 0;
+}
+
+.supported-devices-table th:last-child,
+.supported-devices-table td:last-child {
+  padding-right: 0;
 }
 
 .device-options-panel {

@@ -21,6 +21,7 @@ export function createInitialState({
     setpointRangesByModel: {},
     physicalModels: [],
     planningProfiles: {},
+    supportedDevices: [],
     resourceModels: {},
     resourceDisplayModels: {},
     resourceChannelModels: {},

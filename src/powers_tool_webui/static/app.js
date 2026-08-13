@@ -75,7 +75,8 @@ const deviceResourceController = webuiDevice.createDeviceResourceController({
 });
 
 var {
-  setDeviceOptionsExpanded, setDeviceResourceExpanded, updateDeviceResourceSummary,
+  setDeviceOptionsExpanded, setSupportedDevicesExpanded, renderSupportedDevices,
+  setDeviceResourceExpanded, updateDeviceResourceSummary,
   buildDeviceResourceSummary, planningIdentitySummary, liveResourceSummary,
   expectedModelSummary, selectedExpectedModel, selectedPlanningIdentity,
   rememberCurrentExecutionIdentity, isNoHardwareMode, realAuthorizationContext,
@@ -317,6 +318,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderBlankLivePanel();
   await refreshHealth();
   await loadCommands();
+  renderSupportedDevices();
   drawTrend();
 });
 
@@ -335,20 +337,41 @@ function bind() {
   });
   document.getElementById("device-options-toggle").addEventListener("click", (event) => {
     event.stopPropagation();
+    setSupportedDevicesExpanded(false);
     setDeviceOptionsExpanded(document.getElementById("device-options-toggle").getAttribute("aria-expanded") !== "true");
   });
   document.getElementById("device-options-panel").addEventListener("click", (event) => {
     event.stopPropagation();
   });
+  document.getElementById("supported-devices-toggle")?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    setDeviceOptionsExpanded(false);
+    setSupportedDevicesExpanded(document.getElementById("supported-devices-toggle").getAttribute("aria-expanded") !== "true");
+  });
+  document.getElementById("supported-devices-panel")?.addEventListener("click", (event) => {
+    event.stopPropagation();
+  });
   document.getElementById("toggle-device-resource").addEventListener("click", () => {
     setDeviceResourceExpanded(document.getElementById("toggle-device-resource").getAttribute("aria-expanded") !== "true");
   });
-  document.addEventListener("click", () => setDeviceOptionsExpanded(false));
+  document.addEventListener("click", () => {
+    setDeviceOptionsExpanded(false);
+    setSupportedDevicesExpanded(false);
+  });
   document.addEventListener("keydown", (event) => {
-    const button = document.getElementById("device-options-toggle");
-    if (event.key === "Escape" && button.getAttribute("aria-expanded") === "true") {
+    if (event.key !== "Escape") {
+      return;
+    }
+    const deviceOptionsButton = document.getElementById("device-options-toggle");
+    if (deviceOptionsButton.getAttribute("aria-expanded") === "true") {
       setDeviceOptionsExpanded(false);
-      button.focus();
+      deviceOptionsButton.focus();
+      return;
+    }
+    const supportedDevicesButton = document.getElementById("supported-devices-toggle");
+    if (supportedDevicesButton?.getAttribute("aria-expanded") === "true") {
+      setSupportedDevicesExpanded(false);
+      supportedDevicesButton.focus();
     }
   });
   document.getElementById("command-filter").addEventListener("input", renderCommands);
@@ -372,6 +395,7 @@ function bind() {
     input.addEventListener("blur", () => validateBasicInput(input));
   });
   setDeviceOptionsExpanded(false);
+  setSupportedDevicesExpanded(false);
   setDeviceResourceExpanded(true);
   updateDeviceResourceSummary();
   updateExecutionModeUi({ resetAuthorization: true });

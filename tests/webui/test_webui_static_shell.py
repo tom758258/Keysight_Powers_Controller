@@ -366,6 +366,9 @@ def test_static_ui_exposes_advanced_serial_controls():
     assert_static_id(html, "device-resource-body")
     assert_static_id(html, "device-options-toggle")
     assert_static_id(html, "device-options-panel")
+    assert_static_id(html, "supported-devices-toggle")
+    assert_static_id(html, "supported-devices-panel")
+    assert_static_id(html, "supported-devices-body")
     assert_static_id(html, "toggle-device-resource")
     assert_static_id(html, "resource")
     assert_static_id(html, "resource-select")
@@ -373,6 +376,15 @@ def test_static_ui_exposes_advanced_serial_controls():
     assert_static_attr(html, "device-options-toggle", "aria-label", "Device options")
     assert_static_attr(html, "device-options-toggle", "aria-controls", "device-options-panel")
     assert_static_attr(html, "device-options-toggle", "aria-expanded", "false")
+    assert_static_attr(html, "supported-devices-toggle", "aria-controls", "supported-devices-panel")
+    assert_static_attr(html, "supported-devices-toggle", "aria-expanded", "false")
+    assert html.index('id="supported-devices-toggle"') < html.index('id="device-options-toggle"')
+    for expected in (
+        'data-i18n="supported_devices.vendor"',
+        'data-i18n="supported_devices.model"',
+        'data-i18n="supported_devices.connections"',
+    ):
+        assert expected in html
     assert_static_attr(html, "toggle-device-resource", "aria-controls", "device-resource-body")
     assert_static_attr(html, "toggle-device-resource", "aria-expanded", "true")
     assert_static_id(html, "expected-model-id")
@@ -831,20 +843,28 @@ def test_static_commands_payload_stores_setpoint_range_metadata():
 
 def test_static_device_options_popover_behavior():
     _html, app_js, _styles_css = read_static_texts()
+    device_resource_js = read_static_javascript("device-resource.js")
     bind = extract_js_function(app_js, "bind")
-    options = extract_js_function(app_js, "setDeviceOptionsExpanded")
+    options = extract_js_function(device_resource_js, "setDeviceOptionsExpanded")
+    supported = extract_js_function(device_resource_js, "setSupportedDevicesExpanded")
 
     assert "panel.hidden = !expanded;" in options
+    assert "panel.hidden = !expanded;" in supported
     assert 'button.setAttribute("aria-expanded", String(expanded));' in options
     assert 'document.getElementById("device-options-toggle").addEventListener("click", (event) => {' in bind
     assert 'setDeviceOptionsExpanded(document.getElementById("device-options-toggle").getAttribute("aria-expanded") !== "true");' in bind
-    assert 'document.addEventListener("click", () => setDeviceOptionsExpanded(false));' in bind
+    assert 'document.getElementById("supported-devices-toggle")?.addEventListener("click", (event) => {' in bind
+    assert 'setSupportedDevicesExpanded(document.getElementById("supported-devices-toggle").getAttribute("aria-expanded") !== "true");' in bind
+    assert "setSupportedDevicesExpanded(false);" in bind
+    assert 'document.addEventListener("click", () => {' in bind
     assert 'document.addEventListener("keydown", (event) => {' in bind
 
     keydown_block = bind[bind.index('document.addEventListener("keydown", (event) => {'):]
-    assert 'event.key === "Escape"' in keydown_block
+    assert 'event.key === "Escape"' in keydown_block or 'event.key !== "Escape"' in keydown_block
     assert "setDeviceOptionsExpanded(false);" in keydown_block
-    assert "button.focus();" in keydown_block
+    assert "setSupportedDevicesExpanded(false);" in keydown_block
+    assert ".focus();" in keydown_block
+    assert "renderSupportedDevices" in device_resource_js
 
     panel_click = bind[
         bind.index('document.getElementById("device-options-panel")'):

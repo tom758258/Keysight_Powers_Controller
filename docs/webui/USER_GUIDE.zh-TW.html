@@ -300,7 +300,7 @@
 <h2 id="section-5">資源掃描</h2>
 <p><code>Scan Device</code> 會執行啟用實機篩選的資源探索，只顯示目前可回應的資源，而不是過時的 VISA 快取項目。</p>
 <p>第一個有效結果會自動選取並複製到 <code>VISA resource</code>，同時執行一次唯讀身分辨識，以評估精確的產品級實機支援範圍。改選其他資源時也會重新評估。這個流程不會啟用輸出、不會修改儀器設定，也不需要實機寫入授權。您仍可手動輸入操作員已知的 VISA 資源。</p>
-<p>Device options 包含執行模式；在 Real 模式還會顯示 <code>Expected model</code>。一般實機操作請保留 <code>Auto-detect</code>，由連線儀器的 <code>*IDN?</code> 決定實際型號。選擇 <code>Require &lt;model&gt;</code> 時，它只用於前端規劃與預期型號安全護欄：若連線儀器不符，Core 會在設定或寫入 SCPI 前拒絕；它不會強制選用該型號的驅動程式。</p>
+<p>Device options 包含執行模式；在 Real 模式還會顯示 <code>Expected model</code>。一般實機操作請保留 <code>Auto-detect</code>，由連線儀器的 <code>*IDN?</code> 決定實際型號。齒輪圖示左側的 <strong>Supported devices / 支援裝置</strong> 按鈕會開啟唯讀清單，顯示目前 Product-open 且 WebUI 可使用的 <code>system_visa</code> 連線（廠商、型號、連線方式）。選擇 <code>Require &lt;model&gt;</code> 時，它只用於前端規劃與預期型號安全護欄：若連線儀器不符，Core 會在設定或寫入 SCPI 前拒絕；它不會強制選用該型號的驅動程式。</p>
 <p>一般型號選單由 Core 的 Product-active metadata 產生；目前支援的型號與 exact connection／backend scopes 以 <a href="../core/supported-models.md">Supported Models</a> 為準。未知、已移出範圍、missing 或 pending scopes 會維持 fail closed。WebUI 使用正常 Product policy 與預設 system-VISA 後端，沒有後端選擇器或 validation mode。</p>
 <p>若掃描不到可用資源，請檢查儀器電源、纜線、VISA 驅動程式可見度，以及是否有其他程式占用儀器。</p>
 <h2 id="section-6">即時資料 (Live Data)</h2>

@@ -29,13 +29,25 @@ from powers_tool_core.model_metadata import product_active_model_metadata
 from powers_tool_core.models import parse_idn
 from powers_tool_core.readonly import run_live_panel_read
 from powers_tool_core.support_policy import (
+    BACKEND_SYSTEM_VISA,
     EXEMPT_LIVE_DIAGNOSTIC_COMMANDS,
     LiveSupportPolicyError,
     SUPPORT_POLICY_MODE_PRODUCT,
+    TRANSPORT_ASRL,
+    TRANSPORT_TCPIP,
+    TRANSPORT_USB,
+    VALIDATION_STATUS_LIVE_VALIDATED_FULL_SUITE,
     exact_live_support_metadata,
     normalize_backend,
     normalize_transport,
     )
+
+_SUPPORTED_DEVICES_REFERENCE_COMMAND = "set"
+_SUPPORTED_DEVICES_TRANSPORT_ORDER = (
+    TRANSPORT_USB,
+    TRANSPORT_TCPIP,
+    TRANSPORT_ASRL,
+)
 from powers_tool_core.testing.simulator import SimulatedResourceManager
 
 from .jobs import Job
@@ -105,6 +117,46 @@ WEBUI_UNSUPPORTED_COMMANDS = {
 
 WEBUI_SPECIAL_JOB_COMMANDS = {"capabilities", "safety inspect"}
 WEBUI_JOB_COMMANDS = frozenset(SHARED_CORE_COMMANDS | WEBUI_SPECIAL_JOB_COMMANDS)
+
+
+def supported_devices_payload(
+    metadata: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Return Product-open WebUI-visible system-VISA connections by model."""
+
+    devices: list[dict[str, Any]] = []
+    transport_order = {
+        transport: index
+        for index, transport in enumerate(_SUPPORTED_DEVICES_TRANSPORT_ORDER)
+    }
+    for model_id in sorted(metadata):
+        entry = metadata[model_id]
+        command_policy = entry["live_support"]["commands"].get(
+            _SUPPORTED_DEVICES_REFERENCE_COMMAND
+        )
+        if command_policy is None:
+            continue
+        connections: list[str] = []
+        for scope in command_policy.get("scopes", []):
+            if (
+                scope.get("backend_scope") == BACKEND_SYSTEM_VISA
+                and scope.get("validation_status")
+                == VALIDATION_STATUS_LIVE_VALIDATED_FULL_SUITE
+                and scope.get("product_open") is True
+            ):
+                transport = scope.get("transport_scope")
+                if isinstance(transport, str) and transport not in connections:
+                    connections.append(transport)
+        if connections:
+            connections.sort(key=lambda item: transport_order.get(item, 99))
+            devices.append(
+                {
+                    "vendor": entry["vendor_display_name"],
+                    "model": entry["model_name"],
+                    "connections": connections,
+                }
+            )
+    return devices
 
 
 def selectable_physical_models(

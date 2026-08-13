@@ -331,7 +331,7 @@ The static UI is a three-panel dashboard:
 Machine-facing command IDs remain kebab-case. Human-facing WebUI command names
 use spaces and sentence case.
 
-The connection area includes advanced device options. In Real mode, `Expected model`
+The connection area includes a **Supported devices** read-only list and advanced device options. In Real mode, `Expected model`
 defaults to `Auto-detect`, which omits `runtime.expected_model_id`. Auto-detect
 uses the connected instrument IDN for live operation. Selecting `Require
 <model>` sends the canonical `runtime.expected_model_id` as a live safety guard and may

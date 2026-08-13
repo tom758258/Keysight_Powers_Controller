@@ -495,6 +495,7 @@ def test_commands_metadata_includes_safe_exact_live_support_projection(
         "setpoint_ranges_by_model_id",
         "parameter_constraints",
         "output_affecting_commands",
+        "supported_devices",
     } <= set(data)
     live_support = data["live_support_by_model_id"]
     assert set(live_support) == {
@@ -599,6 +600,40 @@ def test_commands_metadata_includes_safe_exact_live_support_projection(
     assert '"artifact"' not in serialized
     assert '"evidence"' not in serialized
     assert '"serial"' not in serialized
+
+
+def test_commands_metadata_exposes_supported_devices(client: TestClient) -> None:
+    response = client.get("/api/commands")
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["supported_devices"] == [
+        {
+            "vendor": "GW Instek",
+            "model": "PSM-2010",
+            "connections": ["asrl"],
+        },
+        {
+            "vendor": "Keysight Technologies",
+            "model": "E36312A",
+            "connections": ["usb", "tcpip"],
+        },
+        {
+            "vendor": "Keysight Technologies",
+            "model": "E3646A",
+            "connections": ["asrl"],
+        },
+        {
+            "vendor": "Keysight Technologies",
+            "model": "EDU36311A",
+            "connections": ["usb", "tcpip"],
+        },
+    ]
+    serialized = json.dumps(data["supported_devices"]).lower()
+    assert "backend" not in serialized
+    assert "@py" not in serialized
+    assert "custom_visa" not in serialized
+    assert "pyvisa_bt" not in serialized
 
 
 def test_product_model_selector_excludes_catalog_candidate_and_descoped_models() -> None:

@@ -128,6 +128,8 @@ storage 不可用，WebUI 會安全 fallback，不影響正常操作。
 
 選擇資源後會將其複製到 `VISA resource` 輸入框中。您也可以手動輸入由操作員提供的已知 VISA 資源。
 
+Device options（裝置選項）包含執行模式；在 Real 模式還會顯示 `Expected model`。一般實機操作請保留 `Auto-detect`，由連線儀器的 `*IDN?` 決定實際型號。齒輪圖示左側的 **Supported devices / 支援裝置** 按鈕會開啟唯讀清單，顯示目前 Product-open 且 WebUI 可使用的 `system_visa` 連線（廠商、型號、連線方式）。選擇 `Require <model>` 時，它只用於前端規劃與預期型號安全護欄：若連線儀器不符，Core 會在設定或寫入 SCPI 前拒絕；它不會強制選用該型號的驅動程式。
+
 如果未出現實機存活的資源，請檢查儀器電源、纜線、VISA 驅動程式可見度，以及是否有其他程式佔用了該儀器。
 
 ## 即時資料 (Live Data)

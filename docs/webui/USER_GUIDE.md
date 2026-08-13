@@ -151,7 +151,8 @@ output, change instrument settings, or require real-write authorization. You
 may also type a known operator-provided VISA resource manually.
 
 Device options include execution mode and, in Real mode, `Expected model`. Leave it on `Auto-detect` for normal
-live use. Auto-detect uses the connected instrument IDN. When `Require
+live use. The **Supported devices** button to the left of the gear icon opens a read-only list of
+Product-open models and WebUI-usable `system_visa` connections (Vendor, Model, Connections). Auto-detect uses the connected instrument IDN. When `Require
 <model>` is selected, the WebUI uses it for frontend capability planning and
 sends it as an expected-model guard: the connected `*IDN?` model must match
 before setup or write SCPI, and the selection does not force that model's

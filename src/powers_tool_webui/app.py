@@ -35,6 +35,7 @@ from .commands import (
     execute_job_command,
     live_support_by_model_id,
     selectable_physical_models,
+    supported_devices_payload,
     webui_command_support_by_model_id,
 )
 
@@ -207,6 +208,7 @@ async def get_commands():
         },
         "parameter_constraints": parameter_constraints_metadata(),
         "output_affecting_commands": list(MUTATING_COMMANDS),
+        "supported_devices": supported_devices_payload(model_metadata),
     }
 
 
