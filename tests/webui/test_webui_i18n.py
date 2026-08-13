@@ -293,7 +293,6 @@ assert.deepEqual(
   [...maintainedCommandGuardMessages].sort()
 );
     const maintainedFieldDescriptions = [
-      "form.description.ramp.channel",
       "form.description.ramp.enable_output",
   "form.description.safe_off.channel",
   "form.description.sequence.trigger_pulse.leave_trigger_configured",
@@ -372,6 +371,14 @@ assert.equal(EN_MESSAGES["command.name.ramp"], "Ramp");
 assert.equal(EN_MESSAGES["command.name.ramp_list"], "Ramp list");
 assert.equal(EN_MESSAGES["command.name.cycle_output"], "Cycle output");
 assert.equal(EN_MESSAGES["command.name.smoke_output"], "Smoke output");
+assert.equal(
+  EN_MESSAGES["ramp.help.multi_channel"],
+  "Selected channels share the Ramp parameters below and advance in lockstep. All uses all available channels for the current model."
+);
+assert.equal(
+  ZH_TW_MESSAGES["ramp.help.multi_channel"],
+  "所選通道將共用以下 Ramp 參數並以 lockstep 前進。「全部」代表目前型號的所有可用通道。"
+);
 assert.equal(EN_MESSAGES["workflow.action.add_ramp_segment"], "Add Ramp Segment");
 assert.equal(EN_MESSAGES["workflow.ramp_segment"], "Ramp Segment {index}");
 assert.equal(EN_MESSAGES["form.field.delay_ms"], "Wait between steps (ms)");

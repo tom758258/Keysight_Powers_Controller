@@ -471,6 +471,9 @@ current model metadata: single channels are followed by channel combinations
 and All when the model has multiple channels. Singletons submit `channel`;
 combinations and All submit an explicit canonical `channels` list. All selected
 channels share the same Ramp parameters and advance as lockstep logical steps.
+The full-width multi-channel helper appears below Channel and Current only for
+a channel combination or All; a single-channel selection leaves no empty helper
+row, so the remaining Ramp parameters stay aligned in the two-column form.
 Ramp List places Enable loop between Auto-enable
 output for each channel and Pulse timing. Sequence places Enable loop between
 its toolbar and Step 1; Create snapshot has no Loop state. Loop count is

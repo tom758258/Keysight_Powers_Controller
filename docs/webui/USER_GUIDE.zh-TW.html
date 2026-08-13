@@ -326,7 +326,7 @@
 <p>必填欄位必須在 <code>Run</code> 前完成。停用的命令或控制項代表目前型號、模式或 WebUI 範圍不支援。停用原因是刻意的功能鎖定提示，不是隨機 UI 錯誤；產品級實機支援會依偵測型號、命令、transport、backend 與必要功能精確判定，缺少或 pending 的範圍都會 fail closed。</p>
 <p>E3646A 的 Product LIVE 目前只涵蓋 ASRL／RS-232 + system VISA；其 <code>ramp-list</code> 與受限步驟的 <code>sequence</code> 是軟體工作流程，不是 native LIST。WebUI 僅提供 Product 模式，不提供 validation override；即使直接送出舊的或手工建立的 API 請求，Core 仍會重新執行精確支援檢查。</p>
 <p>Sequence、Ramp List 與 Trigger List 等編輯器支援 JSON Load/Save。請勿把私人的實驗室資源字串存入要提交或分享的檔案，除非該檔案刻意只供本機使用。</p>
-<p>Ramp 的 Channel selector 會依所選或偵測到的型號顯示各通道、支援的通道組合，以及多通道型號的 All。所選通道共用相同電流與電壓設定並以 lockstep 前進；只有每個所選通道都成功後，該電壓步驟才算完成。</p>
+<p>Ramp 的 Channel selector 會依所選或偵測到的型號顯示各通道、支援的通道組合，以及多通道型號的 All。所選通道共用相同電流與電壓設定並以 lockstep 前進；只有每個所選通道都成功後，該電壓步驟才算完成。選取通道組合或 All 時，Channel 與 Current 下方會顯示一則全寬提示，說明共用參數與 lockstep 行為。選取單一通道時不會顯示提示，也不會在 Ramp 表單留下空白列。</p>
 <p>Ramp List 可載入 v2 至 v5，儲存時一律輸出 v5。每個 Segment 都能選擇自己的通道組合；All 會寫成明確的 <code>channels</code> 清單。多通道 Segment 以 lockstep 前進，progress 與脈波仍以 logical voltage step 計算。E3646A 使用自動啟用輸出時，Ramp List 會先為清單中使用的每個通道寫入第一組安全設定值，再一次啟用全域輸出。</p>
 <p>Ramp、Ramp List 與 Sequence 提供 <code>Enable loop</code>。啟用後 Loop count 可輸入 2 至 10,000，代表完整工作流程的總執行次數，而不是額外重複次數；關閉時等同執行一次。Ramp 與 Ramp List 只有在 Loop 啟用時才提供 Loop complete 脈波時機。Ramp List 儲存 v5，Sequence 儲存 v2，兩者都會明確寫入 <code>loop_count</code>，包含單次執行的 1。</p>
 <h2 id="section-9">工作結果 (Job Results)</h2>

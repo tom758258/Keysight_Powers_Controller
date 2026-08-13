@@ -1236,9 +1236,23 @@ def test_static_compact_output_enable_layout_and_accessibility_contracts():
         );
         const loopControl = byId(commandForm, "param-loop_enabled").parentNode.parentNode;
         const channel = byId(commandForm, "param-channel").parentNode;
+        const current = byId(commandForm, "param-current").parentNode;
+        const rampMultiChannelHelp = byId(commandForm, "ramp-multi-channel-help");
+        const rampStartLabel = byId(commandForm, "param-start_voltage").parentNode;
         strictAssert.equal(commandForm.children.indexOf(rampParts.label), 0);
         strictAssert.equal(commandForm.children.indexOf(loopControl), 1);
         strictAssert.equal(commandForm.children.indexOf(channel), 2);
+        strictAssert.equal(commandForm.children.indexOf(current), 3);
+        strictAssert.equal(commandForm.children.indexOf(rampMultiChannelHelp), 4);
+        strictAssert.equal(commandForm.children.indexOf(rampStartLabel), 5);
+        strictAssert.equal(channel.querySelector(".field-description:not(.set-field-guidance)"), null);
+        strictAssert.equal(rampMultiChannelHelp.classList.contains("field-description"), true);
+        strictAssert.equal(rampMultiChannelHelp.classList.contains("ramp-multi-channel-help"), true);
+        strictAssert.equal(rampMultiChannelHelp.hidden, true);
+        strictAssert.equal(
+          rampMultiChannelHelp.textContent,
+          "Selected channels share the Ramp parameters below and advance in lockstep. All uses all available channels for the current model."
+        );
         strictAssert.equal(byId(commandForm, "param-loop_count"), undefined);
         const rampLoopEnabled = byId(commandForm, "param-loop_enabled");
         rampLoopEnabled.checked = true;
@@ -1302,6 +1316,19 @@ def test_static_compact_output_enable_layout_and_accessibility_contracts():
         const rampChannel = byId(commandForm, "param-channel");
         strictAssert.deepEqual(rampChannel.children.map((option) => option.textContent), ["CH1", "CH2", "CH3", "CH1 + CH2", "CH1 + CH3", "CH2 + CH3", "全部"]);
         strictAssert.deepEqual(rampChannel.children.map((option) => option.value), ["1", "2", "3", "1,2", "1,3", "2,3", "1,2,3"]);
+        rampChannel.value = "1,2";
+        rampChannel.listeners.change.forEach((listener) => listener());
+        strictAssert.equal(rampMultiChannelHelp.hidden, false);
+        strictAssert.equal(
+          rampMultiChannelHelp.textContent,
+          "所選通道將共用以下 Ramp 參數並以 lockstep 前進。「全部」代表目前型號的所有可用通道。"
+        );
+        rampChannel.value = "1,2,3";
+        rampChannel.listeners.input.forEach((listener) => listener());
+        strictAssert.equal(rampMultiChannelHelp.hidden, false);
+        rampChannel.value = "2";
+        rampChannel.listeners.change.forEach((listener) => listener());
+        strictAssert.equal(rampMultiChannelHelp.hidden, true);
         setLocale("en");
         refreshCommandFormPresentation();
         strictAssert.equal(byId(commandForm, "param-delay_ms"), rampDelayIdentity);
@@ -1314,6 +1341,11 @@ def test_static_compact_output_enable_layout_and_accessibility_contracts():
           "None", "Every step", "Ramp complete", "Loop complete"
         ]);
         strictAssert.deepEqual(rampChannel.children.map((option) => option.textContent), ["CH1", "CH2", "CH3", "CH1 + CH2", "CH1 + CH3", "CH2 + CH3", "All"]);
+        strictAssert.equal(
+          rampMultiChannelHelp.textContent,
+          "Selected channels share the Ramp parameters below and advance in lockstep. All uses all available channels for the current model."
+        );
+        strictAssert.equal(rampMultiChannelHelp.hidden, true);
         rampLoopEnabled.checked = false;
         rampLoopEnabled.listeners.change.forEach((listener) => listener());
         strictAssert.equal(byId(commandForm, "param-loop_count"), undefined);

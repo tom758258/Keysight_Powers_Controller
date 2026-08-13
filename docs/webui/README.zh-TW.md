@@ -193,6 +193,8 @@ canonical channel。使用者不需要也不能設定此 trigger channel。
 Ramp 的 Channel selector 會依目前型號 metadata 動態顯示單一通道、通道組合與
 All。單一選項送出 `channel`；組合與 All 送出明確、canonical 的 `channels` 清單。
 所有所選通道共用相同 Ramp 參數，並以 lockstep logical steps 前進。
+全寬的多通道提示只會在選取通道組合或 All 時顯示於 Channel 與 Current 下方；選取
+單一通道時不會保留空白提示列，其餘 Ramp 參數會維持雙欄對齊。
 
 Ramp、Ramp List 與 Sequence 支援有限 Loop。Loop 啟用時，count 必須是 exact integer
 `2..10000`；關閉 Loop 時 effective value 為 `1`。Core 最多接受 1,000,000 個

@@ -848,6 +848,13 @@ button.utility-icon-button:hover {
   justify-self: start;
 }
 
+.form-grid > .ramp-multi-channel-help {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.form-grid > .ramp-multi-channel-help[hidden] { display: none; }
+
 .visually-hidden {
   position: absolute;
   width: 1px;

@@ -1,6 +1,7 @@
 import { t } from "./i18n.js";
 
 const SET_PARTIAL_GUIDANCE = "Set accepts Voltage, Current, or both. Blank fields are left unchanged.";
+const RAMP_MULTI_CHANNEL_HELP = "Selected channels share the Ramp parameters below and advance in lockstep. All uses all available channels for the current model.";
 
 export function createCheckboxField(input, text, classNames = []) {
   const label = document.createElement("label");
@@ -346,6 +347,7 @@ function renderForm(command) {
     input.addEventListener("change", () => {
       if (command === "ramp") {
         state.rampDraft[param.name] = param.type === "checkbox" ? input.checked : input.value;
+        if (param.name === "channel") updateRampMultiChannelHelpVisibility();
       }
       enforcePulseFormRules(command, param.name, input);
       refreshElectricalRatingConstraints();
@@ -354,6 +356,7 @@ function renderForm(command) {
     input.addEventListener("input", () => {
       if (command === "ramp") {
         state.rampDraft[param.name] = param.type === "checkbox" ? input.checked : input.value;
+        if (param.name === "channel") updateRampMultiChannelHelpVisibility();
       }
       enforcePulseFormRules(command, param.name, input);
       updateSelectedCommandState();
@@ -408,6 +411,14 @@ function renderForm(command) {
     if (!TRIGGER_COMMANDS.has(command) && !param.compactHelp) appendFieldDescription(label, param);
     if (command === "set" && param.name === "current") appendSetGuidance(label);
     form.appendChild(label);
+    if (command === "ramp" && param.name === "current") {
+      const help = document.createElement("small");
+      help.id = "ramp-multi-channel-help";
+      help.className = "field-description ramp-multi-channel-help";
+      help.textContent = t("ramp.help.multi_channel", undefined, RAMP_MULTI_CHANNEL_HELP);
+      form.appendChild(help);
+      updateRampMultiChannelHelpVisibility();
+    }
   });
   if (TRIGGER_COMMANDS.has(command)) appendCommandNotes(form, command, PARAMS[command] || [], commandMeta);
   updatePulseChildVisibility(command);
@@ -423,6 +434,10 @@ function refreshCommandFormPresentation() {
   if (["ramp-list", "trigger-list", "snapshot", "restore-from-snapshot", "sequence"].includes(command)) return;
   const form = document.getElementById("command-form");
   if (!form || typeof form.querySelectorAll !== "function") return;
+  const rampMultiChannelHelp = document.getElementById("ramp-multi-channel-help");
+  if (rampMultiChannelHelp) {
+    rampMultiChannelHelp.textContent = t("ramp.help.multi_channel", undefined, RAMP_MULTI_CHANNEL_HELP);
+  }
   const params = new Map((PARAMS[command] || []).map((param) => [param.name, param]));
   form.querySelectorAll("label[data-i18n-param]").forEach((label) => {
     const param = params.get(label.dataset.i18nParam);
@@ -476,6 +491,14 @@ function refreshCommandFormPresentation() {
       if (param) detail.textContent = t(`form.description.${command.replaceAll("-", "_")}.${param.name}`, undefined, param.description);
     });
   }
+}
+
+function updateRampMultiChannelHelpVisibility() {
+  const help = document.getElementById("ramp-multi-channel-help");
+  const channel = document.getElementById("param-channel");
+  if (!help || !channel) return;
+  const selectedChannels = String(channel.value).split(",").filter(Boolean);
+  help.hidden = selectedChannels.length < 2;
 }
 
 function fieldTranslationKey(command, paramName) {

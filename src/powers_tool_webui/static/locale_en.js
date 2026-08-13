@@ -141,7 +141,7 @@ export const EN_MESSAGES = Object.freeze({
   "form.constraint.voltage": "Finite non-negative voltage setpoint.",
   "form.constraint.wait_timeout_ms": "Positive trigger wait timeout.",
   "form.description.ramp.enable_output": "Output is enabled only after the first safe setpoint is written and verified. It remains ON after normal completion. Stop workflow turns off every instrument output. Real hardware still requires confirmation.",
-  "form.description.ramp.channel": "Selected channels share the same Ramp parameters and advance in lockstep. All selects every channel available for the current model.",
+  "ramp.help.multi_channel": "Selected channels share the Ramp parameters below and advance in lockstep. All uses all available channels for the current model.",
   "form.description.safe_off.channel": "Disables the selected output, or every available output when set to all, then reads back each output state. Voltage/current setpoints and protection settings are not changed.",
   "form.description.sequence.trigger_pulse.leave_trigger_configured": "Controls whether Trigger and rear-pin settings are restored after the pulse completes. It does not keep a trigger armed. Enabling it may affect later Sequence steps or other BUS triggers.",
   "form.description.snapshot.max_errors": "Limits how many times the snapshot reads the instrument error queue. Reading stops early when the instrument reports no error. Each reported error is removed from the instrument queue.",

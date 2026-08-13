@@ -289,6 +289,9 @@ Ramp's Channel selector follows the selected or detected model. It lists each
 channel, supported channel combinations, and All for multi-channel models.
 Selected channels share the same current and voltage settings and advance in
 lockstep; a voltage step completes only after every selected channel succeeds.
+For a channel combination or All, a full-width note below Channel and Current
+explains this shared lockstep behavior. The note is absent for a single channel,
+without leaving an empty row in the Ramp form.
 
 Ramp List loads v2 through v5 and always saves v5. Each Segment has its own
 channel-combination selector; All is written as an explicit channel list.

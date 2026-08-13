@@ -168,6 +168,8 @@ Basic command 面板用於常見的各通道設定點與輸出動作。
 Ramp 的 Channel selector 會依所選或偵測到的型號顯示各通道、支援的通道組合，
 以及多通道型號的 All。所選通道共用相同電流與電壓設定並以 lockstep 前進；只有
 每個所選通道都成功後，該電壓步驟才算完成。
+選取通道組合或 All 時，Channel 與 Current 下方會顯示一則全寬提示，說明共用參數與
+lockstep 行為。選取單一通道時不會顯示提示，也不會在 Ramp 表單留下空白列。
 
 Ramp List 可載入 v2 至 v5，儲存時一律輸出 v5。每個 Segment 都有自己的通道組合
 selector；All 會寫成明確的 channel list。多通道 Segment 以 lockstep 前進，progress

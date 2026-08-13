@@ -141,7 +141,7 @@ export const ZH_TW_MESSAGES = Object.freeze({
   "form.constraint.voltage": "有限且非負的電壓設定值。",
   "form.constraint.wait_timeout_ms": "正值的觸發等待逾時時間。",
   "form.description.ramp.enable_output": "只有在寫入並驗證第一個安全設定值後才會啟用輸出。正常完成後輸出會維持開啟。停止工作流程會關閉儀器的所有輸出。實機硬體仍需確認。",
-  "form.description.ramp.channel": "所選通道共用相同 Ramp 參數並以 lockstep 方式前進。選取「全部」會使用目前型號的所有可用通道。",
+  "ramp.help.multi_channel": "所選通道將共用以下 Ramp 參數並以 lockstep 前進。「全部」代表目前型號的所有可用通道。",
   "form.description.safe_off.channel": "關閉所選輸出；選取全部時關閉所有可用輸出，然後讀回各輸出狀態。不會變更電壓／電流設定值或保護設定。",
   "form.description.sequence.trigger_pulse.leave_trigger_configured": "控制脈衝完成後是否還原 Trigger 與後面板接腳設定。不會讓觸發維持準備狀態。啟用後可能影響後續 Sequence 步驟或其他 BUS 觸發。",
   "form.description.snapshot.max_errors": "限制快照讀取儀器錯誤佇列的次數。儀器回報無錯誤時會提早停止；每筆已回報的錯誤都會從儀器佇列中移除。",

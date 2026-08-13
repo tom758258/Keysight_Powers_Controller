@@ -316,7 +316,7 @@ commands 仍不支援；其他 transport 與 backend 仍會 fail closed。完整
 <p>Real 模式使用頁面內的寫入授權。非空白資源會為目前的資源、Expected model 與偵測型號內容建立預設啟用的授權；Device options 可鎖定寫入。資源或身分內容改變時會建立新授權內容。標題中的 Writes locked／enabled 只是狀態顯示。</p>
 <p>前端可隱藏或停用不支援命令，但這只是 UX；直接呼叫 <code>/api/jobs</code> 仍必須通過 WebUI backend 與 Core 的精確 model/command/transport/backend/feature gate。WebUI 是 Product-only，不提供 validation override 或 backend selector。</p>
 <p>Basic <code>set</code> 可只設定 Voltage、Current 或兩者。空白欄位會從 payload 省略。E3646A 使用一個全域輸出開關：CH1／CH2 的輸出控制會顯示由 ALL 控制，但各通道的 Voltage、Current 與 Set 仍保持獨立。</p>
-<p>Ramp 的 Channel selector 會依目前型號 metadata 動態顯示單一通道、通道組合與 All。單一選項送出 <code>channel</code>；組合與 All 送出明確、canonical 的 <code>channels</code> 清單。所有所選通道共用相同 Ramp 參數，並以 lockstep logical steps 前進。</p>
+<p>Ramp 的 Channel selector 會依目前型號 metadata 動態顯示單一通道、通道組合與 All。單一選項送出 <code>channel</code>；組合與 All 送出明確、canonical 的 <code>channels</code> 清單。所有所選通道共用相同 Ramp 參數，並以 lockstep logical steps 前進。全寬的多通道提示只會在選取通道組合或 All 時顯示於 Channel 與 Current 下方；選取單一通道時不會保留空白提示列，其餘 Ramp 參數會維持雙欄對齊。</p>
 <p>Ramp List 編輯器最多 10 個有序 segment，可載入 v2 至 v5，並一律儲存 strict v5；每個 Segment 可依目前型號選擇不同通道組合，All 會寫成明確的 canonical <code>channels</code> 清單。Sequence 編輯器最多 250 步，儲存 strict v2。兩者都明確包含 <code>loop_count</code>。Ramp、Ramp List 與 Sequence 的 Loop count 在啟用時接受 2 至 10,000；Core admission 另限制最多 1,000,000 個 logical execution units，超過 100,000 時 UI 會顯示長時間執行警告。</p>
 <h3>脈波工作流程</h3>
 <p>Cycle Output 可選 finished pulse；Ramp 的 Pulse timing 為 None、Every step、Ramp complete 或 Loop complete；Ramp List 為 None、Every step、Segment complete 或 Loop complete；Sequence 只保留 per-Step Trigger pulse。多通道 Ramp List 的 step/segment pulse 每次只發一次，使用該 Segment 第一個 canonical channel；Loop-complete 使用最後一個 Segment 的第一個 canonical channel，且使用者不能設定此 anchor。</p>

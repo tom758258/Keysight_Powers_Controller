@@ -120,7 +120,7 @@ const PARAMS = {
     { name: "enable_output", type: "checkbox", label: "Enable output", ariaLabel: "Enable output after first setpoint", helpId: "ramp-enable-output-help", compactHelp: true, description: "Output is enabled only after the first safe setpoint is written and verified. It remains ON after normal completion. Stop workflow turns off every instrument output. Real hardware still requires confirmation." },
     { name: "loop_enabled", type: "checkbox", label: "Enable loop" },
     { name: "loop_count", type: "number", label: "Loop count", value: 2, conditionalLoop: true },
-    { name: "channel", type: "select", label: "Channel", options: ["1"], value: "1", description: "Selected channels share the same Ramp parameters and advance in lockstep." },
+    { name: "channel", type: "select", label: "Channel", options: ["1"], value: "1" },
     { name: "current", type: "number", label: "Current(A)", value: 0.1 },
     { name: "start_voltage", type: "number", label: "Start voltage(V)", value: 0 },
     { name: "stop_voltage", type: "number", label: "Stop voltage(V)", value: 1 },

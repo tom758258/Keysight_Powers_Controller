@@ -632,6 +632,17 @@ def test_ramp_form_preserves_page_local_draft_across_reselection() -> None:
     run_frontend_javascript_assertions(assertions)
 
 
+def test_ramp_multi_channel_help_uses_full_width_form_row() -> None:
+    _index_html, _app_js, styles_css = read_static_texts()
+
+    help_css = styles_css[
+        styles_css.index(".form-grid > .ramp-multi-channel-help {"):
+        styles_css.index(".visually-hidden {")
+    ]
+    assert "grid-column: 1 / -1;" in help_css
+    assert ".form-grid > .ramp-multi-channel-help[hidden] { display: none; }" in help_css
+
+
 def test_sequence_renderer_rebuilds_from_canonical_draft_without_missing_dependencies() -> None:
     run_webui_module_assertions(
         r"""
