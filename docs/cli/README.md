@@ -50,15 +50,18 @@ place.
 
 ## Package Contents
 
-- `powers_tool_cli.cli`: top-level argument parser, command dispatch, stream
-  emission, error/exit mapping, SCPI logging, and runtime adapters into Core.
+- `powers_tool_cli.cli`: top-level orchestration (`build_parser`, `main`), public
+  re-exports, and Core-delegated handlers that tests inspect directly
+  (`_run_core_trigger`, `_run_sequence`, `_run_restore_from_snapshot`).
+- `powers_tool_cli.cli_runtime`: shared resource I/O, safety resolution, JSON
+  file helpers, error/exit emission, and patchable Core connection bindings.
+- `powers_tool_cli.cli_request`: JSON request envelopes and Core request
+  construction (`OperationRequest`, `TriggerRequest`, and related helpers).
 - `powers_tool_cli.cli_io`: stable JSON success/error envelope helpers and
   optional `--save-json` output.
 - `powers_tool_cli.cli_rendering`: pure human-readable success-line formatters
   for shared Output, Trigger, plan, Sequence, discovery, read-only, inspection,
-  write, workflow, and artifact-success summaries. `cli.py` retains stream
-  emission, JSON/error/exit mapping, SCPI logging, streaming, and artifact
-  serialization.
+  write, workflow, and artifact-success summaries.
 - `powers_tool_cli.lifecycle_client`: Worker lifecycle HTTP request construction,
   response validation, dry-run handling, lifecycle output, and error mapping.
 - `powers_tool_cli.request_primitives`: shared argv parsing and JSON request
@@ -69,6 +72,18 @@ place.
 - `powers_tool_cli.worker`: local async worker service, config validation,
   event emission, job queueing, artifact writing, and `/command`/`/stop` HTTP
   endpoints.
+- `powers_tool_cli.commands.discovery`: discovery and generic instrument I/O
+  command handlers (`list-resources`, `verify`, `clear`, `error`, `measure`).
+- `powers_tool_cli.commands.readonly`: read-only, protection, snapshot artifact,
+  hardware-report, and logging command handlers.
+- `powers_tool_cli.commands.inspection`: `doctor`, `capabilities`, and
+  `safety inspect` command handlers.
+- `powers_tool_cli.commands.output_run`: output command execution, dry-run
+  planning, and output result adapters.
+- `powers_tool_cli.commands.trigger_run`: legacy trigger execution helpers and
+  native trigger command handlers retained for compatibility.
+- `powers_tool_cli.commands.sequence_run`: sequence and ramp-list workflow
+  handlers plus sequence planning helpers.
 - `powers_tool_cli.commands.lifecycle`: Worker lifecycle parser registration.
 - `powers_tool_cli.commands.output`: output command parser registration, runner
   adapter, and JSON request-envelope mapping.

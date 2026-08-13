@@ -35,17 +35,35 @@ SCPI logging，以及供 orchestrator／agent 使用的本機 Power Worker daemo
 
 ## 套件內容
 
-- `powers_tool_cli.cli`：top-level parser、command dispatch、JSON/error/exit
-  mapping、SCPI logging 與 Core adapter。
+- `powers_tool_cli.cli`：top-level orchestration（`build_parser`、`main`）、公開
+  re-export，以及測試直接檢查的 Core-delegated handler（`_run_core_trigger`、
+  `_run_sequence`、`_run_restore_from_snapshot`）。
+- `powers_tool_cli.cli_runtime`：共用 resource I/O、safety resolution、JSON
+  file helper、error/exit emission，以及可 patch 的 Core connection binding。
+- `powers_tool_cli.cli_request`：JSON request envelope 與 Core request construction
+  （`OperationRequest`、`TriggerRequest` 等 helper）。
 - `powers_tool_cli.cli_io`：穩定的 JSON success/error envelope 與 `--save-json`。
+- `powers_tool_cli.cli_rendering`：純文字 success-line formatter。
 - `powers_tool_cli.lifecycle_client`：Worker lifecycle HTTP request、response
   validation、dry-run 與錯誤 mapping。
 - `powers_tool_cli.request_primitives`：共用 argv parsing 與 JSON request fields。
 - `powers_tool_cli.runtime_mapping`：identity、execution、support-policy 與
   serial-option mapping。
 - `powers_tool_cli.worker`：本機 async Worker、job queue、event 與 artifact。
-- `powers_tool_cli.commands.*`：各 command family 的 parser registration 與
-  request mapping。
+- `powers_tool_cli.commands.discovery`：discovery 與 generic instrument I/O
+  handler（`list-resources`、`verify`、`clear`、`error`、`measure`）。
+- `powers_tool_cli.commands.readonly`：read-only、protection、snapshot artifact、
+  hardware-report 與 logging handler。
+- `powers_tool_cli.commands.inspection`：`doctor`、`capabilities`、
+  `safety inspect` handler。
+- `powers_tool_cli.commands.output_run`：output command execution、dry-run
+  planning 與 output result adapter。
+- `powers_tool_cli.commands.trigger_run`：legacy trigger execution helper 與
+  native trigger command handler（相容保留）。
+- `powers_tool_cli.commands.sequence_run`：sequence / ramp-list workflow handler
+  與 sequence planning helper。
+- `powers_tool_cli.commands.*`（lifecycle、output、ramp_list、sequence、trigger）：
+  各 command family 的 parser registration 與 request mapping。
 
 Parser construction 使用明確的 runner callable；request mapping 仍由各 command
 family module 與既有 CLI facade 負責，不引入 service-locator。

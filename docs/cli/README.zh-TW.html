@@ -123,17 +123,35 @@ SCPI logging，以及供 orchestrator／agent 使用的本機 Power Worker daemo
 會影響硬體的命令仍須明確且 opt-in；預設套件測試不需要硬體。</p>
 <h2 id="套件內容">套件內容</h2>
 <ul>
-<li><code>powers_tool_cli.cli</code>：top-level parser、command dispatch、JSON/error/exit
-mapping、SCPI logging 與 Core adapter。</li>
+<li><code>powers_tool_cli.cli</code>：top-level orchestration（<code>build_parser</code>、<code>main</code>）、公開
+re-export，以及測試直接檢查的 Core-delegated handler（<code>_run_core_trigger</code>、
+<code>_run_sequence</code>、<code>_run_restore_from_snapshot</code>）。</li>
+<li><code>powers_tool_cli.cli_runtime</code>：共用 resource I/O、safety resolution、JSON
+file helper、error/exit emission，以及可 patch 的 Core connection binding。</li>
+<li><code>powers_tool_cli.cli_request</code>：JSON request envelope 與 Core request construction
+（<code>OperationRequest</code>、<code>TriggerRequest</code> 等 helper）。</li>
 <li><code>powers_tool_cli.cli_io</code>：穩定的 JSON success/error envelope 與 <code>--save-json</code>。</li>
+<li><code>powers_tool_cli.cli_rendering</code>：純文字 success-line formatter。</li>
 <li><code>powers_tool_cli.lifecycle_client</code>：Worker lifecycle HTTP request、response
 validation、dry-run 與錯誤 mapping。</li>
 <li><code>powers_tool_cli.request_primitives</code>：共用 argv parsing 與 JSON request fields。</li>
 <li><code>powers_tool_cli.runtime_mapping</code>：identity、execution、support-policy 與
 serial-option mapping。</li>
 <li><code>powers_tool_cli.worker</code>：本機 async Worker、job queue、event 與 artifact。</li>
-<li><code>powers_tool_cli.commands.*</code>：各 command family 的 parser registration 與
-request mapping。</li>
+<li><code>powers_tool_cli.commands.discovery</code>：discovery 與 generic instrument I/O
+handler（<code>list-resources</code>、<code>verify</code>、<code>clear</code>、<code>error</code>、<code>measure</code>）。</li>
+<li><code>powers_tool_cli.commands.readonly</code>：read-only、protection、snapshot artifact、
+hardware-report 與 logging handler。</li>
+<li><code>powers_tool_cli.commands.inspection</code>：<code>doctor</code>、<code>capabilities</code>、
+<code>safety inspect</code> handler。</li>
+<li><code>powers_tool_cli.commands.output_run</code>：output command execution、dry-run
+planning 與 output result adapter。</li>
+<li><code>powers_tool_cli.commands.trigger_run</code>：legacy trigger execution helper 與
+native trigger command handler（相容保留）。</li>
+<li><code>powers_tool_cli.commands.sequence_run</code>：sequence / ramp-list workflow handler
+與 sequence planning helper。</li>
+<li><code>powers_tool_cli.commands.*</code>（lifecycle、output、ramp_list、sequence、trigger）：
+各 command family 的 parser registration 與 request mapping。</li>
 </ul>
 <p>Parser construction 使用明確的 runner callable；request mapping 仍由各 command
 family module 與既有 CLI facade 負責，不引入 service-locator。</p>
