@@ -9,6 +9,7 @@ import pytest
 
 import powers_tool_cli.cli as cli
 from powers_tool_cli import cli_rendering
+from powers_tool_cli.commands import readonly as readonly_commands
 
 
 SIM_RESOURCE = "USB0::SIM::E36312A::INSTR"
@@ -220,8 +221,8 @@ def test_p3_core_backed_runners_delegate_text_success(
     ]) == 0
     assert capsys.readouterr().out == "formatter sentinel\n"
 
-    monkeypatch.setattr(cli, "_build_hardware_report", lambda _args: {"result": "passed"})
-    monkeypatch.setattr(cli, "_write_hardware_report_files", lambda *_args: None)
+    monkeypatch.setattr(readonly_commands, "_build_hardware_report", lambda _args: {"result": "passed"})
+    monkeypatch.setattr(readonly_commands, "_write_hardware_report_files", lambda *_args: None)
     monkeypatch.setattr(cli_rendering, "format_hardware_report_success", sentinel)
     assert cli.main([
         "hardware-report", "--input-dir", str(tmp_path), "--target", "keysight-e36312a", "--connection", "USB",
@@ -268,7 +269,7 @@ def test_p3_json_and_error_paths_skip_success_formatters(
     assert cli.main(["clear-protection", "--resource", SIM_RESOURCE, "--channel", "1"]) == 2
     assert capsys.readouterr().out == ""
 
-    monkeypatch.setattr(cli, "_write_hardware_report_files", lambda *_args: (_ for _ in ()).throw(OSError("write failed")))
+    monkeypatch.setattr(readonly_commands, "_write_hardware_report_files", lambda *_args: (_ for _ in ()).throw(OSError("write failed")))
     monkeypatch.setattr(cli_rendering, "format_hardware_report_success", fail_formatter)
     assert cli.main([
         "hardware-report", "--input-dir", str(tmp_path), "--target", "keysight-e36312a", "--connection", "USB",
@@ -314,10 +315,10 @@ def test_p3_artifact_success_precedes_rendering_and_failed_artifacts_do_not_rend
     tmp_path: Path,
 ) -> None:
     events: list[str] = []
-    monkeypatch.setattr(cli, "_build_hardware_report", lambda _args: events.append("build") or {"result": "passed"})
-    monkeypatch.setattr(cli, "_write_hardware_report_files", lambda *_args: events.append("write"))
+    monkeypatch.setattr(readonly_commands, "_build_hardware_report", lambda _args: events.append("build") or {"result": "passed"})
+    monkeypatch.setattr(readonly_commands, "_write_hardware_report_files", lambda *_args: events.append("write"))
     monkeypatch.setattr(cli_rendering, "format_hardware_report_success", lambda *_args: events.append("format") or ("summary",))
-    monkeypatch.setattr(cli, "_emit_text_lines", lambda _lines: events.append("emit"))
+    monkeypatch.setattr(readonly_commands, "_emit_text_lines", lambda _lines: events.append("emit"))
 
     assert cli.main([
         "hardware-report", "--input-dir", str(tmp_path), "--target", "keysight-e36312a", "--connection", "USB",
@@ -334,7 +335,7 @@ def test_p3_log_collection_precedes_rendering(
 ) -> None:
     events: list[str] = []
     monkeypatch.setattr(
-        cli,
+        readonly_commands,
         "_collect_log_samples",
         lambda *_args, **_kwargs: events.append("collect")
         or {"samples_written": 1, "stopped": False},
@@ -344,7 +345,7 @@ def test_p3_log_collection_precedes_rendering(
         "format_log_success",
         lambda *_args: events.append("format") or ("summary",),
     )
-    monkeypatch.setattr(cli, "_emit_text_lines", lambda _lines: events.append("emit"))
+    monkeypatch.setattr(readonly_commands, "_emit_text_lines", lambda _lines: events.append("emit"))
 
     assert cli.main([
         "log", "--resource", SIM_RESOURCE, "--channel", "1", "--interval-sec", "0.01", "--samples", "1",
