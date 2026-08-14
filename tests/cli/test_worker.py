@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 import powers_tool_cli.worker as worker_mod
+import powers_tool_cli.worker_execution as worker_execution_mod
 import powers_tool_cli.cli as cli
 from powers_tool_cli.worker import (
     WorkerHTTPHandler,
@@ -691,7 +692,7 @@ class FakeWorkerLiveSession:
 
 def test_worker_live_requests_use_core_exact_scope_and_policy_error_code(tmp_path, monkeypatch):
     accepted_session = FakeWorkerLiveSession()
-    monkeypatch.setattr(worker_mod, "open_resource", lambda *args, **kwargs: accepted_session)
+    monkeypatch.setattr(worker_execution_mod, "open_resource", lambda *args, **kwargs: accepted_session)
 
     accepted = _run_worker_job_for_test(
         tmp_path,
@@ -704,7 +705,7 @@ def test_worker_live_requests_use_core_exact_scope_and_policy_error_code(tmp_pat
     assert accepted_session.closed is True
 
     promoted_session = FakeWorkerLiveSession()
-    monkeypatch.setattr(worker_mod, "open_resource", lambda *args, **kwargs: promoted_session)
+    monkeypatch.setattr(worker_execution_mod, "open_resource", lambda *args, **kwargs: promoted_session)
 
     promoted = _run_worker_job_for_test(
         tmp_path,
@@ -718,7 +719,7 @@ def test_worker_live_requests_use_core_exact_scope_and_policy_error_code(tmp_pat
     assert promoted_session.closed is True
 
     rejected_session = FakeWorkerLiveSession()
-    monkeypatch.setattr(worker_mod, "open_resource", lambda *args, **kwargs: rejected_session)
+    monkeypatch.setattr(worker_execution_mod, "open_resource", lambda *args, **kwargs: rejected_session)
     rejected = _run_worker_job_for_test(
         tmp_path,
         command="measure-all",
@@ -797,7 +798,7 @@ def test_worker_serial_settings_pass_through_to_runtime(tmp_path, monkeypatch):
         captured["runtime"] = request.runtime
         return {"ok": True}
 
-    monkeypatch.setattr(worker_mod, "run_core_command", fake_run_core_command)
+    monkeypatch.setattr(worker_execution_mod, "run_core_command", fake_run_core_command)
 
     _run_job_impl(
         state,
@@ -1368,7 +1369,7 @@ def test_worker_readonly_dry_run_does_not_open_live_resource(tmp_path, monkeypat
     def fail_open_resource(*args, **kwargs):
         raise AssertionError("read-only dry-run must not open VISA")
 
-    monkeypatch.setattr(worker_mod, "open_resource", fail_open_resource)
+    monkeypatch.setattr(worker_execution_mod, "open_resource", fail_open_resource)
     parser = build_parser()
     args = parser.parse_args([
         "worker",
@@ -1572,7 +1573,7 @@ def test_worker_result_artifact_write_failure_reports_artifact_error_without_fak
     def fail_artifact_write(*args, **kwargs):
         raise OSError("disk full")
 
-    monkeypatch.setattr(worker_mod, "_write_json_artifact_atomic", fail_artifact_write)
+    monkeypatch.setattr(worker_execution_mod, "_write_json_artifact_atomic", fail_artifact_write)
 
     _run_job_impl(state, job)
 

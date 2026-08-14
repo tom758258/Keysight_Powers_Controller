@@ -137,7 +137,13 @@ validation、dry-run 與錯誤 mapping。</li>
 <li><code>powers_tool_cli.request_primitives</code>：共用 argv parsing 與 JSON request fields。</li>
 <li><code>powers_tool_cli.runtime_mapping</code>：identity、execution、support-policy 與
 serial-option mapping。</li>
-<li><code>powers_tool_cli.worker</code>：本機 async Worker、job queue、event 與 artifact。</li>
+<li><code>powers_tool_cli.worker</code>：Worker 進入點與 composition root（<code>run_worker</code>），以及相容性 re-export。</li>
+<li><code>powers_tool_cli.worker_protocol</code>：Worker schema version、command table、context/request 驗證、response 封裝與參數正規化。</li>
+<li><code>powers_tool_cli.worker_config</code>：Worker 設定載入、驗證、serial 選項解析與 event sink 檢查。</li>
+<li><code>powers_tool_cli.worker_state</code>：執行緒安全的 <code>WorkerState</code> 狀態追蹤容器。</li>
+<li><code>powers_tool_cli.worker_http</code>：<code>WorkerHTTPServer</code>、<code>WorkerHTTPHandler</code> 端點編排（<code>/status</code>、<code>/stop</code>、<code>/cancel</code>、<code>/command</code>）與伺服器關閉 helper。</li>
+<li><code>powers_tool_cli.worker_execution</code>：背景 <code>job_runner</code> 迴圈、<code>_run_job_impl</code>、PyVISA/simulator 連線開啟、cleanup 記錄、遙測 logging 與 Core 執行/錯誤 mapping。</li>
+<li><code>powers_tool_cli.worker_io</code>：執行緒安全事件發送（<code>emit_event</code>）與原子 JSON artifact 寫入（<code>_write_json_artifact_atomic</code>）。</li>
 <li><code>powers_tool_cli.commands.discovery</code>：discovery 與 generic instrument I/O
 handler（<code>list-resources</code>、<code>verify</code>、<code>clear</code>、<code>error</code>、<code>measure</code>）。</li>
 <li><code>powers_tool_cli.commands.readonly</code>：read-only、protection、snapshot artifact、

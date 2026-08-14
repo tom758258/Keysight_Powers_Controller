@@ -49,7 +49,13 @@ SCPI logging，以及供 orchestrator／agent 使用的本機 Power Worker daemo
 - `powers_tool_cli.request_primitives`：共用 argv parsing 與 JSON request fields。
 - `powers_tool_cli.runtime_mapping`：identity、execution、support-policy 與
   serial-option mapping。
-- `powers_tool_cli.worker`：本機 async Worker、job queue、event 與 artifact。
+- `powers_tool_cli.worker`：Worker 進入點與 composition root（`run_worker`），以及相容性 re-export。
+- `powers_tool_cli.worker_protocol`：Worker schema version、command table、context/request 驗證、response 封裝與參數正規化。
+- `powers_tool_cli.worker_config`：Worker 設定載入、驗證、serial 選項解析與 event sink 檢查。
+- `powers_tool_cli.worker_state`：執行緒安全的 `WorkerState` 狀態追蹤容器。
+- `powers_tool_cli.worker_http`：`WorkerHTTPServer`、`WorkerHTTPHandler` 端點編排（`/status`、`/stop`、`/cancel`、`/command`）與伺服器關閉 helper。
+- `powers_tool_cli.worker_execution`：背景 `job_runner` 迴圈、`_run_job_impl`、PyVISA/simulator 連線開啟、cleanup 記錄、遙測 logging 與 Core 執行/錯誤 mapping。
+- `powers_tool_cli.worker_io`：執行緒安全事件發送（`emit_event`）與原子 JSON artifact 寫入（`_write_json_artifact_atomic`）。
 - `powers_tool_cli.commands.discovery`：discovery 與 generic instrument I/O
   handler（`list-resources`、`verify`、`clear`、`error`、`measure`）。
 - `powers_tool_cli.commands.readonly`：read-only、protection、snapshot artifact、

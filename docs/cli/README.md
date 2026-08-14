@@ -69,9 +69,21 @@ place.
   request shapes.
 - `powers_tool_cli.runtime_mapping`: runtime identity, execution, support-policy,
   and serial-option mapping for Core requests.
-- `powers_tool_cli.worker`: local async worker service, config validation,
-  event emission, job queueing, artifact writing, and `/command`/`/stop` HTTP
-  endpoints.
+- `powers_tool_cli.worker`: Worker entry point and composition root (`run_worker`),
+  with compatibility re-exports.
+- `powers_tool_cli.worker_protocol`: Worker schema version, command tables,
+  context/request validation, response envelopes, and parameter normalization.
+- `powers_tool_cli.worker_config`: Worker configuration loading, validation,
+  serial option parsing, and event-sink verification.
+- `powers_tool_cli.worker_state`: thread-safe `WorkerState` tracker for job status,
+  events, server references, and cleanup tracking.
+- `powers_tool_cli.worker_http`: `WorkerHTTPServer`, `WorkerHTTPHandler` endpoint
+  orchestration (`/status`, `/stop`, `/cancel`, `/command`), and server shutdown helper.
+- `powers_tool_cli.worker_execution`: background `job_runner` loop, `_run_job_impl`,
+  PyVISA/simulator connection opening, cleanup recording, telemetry logging,
+  and Core execution/error mapping.
+- `powers_tool_cli.worker_io`: thread-safe event emission (`emit_event`) and
+  atomic JSON artifact publishing (`_write_json_artifact_atomic`).
 - `powers_tool_cli.commands.discovery`: discovery and generic instrument I/O
   command handlers (`list-resources`, `verify`, `clear`, `error`, `measure`).
 - `powers_tool_cli.commands.readonly`: read-only, protection, snapshot artifact,
