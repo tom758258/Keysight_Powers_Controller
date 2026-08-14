@@ -11,7 +11,7 @@ import threading
 from typing import Any
 import uuid
 
-WORKER_SCHEMA_VERSION = 2
+from powers_tool_cli.worker_protocol import WORKER_SCHEMA_VERSION
 
 _event_lock = threading.Lock()
 _sequence_counter = 1
