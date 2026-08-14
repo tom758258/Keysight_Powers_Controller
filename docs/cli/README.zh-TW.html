@@ -156,6 +156,14 @@ shared sequence/Trigger compatibility helper。Sequence planning 與 execution
 </ul>
 <p>Parser construction 使用明確的 runner callable；request mapping 仍由各 command
 family module 與既有 CLI facade 負責，不引入 service-locator。</p>
+<h2 id="cli-core-ownership">CLI/Core Ownership</h2>
+<p>CLI 負責參數解析、request mapping、文字與 machine rendering、JSON/JSONL
+envelope、exit-code mapping 與 compatibility surface。Core 負責 IDN/model
+resolution、capability metadata、exact live-support admission、driver selection
+與 model-specific execution。<code>validate-readonly</code> 使用窄的
+<code>powers_tool_core.readonly.run_validate_readonly()</code> adapter boundary；不將它加入
+<code>COMMAND_CONTRACTS</code> 或共用 command routing。支援既有 command contract 的 model
+應整合在 Core，不需要在 CLI 增加 concrete driver branch。</p>
 <h2 id="需求">需求</h2>
 <p>根目錄的 <a href="../../README.zh-TW.md#安裝" rel="noopener noreferrer" target="_blank">README 安裝指南</a> 是 canonical setup
 reference。<a href="../core/supported-models.md" rel="noopener noreferrer" target="_blank">Supported Models</a> 是 exact Product

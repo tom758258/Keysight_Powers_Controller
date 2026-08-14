@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 from powers_tool_core.core import RuntimeOptions, OperationRequest, CoreValidationError, UnsupportedModelError, UnsupportedChannelError
-from powers_tool_core.readonly import run_live_panel_read, run_readonly
+from powers_tool_core.readonly import run_live_panel_read, run_readonly, run_validate_readonly
 from powers_tool_core.connection import open_resource
 from powers_tool_core.testing.simulator import SimulatedResourceManager
 
@@ -86,6 +86,94 @@ class PSM2010LiveSession:
 
     def close(self) -> None:
         pass
+
+
+class ValidateReadonlySession:
+    def __init__(self) -> None:
+        self.queries: list[str] = []
+        self.closed = False
+        self.responses = {
+            "SYST:ERR?": '0,"No error"',
+            "OUTP? (@1)": "OFF",
+            "OUTP? (@2)": "ON",
+            "OUTP? (@3)": "0",
+            "VOLT? (@1)": "1.0",
+            "CURR? (@1)": "0.05",
+            "VOLT? (@2)": "2.0",
+            "CURR? (@2)": "0.10",
+            "VOLT? (@3)": "3.0",
+            "CURR? (@3)": "0.15",
+            "MEAS:VOLT? (@1)": "1.1",
+            "MEAS:CURR? (@1)": "0.11",
+            "MEAS:VOLT? (@2)": "2.2",
+            "MEAS:CURR? (@2)": "0.22",
+            "MEAS:VOLT? (@3)": "3.3",
+            "MEAS:CURR? (@3)": "0.33",
+        }
+
+    def __enter__(self) -> "ValidateReadonlySession":
+        return self
+
+    def __exit__(self, exc_type: object, exc: object, traceback: object) -> None:
+        self.closed = True
+
+    def query(self, command: str) -> str:
+        self.queries.append(command)
+        if command == "*IDN?":
+            return "KEYSIGHT,E36312A,SERIAL0000,1.0"
+        try:
+            return self.responses[command]
+        except KeyError as exc:
+            raise AssertionError(f"unexpected query {command!r}") from exc
+
+    def write(self, command: str) -> None:
+        raise AssertionError(f"unexpected write {command!r}")
+
+    def close(self) -> None:
+        self.closed = True
+
+
+def test_validate_readonly_core_preserves_single_session_query_order():
+    session = ValidateReadonlySession()
+    runtime = RuntimeOptions(resource="USB0::SIM::E36312A::INSTR", simulate=True)
+    request = OperationRequest(
+        command="validate-readonly",
+        runtime=runtime,
+        parameters={"max_errors": 20},
+    )
+
+    result = run_validate_readonly(request, opener=lambda *args, **kwargs: session)
+
+    assert session.closed is True
+    assert session.queries == [
+        "*IDN?",
+        "SYST:ERR?",
+        "OUTP? (@1)",
+        "OUTP? (@2)",
+        "OUTP? (@3)",
+        "VOLT? (@1)",
+        "CURR? (@1)",
+        "VOLT? (@2)",
+        "CURR? (@2)",
+        "VOLT? (@3)",
+        "CURR? (@3)",
+        "MEAS:VOLT? (@1)",
+        "MEAS:CURR? (@1)",
+        "MEAS:VOLT? (@2)",
+        "MEAS:CURR? (@2)",
+        "MEAS:VOLT? (@3)",
+        "MEAS:CURR? (@3)",
+    ]
+    assert result["driver"]["class"] == "E36312APowerSupply"
+    assert result["capabilities"]["channels"] == [1, 2, 3]
+
+
+def test_validate_readonly_core_only_accepts_its_narrow_command():
+    runtime = RuntimeOptions(resource="USB0::SIM::E36312A::INSTR", simulate=True)
+    request = OperationRequest(command="read-status", runtime=runtime)
+
+    with pytest.raises(CoreValidationError, match="unsupported validate-readonly command"):
+        run_validate_readonly(request, opener=lambda *args, **kwargs: pytest.fail("opened hardware"))
 
 def test_readonly_simulate_status():
     runtime = RuntimeOptions(resource="USB0::SIM::E36312A::INSTR", simulate=True)

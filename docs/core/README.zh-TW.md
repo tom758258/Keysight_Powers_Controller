@@ -147,6 +147,10 @@ operating range 內。明確設定的 safety limits 仍與 official rating 分�
 讓有效限制更嚴格。
 
 轉接器邊界刻意設計為單向：core 包含驅動程式方法、SCPI 輔助工具、模擬器選擇與 dry-run 計畫；CLI 與 WebUI 建立 `RuntimeOptions`/`OperationRequest` 物件，並將回傳的 `data` 封裝在它們自己的傳輸封裝 (transport envelopes) 中。
+Core 也負責 CLI 使用的窄 model-specific execution boundary，包括
+`readonly.run_validate_readonly()`；adapter 只消費其 result 與 error，不選擇、建立或依
+concrete driver class 分支。支援既有 command contract 的 model 應整合在 Core，而不是在
+CLI 增加 concrete-driver branch。
 
 ## 輸出工作流程脈波 (Pulses)
 

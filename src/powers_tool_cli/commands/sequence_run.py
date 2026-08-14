@@ -113,11 +113,6 @@ from powers_tool_core.core import (
     UnsupportedChannelError,
     UnsupportedModelError,
 )
-from powers_tool_core.drivers.e36312a import E36312APowerSupply
-from powers_tool_core.drivers.e3646a import E3646APowerSupply
-from powers_tool_core.drivers.edu36311a import EDU36311APowerSupply
-from powers_tool_core.drivers.psm2010 import PSM2010PowerSupply
-from powers_tool_core.factory import create_power_supply, select_driver
 from powers_tool_core.identity import (
     IDENTITY_INDEXES,
     IdentityResolutionError,
@@ -152,9 +147,6 @@ PROGRAMMED_CURRENT_QUERY = "CURR?"
 OVP_TRIP_QUERY = "VOLT:PROT:TRIP?"
 OCP_TRIP_QUERY = "CURR:PROT:TRIP?"
 LOG_CSV_FIELDS = TELEMETRY_ROW_FIELDS
-OUTPUT_WRITE_POWER_SUPPLY_TYPES = (E36312APowerSupply, EDU36311APowerSupply)
-STEP_TRIGGER_POWER_SUPPLY_TYPES = (E36312APowerSupply,)
-
 from powers_tool_cli import cli_runtime
 from powers_tool_cli.cli_runtime import *
 from powers_tool_cli import cli_request

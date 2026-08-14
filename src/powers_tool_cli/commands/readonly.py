@@ -119,13 +119,7 @@ from powers_tool_core.core import (
     UnsupportedChannelError,
     UnsupportedModelError,
 )
-from powers_tool_core.drivers.e36312a import E36312APowerSupply
-from powers_tool_core.drivers.e3646a import E3646APowerSupply
-from powers_tool_core.drivers.edu36311a import EDU36311APowerSupply
-from powers_tool_core.drivers.generic_scpi import GenericScpiPowerSupply
-from powers_tool_core.drivers.psm2010 import PSM2010PowerSupply
 from powers_tool_core.errors import VisaConnectionError
-from powers_tool_core.factory import create_power_supply, select_driver
 from powers_tool_core.identity import (
     IDENTITY_INDEXES,
     IdentityResolutionError,
@@ -163,9 +157,6 @@ PROGRAMMED_CURRENT_QUERY = "CURR?"
 OVP_TRIP_QUERY = "VOLT:PROT:TRIP?"
 OCP_TRIP_QUERY = "CURR:PROT:TRIP?"
 LOG_CSV_FIELDS = TELEMETRY_ROW_FIELDS
-OUTPUT_WRITE_POWER_SUPPLY_TYPES = (E36312APowerSupply, EDU36311APowerSupply)
-STEP_TRIGGER_POWER_SUPPLY_TYPES = (E36312APowerSupply,)
-
 from powers_tool_cli import cli_runtime
 from powers_tool_cli.cli_runtime import *
 from powers_tool_cli import cli_request
@@ -230,7 +221,6 @@ def _run_readback(args: argparse.Namespace) -> int:
 def _run_validate_readonly(args: argparse.Namespace) -> int:
     request = _request_for_args(args)
     execution = _execution_for_args(args, hardware_intent=True)
-    manager = _resource_manager_for_args(args)
     try:
         _resolve_optional_resource_alias(args)
         request = _request_for_args(args)
@@ -244,67 +234,18 @@ def _run_validate_readonly(args: argparse.Namespace) -> int:
             retryable=False,
         )
 
-    opened = False
     try:
-        with _open_resource(args.resource, manager, backend=args.backend, timeout_ms=args.timeout_ms) as instrument:
-            opened = True
-            session: Any = _ScpiLoggingSession(args.resource, instrument) if args.log_scpi else instrument
-            idn_raw = session.query(IDN_QUERY)
-            _enforce_live_cli_scope(args, idn_raw, command="validate-readonly")
-            selection = _patchable_select_driver(idn_raw)
-            power_supply = selection.driver_class(session)
-            if not isinstance(
-                power_supply,
-                (E36312APowerSupply, EDU36311APowerSupply, PSM2010PowerSupply),
-            ):
-                raise _ReadOnlyModelError(
-                    "validate-readonly is only supported for E36312A, EDU36311A, or PSM-2010; "
-                    f"found {selection.driver_class.__name__} from *IDN? response"
-                )
-            channels = power_supply.capabilities.channels
-            for channel in channels:
-                _validate_read_only_channel(power_supply, channel, command_label="validate-readonly")
-            errors, read_count = _read_error_queue_from_driver(power_supply, args.max_errors)
-            outputs = [
-                {"channel": channel, "enabled": power_supply.output_state(channel=channel)}
-                for channel in channels
-            ]
-            readback = [
-                {
-                    "channel": channel,
-                    "setpoints": {
-                        "voltage": power_supply.programmed_voltage(channel=channel),
-                        "current": power_supply.programmed_current(channel=channel),
-                    },
-                }
-                for channel in channels
-            ]
-            measurements = [
-                {
-                    "channel": channel,
-                    "measurements": {
-                        "voltage": power_supply.measure_voltage(channel=channel),
-                        "current": power_supply.measure_current(channel=channel),
-                    },
-                }
-                for channel in channels
-            ]
-    except _ReadOnlyModelError as exc:
+        core_data = readonly_core.run_validate_readonly(
+            _validate_readonly_request_for_args(args),
+            opener=_core_opener_for_args(args),
+            scpi_logger=_log_scpi,
+        )
+    except UnsupportedModelError as exc:
         return _emit_cli_error(
             args,
             request=request,
             error_type="validation",
             code="unsupported_model_for_validate_readonly",
-            message=str(exc),
-            retryable=False,
-            hardware_intent=True,
-        )
-    except _ReadOnlyChannelError as exc:
-        return _emit_cli_error(
-            args,
-            request=request,
-            error_type="validation",
-            code="argument_error",
             message=str(exc),
             retryable=False,
             hardware_intent=True,
@@ -319,49 +260,24 @@ def _run_validate_readonly(args: argparse.Namespace) -> int:
             retryable=False,
             hardware_intent=True,
         )
-    except VisaConnectionError as exc:
-        code = "validate_readonly_failed" if opened else "connection_failed"
+    except CoreIoError as exc:
+        code = "validate_readonly_failed" if exc.opened else "connection_failed"
         message = (
             f"validate-readonly failed: {exc}"
-            if opened
+            if exc.opened
             else f"Could not open resource for validate-readonly: {exc}"
         )
         return _emit_safe_io_error(args, request=request, execution=execution, code=code, message=message)
-    except ValueError as exc:
-        return _emit_safe_io_error(
-            args,
-            request=request,
-            execution=execution,
-            code="validate_readonly_failed",
-            message=f"validate-readonly failed: {exc}",
-        )
 
+    idn_raw = core_data.pop("idn_raw")
     data = {
+        **core_data,
         "resource": _resource_payload(
             args.resource,
             simulated=args.simulate,
             reachable=True,
             idn_raw=idn_raw,
         ),
-        "driver": {
-            "class": selection.driver_class.__name__,
-            "reason": selection.reason,
-        },
-        "capabilities": {
-            "channels": list(selection.capabilities.channels),
-            "measure_channels": {
-                "simulate": list(selection.capabilities.simulated_measure_channels),
-                "real": list(selection.capabilities.real_measure_channels),
-            },
-        },
-        "hardware_validation": capabilities.hardware_validation_status(
-            selection.physical_identity.model_id if selection.physical_identity else None
-        ),
-        "errors": errors,
-        "read_count": read_count,
-        "outputs": outputs,
-        "readback": readback,
-        "measurements": measurements,
     }
     if args.json:
         emit_json_success(command=args.command, execution=execution, request=request, data=data)
@@ -370,7 +286,7 @@ def _run_validate_readonly(args: argparse.Namespace) -> int:
     _emit_text_lines(
         cli_rendering.format_validate_readonly(
             data,
-            channel_order=selection.capabilities.channels,
+            channel_order=data["capabilities"]["channels"],
             value_to_text=_format_text_value,
         )
     )

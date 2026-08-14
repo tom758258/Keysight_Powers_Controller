@@ -102,6 +102,15 @@ not carry the top-level `powers_tool_cli.cli` module or another service-locator
 object. Request mapping remains owned by the command-family modules and the
 existing CLI facades.
 
+The CLI owns argument parsing, request mapping, human and machine rendering,
+JSON/JSONL envelopes, exit-code mapping, and compatibility surfaces. Core owns
+IDN/model resolution, capability metadata, exact live-support admission, driver
+selection, and model-specific execution. `validate-readonly` uses the narrow
+`powers_tool_core.readonly.run_validate_readonly()` adapter boundary; it is not
+added to `COMMAND_CONTRACTS` or shared command routing. A model that supports
+an existing command contract is integrated in Core without a new concrete
+driver branch in the CLI.
+
 ## Requirements
 
 The root [README Install guide](../../README.md#install) is the canonical setup

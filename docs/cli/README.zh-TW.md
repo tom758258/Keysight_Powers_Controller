@@ -69,6 +69,14 @@ SCPI logging，以及供 orchestrator／agent 使用的本機 Power Worker daemo
 Parser construction 使用明確的 runner callable；request mapping 仍由各 command
 family module 與既有 CLI facade 負責，不引入 service-locator。
 
+CLI 負責參數解析、request mapping、文字與 machine rendering、JSON/JSONL
+envelope、exit-code mapping 與 compatibility surface。Core 負責 IDN/model
+resolution、capability metadata、exact live-support admission、driver selection
+與 model-specific execution。`validate-readonly` 使用窄的
+`powers_tool_core.readonly.run_validate_readonly()` adapter boundary；不將它加入
+`COMMAND_CONTRACTS` 或共用 command routing。支援既有 command contract 的 model
+應整合在 Core，不需要在 CLI 增加 concrete driver branch。
+
 ## 需求
 
 根目錄的 [README 安裝指南](../../README.zh-TW.md#安裝) 是 canonical setup

@@ -245,6 +245,11 @@ The adapter boundary is intentionally one-way: core contains driver methods,
 SCPI helpers, simulator selection, no-hardware model resolution, and dry-run
 planning; CLI and WebUI build `RuntimeOptions`/`OperationRequest` objects and
 wrap returned `data` in their own transport envelopes.
+Core also owns the narrow model-specific execution boundary used by the CLI,
+including `readonly.run_validate_readonly()`; adapters consume its result and
+errors without selecting, instantiating, or branching on concrete driver
+classes. A model that supports an existing command contract is integrated in
+Core rather than by adding a concrete-driver branch to the CLI.
 
 Dry-run and simulator planning does not guess a model from arbitrary resource
 strings. Output-family, Ramp List, Sequence, protection write, and trigger
