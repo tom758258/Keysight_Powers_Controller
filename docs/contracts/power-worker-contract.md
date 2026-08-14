@@ -85,9 +85,11 @@ unknown command names, invalid context, and invalid Power arguments return `400`
 before any VISA I/O, queue mutation, or artifact creation.
 
 Command parameters are admitted only by the Core command-parameter contract.
-The Worker does not maintain a second command allowlist, alias policy, or type
-coercion rule. The admitted canonical parameters and context, rather than the
-raw JSON request, are retained for queued execution. JSON booleans and integers
+The Worker does not maintain a second command parameter allowlist, alias policy,
+or type coercion rule; Worker request exposure taxonomy is maintained in Worker
+protocol, while parameter validation and canonicalization remain Core-owned. The
+admitted canonical parameters and context, rather than the raw JSON request, are
+retained for queued execution. JSON booleans and integers
 must be exact values; explicit `null`, alias conflicts, unknown fields, and
 fields that belong to a different command are rejected before a hardware lock
 or VISA session is acquired.
@@ -185,11 +187,15 @@ Trigger:
 - `trigger-abort`
 
 These are Worker request names, not a blanket product LIVE allowlist. Worker
-passes model-aware live requests to the shared Core boundary, which selects
-the detected `*IDN?` model and requires an exact command/transport/backend
-product scope. Missing and pending scopes fail closed, and Worker provides no
-validation bypass. A command may remain useful in dry-run or simulator mode
-without an accepted real-hardware scope.
+maintains its own request-command exposure taxonomy across read-only, output,
+protection, and trigger categories, while explicit unsupported Core commands
+(`list-resources`, `verify`, `clear`) fail closed. Command parameter allowlists,
+aliases, type validation, and canonicalization remain strictly owned by the
+Core command contract. Worker passes model-aware live requests to the shared
+Core boundary, which selects the detected `*IDN?` model and requires an exact
+command/transport/backend product scope. Missing and pending scopes fail
+closed, and Worker provides no validation bypass. A command may remain useful in
+dry-run or simulator mode without an accepted real-hardware scope.
 
 Worker always operates in the product support-policy mode. Validation-policy
 request or settings fields are rejected rather than ignored. Runtime identity

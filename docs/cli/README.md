@@ -71,7 +71,7 @@ place.
   and serial-option mapping for Core requests.
 - `powers_tool_cli.worker`: Worker entry point and composition root (`run_worker`),
   with compatibility re-exports.
-- `powers_tool_cli.worker_protocol`: Worker schema version, command tables,
+- `powers_tool_cli.worker_protocol`: Worker schema version, command taxonomy,
   context/request validation, response envelopes, and parameter normalization.
 - `powers_tool_cli.worker_config`: Worker configuration loading, validation,
   serial option parsing, and event-sink verification.

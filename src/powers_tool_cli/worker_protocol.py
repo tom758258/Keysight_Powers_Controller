@@ -17,40 +17,52 @@ from powers_tool_core.core import (
 if TYPE_CHECKING:
     from powers_tool_cli.worker_state import WorkerState
 
-READ_ONLY_COMMANDS = {
-    "identify",
-    "read-status",
-    "readback",
-    "measure",
-    "measure-all",
-    "output-state",
-    "protection-status",
-    "error",
-    "snapshot",
-    "log",
+_WORKER_COMMAND_TAXONOMY: dict[str, str] = {
+    # Read-only / status
+    "identify": "read_only",
+    "read-status": "read_only",
+    "readback": "read_only",
+    "measure": "read_only",
+    "measure-all": "read_only",
+    "output-state": "read_only",
+    "protection-status": "read_only",
+    "error": "read_only",
+    "snapshot": "read_only",
+    "log": "read_only",
+    # Output / setpoint
+    "set": "output",
+    "apply": "output",
+    "output-on": "output",
+    "output-off": "output",
+    "safe-off": "output",
+    "cycle-output": "output",
+    "ramp": "output",
+    "ramp-list": "output",
+    "smoke-output": "output",
+    # Protection / restore / sequence
+    "protection-set": "protection",
+    "clear-protection": "protection",
+    "restore-from-snapshot": "protection",
+    "sequence": "protection",
+    # Trigger
+    "trigger-pulse": "trigger",
+    "trigger-status": "trigger",
+    "trigger-step": "trigger",
+    "trigger-list": "trigger",
+    "trigger-fire": "trigger",
+    "trigger-abort": "trigger",
+    # Core commands unsupported by Worker
+    "list-resources": "unsupported",
+    "verify": "unsupported",
+    "clear": "unsupported",
 }
-OUTPUT_COMMANDS = {
-    "set",
-    "apply",
-    "output-on",
-    "output-off",
-    "safe-off",
-    "cycle-output",
-    "ramp",
-    "ramp-list",
-    "smoke-output",
-}
-PROTECTION_COMMANDS = {"protection-set", "clear-protection", "restore-from-snapshot", "sequence"}
-TRIGGER_COMMANDS = {
-    "trigger-pulse",
-    "trigger-status",
-    "trigger-step",
-    "trigger-list",
-    "trigger-fire",
-    "trigger-abort",
-}
+
+READ_ONLY_COMMANDS = {cmd for cmd, cat in _WORKER_COMMAND_TAXONOMY.items() if cat == "read_only"}
+OUTPUT_COMMANDS = {cmd for cmd, cat in _WORKER_COMMAND_TAXONOMY.items() if cat == "output"}
+PROTECTION_COMMANDS = {cmd for cmd, cat in _WORKER_COMMAND_TAXONOMY.items() if cat == "protection"}
+TRIGGER_COMMANDS = {cmd for cmd, cat in _WORKER_COMMAND_TAXONOMY.items() if cat == "trigger"}
 ALLOWED_COMMANDS = READ_ONLY_COMMANDS | OUTPUT_COMMANDS | PROTECTION_COMMANDS | TRIGGER_COMMANDS
-OUTPUT_AFFECTING_COMMANDS = OUTPUT_COMMANDS | {"protection-set", "clear-protection", "restore-from-snapshot", "sequence"}
+OUTPUT_AFFECTING_COMMANDS = OUTPUT_COMMANDS | PROTECTION_COMMANDS
 WORKER_SCHEMA_VERSION = 2
 REQUEST_KEYS = {"schema_version", "command", "arguments", "job_id", "context"}
 CONTEXT_KEYS = {

@@ -50,7 +50,7 @@ SCPI logging，以及供 orchestrator／agent 使用的本機 Power Worker daemo
 - `powers_tool_cli.runtime_mapping`：identity、execution、support-policy 與
   serial-option mapping。
 - `powers_tool_cli.worker`：Worker 進入點與 composition root（`run_worker`），以及相容性 re-export。
-- `powers_tool_cli.worker_protocol`：Worker schema version、command table、context/request 驗證、response 封裝與參數正規化。
+- `powers_tool_cli.worker_protocol`：Worker schema version、command taxonomy、context/request 驗證、response 封裝與參數正規化。
 - `powers_tool_cli.worker_config`：Worker 設定載入、驗證、serial 選項解析與 event sink 檢查。
 - `powers_tool_cli.worker_state`：執行緒安全的 `WorkerState` 狀態追蹤容器。
 - `powers_tool_cli.worker_http`：`WorkerHTTPServer`、`WorkerHTTPHandler` 端點編排（`/status`、`/stop`、`/cancel`、`/command`）與伺服器關閉 helper。
