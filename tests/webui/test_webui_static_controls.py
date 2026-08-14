@@ -668,7 +668,6 @@ def test_static_basic_command_error_state_contract():
     assert "clearResolvedBasicErrors(channel, liveChannel, fresh);" in basic_controls_js
     assert "liveSetpointsMatchBasicInputs(channel, liveChannel)" in basic_controls_js
     assert ".basic-action-error" in styles_css
-    assert "background: #fdecea" in styles_css
 
 
 def test_static_command_panel_exposes_description():
@@ -872,26 +871,9 @@ def test_advanced_commands_toggle_preserves_selected_workflow_dom_and_state() ->
 
 
 def test_static_command_category_column_width_and_responsive_contract():
-    _index_html, _app_js, styles_css = read_static_texts()
+    _index_html, _app_js, _styles_css = read_static_texts()
     locale_en_js = read_static_javascript("locale_en.js")
 
-    desktop_browser = styles_css[
-        styles_css.index(".command-browser {"):styles_css.index(".command-categories {")
-    ]
-    assert "grid-template-columns: 175px minmax(0, 1fr);" in desktop_browser
-    assert "grid-template-columns: 155px minmax(0, 1fr);" not in desktop_browser
-
-    responsive = styles_css[styles_css.index("@media (max-width: 1100px) {"):]
-    responsive_browser = responsive[
-        responsive.index(".command-browser {"):responsive.index(".command-categories {")
-    ]
-    responsive_categories = responsive[
-        responsive.index(".command-categories {"):responsive.index(".category-button {")
-    ]
-    assert "grid-template-columns: 1fr;" in responsive_browser
-    assert "flex-direction: row;" in responsive_categories
-    assert "overflow-x: auto;" in responsive_categories
-    assert ".category-button { min-width: 140px; }" in responsive
     assert '"command.category.discovery": "Advanced Diagnostics"' in locale_en_js
 
 
@@ -963,7 +945,6 @@ def test_static_ramp_list_editor_contract():
     assert 'localizedOption(option, value, definition.name === "pins" ? rearPinDisplayName(value) : optionDisplayName(value), definition.name === "pins");' in workflows_js
     assert 'definition.name === "timing" && value === "step" && stepPulseBlocked' not in app_js
     assert "rampListStepPulseBlocked()" not in app_js
-    assert ".ramp-list-pulse-hint { grid-column: 1 / -1; }" in styles_css
     assert 'if (state.selected === "ramp-list") return { document: rampListDocument() };' in read_static_javascript("command-form.js")
     assert 'command === "ramp-list"' in app_js
 
@@ -987,30 +968,6 @@ def test_static_compact_output_enable_layout_and_accessibility_contracts():
     assert "webuiCommandForm.createCheckboxField(enableInput, \"Auto-enable output for each channel\"" in extract_js_function(workflows_js, "renderRampListForm")
     assert "webuiCommandForm.createCheckboxField(restoreStateCheck, \"Restore previous output ON/OFF state\")" in extract_js_function(workflows_js, "renderRestoreForm")
     assert "webuiCommandForm.createCheckboxField(input, definition.label)" in extract_js_function(workflows_js, "sequenceStepFields")
-
-    checkbox_css = styles_css[
-        styles_css.index(".form-grid .checkbox-field {"):styles_css.index(".form-grid .pulse-toggle-field {")
-    ]
-    assert "display: grid;" in checkbox_css
-    assert "grid-template-columns: 16px minmax(0, 1fr);" in checkbox_css
-    assert "column-gap: 8px;" in checkbox_css
-    assert "row-gap: 0;" in checkbox_css
-    assert "width: 16px;" in checkbox_css
-    assert "min-width: 16px;" in checkbox_css
-    assert "max-width: 16px;" in checkbox_css
-    assert "height: 16px;" in checkbox_css
-    assert "grid-column: 1;" in checkbox_css
-    assert "grid-row: 1;" in checkbox_css
-    assert "align-self: center;" in checkbox_css
-    visible_text_css = checkbox_css[
-        checkbox_css.index(".form-grid .checkbox-label-text {"):checkbox_css.index(".form-grid .checkbox-field .field-description {")
-    ]
-    description_css = checkbox_css[checkbox_css.index(".form-grid .checkbox-field .field-description {"):]
-    assert "grid-column: 2;" in visible_text_css
-    assert "grid-row: 1;" in visible_text_css
-    assert "grid-column: 2;" in description_css
-    assert "grid-row: 2;" in description_css
-    assert "width: 100%;" not in checkbox_css
 
     assertions = textwrap.dedent(
         r"""

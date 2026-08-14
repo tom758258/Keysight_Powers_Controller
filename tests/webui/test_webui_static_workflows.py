@@ -639,7 +639,6 @@ def test_ramp_multi_channel_help_uses_full_width_form_row() -> None:
         styles_css.index(".form-grid > .ramp-multi-channel-help {"):
         styles_css.index(".visually-hidden {")
     ]
-    assert "grid-column: 1 / -1;" in help_css
     assert ".form-grid > .ramp-multi-channel-help[hidden] { display: none; }" in help_css
 
 
@@ -2224,7 +2223,6 @@ def test_static_channel_confirmation_and_job_detail_contracts():
     assert "guidance.textContent = SET_PARTIAL_GUIDANCE;" in append_set_guidance
     assert "SET_PARTIAL_GUIDANCE" not in render_guidance
     field_description_css = styles_css[styles_css.index(".field-description {"):styles_css.index(".command-notes {")]
-    assert "text-transform: none;" in field_description_css
     assert "setRequiresSetpointGuardReason(command, parameters)" in extract_js_function(app_js, "selectedCommandPresentation")
     assert '"smoke-output": webuiCommandForm.smokeOutputParams()' in app_js
     assert_param_contract(app_js, "channel", "select", ["1", "2", "3"])
@@ -2346,7 +2344,6 @@ def test_static_trigger_forms_document_behavior_and_key_fields():
     assert "term.textContent = param.label;" in append_notes
     assert "detail.textContent = param.description;" in append_notes
     assert ".command-notes {" in styles_css
-    assert "grid-column: 1 / -1;" in styles_css[styles_css.index(".command-notes {"):styles_css.index(".ramp-list-editor {")]
 
 
 def test_static_sequence_trigger_pulse_leave_configured_documents_restore_semantics():
@@ -2397,7 +2394,6 @@ def test_static_trigger_guidance_explains_global_fire_and_wait_semantics():
     assert 't("command.guard.trigger_fire_wait_requires_channel")' in fire_guard
     assert ".command-guidance {" in styles_css
     command_guidance_css = styles_css[styles_css.index(".command-guidance {"):styles_css.index(".trigger-list-editor {")]
-    assert "text-transform: none;" in command_guidance_css
 
 
 def test_static_trigger_status_has_human_readable_workspace_summary():

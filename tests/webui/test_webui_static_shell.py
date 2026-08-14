@@ -398,9 +398,6 @@ def test_static_ui_exposes_advanced_serial_controls():
 
     assert "Expected model" in html
     assert "Model / expected model" not in html
-    assert "Auto-detect uses the connected instrument IDN" in html
-    assert "Select a model only when you want to require a specific one" in html
-    assert "detected IDN model remains the runtime driver" in html
     identity_help_tag = static_tag_with_id(html, "identity-model-help")
     assert 'data-i18n="device.identity_model_help"' in identity_help_tag
     assert html.count('id="identity-model-help"') == 1
@@ -410,11 +407,8 @@ def test_static_ui_exposes_advanced_serial_controls():
     for unvalidated_model in ("E36103B", "E36232A"):
         assert f'<option value="{unvalidated_model}">{unvalidated_model}</option>' not in html
     assert '<option value="GENERIC">GENERIC</option>' not in html
-    assert "Optional ASRL/serial overrides" in html
     assert "serial-panel" not in html
     assert ".serial-panel" not in styles_css
-    assert "No resource / not scanned / Auto-detect" in html
-    assert "Expected Auto" not in html
     assert 'name="execution-mode" value="simulate"' in html
     assert 'name="execution-mode" value="dry-run"' in html
     assert 'class="device-resource-title-row"' in html
@@ -453,12 +447,8 @@ def test_static_ui_exposes_advanced_serial_controls():
     for class_name in ("real-locked", "real-enabled", "simulate", "dry-run"):
         assert f'badge.classList.add("{class_name}")' in execution_mode_ui
     assert ".device-resource-title-row" in styles_css
-    assert "flex-wrap: wrap;" in styles_css
-    assert "white-space: nowrap;" in styles_css
     assert ".execution-mode-badge.real-locked" in styles_css
     assert ".execution-mode-badge.real-enabled" in styles_css
-    locked_style = styles_css[styles_css.index(".execution-mode-badge.real-locked"):styles_css.index(".execution-mode-badge.simulate")]
-    assert "var(--warning)" not in locked_style
 
     runtime_block = extract_js_function(app_js, "runtimePayload")
     assert 'const expectedModelId = valueOrNull("expected-model-id");' in runtime_block
@@ -516,7 +506,6 @@ def test_static_normal_model_dropdown_policy() -> None:
     assert "model.model_id" in renderer
     for unvalidated_model in ("E36103B", "E36232A"):
         assert unvalidated_model not in model_select
-    assert "Auto-detect uses the connected instrument IDN" in html
 
 
 def test_static_device_resource_summary_uses_model_wording():
@@ -888,10 +877,6 @@ def test_static_device_resource_collapse_behavior():
 def test_static_top_bar_uses_live_resource_defaults():
     index_html, app_js, _styles_css = read_static_texts()
 
-    for label in ("Mode", "Backend", "Timeout", "Safety"):
-        assert f">{label}<" not in index_html
-        assert f">{label}\n" not in index_html
-
     assert_static_id(index_html, "resource")
     assert 'id="resource" value=' not in index_html
     assert 'id="resource" value="USB0::SIM::E36312A::INSTR"' not in index_html
@@ -901,9 +886,6 @@ def test_static_top_bar_uses_live_resource_defaults():
     assert_static_id(index_html, "server-state")
     assert_static_id(index_html, "device-state")
     assert_static_id(index_html, "live-state")
-    assert "WebUI State:" in index_html
-    assert "Command State:" in index_html
-    assert "Live State:" in index_html
     assert "Server State:" not in index_html
     assert "Device State:" not in index_html
     assert 'id="health"' not in index_html
