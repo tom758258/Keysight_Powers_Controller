@@ -31,7 +31,7 @@ ACTIVE_AUDIT_PATHS = (
     "tests/packaging/inspect_pyinstaller.py",
 )
 NEGATIVE_REGRESSION_EXEMPTIONS = {
-    "src/powers_tool_cli/worker.py": {"model_profile"},
+    "src/powers_tool_cli/worker_protocol.py": {"model_profile"},
     "src/powers_tool_webui/app.py": {"model_profile"},
     "scripts/release-acceptance.ps1": {
         "keysight-power",
