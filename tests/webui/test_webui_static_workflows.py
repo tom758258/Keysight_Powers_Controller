@@ -1763,11 +1763,78 @@ def test_static_command_keys_are_used_for_selection_and_submission():
 
 
 def test_static_command_select_options_use_human_labels_and_machine_values():
-    command_form_js = read_static_javascript("command-form.js")
-    display_name = extract_js_function(command_form_js, "optionDisplayName")
+    run_frontend_javascript_assertions(
+        r"""
+const strictAssert = require("node:assert/strict");
 
-    assert 'value.replace(/-/g, " ")' in display_name
-    assert 'return `Pin ${value}`' not in display_name
+class FakeElement {
+  constructor(tagName) {
+    this.tagName = tagName.toUpperCase();
+    this.children = [];
+    this.parentNode = null;
+    this.dataset = {};
+    this.className = "";
+    this.textContent = "";
+    this.value = "";
+    this.checked = false;
+    this.disabled = false;
+    this.listeners = {};
+    this.classList = { add: () => {} };
+  }
+  appendChild(child) {
+    this.children.push(child);
+    child.parentNode = this;
+    return child;
+  }
+  append(...children) {
+    children.forEach((child) => this.appendChild(child));
+  }
+  addEventListener(type, listener) {
+    this.listeners[type] = listener;
+  }
+  setAttribute() {}
+}
+
+const descendants = (root) => [root, ...root.children.flatMap((child) => descendants(child))];
+const commandForm = new FakeElement("form");
+const resource = new FakeElement("input");
+const expectedModel = new FakeElement("input");
+Object.defineProperty(commandForm, "innerHTML", {
+  set() { this.children = []; }
+});
+document.createElement = (tagName) => new FakeElement(tagName);
+document.getElementById = (id) => ({
+  "command-form": commandForm,
+  resource,
+  "expected-model-id": expectedModel
+}[id] || null);
+document.querySelectorAll = () => [];
+state.selected = null;
+commandMeta = () => ({ description: "" });
+
+renderForm("trigger-pulse");
+const pinsSelect = descendants(commandForm).find(
+  (node) => node.tagName === "SELECT" && node.children.some((option) => option.value === "1,2")
+);
+const ordinaryOption = pinsSelect.children.find((option) => option.value === "1");
+const humanizedOption = pinsSelect.children.find((option) => option.value === "1,2");
+strictAssert.equal(ordinaryOption.value, "1");
+strictAssert.notEqual(ordinaryOption.textContent, ordinaryOption.value);
+strictAssert.equal(humanizedOption.value, "1,2");
+strictAssert.notEqual(humanizedOption.textContent, humanizedOption.value);
+"""
+    )
+
+
+def test_static_workflow_pulse_controls_remain_wired_at_integration_boundaries():
+    app_js = read_static_javascript("app.js")
+    command_form_js = read_static_javascript("command-form.js")
+    workflows_js = read_static_javascript("workflows.js")
+
+    assert "applyWorkflowPulseControlState(input)" in extract_js_function(command_form_js, "renderForm")
+    assert "applyWorkflowPulseControlState(input, prerequisiteReason)" in extract_js_function(workflows_js, "renderRampListForm")
+    assert "applyWorkflowPulseControlState(input)" in extract_js_function(workflows_js, "sequenceStepFields")
+    assert "workflowPulseGuardReason(command, parameters)" in extract_js_function(app_js, "selectedCommandPresentation")
 
 
 def test_frontend_loop_document_round_trips_use_external_schemas() -> None:

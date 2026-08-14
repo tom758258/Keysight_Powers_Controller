@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from _webui_shared import extract_js_function, read_static_javascript, read_static_texts
+from _webui_shared import (
+    extract_js_function,
+    read_static_javascript,
+    read_static_texts,
+    run_webui_module_assertions,
+)
 
 def test_static_json_artifact_file_helpers_have_cancel_and_accept_contracts():
     _index_html, app_js, _styles_css = read_static_texts()
@@ -26,6 +31,44 @@ def test_static_json_artifact_file_helpers_have_cancel_and_accept_contracts():
     assert 'abortError(t("file.status.selection_cancelled"))' in choose_json
     assert "document.body.appendChild(link);" in save_json
     assert "window.setTimeout(() => URL.revokeObjectURL(url), 0);" in save_json
+
+
+def test_frontend_native_json_pickers_use_json_accept_map():
+    run_webui_module_assertions(
+        r"""
+const openOptions = [];
+const saveOptions = [];
+globalThis.window = {
+  showOpenFilePicker: async (options) => {
+    openOptions.push(options);
+    return [{
+      getFile: async () => ({ name: "example.json", text: async () => "{}" })
+    }];
+  },
+  showSaveFilePicker: async (options) => {
+    saveOptions.push(options);
+    return {
+      createWritable: async () => ({ write: async () => {}, close: async () => {} })
+    };
+  }
+};
+
+await globalThis.webuiJsonFiles.openJsonFile({
+  description: "Snapshot JSON",
+  extensions: [".snapshot.json", ".json"]
+});
+await globalThis.webuiJsonFiles.saveJsonFile("{}", {
+  description: "Snapshot JSON",
+  extensions: [".snapshot.json", ".json"],
+  suggestedName: "example.snapshot.json"
+});
+
+const expectedAccept = { "application/json": [".json"] };
+strictAssert.deepEqual(openOptions[0].types[0].accept, expectedAccept);
+strictAssert.deepEqual(saveOptions[0].types[0].accept, expectedAccept);
+""",
+        ("json-files.js",),
+    )
 
 def test_static_json_artifact_abort_errors_do_not_render_client_failures():
     _index_html, app_js, _styles_css = read_static_texts()
