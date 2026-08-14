@@ -4,10 +4,7 @@ from __future__ import annotations
 
 __all__ = [
     "_append_completion_pulse_plan",
-    "_append_write_followup_steps",
     "_apply_resource_payload",
-    "_attach_verification_if_requested",
-    "_combine_verifications",
     "_core_output_resource_data",
     "_cycle_output_resource_payload",
     "_detected_output_state_channels",
@@ -22,16 +19,11 @@ __all__ = [
     "_print_output_plan",
     "_print_scpi_plan",
     "_ramp_resource_payload",
-    "_ramp_voltages",
     "_run_core_output_real",
     "_run_output_plan",
     "_safe_off_resource_payload",
     "_set_resource_payload",
-    "_settle_after_write",
     "_smoke_output_resource_payload",
-    "_verify_output_state_after_write",
-    "_verify_setpoints_after_write",
-    "_verification_difference",
 ]
 
 import argparse
@@ -797,24 +789,6 @@ def _print_core_output_result(args: argparse.Namespace, resource_data: dict[str,
         )
     )
 
-def _append_write_followup_steps(
-    args: argparse.Namespace,
-    steps: list[dict[str, Any]],
-    verification_actions: Sequence[str],
-) -> None:
-    channel = getattr(args, "channel", None)
-    next_index = len(steps) + 1
-    if getattr(args, "settle_ms", 0) > 0:
-        steps.append(_driver_step(next_index, "sleep", duration_ms=args.settle_ms))
-        next_index += 1
-    if not getattr(args, "verify_after_write", False):
-        return
-    channels = (1, 2, 3) if channel == "all" else (channel,)
-    for selected_channel in channels:
-        for action in verification_actions:
-            steps.append(_driver_step(next_index, action, channel=selected_channel))
-            next_index += 1
-
 def _append_completion_pulse_plan(args: argparse.Namespace, plan: dict[str, Any]) -> None:
     pins = _completion_pulse_pins(args)
     if not pins:
@@ -865,118 +839,6 @@ def _print_output_plan(plan: dict[str, Any], *, mode: str, dry_run: bool) -> Non
 
 def _print_scpi_plan(plan: dict[str, object], *, mode: str, dry_run: bool) -> None:
     _emit_text_lines(cli_rendering.format_scpi_plan(plan, mode=mode, dry_run=dry_run))
-
-def _ramp_voltages(start: float, stop: float, step: float) -> list[float]:
-    if step <= 0:
-        raise ValueError("step-voltage must be greater than 0")
-    direction = 1.0 if stop >= start else -1.0
-    signed_step = direction * step
-    voltages = [float(start)]
-    current = float(start)
-    for _ in range(1000):
-        next_voltage = current + signed_step
-        if (direction > 0 and next_voltage >= stop) or (direction < 0 and next_voltage <= stop):
-            break
-        voltages.append(next_voltage)
-        current = next_voltage
-    else:
-        raise ValueError("ramp would exceed 1000 voltage steps")
-    if not math.isclose(voltages[-1], stop, rel_tol=0.0, abs_tol=1e-12):
-        voltages.append(float(stop))
-    if len(voltages) > 1000:
-        raise ValueError("ramp would exceed 1000 voltage steps")
-    return voltages
-
-def _settle_after_write(args: argparse.Namespace) -> None:
-    settle_ms = getattr(args, "settle_ms", 0)
-    if settle_ms > 0:
-        time.sleep(settle_ms / 1000)
-
-def _verify_setpoints_after_write(
-    power_supply: GenericScpiPowerSupply,
-    args: argparse.Namespace,
-    *,
-    channels: Sequence[int],
-    expected_voltage: float | None = None,
-) -> dict[str, Any]:
-    if not getattr(args, "verify_after_write", False):
-        return {"passed": True, "checks": [], "differences": []}
-    voltage = args.voltage if expected_voltage is None else expected_voltage
-    current = args.current
-    tolerances = {
-        "voltage": args.setpoint_voltage_tolerance,
-        "current": args.setpoint_current_tolerance,
-    }
-    checks = []
-    differences = []
-    for channel in channels:
-        actual_voltage = power_supply.programmed_voltage(channel=channel)
-        actual_current = power_supply.programmed_current(channel=channel)
-        check = {
-            "channel": channel,
-            "expected": {"voltage": _json_safe_number(voltage), "current": _json_safe_number(current)},
-            "actual": {"voltage": _json_safe_number(actual_voltage), "current": _json_safe_number(actual_current)},
-            "tolerances": tolerances,
-        }
-        checks.append(check)
-        if abs(actual_voltage - voltage) > args.setpoint_voltage_tolerance:
-            differences.append(_verification_difference("programmed_voltage", channel, voltage, actual_voltage, args.setpoint_voltage_tolerance))
-        if abs(actual_current - current) > args.setpoint_current_tolerance:
-            differences.append(_verification_difference("programmed_current", channel, current, actual_current, args.setpoint_current_tolerance))
-    return {"passed": not differences, "checks": checks, "differences": differences}
-
-def _verify_output_state_after_write(
-    power_supply: GenericScpiPowerSupply,
-    args: argparse.Namespace,
-    *,
-    expected: bool,
-    channel: int | None = None,
-) -> dict[str, Any]:
-    if not getattr(args, "verify_after_write", False):
-        return {"passed": True, "checks": [], "differences": []}
-    selected_channel = args.channel if channel is None else channel
-    actual = power_supply.output_state(channel=selected_channel)
-    differences = []
-    if actual is not expected:
-        differences.append(
-            {
-                "path": f"outputs[channel={selected_channel}].enabled",
-                "channel": selected_channel,
-                "expected": expected,
-                "actual": actual,
-            }
-        )
-    return {
-        "passed": not differences,
-        "checks": [{"channel": selected_channel, "expected": expected, "actual": actual}],
-        "differences": differences,
-    }
-
-def _verification_difference(path: str, channel: int, expected: float, actual: float, tolerance: float) -> dict[str, Any]:
-    return {
-        "path": f"{path}[channel={channel}]",
-        "channel": channel,
-        "expected": _json_safe_number(expected),
-        "actual": _json_safe_number(actual),
-        "tolerance": tolerance,
-        "delta": _json_safe_number(actual - expected),
-    }
-
-def _combine_verifications(label: str, *verifications: dict[str, Any]) -> dict[str, Any]:
-    checks = []
-    differences = []
-    for verification in verifications:
-        checks.extend(verification.get("checks", []))
-        differences.extend(verification.get("differences", []))
-    return {"operation": label, "passed": not differences, "checks": checks, "differences": differences}
-
-def _attach_verification_if_requested(
-    args: argparse.Namespace,
-    data: dict[str, Any],
-    verification: dict[str, Any],
-) -> None:
-    if getattr(args, "verify_after_write", False):
-        data["verification"] = verification
 
 def _emit_verification_error(
     args: argparse.Namespace,

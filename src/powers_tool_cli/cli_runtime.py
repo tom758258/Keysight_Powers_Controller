@@ -3,41 +3,16 @@
 from __future__ import annotations
 
 __all__ = [
-    "_ApplyChannelError",
-    "_ApplyModelError",
     "_CHANNEL_NOT_PROVIDED",
-    "_ClearProtectionModelError",
-    "_CycleOutputChannelError",
-    "_CycleOutputModelError",
     "_E36312AChannelError",
-    "_E36312AOnlyError",
     "_InvalidCoreResult",
-    "_MeasureAllModelError",
     "_MeasureChannelUnsupported",
-    "_OutputOffChannelError",
-    "_OutputOffModelError",
-    "_OutputOnChannelError",
-    "_OutputOnModelError",
-    "_OutputStateChannelError",
-    "_OutputStateModelError",
-    "_ProtectionSetModelError",
     "_ReadOnlyChannelError",
     "_ReadOnlyModelError",
-    "_RestoreIdentityError",
-    "_RestoreModelError",
-    "_SafeOffChannelError",
-    "_SafeOffModelError",
     "_ScpiLoggingSession",
-    "_SetChannelError",
-    "_SetModelError",
-    "_SmokeOutputChannelError",
-    "_SmokeOutputModelError",
-    "_StatusChannelError",
-    "_StatusModelError",
     "_TriggerPulseModelError",
     "_build_hardware_report",
     "_channels_from_selection",
-    "_clear_protection_scpi",
     "_collect_protection_status",
     "_collect_readback",
     "_collect_snapshot",
@@ -58,7 +33,6 @@ __all__ = [
     "_emit_safe_io_error",
     "_emit_text_lines",
     "_enforce_live_cli_scope",
-    "_execute_restore_plan",
     "_exit_code",
     "_format_channel_set",
     "_format_text_value",
@@ -73,7 +47,6 @@ __all__ = [
     "_measure_voltage_current_with_driver",
     "_nested_value",
     "_numbers_within_tolerance",
-    "_ocp_delay_trigger_scpi",
     "_open_jsonl_log",
     "_open_resource",
     "_output_affecting_allowed",
@@ -85,7 +58,6 @@ __all__ = [
     "_patchable_run_core_command",
     "_patchable_select_driver",
     "_protection_payload",
-    "_protection_set_scpi",
     "_protection_settings_payload",
     "_query_idn",
     "_raise_on_instrument_errors",
@@ -96,9 +68,6 @@ __all__ = [
     "_resolve_optional_resource_alias",
     "_resource_manager_for_args",
     "_resource_payload",
-    "_restore_channels_from_args",
-    "_restore_plan",
-    "_restore_step",
     "_safe_io_resource_payload",
     "_safety_explanation_for_args",
     "_safety_field_sources",
@@ -106,13 +75,10 @@ __all__ = [
     "_safety_limits_for_channel",
     "_safety_limits_payload",
     "_serial_open_kwargs",
-    "_setpoint_confirmation_required",
     "_snapshot_compare_tolerances",
     "_unsupported_measure_channel_message",
     "_validate_output_request",
     "_validate_read_only_channel",
-    "_validate_readback_for_output_on",
-    "_validate_restore_identity",
     "_write_hardware_report_files",
     "_write_json_file",
     "_write_json_file_atomic",
@@ -1071,183 +1037,6 @@ def _write_hardware_report_files(report: dict[str, Any], report_json: str, summa
             lines.append(f"- `{failure['path']}` {failure.get('error_code') or failure.get('parse_error')}")
     summary_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-def _restore_channels_from_args(args: argparse.Namespace, snapshot: dict[str, Any]) -> tuple[int, ...]:
-    available = sorted(_records_by_channel(snapshot.get("readback")))
-    if not available:
-        available = list(E36312APowerSupply.capabilities.channels)
-    if args.channel == "all":
-        return tuple(channel for channel in available if channel in E36312APowerSupply.capabilities.channels)
-    channel = int(args.channel)
-    if channel not in E36312APowerSupply.capabilities.channels:
-        raise ValueError(f"channel {channel} is not supported; supported: {E36312APowerSupply.capabilities.channels}")
-    if channel not in available:
-        raise ValueError(f"snapshot does not contain channel {channel}")
-    return (channel,)
-
-def _restore_plan(
-    snapshot: dict[str, Any],
-    *,
-    resource: str,
-    channels: tuple[int, ...],
-    restore_output_state: bool,
-    allow_output_on: bool,
-) -> dict[str, Any]:
-    outputs = _records_by_channel(snapshot.get("outputs"))
-    readback = _records_by_channel(snapshot.get("readback"))
-    protection = _records_by_channel(snapshot.get("protection_settings"))
-    steps: list[dict[str, Any]] = []
-    for channel in channels:
-        steps.append(_restore_step("output_off", f"OUTP OFF,(@{channel})", channel=channel))
-        protection_record = protection.get(channel, {}).get("protection", {})
-        ovp_voltage = protection_record.get("ovp_voltage")
-        if ovp_voltage is not None:
-            steps.append(
-                _restore_step(
-                    "set_over_voltage_protection",
-                    f"VOLT:PROT {_format_text_value(ovp_voltage)},(@{channel})",
-                    channel=channel,
-                    voltage=ovp_voltage,
-                )
-            )
-        ocp_enabled = protection_record.get("ocp_enabled")
-        if ocp_enabled is not None:
-            ocp_command = "ON" if ocp_enabled else "OFF"
-            steps.append(
-                _restore_step(
-                    "set_over_current_protection_enabled",
-                    f"CURR:PROT:STAT {ocp_command},(@{channel})",
-                    channel=channel,
-                    enabled=ocp_enabled,
-                )
-            )
-        ocp_delay = protection_record.get("ocp_delay")
-        if ocp_delay is not None:
-            steps.append(
-                _restore_step(
-                    "set_over_current_protection_delay",
-                    f"CURR:PROT:DEL {_format_text_value(ocp_delay)},(@{channel})",
-                    channel=channel,
-                    seconds=ocp_delay,
-                )
-            )
-        ocp_delay_trigger = protection_record.get("ocp_delay_trigger")
-        if ocp_delay_trigger is not None:
-            trigger_command = _ocp_delay_trigger_scpi(ocp_delay_trigger)
-            steps.append(
-                _restore_step(
-                    "set_over_current_protection_delay_trigger",
-                    f"CURR:PROT:DEL:STAR {trigger_command},(@{channel})",
-                    channel=channel,
-                    trigger=ocp_delay_trigger,
-                )
-            )
-        setpoints = readback.get(channel, {}).get("setpoints", {})
-        if "current" not in setpoints or "voltage" not in setpoints:
-            raise ValueError(f"snapshot does not contain voltage/current setpoints for channel {channel}")
-        steps.append(
-            _restore_step(
-                "set_current_limit",
-                f"CURR {_format_text_value(setpoints['current'])},(@{channel})",
-                channel=channel,
-                current=setpoints["current"],
-            )
-        )
-        steps.append(
-            _restore_step(
-                "set_voltage",
-                f"VOLT {_format_text_value(setpoints['voltage'])},(@{channel})",
-                channel=channel,
-                voltage=setpoints["voltage"],
-            )
-        )
-        if restore_output_state and allow_output_on and outputs.get(channel, {}).get("enabled") is True:
-            steps.append(_restore_step("output_on", f"OUTP ON,(@{channel})", channel=channel))
-    return {
-        "operation": {"name": "restore-from-snapshot"},
-        "target": {"resource": resource, "channels": list(channels)},
-        "steps": [
-            {
-                "index": index,
-                "type": "driver_action",
-                **step,
-            }
-            for index, step in enumerate(steps, start=1)
-        ],
-        "description": "Restore output-off, protection settings, current, voltage, and optionally prior ON states.",
-        "hardware_touched": False,
-    }
-
-def _restore_step(action: str, scpi: str, **parameters: Any) -> dict[str, Any]:
-    return {"action": action, "command": scpi, "parameters": parameters}
-
-def _ocp_delay_trigger_scpi(trigger: Any) -> str:
-    if trigger == "setting-change":
-        return "SCH"
-    if trigger == "cc-transition":
-        return "CCTR"
-    raise ValueError("ocp_delay_trigger must be one of: setting-change, cc-transition")
-
-def _execute_restore_plan(power_supply: E36312APowerSupply, plan: dict[str, Any]) -> None:
-    for step in plan["steps"]:
-        action = step["action"]
-        parameters = step["parameters"]
-        channel = parameters["channel"]
-        if action == "output_off":
-            power_supply.output_off(channel=channel)
-        elif action == "set_over_voltage_protection":
-            power_supply.set_over_voltage_protection(channel=channel, voltage=float(parameters["voltage"]))
-        elif action == "set_over_current_protection_enabled":
-            power_supply.set_over_current_protection_enabled(channel=channel, enabled=parameters["enabled"])
-        elif action == "set_over_current_protection_delay":
-            power_supply.set_over_current_protection_delay(channel=channel, seconds=float(parameters["seconds"]))
-        elif action == "set_over_current_protection_delay_trigger":
-            power_supply.set_over_current_protection_delay_trigger(channel=channel, trigger=str(parameters["trigger"]))
-        elif action == "set_current_limit":
-            power_supply.set_current_limit(channel=channel, current=float(parameters["current"]))
-        elif action == "set_voltage":
-            power_supply.set_voltage(channel=channel, voltage=float(parameters["voltage"]))
-        elif action == "output_on":
-            power_supply.output_on(channel=channel)
-        else:
-            raise ValueError(f"unsupported restore action: {action}")
-
-def _validate_restore_identity(idn: Any, expected_idn: dict[str, Any]) -> None:
-    expected_model = expected_idn.get("model")
-    expected_serial = expected_idn.get("serial")
-    if expected_model != "E36312A":
-        raise _RestoreIdentityError(
-            f"snapshot model must be E36312A for real restore; found {expected_model!r}"
-        )
-    if idn.model != expected_model:
-        raise _RestoreIdentityError(
-            f"connected model {idn.model!r} does not match snapshot model {expected_model!r}"
-        )
-    if idn.serial != expected_serial:
-        raise _RestoreIdentityError(
-            f"connected serial {idn.serial!r} does not match snapshot serial {expected_serial!r}"
-        )
-
-def _validate_readback_for_output_on(
-    channel: int,
-    setpoints: dict[str, float],
-    safety_limits: SafetyLimits,
-) -> None:
-    validation.validate_output_on_readback(channel, setpoints, safety_limits)
-
-def _setpoint_confirmation_required(
-    *,
-    voltage: float | None,
-    current: float | None,
-    limits: SafetyLimits | None,
-    confirmed: bool,
-) -> bool:
-    return validation.confirmation_required_for_request(
-        voltage=voltage,
-        current=current,
-        limits=limits,
-        confirmed=confirmed,
-    )
-
 def _confirmation_required_message(command: str) -> str:
     return validation.confirmation_required_message(command)
 
@@ -1272,22 +1061,6 @@ def _read_only_channels_from_selection(
         raise _ReadOnlyChannelError(
             str(exc)
         ) from exc
-
-def _clear_protection_scpi(channels: tuple[int, ...]) -> tuple[str, ...]:
-    return tuple(f"OUTP:PROT:CLE (@{channel})" for channel in channels)
-
-def _protection_set_scpi(
-    channels: tuple[int, ...],
-    ovp_voltage: float | None,
-    ocp: str | None,
-) -> tuple[str, ...]:
-    commands: list[str] = []
-    for channel in channels:
-        if ovp_voltage is not None:
-            commands.append(f"VOLT:PROT {_format_text_value(ovp_voltage)},(@{channel})")
-        if ocp is not None:
-            commands.append(f"CURR:PROT:STAT {ocp.upper()},(@{channel})")
-    return tuple(commands)
 
 def _resource_payload(
     name: str,
@@ -1415,65 +1188,8 @@ def _output_affecting_allowed(channel: int | None, limits: SafetyLimits) -> bool
             return False
     return True
 
-class _OutputOffModelError(ValueError):
-    """Raised when output-off is attempted on a non-E36312A model."""
-
-class _OutputOffChannelError(ValueError):
-    """Raised when output-off channel is outside E36312A capability (1,2,3)."""
-
-class _OutputOnModelError(ValueError):
-    """Raised when output-on is attempted on a non-E36312A model."""
-
-class _OutputOnChannelError(ValueError):
-    """Raised when output-on channel is outside E36312A capability (1,2,3)."""
-
-class _SafeOffModelError(ValueError):
-    """Raised when safe-off is attempted on a non-E36312A model."""
-
-class _SafeOffChannelError(ValueError):
-    """Raised when safe-off channel is outside E36312A capability (1,2,3)."""
-
-class _OutputStateModelError(ValueError):
-    """Raised when output-state is attempted on a non-E36312A model."""
-
-class _OutputStateChannelError(ValueError):
-    """Raised when output-state channel is outside E36312A capability (1,2,3)."""
-
-class _CycleOutputModelError(ValueError):
-    """Raised when cycle-output is attempted on a non-E36312A model."""
-
-class _CycleOutputChannelError(ValueError):
-    """Raised when cycle-output channel is outside E36312A capability (1,2,3)."""
-
-class _ApplyModelError(ValueError):
-    """Raised when apply is attempted on a non-E36312A model."""
-
-class _ApplyChannelError(ValueError):
-    """Raised when apply channel is outside E36312A capability (1,2,3)."""
-
-class _SmokeOutputModelError(ValueError):
-    """Raised when smoke-output is attempted on a non-E36312A model."""
-
-class _SmokeOutputChannelError(ValueError):
-    """Raised when smoke-output channel is outside E36312A capability (1,2,3)."""
-
-class _SetModelError(ValueError):
-    """Raised when set is attempted on a non-E36312A model."""
-
-class _SetChannelError(ValueError):
-    """Raised when set channel is outside E36312A capability (1,2,3)."""
-
-class _MeasureAllModelError(ValueError):
-    """Raised when measure-all is attempted on a non-E36312A model."""
-
 class _TriggerPulseModelError(ValueError):
     """Raised when trigger-pulse is attempted on a non-E36312A model."""
-
-class _StatusModelError(ValueError):
-    """Raised when status is attempted on a non-E36312A model."""
-
-class _StatusChannelError(ValueError):
-    """Raised when status channel is outside E36312A capability (1,2,3)."""
 
 class _ReadOnlyModelError(ValueError):
     """Raised when read-only model-specific commands see an unsupported model."""
@@ -1481,23 +1197,8 @@ class _ReadOnlyModelError(ValueError):
 class _ReadOnlyChannelError(ValueError):
     """Raised when read-only model-specific commands receive an unsupported channel."""
 
-class _E36312AOnlyError(ValueError):
-    """Raised when an E36312A-only command sees a different model."""
-
 class _E36312AChannelError(ValueError):
     """Raised when an E36312A command receives an unsupported channel."""
-
-class _ClearProtectionModelError(ValueError):
-    """Raised when clear-protection sees a non-E36312A model."""
-
-class _ProtectionSetModelError(ValueError):
-    """Raised when protection-set sees a non-E36312A model."""
-
-class _RestoreModelError(ValueError):
-    """Raised when restore-from-snapshot sees a non-E36312A model."""
-
-class _RestoreIdentityError(ValueError):
-    """Raised when connected hardware does not match snapshot identity."""
 
 def _list_resources(
     resource_manager: SimulatedResourceManager | None,
