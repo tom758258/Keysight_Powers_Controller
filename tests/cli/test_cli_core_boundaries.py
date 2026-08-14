@@ -5,6 +5,7 @@ import inspect
 from pathlib import Path
 
 import powers_tool_cli.cli as cli
+import powers_tool_cli.commands.output_run as output_run
 
 CLI_IMPLEMENTATION_MODULES = (
     "cli.py",
@@ -50,14 +51,20 @@ def test_cli_does_not_access_driver_private_session() -> None:
     assert violations == []
 
 
-def test_active_restore_trigger_and_sequence_adapters_delegate_scpi_to_core() -> None:
+def test_active_output_restore_trigger_and_sequence_adapters_delegate_scpi_to_core() -> None:
+    output_source = inspect.getsource(output_run._run_core_output_real)
     restore_source = inspect.getsource(cli._run_restore_from_snapshot)
     trigger_source = inspect.getsource(cli._run_core_trigger)
     sequence_source = inspect.getsource(cli._run_sequence)
 
+    assert "operations.run_operation" in output_source
+    assert "run_core_command" in output_source
     assert "restore_core.run_restore" in restore_source
     assert "trigger_core.run_trigger" in trigger_source
     assert "run_core_command" in sequence_source
+    assert not any(
+        token in output_source for token in ("OUTP ", "VOLT ", "CURR ", "SYST:ERR?")
+    )
     assert "_open_resource(" not in restore_source
     assert "create_power_supply(" not in restore_source
     assert not any(token in restore_source for token in ("OUTP ", "VOLT:", "CURR:", "SYST:ERR?"))
