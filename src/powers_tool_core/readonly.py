@@ -161,6 +161,9 @@ def run_validate_readonly(
             f"unsupported validate-readonly command {request.command!r}"
         )
 
+    if request.runtime.dry_run:
+        raise CoreValidationError("validate-readonly does not support dry-run")
+
     max_errors = request.parameters.get("max_errors", 20)
     if type(max_errors) is not int or max_errors < 1:
         raise CoreValidationError("max_errors must be at least 1")

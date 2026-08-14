@@ -175,6 +175,20 @@ def test_validate_readonly_core_only_accepts_its_narrow_command():
     with pytest.raises(CoreValidationError, match="unsupported validate-readonly command"):
         run_validate_readonly(request, opener=lambda *args, **kwargs: pytest.fail("opened hardware"))
 
+def test_validate_readonly_dry_run_rejects_before_opening_resource():
+    runtime = RuntimeOptions(resource="USB0::FAKE::E36312A::INSTR", dry_run=True)
+    request = OperationRequest(command="validate-readonly", runtime=runtime)
+
+    with pytest.raises(
+        CoreValidationError,
+        match="validate-readonly does not support dry-run",
+    ):
+        run_validate_readonly(
+            request,
+            opener=lambda *args, **kwargs: pytest.fail("opened hardware"),
+        )
+
+
 def test_readonly_simulate_status():
     runtime = RuntimeOptions(resource="USB0::SIM::E36312A::INSTR", simulate=True)
     req = OperationRequest(command="read-status", runtime=runtime, parameters={"channel": "all"})
