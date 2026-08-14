@@ -1,26 +1,15 @@
-"""Sequence and ramp-list workflow command handlers and sequence planning helpers."""
+"""Ramp-list workflow handler and shared sequence/Trigger compatibility helpers."""
 
 from __future__ import annotations
 
 __all__ = [
-    "_add_sequence_scpi_previews",
     "_cooperative_workflow_interrupt",
     "_emit_workflow_interruption",
-    "_execute_sequence",
-    "_execute_sequence_step",
     "_load_sequence_document",
-    "_normalize_sequence_step",
     "_parse_sequence_scalar",
     "_parse_simple_sequence_yaml",
     "_print_sequence_summary",
     "_run_ramp_list",
-    "_sequence_channel",
-    "_sequence_channels",
-    "_sequence_cleanup_safe_off",
-    "_sequence_plan",
-    "_sequence_preview_channels",
-    "_sequence_step_preview",
-    "_validate_sequence_step",
     "_workflow_start_summary",
 ]
 
@@ -127,9 +116,7 @@ from powers_tool_core.core import (
 from powers_tool_core.drivers.e36312a import E36312APowerSupply
 from powers_tool_core.drivers.e3646a import E3646APowerSupply
 from powers_tool_core.drivers.edu36311a import EDU36311APowerSupply
-from powers_tool_core.drivers.generic_scpi import GenericScpiPowerSupply
 from powers_tool_core.drivers.psm2010 import PSM2010PowerSupply
-from powers_tool_core.errors import VisaConnectionError
 from powers_tool_core.factory import create_power_supply, select_driver
 from powers_tool_core.identity import (
     IDENTITY_INDEXES,
@@ -152,10 +139,7 @@ from powers_tool_core.safety import (
     SafetyValidationError,
     load_safety_config_document,
     resolve_safety_config,
-    validate_channel,
-    validate_setpoint,
 )
-from powers_tool_core.testing.simulator import SimulatedResourceManager
 from powers_tool_core.transport import dry_run_plan
 
 IDN_QUERY = "*IDN?"
@@ -424,303 +408,6 @@ def _parse_sequence_scalar(value: str) -> Any:
         return int(value)
     except ValueError:
         return value.strip("'\"")
-
-def _sequence_plan(args: argparse.Namespace, document: dict[str, Any]) -> dict[str, Any]:
-    version = document.get("version", 1)
-    if version not in (1, "1"):
-        raise ValueError(f"unsupported sequence version: {version}")
-    raw_steps = document.get("steps")
-    if not isinstance(raw_steps, list) or not raw_steps:
-        raise ValueError("sequence requires a non-empty steps list")
-    steps = []
-    for index, raw_step in enumerate(raw_steps, start=1):
-        step = _normalize_sequence_step(index, raw_step)
-        _validate_sequence_step(args, step)
-        steps.append(step)
-    return {
-        "version": 1,
-        "operation": {"name": "sequence"},
-        "target": {"resource": args.resource, "resource_alias": args.resource_alias},
-        "steps": steps,
-        "hardware_touched": False,
-    }
-
-def _add_sequence_scpi_previews(plan: dict[str, Any]) -> None:
-    for step in plan["steps"]:
-        preview = _sequence_step_preview(step)
-        if preview:
-            step["preview"] = preview
-
-def _sequence_step_preview(step: dict[str, Any]) -> dict[str, Any] | None:
-    action = step["action"]
-    parameters = step["parameters"]
-    if action == "set":
-        channel = _sequence_channel(parameters.get("channel", 1))
-        voltage = _format_text_value(float(parameters["voltage"]))
-        current = _format_text_value(float(parameters["current"]))
-        return {"commands": [f"CURR {current},(@{channel})", f"VOLT {voltage},(@{channel})"]}
-    if action == "apply":
-        channel = _sequence_channel(parameters.get("channel", 1), allow_all=True)
-        voltage = _format_text_value(float(parameters["voltage"]))
-        current = _format_text_value(float(parameters["current"]))
-        commands: list[str] = []
-        for selected_channel in _sequence_preview_channels(channel):
-            commands.append(f"CURR {current},(@{selected_channel})")
-            commands.append(f"VOLT {voltage},(@{selected_channel})")
-            if not parameters.get("no_output", False):
-                commands.append(f"OUTP ON,(@{selected_channel})")
-        return {"commands": commands}
-    if action == "output-on":
-        channel = _sequence_channel(parameters.get("channel", 1), allow_all=True)
-        return {"commands": [f"OUTP ON,(@{selected_channel})" for selected_channel in _sequence_preview_channels(channel)]}
-    if action == "output-off":
-        channel = _sequence_channel(parameters.get("channel", 1), allow_all=True)
-        return {"commands": [f"OUTP OFF,(@{selected_channel})" for selected_channel in _sequence_preview_channels(channel)]}
-    if action == "output-state":
-        channel = _sequence_channel(parameters.get("channel", 1), allow_all=True)
-        return {"commands": [f"OUTP? (@{selected_channel})" for selected_channel in _sequence_preview_channels(channel)]}
-    if action == "cycle-output":
-        channel = _sequence_channel(parameters.get("channel", 1), allow_all=True)
-        commands = [f"OUTP ON,(@{selected_channel})" for selected_channel in _sequence_preview_channels(channel)]
-        commands.extend(f"OUTP OFF,(@{selected_channel})" for selected_channel in _sequence_preview_channels(channel))
-        return {"commands": commands, "duration_ms": int(parameters.get("duration_ms", 500))}
-    if action == "safe-off":
-        channel = _sequence_channel(parameters.get("channel", 1), allow_all=True)
-        return {"commands": [f"OUTP OFF,(@{selected_channel})" for selected_channel in _sequence_preview_channels(channel)]}
-    return None
-
-def _sequence_preview_channels(channel: int | str) -> tuple[int, ...]:
-    if channel == "all":
-        return E36312APowerSupply.capabilities.channels
-    return (int(channel),)
-
-def _normalize_sequence_step(index: int, raw_step: Any) -> dict[str, Any]:
-    if isinstance(raw_step, str):
-        return {"index": index, "action": raw_step, "parameters": {}}
-    if not isinstance(raw_step, dict):
-        raise ValueError(f"sequence step {index} must be a mapping")
-    if "action" in raw_step or "type" in raw_step:
-        action = str(raw_step.get("action", raw_step.get("type")))
-        parameters = {key: value for key, value in raw_step.items() if key not in {"action", "type"}}
-    elif len(raw_step) == 1:
-        action, value = next(iter(raw_step.items()))
-        parameters = value if isinstance(value, dict) else {}
-    else:
-        raise ValueError(f"sequence step {index} requires action")
-    if action not in _SEQUENCE_ACTIONS:
-        raise ValueError(f"unsupported sequence step {index} action: {action}")
-    return {"index": index, "action": action, "parameters": parameters}
-
-def _validate_sequence_step(args: argparse.Namespace, step: dict[str, Any]) -> None:
-    action = step["action"]
-    parameters = step["parameters"]
-    if action in {"measure", "readback", "output-state", "safe-off", "output-on", "output-off", "cycle-output"}:
-        _sequence_channel(parameters.get("channel", 1), allow_all=(action in {"safe-off", "output-state", "output-on", "output-off", "cycle-output"}))
-    if action == "wait":
-        seconds = float(parameters.get("seconds", parameters.get("duration_sec", 0)))
-        if seconds < 0:
-            raise ValueError("wait seconds must be non-negative")
-    if action in {"set", "apply"}:
-        channel = _sequence_channel(parameters.get("channel", 1), allow_all=(action == "apply"))
-        voltage = float(parameters["voltage"])
-        current = float(parameters["current"])
-        safety_limits = _safety_limits_for_args(args)
-        channels = (1, 2, 3) if channel == "all" else (channel,)
-        for selected_channel in channels:
-            validate_setpoint(
-                channel=selected_channel,
-                voltage=voltage,
-                current=current,
-                limits=safety_limits,
-            )
-    elif action in {"output-on", "output-off", "cycle-output"}:
-        safety_limits = _safety_limits_for_args(args)
-        channel = _sequence_channel(parameters.get("channel", 1), allow_all=True)
-        duration_ms = int(parameters.get("duration_ms", 500))
-        if action == "cycle-output" and duration_ms < 0:
-            raise ValueError("cycle-output duration_ms must be non-negative")
-        for selected_channel in _sequence_preview_channels(channel):
-            validate_channel(selected_channel, safety_limits)
-
-def _sequence_channel(value: Any, *, allow_all: bool = False) -> int | str:
-    if allow_all and isinstance(value, str) and value.lower() == "all":
-        return "all"
-    try:
-        channel = int(value)
-    except (TypeError, ValueError) as exc:
-        raise ValueError("sequence channel must be a positive integer") from exc
-    if channel < 1:
-        raise ValueError("sequence channel must be a positive integer")
-    return channel
-
-def _execute_sequence(
-    args: argparse.Namespace,
-    plan: dict[str, Any],
-    manager: SimulatedResourceManager | None,
-) -> dict[str, Any]:
-    results: list[dict[str, Any]] = []
-    completed_steps = 0
-    failed_step: dict[str, Any] | None = None
-    stopped = False
-    safe_off_attempted = False
-    cleanup_errors: list[dict[str, Any]] = []
-    idn_raw: str | None = None
-    with _open_resource(args.resource, manager, backend=args.backend, timeout_ms=args.timeout_ms) as instrument:
-        session: Any = _ScpiLoggingSession(args.resource, instrument) if args.log_scpi else instrument
-        idn_raw = session.query(IDN_QUERY)
-        power_supply = _patchable_create_power_supply(session, idn_raw)
-        for step in plan["steps"]:
-            try:
-                result = _execute_sequence_step(args, power_supply, step)
-                results.append(result)
-                completed_steps += 1
-            except KeyboardInterrupt:
-                stopped = True
-                failed_step = {"index": step["index"], "action": step["action"], "code": "interrupted"}
-                break
-            except (VisaConnectionError, ValueError, SafetyValidationError) as exc:
-                failed_step = {
-                    "index": step["index"],
-                    "action": step["action"],
-                    "code": "step_failed",
-                    "message": str(exc),
-                }
-                break
-        if stopped or failed_step is not None:
-            cleanup = _sequence_cleanup_safe_off(power_supply)
-            safe_off_attempted = cleanup["safe_off_attempted"]
-            cleanup_errors = cleanup["errors"]
-
-    status = "stopped" if stopped else ("failed" if failed_step is not None else "completed")
-    return {
-        "sequence_version": plan["version"],
-        "resource": _resource_payload(
-            args.resource,
-            simulated=args.simulate,
-            reachable=True,
-            idn_raw=idn_raw,
-        ),
-        "resource_alias": args.resource_alias,
-        "plan": plan,
-        "status": status,
-        "results": results,
-        "completed_steps": completed_steps,
-        "failed_step": failed_step,
-        "stopped": stopped,
-        "cleanup": {"safe_off_attempted": safe_off_attempted, "errors": cleanup_errors},
-    }
-
-def _execute_sequence_step(
-    args: argparse.Namespace,
-    power_supply: GenericScpiPowerSupply,
-    step: dict[str, Any],
-) -> dict[str, Any]:
-    action = step["action"]
-    parameters = step["parameters"]
-    if action in _SEQUENCE_OUTPUT_ACTIONS and not args.simulate and not isinstance(power_supply, OUTPUT_WRITE_POWER_SUPPLY_TYPES):
-        raise ValueError("real output-affecting sequence steps are enabled only for E36312A or EDU36311A")
-    if action in {"measure", "readback"}:
-        _validate_read_only_channel(power_supply, _sequence_channel(parameters.get("channel", 1)), command_label="sequence")
-    if action == "output-state":
-        channel = _sequence_channel(parameters.get("channel", 1), allow_all=True)
-        for selected_channel in _sequence_channels(channel, getattr(power_supply.capabilities, "real_measure_channels", power_supply.capabilities.channels)):
-            _validate_read_only_channel(power_supply, selected_channel, command_label="sequence")
-    if action == "measure":
-        channel = _sequence_channel(parameters.get("channel", 1))
-        return {
-            "index": step["index"],
-            "action": action,
-            "channel": channel,
-            "measurements": {
-                "voltage": power_supply.measure_voltage(channel=channel),
-                "current": power_supply.measure_current(channel=channel),
-            },
-        }
-    if action == "readback":
-        channel = _sequence_channel(parameters.get("channel", 1))
-        return {
-            "index": step["index"],
-            "action": action,
-            "channel": channel,
-            "setpoints": {
-                "voltage": power_supply.programmed_voltage(channel=channel),
-                "current": power_supply.programmed_current(channel=channel),
-            },
-        }
-    if action == "output-state":
-        channel = _sequence_channel(parameters.get("channel", 1), allow_all=True)
-        outputs = [
-            {"channel": selected_channel, "enabled": power_supply.output_state(channel=selected_channel)}
-            for selected_channel in _sequence_channels(channel, getattr(power_supply.capabilities, "real_measure_channels", power_supply.capabilities.channels))
-        ]
-        result = {"index": step["index"], "action": action, "channel": channel, "enabled": outputs[0]["enabled"]}
-        if channel == "all":
-            result["outputs"] = outputs
-        return result
-    if action == "log":
-        return {"index": step["index"], "action": action, "message": str(parameters.get("message", ""))}
-    if action == "wait":
-        seconds = float(parameters.get("seconds", parameters.get("duration_sec", 0)))
-        time.sleep(seconds)
-        return {"index": step["index"], "action": action, "seconds": seconds}
-    if action == "safe-off":
-        channel = _sequence_channel(parameters.get("channel", 1), allow_all=True)
-        for selected_channel in _sequence_channels(channel, power_supply.capabilities.channels):
-            power_supply.output_off(channel=selected_channel)
-        return {"index": step["index"], "action": action, "channel": channel}
-    if action == "output-off":
-        channel = _sequence_channel(parameters.get("channel", 1), allow_all=True)
-        for selected_channel in _sequence_channels(channel, power_supply.capabilities.channels):
-            power_supply.output_off(channel=selected_channel)
-        return {"index": step["index"], "action": action, "channel": channel}
-    if action == "output-on":
-        channel = _sequence_channel(parameters.get("channel", 1), allow_all=True)
-        for selected_channel in _sequence_channels(channel, power_supply.capabilities.channels):
-            power_supply.output_on(channel=selected_channel)
-        return {"index": step["index"], "action": action, "channel": channel}
-    if action == "cycle-output":
-        channel = _sequence_channel(parameters.get("channel", 1), allow_all=True)
-        channels = _sequence_channels(channel, power_supply.capabilities.channels)
-        enabled_channels: list[int] = []
-        try:
-            for selected_channel in channels:
-                power_supply.output_on(channel=selected_channel)
-                enabled_channels.append(selected_channel)
-            time.sleep(int(parameters.get("duration_ms", 500)) / 1000)
-        finally:
-            for selected_channel in enabled_channels:
-                power_supply.output_off(channel=selected_channel)
-        return {"index": step["index"], "action": action, "channel": channel, "duration_ms": int(parameters.get("duration_ms", 500))}
-    if action in {"set", "apply"}:
-        channel = _sequence_channel(parameters.get("channel", 1), allow_all=(action == "apply"))
-        voltage = float(parameters["voltage"])
-        current = float(parameters["current"])
-        for selected_channel in _sequence_channels(channel, power_supply.capabilities.channels):
-            power_supply.set_current_limit(channel=selected_channel, current=current)
-            power_supply.set_voltage(channel=selected_channel, voltage=voltage)
-            if action == "apply" and not parameters.get("no_output", False):
-                power_supply.output_on(channel=selected_channel)
-        return {"index": step["index"], "action": action, "channel": channel, "voltage": voltage, "current": current}
-    raise ValueError(f"unsupported sequence action: {action}")
-
-def _sequence_channels(channel: int | str, supported_channels: tuple[int, ...]) -> tuple[int, ...]:
-    if channel == "all":
-        return supported_channels
-    if int(channel) not in supported_channels:
-        raise ValueError(f"channel {channel} is not supported; supported: {supported_channels}")
-    return (int(channel),)
-
-def _sequence_cleanup_safe_off(power_supply: GenericScpiPowerSupply) -> dict[str, Any]:
-    attempted = False
-    errors: list[dict[str, Any]] = []
-    for channel in power_supply.capabilities.channels:
-        attempted = True
-        try:
-            power_supply.output_off(channel=channel)
-        except Exception as exc:
-            errors.append({"channel": channel, "message": str(exc)})
-            continue
-    return {"safe_off_attempted": attempted, "errors": errors}
 
 def _print_sequence_summary(data: dict[str, Any]) -> None:
     _emit_text_lines(cli_rendering.format_sequence_summary(data))

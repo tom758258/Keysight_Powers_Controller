@@ -148,8 +148,9 @@ hardware-report 與 logging handler。</li>
 planning 與 output result adapter。</li>
 <li><code>powers_tool_cli.commands.trigger_run</code>：legacy trigger execution helper 與
 native trigger command handler（相容保留）。</li>
-<li><code>powers_tool_cli.commands.sequence_run</code>：sequence / ramp-list workflow handler
-與 sequence planning helper。</li>
+<li><code>powers_tool_cli.commands.sequence_run</code>：ramp-list workflow handler 與
+shared sequence/Trigger compatibility helper。Sequence planning 與 execution
+由 <code>powers_tool_core.sequence</code> 負責。</li>
 <li><code>powers_tool_cli.commands.*</code>（lifecycle、output、ramp_list、sequence、trigger）：
 各 command family 的 parser registration 與 request mapping。</li>
 </ul>

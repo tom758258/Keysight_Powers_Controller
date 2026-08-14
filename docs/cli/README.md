@@ -82,8 +82,9 @@ place.
   planning, and output result adapters.
 - `powers_tool_cli.commands.trigger_run`: legacy trigger execution helpers and
   native trigger command handlers retained for compatibility.
-- `powers_tool_cli.commands.sequence_run`: sequence and ramp-list workflow
-  handlers plus sequence planning helpers.
+- `powers_tool_cli.commands.sequence_run`: ramp-list workflow handler and
+  shared sequence/Trigger compatibility helpers. Sequence planning and
+  execution are owned by `powers_tool_core.sequence`.
 - `powers_tool_cli.commands.lifecycle`: Worker lifecycle parser registration.
 - `powers_tool_cli.commands.output`: output command parser registration, runner
   adapter, and JSON request-envelope mapping.

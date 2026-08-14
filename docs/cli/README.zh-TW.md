@@ -60,8 +60,9 @@ SCPI logging，以及供 orchestrator／agent 使用的本機 Power Worker daemo
   planning 與 output result adapter。
 - `powers_tool_cli.commands.trigger_run`：legacy trigger execution helper 與
   native trigger command handler（相容保留）。
-- `powers_tool_cli.commands.sequence_run`：sequence / ramp-list workflow handler
-  與 sequence planning helper。
+- `powers_tool_cli.commands.sequence_run`：ramp-list workflow handler 與
+  shared sequence/Trigger compatibility helper。Sequence planning 與 execution
+  由 `powers_tool_core.sequence` 負責。
 - `powers_tool_cli.commands.*`（lifecycle、output、ramp_list、sequence、trigger）：
   各 command family 的 parser registration 與 request mapping。
 
