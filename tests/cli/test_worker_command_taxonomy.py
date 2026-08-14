@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from powers_tool_cli.worker_protocol import (
     ALLOWED_COMMANDS,
     OUTPUT_AFFECTING_COMMANDS,
@@ -12,22 +14,54 @@ from powers_tool_cli.worker_protocol import (
 from powers_tool_core.command_contract import COMMAND_CONTRACTS
 
 
-EXPECTED_UNSUPPORTED_COMMANDS = frozenset({"list-resources", "verify", "clear"})
-EXPECTED_OUTPUT_AFFECTING_COMMANDS = frozenset({
-    "set",
-    "apply",
-    "output-on",
-    "output-off",
-    "safe-off",
-    "cycle-output",
-    "ramp",
-    "ramp-list",
-    "smoke-output",
-    "protection-set",
-    "clear-protection",
-    "restore-from-snapshot",
-    "sequence",
-})
+EXPECTED_CATEGORY_COMMANDS: dict[str, frozenset[str]] = {
+    "read_only": frozenset({
+        "identify",
+        "read-status",
+        "readback",
+        "measure",
+        "measure-all",
+        "output-state",
+        "protection-status",
+        "error",
+        "snapshot",
+        "log",
+    }),
+    "output": frozenset({
+        "set",
+        "apply",
+        "output-on",
+        "output-off",
+        "safe-off",
+        "cycle-output",
+        "ramp",
+        "ramp-list",
+        "smoke-output",
+    }),
+    "protection": frozenset({
+        "protection-set",
+        "clear-protection",
+        "restore-from-snapshot",
+        "sequence",
+    }),
+    "trigger": frozenset({
+        "trigger-pulse",
+        "trigger-status",
+        "trigger-step",
+        "trigger-list",
+        "trigger-fire",
+        "trigger-abort",
+    }),
+    "unsupported": frozenset({
+        "list-resources",
+        "verify",
+        "clear",
+    }),
+}
+
+EXPECTED_OUTPUT_AFFECTING_COMMANDS = (
+    EXPECTED_CATEGORY_COMMANDS["output"] | EXPECTED_CATEGORY_COMMANDS["protection"]
+)
 
 
 def test_all_core_commands_explicitly_classified() -> None:
@@ -44,12 +78,27 @@ def test_taxonomy_has_no_stray_commands_outside_core() -> None:
     )
 
 
+@pytest.mark.parametrize("category, expected_commands", EXPECTED_CATEGORY_COMMANDS.items())
+def test_category_exact_membership(category: str, expected_commands: frozenset[str]) -> None:
+    actual_commands = frozenset(
+        cmd for cmd, cat in _WORKER_COMMAND_TAXONOMY.items() if cat == category
+    )
+    assert actual_commands == expected_commands
+
+
 def test_allowed_commands_matches_supported_taxonomy() -> None:
     supported_from_taxonomy = {
         cmd for cmd, cat in _WORKER_COMMAND_TAXONOMY.items() if cat != "unsupported"
     }
     assert ALLOWED_COMMANDS == supported_from_taxonomy
     assert len(ALLOWED_COMMANDS) == 29
+
+
+def test_exported_category_sets_match_expected() -> None:
+    assert READ_ONLY_COMMANDS == EXPECTED_CATEGORY_COMMANDS["read_only"]
+    assert OUTPUT_COMMANDS == EXPECTED_CATEGORY_COMMANDS["output"]
+    assert PROTECTION_COMMANDS == EXPECTED_CATEGORY_COMMANDS["protection"]
+    assert TRIGGER_COMMANDS == EXPECTED_CATEGORY_COMMANDS["trigger"]
 
 
 def test_supported_command_categories_are_mutually_exclusive_and_complete() -> None:
@@ -80,7 +129,7 @@ def test_unsupported_commands_fail_closed() -> None:
     unsupported = {
         cmd for cmd, cat in _WORKER_COMMAND_TAXONOMY.items() if cat == "unsupported"
     }
-    assert unsupported == EXPECTED_UNSUPPORTED_COMMANDS
-    for cmd in EXPECTED_UNSUPPORTED_COMMANDS:
+    assert unsupported == EXPECTED_CATEGORY_COMMANDS["unsupported"]
+    for cmd in EXPECTED_CATEGORY_COMMANDS["unsupported"]:
         assert cmd not in ALLOWED_COMMANDS
         assert _WORKER_COMMAND_TAXONOMY[cmd] == "unsupported"
