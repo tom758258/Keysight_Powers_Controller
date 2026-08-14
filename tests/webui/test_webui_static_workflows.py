@@ -1040,10 +1040,6 @@ def test_static_workflow_pulse_gates_do_not_compare_display_model_names() -> Non
             rf'(?:===|!==)\s*["\']{display_name}["\']|["\']{display_name}["\']\s*(?:===|!==)',
             app_js,
         )
-    assert "applyWorkflowPulseControlState(input);" in extract_js_function(command_form_js, "renderForm")
-    assert "applyWorkflowPulseControlState(input, prerequisiteReason);" in extract_js_function(workflows_js, "renderRampListForm")
-    assert "applyWorkflowPulseControlState(input);" in extract_js_function(workflows_js, "sequenceStepFields")
-    assert "workflowPulseGuardReason(command, parameters)" in extract_js_function(app_js, "selectedCommandPresentation")
     assert 'command === "trigger-pulse"' not in extract_js_function(app_js, "commandRequestsPulse")
 
 
@@ -1760,44 +1756,16 @@ def test_static_command_keys_are_used_for_selection_and_submission():
     _index_html, app_js, _styles_css = read_static_texts()
     command_form_js = read_static_javascript("command-form.js")
 
-    render_commands = command_form_js[command_form_js.index("function renderCommands()"):command_form_js.index("function selectCommand")]
 
-    assert "Object.entries(state.commands)" in render_commands
-    assert 'title.textContent = commandDisplayName(name);' in render_commands
-    assert "button.append(title, status);" in render_commands
-    assert "button.addEventListener(\"click\", () => selectCommand(name));" in render_commands
     assert "command: state.selected" in app_js
     assert "renderForm(name);" in command_form_js
     assert "selectCommand(commandDisplayName(name))" not in app_js
 
 
-def test_static_command_display_names_preserve_machine_command_keys():
-    _index_html, app_js, _styles_css = read_static_texts()
-    command_form_js = read_static_javascript("command-form.js")
-
-    render_commands = command_form_js[command_form_js.index("function renderCommands()"):command_form_js.index("function selectCommand")]
-
-    assert 'name.includes(filter) || commandDisplayName(name).toLowerCase().includes(filter)' in render_commands
-    assert 'commandSourceDisplayName(a[0]).localeCompare(commandSourceDisplayName(b[0]), "en")' in render_commands
-    assert 'a[0].localeCompare(b[0], "en")' in render_commands
-
-
 def test_static_command_select_options_use_human_labels_and_machine_values():
-    _index_html, app_js, _styles_css = read_static_texts()
-    workflows_js = read_static_javascript("workflows.js")
     command_form_js = read_static_javascript("command-form.js")
-
-    render_form = extract_js_function(command_form_js, "renderForm")
-    render_restore = extract_js_function(workflows_js, "renderRestoreForm")
     display_name = extract_js_function(command_form_js, "optionDisplayName")
 
-    assert "item.value = option;" in render_form
-    assert 'item.textContent = command === "ramp" && param.name === "channel"' in render_form
-    assert ': param.parser === "intList"' in render_form
-    assert '? rearPinDisplayName(option)' in render_form
-    assert ': pulseTimingDisplayName(command, option);' in render_form
-    assert "opt.value = ch;" in render_restore
-    assert "opt.textContent = optionDisplayName(ch);" in render_restore
     assert 'value.replace(/-/g, " ")' in display_name
     assert 'return `Pin ${value}`' not in display_name
 

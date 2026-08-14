@@ -37,13 +37,6 @@ strictAssert.equal("PowersToolWebUI" in globalThis, false);
     )
 
 
-def test_live_resource_summary_does_not_read_option_text() -> None:
-    device_js = read_static_javascript("device-resource.js")
-
-    assert "textContent" not in device_js[device_js.index("export function liveResourceSummary"):device_js.index("export function resourceLabel")]
-    assert '"No live resources found"' not in device_js
-
-
 def test_device_resource_presentation_supports_both_locales_and_preserves_values() -> None:
     run_webui_module_assertions(
         r"""

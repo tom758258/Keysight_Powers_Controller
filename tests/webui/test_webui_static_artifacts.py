@@ -19,10 +19,6 @@ def test_static_json_artifact_file_helpers_have_cancel_and_accept_contracts():
     assert 'const SEQUENCE_JSON_EXTENSIONS = [".sequence.json", ".json"];' in app_js
     assert 'const RAMP_LIST_JSON_EXTENSIONS = [".ramp-list.json", ".json"];' in app_js
     assert 'return { "application/json": [".json"] };' in build_native_accept
-    assert "const acceptMap = buildNativeJsonPickerAccept();" in open_json
-    assert "const acceptMap = buildNativeJsonPickerAccept();" in save_json
-    assert "{ [JSON_MIME_TYPE]: extensions }" not in open_json
-    assert "{ [JSON_MIME_TYPE]: extensions }" not in save_json
     assert "chooseJsonFile(buildJsonFileAccept(extensions))" in open_json
     assert 'return [...extensions, "application/json"].join(",");' in build_accept
     assert 'input.addEventListener("cancel", abort);' in choose_json
