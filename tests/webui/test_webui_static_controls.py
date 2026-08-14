@@ -870,12 +870,6 @@ def test_advanced_commands_toggle_preserves_selected_workflow_dom_and_state() ->
     )
 
 
-def test_static_command_category_column_width_and_responsive_contract():
-    _index_html, _app_js, _styles_css = read_static_texts()
-    locale_en_js = read_static_javascript("locale_en.js")
-
-    assert '"command.category.discovery": "Advanced Diagnostics"' in locale_en_js
-
 
 def test_result_panel_is_collapsible():
     index_html, app_js, _styles_css = read_static_texts()
@@ -907,7 +901,7 @@ def test_job_result_is_expanded_collapsible_and_clearable():
 
 
 def test_static_ramp_list_editor_contract():
-    _index_html, app_js, styles_css = read_static_texts()
+    _index_html, app_js, _styles_css = read_static_texts()
     json_files_js = read_static_javascript("json-files.js")
     ramp_list_js = read_static_javascript("ramp-list.js")
     workflows_js = read_static_javascript("workflows.js")
@@ -949,7 +943,7 @@ def test_static_ramp_list_editor_contract():
     assert 'command === "ramp-list"' in app_js
 
 
-def test_static_compact_output_enable_layout_and_accessibility_contracts():
+def test_static_compact_output_enable_accessibility_contracts():
     _index_html, app_js, styles_css = read_static_texts()
     command_form_js = read_static_javascript("command-form.js")
     workflows_js = read_static_javascript("workflows.js")

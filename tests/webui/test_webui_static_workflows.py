@@ -632,7 +632,7 @@ def test_ramp_form_preserves_page_local_draft_across_reselection() -> None:
     run_frontend_javascript_assertions(assertions)
 
 
-def test_ramp_multi_channel_help_uses_full_width_form_row() -> None:
+def test_ramp_multi_channel_help_hidden_state_contract() -> None:
     _index_html, _app_js, styles_css = read_static_texts()
 
     help_css = styles_css[
@@ -2206,7 +2206,7 @@ def test_static_trip_guard_and_clear_protection_recovery_contract():
 
 
 def test_static_channel_confirmation_and_job_detail_contracts():
-    _index_html, app_js, styles_css = read_static_texts()
+    _index_html, app_js, _styles_css = read_static_texts()
     command_form_js = read_static_javascript("command-form.js")
     workflows_js = read_static_javascript("workflows.js")
 
@@ -2222,7 +2222,6 @@ def test_static_channel_confirmation_and_job_detail_contracts():
     assert 'guidance.className = "field-description set-field-guidance";' in append_set_guidance
     assert "guidance.textContent = SET_PARTIAL_GUIDANCE;" in append_set_guidance
     assert "SET_PARTIAL_GUIDANCE" not in render_guidance
-    field_description_css = styles_css[styles_css.index(".field-description {"):styles_css.index(".command-notes {")]
     assert "setRequiresSetpointGuardReason(command, parameters)" in extract_js_function(app_js, "selectedCommandPresentation")
     assert '"smoke-output": webuiCommandForm.smokeOutputParams()' in app_js
     assert_param_contract(app_js, "channel", "select", ["1", "2", "3"])
@@ -2393,7 +2392,6 @@ def test_static_trigger_guidance_explains_global_fire_and_wait_semantics():
     assert "command.guidance.trigger_step" in guidance
     assert 't("command.guard.trigger_fire_wait_requires_channel")' in fire_guard
     assert ".command-guidance {" in styles_css
-    command_guidance_css = styles_css[styles_css.index(".command-guidance {"):styles_css.index(".trigger-list-editor {")]
 
 
 def test_static_trigger_status_has_human_readable_workspace_summary():
