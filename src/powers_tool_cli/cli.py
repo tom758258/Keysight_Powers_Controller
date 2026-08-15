@@ -246,9 +246,6 @@ LOG_CSV_FIELDS = TELEMETRY_ROW_FIELDS
 
 
 OUTPUT_WRITE_POWER_SUPPLY_TYPES = (E36312APowerSupply, EDU36311APowerSupply)
-STEP_TRIGGER_POWER_SUPPLY_TYPES = (E36312APowerSupply,)
-
-
 # M1 module re-exports
 
 from powers_tool_cli import cli_runtime

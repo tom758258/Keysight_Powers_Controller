@@ -10,7 +10,6 @@ __all__ = [
     "_ReadOnlyChannelError",
     "_ReadOnlyModelError",
     "_ScpiLoggingSession",
-    "_TriggerPulseModelError",
     "_build_hardware_report",
     "_channels_from_selection",
     "_collect_protection_status",
@@ -178,9 +177,6 @@ from powers_tool_core.core import (
     RuntimeOptions,
     SequenceRequest,
     StopCleanupError,
-    TriggerInterrupted,
-    TriggerRequest,
-    TriggerWaitTimeout,
     UnsupportedChannelError,
     UnsupportedModelError,
 )
@@ -229,7 +225,6 @@ OVP_TRIP_QUERY = "VOLT:PROT:TRIP?"
 OCP_TRIP_QUERY = "CURR:PROT:TRIP?"
 LOG_CSV_FIELDS = TELEMETRY_ROW_FIELDS
 OUTPUT_WRITE_POWER_SUPPLY_TYPES = (E36312APowerSupply, EDU36311APowerSupply)
-STEP_TRIGGER_POWER_SUPPLY_TYPES = (E36312APowerSupply,)
 
 
 def _cli_binding(name: str, default: Any) -> Any:
@@ -1187,9 +1182,6 @@ def _output_affecting_allowed(channel: int | None, limits: SafetyLimits) -> bool
         except SafetyValidationError:
             return False
     return True
-
-class _TriggerPulseModelError(ValueError):
-    """Raised when trigger-pulse is attempted on a non-E36312A model."""
 
 class _ReadOnlyModelError(ValueError):
     """Raised when read-only model-specific commands see an unsupported model."""
