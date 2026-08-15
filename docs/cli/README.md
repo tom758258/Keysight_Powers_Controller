@@ -92,8 +92,9 @@ place.
   `safety inspect` command handlers.
 - `powers_tool_cli.commands.output_run`: output command execution, dry-run
   planning, and output result adapters.
-- `powers_tool_cli.commands.trigger_run`: legacy trigger execution helpers and
-  native trigger command handlers retained for compatibility.
+- `powers_tool_cli.commands.trigger_run`: shared Trigger request/configuration
+  validation and result-payload helpers. Active Trigger execution is owned by
+  `powers_tool_core.trigger`.
 - `powers_tool_cli.commands.sequence_run`: ramp-list workflow handler and
   shared sequence/Trigger compatibility helpers. Sequence planning and
   execution are owned by `powers_tool_core.sequence`.

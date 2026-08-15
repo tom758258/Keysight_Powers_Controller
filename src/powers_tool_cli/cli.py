@@ -263,9 +263,11 @@ from powers_tool_cli.commands import discovery
 
 from powers_tool_cli.commands.discovery import *
 
-from powers_tool_cli.commands import trigger_run
-
-from powers_tool_cli.commands.trigger_run import *
+from powers_tool_cli.commands.trigger_run import (
+    _core_trigger_resource_data,
+    _print_core_trigger_result,
+    _validate_trigger_step_args,
+)
 
 from powers_tool_cli.commands import readonly
 

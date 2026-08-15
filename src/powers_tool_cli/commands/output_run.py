@@ -168,8 +168,12 @@ from powers_tool_cli import cli_runtime
 from powers_tool_cli.cli_runtime import *
 from powers_tool_cli import cli_request
 from powers_tool_cli.cli_request import *
-from powers_tool_cli.commands import trigger_run
-from powers_tool_cli.commands.trigger_run import *
+from powers_tool_cli.commands.trigger_run import (
+    _attach_trigger_if_present,
+    _completion_pulse_channel,
+    _completion_pulse_pins,
+    _trigger_result_payload,
+)
 from powers_tool_cli.commands.sequence_run import (
     _cooperative_workflow_interrupt,
     _emit_workflow_interruption,

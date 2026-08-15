@@ -27,6 +27,7 @@ ACTIVE_MODULES_WITHOUT_COMPAT_OR_LEGACY_DRIVER_IMPORTS = (
     "commands/readonly.py",
     "commands/inspection.py",
     "commands/output_run.py",
+    "commands/trigger_run.py",
     "commands/sequence_run.py",
 )
 

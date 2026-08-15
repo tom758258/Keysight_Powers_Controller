@@ -64,8 +64,9 @@ SCPI logging，以及供 orchestrator／agent 使用的本機 Power Worker daemo
   `safety inspect` handler。
 - `powers_tool_cli.commands.output_run`：output command execution、dry-run
   planning 與 output result adapter。
-- `powers_tool_cli.commands.trigger_run`：legacy trigger execution helper 與
-  native trigger command handler（相容保留）。
+- `powers_tool_cli.commands.trigger_run`：共用 Trigger request/configuration
+  validation 與 result-payload helper。Active Trigger execution 由
+  `powers_tool_core.trigger` 負責。
 - `powers_tool_cli.commands.sequence_run`：ramp-list workflow handler 與
   shared sequence/Trigger compatibility helper。Sequence planning 與 execution
   由 `powers_tool_core.sequence` 負責。

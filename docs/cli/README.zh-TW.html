@@ -152,8 +152,9 @@ hardware-report 與 logging handler。</li>
 <code>safety inspect</code> handler。</li>
 <li><code>powers_tool_cli.commands.output_run</code>：output command execution、dry-run
 planning 與 output result adapter。</li>
-<li><code>powers_tool_cli.commands.trigger_run</code>：legacy trigger execution helper 與
-native trigger command handler（相容保留）。</li>
+<li><code>powers_tool_cli.commands.trigger_run</code>：共用 Trigger request/configuration
+validation 與 result-payload helper。Active Trigger execution 由
+<code>powers_tool_core.trigger</code> 負責。</li>
 <li><code>powers_tool_cli.commands.sequence_run</code>：ramp-list workflow handler 與
 shared sequence/Trigger compatibility helper。Sequence planning 與 execution
 由 <code>powers_tool_core.sequence</code> 負責。</li>
