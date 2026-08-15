@@ -80,7 +80,9 @@ state.executionMode = "dry_run";
 state.commandSupportByModel["model-a"].set.dry_run = true;
 strictAssert.match(support.commandMeta("set").live_support_status, /Dry-run/);
 state.commandSupportByModel["model-a"].set.dry_run = false;
-strictAssert.match(support.commandMeta("set").disabled_reason, /model-a|dry_run|指令/);
+const dryRunUnsupportedReason = support.commandMeta("set").disabled_reason;
+strictAssert.match(dryRunUnsupportedReason, /model-a/);
+strictAssert.match(dryRunUnsupportedReason, /dry_run/);
 
 noHardware = false;
 state.executionMode = "real";
@@ -104,9 +106,16 @@ state.liveSupportByModel["model-b"] = {
     }
   }
 };
-strictAssert.notEqual(support.commandMeta("set").live_support_status, "");
+const notEvaluatedZh = support.commandMeta("set").live_support_status;
+strictAssert.notEqual(notEvaluatedZh, "");
+strictAssert.match(notEvaluatedZh, /尚未評估/);
 strictAssert.equal(support.commandMeta("set").disabled, undefined);
 strictAssert.notEqual(support.exactSupportContextSummary("RESOURCE-A"), "");
+i18n.setLocale("en");
+const notEvaluatedEn = support.commandMeta("set").live_support_status;
+strictAssert.notEqual(notEvaluatedEn, "");
+strictAssert.match(notEvaluatedEn, /not evaluated/i);
+i18n.setLocale("zh-TW");
 state.resourceLiveSupportContext = { resource: "RESOURCE-A" };
 state.resourceLiveSupport = {
   evaluated: false,
@@ -121,6 +130,7 @@ strictAssert.match(unresolved.live_support_status, /UNKNOWN-PSU/);
 strictAssert.equal(unresolved.disabled_reason, unresolved.live_support_status);
 strictAssert.equal(support.exactSupportContextSummary("RESOURCE-A"), unresolved.live_support_status);
 strictAssert.doesNotMatch(unresolved.live_support_status, /尚未評估/);
+strictAssert.notEqual(unresolved.live_support_status, notEvaluatedZh);
 const diagnostic = support.commandMeta("identify");
 strictAssert.equal(diagnostic.disabled, false);
 strictAssert.equal(diagnostic.disabled_reason, null);
@@ -219,14 +229,23 @@ const liveScope = {
   backend_scope: "system_visa",
   display_name: "Model A"
 };
-strictAssert.match(
-  support.exactCommandSupportText({ exact_scope_validation_status: "live_validated_full_suite" }, liveScope),
-  /USB \/ system VISA/,
+const zhValidated = support.exactCommandSupportText(
+  { exact_scope_validation_status: "live_validated_full_suite" },
+  liveScope,
 );
-strictAssert.match(
-  support.exactCommandSupportText({ exact_scope_validation_status: "transport_pending" }, liveScope),
-  /USB \/ system VISA/,
+const zhPending = support.exactCommandSupportText(
+  { exact_scope_validation_status: "transport_pending" },
+  liveScope,
 );
+strictAssert.match(zhValidated, /USB \/ system VISA/);
+strictAssert.match(zhValidated, /實機驗證/);
+strictAssert.match(zhPending, /USB \/ system VISA/);
+strictAssert.match(zhPending, /待.*驗證/);
+strictAssert.notEqual(zhValidated, zhPending);
+strictAssert.notEqual(zhValidated, notEvaluatedZh);
+strictAssert.notEqual(zhPending, notEvaluatedZh);
+strictAssert.notEqual(zhValidated, unresolved.live_support_status);
+strictAssert.notEqual(zhPending, unresolved.live_support_status);
 strictAssert.match(
   support.exactCommandSupportText({ profile_validation_status: "not_supported_by_model" }, liveScope),
   /Model A|不支援/,
@@ -246,14 +265,19 @@ strictAssert.equal(
 strictAssert.match(support.exactCommandSupportText({}, liveScope), /USB \/ system VISA/);
 
 i18n.setLocale("en");
-strictAssert.match(
-  support.exactCommandSupportText({ exact_scope_validation_status: "live_validated_full_suite" }, liveScope),
-  /Live validated: USB \/ system VISA/,
+const enValidated = support.exactCommandSupportText(
+  { exact_scope_validation_status: "live_validated_full_suite" },
+  liveScope,
 );
-strictAssert.match(
-  support.exactCommandSupportText({ exact_scope_validation_status: "feature_pending" }, liveScope),
-  /Pending live validation: USB \/ system VISA/,
+const enPending = support.exactCommandSupportText(
+  { exact_scope_validation_status: "feature_pending" },
+  liveScope,
 );
+strictAssert.match(enValidated, /USB \/ system VISA/);
+strictAssert.match(enValidated, /validated/i);
+strictAssert.match(enPending, /USB \/ system VISA/);
+strictAssert.match(enPending, /pending/i);
+strictAssert.notEqual(enValidated, enPending);
 strictAssert.equal(
   support.exactCommandSupportText({ disabled_reason: "Backend raw future reason" }, liveScope),
   "Backend raw future reason"

@@ -379,14 +379,30 @@ for (const catalog of [EN_MESSAGES, ZH_TW_MESSAGES]) {
     assert.equal(catalog[key].length > 0, true, key);
   }
 }
-assert.match(EN_MESSAGES["ramp_list.help.enable_each_channel"], /OUTPUT|Real hardware|safe/i);
-assert.match(ZH_TW_MESSAGES["ramp_list.help.enable_each_channel"], /OUTPUT|實機硬體|安全/);
-assert.match(EN_MESSAGES["form.description.snapshot.max_errors"], /snapshot|instrument|error/i);
-assert.match(ZH_TW_MESSAGES["form.description.snapshot.max_errors"], /快照|儀器|錯誤/);
+assert.match(EN_MESSAGES["ramp_list.help.enable_each_channel"], /OUTPUT/i);
+assert.match(EN_MESSAGES["ramp_list.help.enable_each_channel"], /safe/i);
+assert.match(EN_MESSAGES["ramp_list.help.enable_each_channel"], /Real hardware/i);
+assert.match(EN_MESSAGES["ramp_list.help.enable_each_channel"], /Stop/i);
+assert.match(ZH_TW_MESSAGES["ramp_list.help.enable_each_channel"], /OUTPUT/);
+assert.match(ZH_TW_MESSAGES["ramp_list.help.enable_each_channel"], /安全/);
+assert.match(ZH_TW_MESSAGES["ramp_list.help.enable_each_channel"], /實機硬體/);
+assert.match(ZH_TW_MESSAGES["ramp_list.help.enable_each_channel"], /Stop|停止|安全關閉/);
+assert.match(EN_MESSAGES["form.description.snapshot.max_errors"], /snapshot/i);
+assert.match(EN_MESSAGES["form.description.snapshot.max_errors"], /instrument/i);
+assert.match(EN_MESSAGES["form.description.snapshot.max_errors"], /error/i);
+assert.match(ZH_TW_MESSAGES["form.description.snapshot.max_errors"], /快照/);
+assert.match(ZH_TW_MESSAGES["form.description.snapshot.max_errors"], /儀器/);
+assert.match(ZH_TW_MESSAGES["form.description.snapshot.max_errors"], /錯誤/);
 assert.match(EN_MESSAGES["health.device.busy"], /\{job\}/);
 assert.match(ZH_TW_MESSAGES["health.device.busy"], /\{job\}/);
-assert.match(EN_MESSAGES["form.description.ramp.enable_output"], /Real hardware|safe|OUTPUT/i);
-assert.match(ZH_TW_MESSAGES["form.description.ramp.enable_output"], /實機硬體|安全|OUTPUT/);
+assert.match(EN_MESSAGES["form.description.ramp.enable_output"], /OUTPUT/i);
+assert.match(EN_MESSAGES["form.description.ramp.enable_output"], /safe/i);
+assert.match(EN_MESSAGES["form.description.ramp.enable_output"], /Real hardware/i);
+assert.match(EN_MESSAGES["form.description.ramp.enable_output"], /Stop/i);
+assert.match(ZH_TW_MESSAGES["form.description.ramp.enable_output"], /輸出/);
+assert.match(ZH_TW_MESSAGES["form.description.ramp.enable_output"], /安全/);
+assert.match(ZH_TW_MESSAGES["form.description.ramp.enable_output"], /實機硬體/);
+assert.match(ZH_TW_MESSAGES["form.description.ramp.enable_output"], /停止|安全關閉/);
 
 assert.equal(i18n.getLocale(), "en");
 assert.equal(i18n.setLocale("zh-TW"), "zh-TW");

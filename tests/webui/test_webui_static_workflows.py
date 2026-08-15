@@ -1570,6 +1570,8 @@ def test_frontend_resource_single_flight_and_execution_mode_context_refresh() ->
         strictAssert.equal(writeCheckbox.disabled, true);
         strictAssert.equal(writeCheckbox.checked, false);
         strictAssert.equal(state.realWriteAuthorization, null);
+        const lockedBadgeText = elements.get("execution-mode-badge").textContent;
+        strictAssert.notEqual(lockedBadgeText, "");
 
         elements.get("resource").value = "RESOURCE-REAL";
         elements.get("resource-select").value = "RESOURCE-REAL";
@@ -1582,7 +1584,9 @@ def test_frontend_resource_single_flight_and_execution_mode_context_refresh() ->
           expected_model_id: "keysight-e36312a",
           connected_model_id: "keysight-e3646a"
         });
-        strictAssert.match(elements.get("execution-mode-badge").textContent, /Writes|寫入/);
+        const enabledBadgeText = elements.get("execution-mode-badge").textContent;
+        strictAssert.notEqual(enabledBadgeText, "");
+        strictAssert.notEqual(enabledBadgeText, lockedBadgeText);
 
         writeCheckbox.checked = false;
         state.realWriteAuthorization = null;
@@ -1721,7 +1725,7 @@ def test_frontend_resource_single_flight_and_execution_mode_context_refresh() ->
         strictAssert.equal(writeCheckbox.checked, true);
         strictAssert.equal(writeCheckbox.disabled, false);
         strictAssert.equal(state.realWriteAuthorization, realAuthorizationContext());
-        strictAssert.match(elements.get("execution-mode-badge").textContent, /Writes|寫入/);
+        strictAssert.equal(elements.get("execution-mode-badge").textContent, enabledBadgeText);
         const realLimits = formLimits.at(-1);
         strictAssert.equal(realLimits.mode, "real");
         strictAssert.equal(realLimits.max, "6");
