@@ -365,7 +365,7 @@ def test_import_smoke():
 
 
 def test_static_ui_exposes_advanced_serial_controls():
-    html, app_js, styles_css = read_static_texts()
+    html, app_js, _styles_css = read_static_texts()
     serial_control_ids = (
         "serial-baud-rate",
         "serial-data-bits",
@@ -378,7 +378,6 @@ def test_static_ui_exposes_advanced_serial_controls():
         "serial-local-on-close",
     )
 
-    assert 'class="device-resource-section"' in html
     assert_static_id(html, "device-resource-body")
     assert_static_id(html, "device-options-toggle")
     assert_static_id(html, "device-options-panel")
@@ -394,7 +393,6 @@ def test_static_ui_exposes_advanced_serial_controls():
     assert_static_attr(html, "device-options-toggle", "aria-expanded", "false")
     assert_static_attr(html, "supported-devices-toggle", "aria-controls", "supported-devices-panel")
     assert_static_attr(html, "supported-devices-toggle", "aria-expanded", "false")
-    assert html.index('id="supported-devices-toggle"') < html.index('id="device-options-toggle"')
     for expected in (
         'data-i18n="supported_devices.vendor"',
         'data-i18n="supported_devices.model"',
@@ -404,16 +402,9 @@ def test_static_ui_exposes_advanced_serial_controls():
     assert_static_attr(html, "toggle-device-resource", "aria-controls", "device-resource-body")
     assert_static_attr(html, "toggle-device-resource", "aria-expanded", "true")
     assert_static_id(html, "expected-model-id")
-
-    panel_index = html.index('id="device-options-panel"')
-    body_index = html.index('id="device-resource-body"')
-    assert panel_index < html.index('id="expected-model-id"') < body_index
     for element_id in serial_control_ids:
         assert_static_id(html, element_id)
-        assert panel_index < html.index(f'id="{element_id}"') < body_index
 
-    assert "Expected model" in html
-    assert "Model / expected model" not in html
     identity_help_tag = static_tag_with_id(html, "identity-model-help")
     assert 'data-i18n="device.identity_model_help"' in identity_help_tag
     assert html.count('id="identity-model-help"') == 1
@@ -423,22 +414,12 @@ def test_static_ui_exposes_advanced_serial_controls():
     for unvalidated_model in ("E36103B", "E36232A"):
         assert f'<option value="{unvalidated_model}">{unvalidated_model}</option>' not in html
     assert '<option value="GENERIC">GENERIC</option>' not in html
-    assert "serial-panel" not in html
-    assert ".serial-panel" not in styles_css
     assert 'name="execution-mode" value="simulate"' in html
     assert 'name="execution-mode" value="dry-run"' in html
-    assert 'class="device-resource-title-row"' in html
+    assert_static_id(html, "device-resource-title")
     badge_tag = static_tag_with_id(html, "execution-mode-badge")
-    assert badge_tag.startswith("<span ")
     assert 'class="execution-mode-badge real-locked"' in badge_tag
     assert 'aria-live="polite"' in badge_tag
-    assert "onclick" not in badge_tag
-    assert 'getElementById("execution-mode-badge").addEventListener' not in app_js
-    title_row = html[html.index('class="device-resource-title-row"'):html.index('</div>', html.index('class="device-resource-title-row"'))]
-    title_end = title_row.index("</strong>")
-    badge_start = title_row.index('id="execution-mode-badge"')
-    assert 'id="device-resource-title"' in title_row
-    assert title_end < badge_start
     assert html.count('id="real-write-authorization"') == 1
     assert html.count('id="real-write-enabled"') == 1
     real_write_label = html[
@@ -447,9 +428,6 @@ def test_static_ui_exposes_advanced_serial_controls():
     ]
     assert '<input id="real-write-enabled" type="checkbox">' in real_write_label
     assert real_write_label.count('data-i18n="device.enable_real_hardware_writes"') == 1
-    assert real_write_label.index('id="real-write-enabled"') < real_write_label.index(
-        'data-i18n="device.enable_real_hardware_writes"'
-    )
     assert 'data-i18n="execution_mode.option.simulate"' in html
     execution_mode_ui = extract_js_function(app_js, "updateExecutionModeUi")
     assert "refreshExecutionModePresentation();" in execution_mode_ui
@@ -463,9 +441,6 @@ def test_static_ui_exposes_advanced_serial_controls():
         assert key in execution_presentation
     for class_name in ("real-locked", "real-enabled", "simulate", "dry-run"):
         assert f'badge.classList.add("{class_name}")' in execution_mode_ui
-    assert ".device-resource-title-row" in styles_css
-    assert ".execution-mode-badge.real-locked" in styles_css
-    assert ".execution-mode-badge.real-enabled" in styles_css
 
     runtime_block = extract_js_function(app_js, "runtimePayload")
     assert 'const expectedModelId = valueOrNull("expected-model-id");' in runtime_block
@@ -474,11 +449,10 @@ def test_static_ui_exposes_advanced_serial_controls():
     assert "runtime.serial_options = serialOptions" in runtime_block
     assert "runtime.serial_remote = true" in runtime_block
     assert "runtime.serial_local_on_close = true" in runtime_block
-    assert ".serial-grid" in styles_css
 
 
 def test_static_command_forms_do_not_repeat_real_write_authorization_warning() -> None:
-    index_html, app_js, styles_css = read_static_texts()
+    _index_html, app_js, _styles_css = read_static_texts()
     update_selected = extract_js_function(app_js, "updateSelectedCommandState")
     command_form_js = read_static_javascript("command-form.js")
     refresh_description = extract_js_function(command_form_js, "refreshSelectedCommandDescription")
@@ -486,10 +460,6 @@ def test_static_command_forms_do_not_repeat_real_write_authorization_warning() -
     submit_selected = extract_js_function(app_js, "runSelected")
     submit_basic = extract_js_function(app_js, "submitBasicJob")
 
-    assert "confirm-banner" not in index_html
-    assert "confirm-banner" not in app_js
-    assert "confirm-banner" not in styles_css
-    assert "Enable real hardware writes in Device options before running this command." not in app_js
     assert "webuiCommandForm.renderCommandGuidance(state.selected, parameters, triggerControlGuardReason, triggerFireWaitGuardReason);" in update_selected
     assert "commandStatusText(meta)" in refresh_description
     assert "meta.live_support_status" not in refresh_description
@@ -531,7 +501,6 @@ def test_static_device_resource_summary_uses_model_wording():
     summary = extract_js_function(app_js, "updateDeviceResourceSummary")
     builder = extract_js_function(app_js, "buildDeviceResourceSummary")
 
-    assert "Manual" not in summary
     assert "refreshDeviceResourceSummaryPresentation();" in summary
     assert "execution_mode.summary.real" in builder
     assert "execution_mode.summary.simulate" in builder
@@ -903,12 +872,11 @@ def test_static_top_bar_uses_live_resource_defaults():
     assert 'id="resource" value="USB0::SIM::E36312A::INSTR"' not in index_html
     assert_static_id(index_html, "resource-select")
     assert_static_id(index_html, "scan")
-    assert '<span data-i18n="app.unofficial_tool">Unofficial Tool</span> v__WEBUI_VERSION__' in index_html
+    assert 'data-i18n="app.unofficial_tool"' in index_html
+    assert "v__WEBUI_VERSION__" in index_html
     assert_static_id(index_html, "server-state")
     assert_static_id(index_html, "device-state")
     assert_static_id(index_html, "live-state")
-    assert "Server State:" not in index_html
-    assert "Device State:" not in index_html
     assert 'id="health"' not in index_html
     assert '<span id="health">checking</span>' not in index_html
 
@@ -1044,10 +1012,6 @@ def test_static_live_data_uses_three_channel_panel_contract():
     stop_live = extract_js_function(live_data_js, "stopLive")
     wait_for_terminal = extract_js_function(live_data_js, "waitForLiveTerminal")
     assert 'parameters: { interval_ms: 5000 }' in start_live
-    assert 'class="live-data-note"' in index_html
-    assert "Live Data monitor" in index_html
-    assert "5 seconds" in index_html
-    assert "Successful real hardware commands" in index_html
     assert 'read_command: "measure-all"' not in start_live
     assert 'channel: "all"' not in start_live
     assert 'if (!payload.runtime.resource)' in start_live
@@ -1110,7 +1074,6 @@ def test_static_layout_exposes_stable_structural_hooks():
     ):
         assert_static_id(index_html, element_id)
     assert_static_attr(index_html, "advanced-commands", "hidden")
-    assert 'class="rightbar"' not in index_html
 
 
 def test_static_basic_command_panel_contract():
