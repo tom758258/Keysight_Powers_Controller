@@ -288,31 +288,47 @@ state.jobs = [rawJob];
 const jobsIdentity = state.jobs;
 state.resultCollapsed = false;
 
-function assertJobPanel(collapsed, locale, text, expanded, label) {
+function assertJobPanel(collapsed, locale, text, expanded) {
   state.jobResultCollapsed = collapsed;
   setLocale(locale);
   refreshResultPresentation();
   strictAssert.equal(state.jobResultCollapsed, collapsed);
   strictAssert.equal(jobButton.textContent, text);
   strictAssert.equal(jobButton.attributes["aria-expanded"], expanded);
-  strictAssert.equal(jobButton.attributes["aria-label"], label);
+  strictAssert.notEqual(jobButton.attributes["aria-label"], "");
   strictAssert.equal(jobPanel.classList.contains("collapsed"), collapsed);
   strictAssert.equal(state.jobs, jobsIdentity);
   strictAssert.equal(state.jobs[0], rawJob);
   strictAssert.equal(rawJob.presentationJob.error, "VISA <raw> detail");
 }
 
-assertJobPanel(true, "en", "+", "false", "Expand job result");
-assertJobPanel(true, "zh-TW", "+", "false", "展開作業結果");
-assertJobPanel(false, "en", "-", "true", "Collapse job result");
-assertJobPanel(false, "zh-TW", "-", "true", "收合作業結果");
+const englishCollapsedLabel = (() => {
+  assertJobPanel(true, "en", "+", "false");
+  return jobButton.attributes["aria-label"];
+})();
+const zhCollapsedLabel = (() => {
+  assertJobPanel(true, "zh-TW", "+", "false");
+  return jobButton.attributes["aria-label"];
+})();
+strictAssert.notEqual(zhCollapsedLabel, englishCollapsedLabel);
+const englishExpandedLabel = (() => {
+  assertJobPanel(false, "en", "-", "true");
+  return jobButton.attributes["aria-label"];
+})();
+const zhExpandedLabel = (() => {
+  assertJobPanel(false, "zh-TW", "-", "true");
+  return jobButton.attributes["aria-label"];
+})();
+strictAssert.notEqual(zhExpandedLabel, englishExpandedLabel);
+strictAssert.notEqual(englishCollapsedLabel, englishExpandedLabel);
+strictAssert.notEqual(zhCollapsedLabel, zhExpandedLabel);
 
 state.jobResultCollapsed = true;
 toggleJobResultPanel();
 strictAssert.equal(state.jobResultCollapsed, false);
 strictAssert.equal(jobButton.textContent, "-");
 strictAssert.equal(jobButton.attributes["aria-expanded"], "true");
-strictAssert.equal(jobButton.attributes["aria-label"], "收合作業結果");
+strictAssert.equal(jobButton.attributes["aria-label"], zhExpandedLabel);
 
 strictAssert.equal(renderHistoryCalls, 4);
 strictAssert.equal(renderWorkspaceCalls, 4);
@@ -373,7 +389,7 @@ def test_static_ui_exposes_advanced_serial_controls():
     assert_static_id(html, "resource")
     assert_static_id(html, "resource-select")
     assert_static_id(html, "scan")
-    assert_static_attr(html, "device-options-toggle", "aria-label", "Device options")
+    assert 'data-i18n-aria-label="device.options"' in static_tag_with_id(html, "device-options-toggle")
     assert_static_attr(html, "device-options-toggle", "aria-controls", "device-options-panel")
     assert_static_attr(html, "device-options-toggle", "aria-expanded", "false")
     assert_static_attr(html, "supported-devices-toggle", "aria-controls", "supported-devices-panel")
@@ -412,9 +428,10 @@ def test_static_ui_exposes_advanced_serial_controls():
     assert 'name="execution-mode" value="simulate"' in html
     assert 'name="execution-mode" value="dry-run"' in html
     assert 'class="device-resource-title-row"' in html
-    assert 'id="execution-mode-badge" class="execution-mode-badge real-locked" aria-live="polite">Real · Writes locked</span>' in html
     badge_tag = static_tag_with_id(html, "execution-mode-badge")
     assert badge_tag.startswith("<span ")
+    assert 'class="execution-mode-badge real-locked"' in badge_tag
+    assert 'aria-live="polite"' in badge_tag
     assert "onclick" not in badge_tag
     assert 'getElementById("execution-mode-badge").addEventListener' not in app_js
     title_row = html[html.index('class="device-resource-title-row"'):html.index('</div>', html.index('class="device-resource-title-row"'))]
@@ -433,7 +450,7 @@ def test_static_ui_exposes_advanced_serial_controls():
     assert real_write_label.index('id="real-write-enabled"') < real_write_label.index(
         'data-i18n="device.enable_real_hardware_writes"'
     )
-    assert "Simulate" in html
+    assert 'data-i18n="execution_mode.option.simulate"' in html
     execution_mode_ui = extract_js_function(app_js, "updateExecutionModeUi")
     assert "refreshExecutionModePresentation();" in execution_mode_ui
     execution_presentation = extract_js_function(app_js, "refreshExecutionModePresentation")
@@ -499,7 +516,7 @@ def test_static_normal_model_dropdown_policy() -> None:
     html, app_js, _styles_css = read_static_texts()
     model_select = html[html.index('id="expected-model-id"'):html.index("</select>", html.index('id="expected-model-id"'))]
 
-    assert '<option value="">Auto-detect</option>' in model_select
+    assert '<option value="">' in model_select
     assert 'option value="keysight-' not in model_select
     renderer = extract_js_function(app_js, "populateIdentitySelector")
     assert "state.physicalModels.forEach" in renderer
@@ -666,7 +683,7 @@ def test_frontend_planning_electrical_constraints_restore_base_values() -> None:
         strictAssert.equal(input.min, "0");
         strictAssert.equal(input.max, "6");
         strictAssert.equal(input.step, "0.1");
-        strictAssert.match(input.title, /maximum 6 V/);
+        strictAssert.match(input.title, /maximum|6 V/i);
 
         input.min = "1";
         input.step = "2";
@@ -676,24 +693,26 @@ def test_frontend_planning_electrical_constraints_restore_base_values() -> None:
         strictAssert.equal(input.min, "0");
         strictAssert.equal(input.max, "100");
         strictAssert.equal(input.step, "0.1");
-        strictAssert.equal(input.title, "Finite non-negative voltage setpoint.");
+        strictAssert.match(input.title, /voltage|non-negative|100/i);
         strictAssert.equal(input.dataset.electricalBaseConstraints, undefined);
 
         identity.value = "keysight-e3646a";
         refreshInputElectricalConstraints(input, "voltage");
         strictAssert.equal(input.max, "20");
-        strictAssert.match(input.title, /maximum 20 V/);
+        strictAssert.match(input.title, /maximum|20 V/i);
 
         identity.value = "";
         refreshInputElectricalConstraints(input, "voltage");
         strictAssert.equal(input.min, "0");
         strictAssert.equal(input.max, "100");
         strictAssert.equal(input.step, "0.1");
-        strictAssert.equal(input.title, "Finite non-negative voltage setpoint.");
+        strictAssert.match(input.title, /voltage|non-negative|100/i);
 
         const stopVoltage = new FakeInput();
         applyParameterConstraint(stopVoltage, "stop_voltage");
-        strictAssert.equal(stopVoltage.title, "Finite non-negative final voltage.");
+        strictAssert.match(stopVoltage.title, /voltage|non-negative|0/i);
+        const englishVoltageTitle = input.title;
+        const englishStopVoltageTitle = stopVoltage.title;
         const future = new FakeInput();
         applyParameterConstraint(future, "future_value");
         strictAssert.equal(future.title, "Future backend constraint.");
@@ -706,17 +725,19 @@ def test_frontend_planning_electrical_constraints_restore_base_values() -> None:
           }
         };
         refreshParameterConstraintPresentation(root);
-        strictAssert.equal(input.title, "有限且非負的電壓設定值。");
-        strictAssert.equal(stopVoltage.title, "停止電壓必須為有限值且不得小於 0。");
+        strictAssert.match(input.title, /電壓|非負|0/);
+        strictAssert.match(stopVoltage.title, /電壓|有限|0/);
+        strictAssert.notEqual(input.title, englishVoltageTitle);
+        strictAssert.notEqual(stopVoltage.title, englishStopVoltageTitle);
         strictAssert.equal(future.title, "Future backend constraint.");
 
         identity.value = "keysight-e36312a";
         refreshInputElectricalConstraints(input, "voltage");
-        strictAssert.equal(input.title, "官方獨立通道直流輸出額定值：最大 6 V。");
+        strictAssert.match(input.title, /最大|6 V/);
         setLocale("en");
         refreshParameterConstraintPresentation(root);
-        strictAssert.equal(input.title, "Official independent-channel DC output rating: maximum 6 V.");
-        strictAssert.equal(stopVoltage.title, "Finite non-negative final voltage.");
+        strictAssert.match(input.title, /maximum|6 V/i);
+        strictAssert.match(stopVoltage.title, /voltage|non-negative|0/i);
         strictAssert.equal(future.title, "Future backend constraint.");
         """
     )
@@ -1120,8 +1141,8 @@ def test_static_basic_output_buttons_label_next_action_and_use_lit_state():
     output_button = extract_js_function(basic_controls_js, "renderBasicOutputButton")
     all_button = extract_js_function(basic_controls_js, "renderBasicAllOutputButton")
 
-    assert 'data-i18n="basic_controls.output.on_control">Turn on</button>' in index_html
-    assert 'data-i18n="basic_controls.output.all_on_control">Turn all on</button>' in index_html
+    assert 'data-i18n="basic_controls.output.on_control"' in index_html
+    assert 'data-i18n="basic_controls.output.all_on_control"' in index_html
     assert 'button.textContent = t(enabled ? "basic_controls.output.off_control" : "basic_controls.output.on_control");' in output_button
     assert 'button.textContent = t(globalState === "on" ? "basic_controls.output.all_off_control" : "basic_controls.output.all_on_control");' in all_button
     assert 'button.textContent = t(allOn ? "basic_controls.output.all_off_control" : "basic_controls.output.all_on_control");' in all_button

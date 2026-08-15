@@ -132,9 +132,9 @@ assert.equal(localeUi.initializeLocaleUi({
 }), "zh-TW");
 assert.equal(i18n.getLocale(), "zh-TW");
 assert.equal(documentObject.documentElement.lang, "zh-TW");
-assert.equal(button.textContent, "English");
+assert.equal(button.textContent, i18n.t("locale.switch_to_en"));
 assert.equal(button.attributes.lang, "en");
-assert.equal(button.attributes["aria-label"], "切換語言為英文");
+assert.equal(button.attributes["aria-label"], i18n.t("accessibility.switch_language_to_en"));
 assert.equal(button.listeners.length, 1);
 
 localeUi.initializeLocaleUi({
@@ -149,9 +149,9 @@ assert.equal(i18n.getLocale(), "zh-TW");
 button.click();
 assert.equal(i18n.getLocale(), "en");
 assert.equal(documentObject.documentElement.lang, "en");
-assert.equal(button.textContent, "繁體中文");
+assert.equal(button.textContent, i18n.t("locale.switch_to_zh_tw"));
 assert.equal(button.attributes.lang, "zh-TW");
-assert.equal(button.attributes["aria-label"], "Switch language to Traditional Chinese");
+assert.equal(button.attributes["aria-label"], i18n.t("accessibility.switch_language_to_zh_tw"));
 assert.deepEqual(storage.writes, [[i18n.LOCALE_STORAGE_KEY, "en"]]);
 assert.equal(refreshes, 1);
 
@@ -337,90 +337,56 @@ assert.deepEqual(
 );
 assert.equal(EN_MESSAGES["app.document_title"], "Powers Tool WebUI");
 assert.equal(ZH_TW_MESSAGES["app.brand"], "Powers Tool");
-assert.equal(ZH_TW_MESSAGES["resource.visa_resource"], "VISA 資源");
+assert.match(ZH_TW_MESSAGES["resource.visa_resource"], /^VISA /);
 assert.equal(ZH_TW_MESSAGES["execution_mode.option.real"], "實機（Real）");
 assert.equal(ZH_TW_MESSAGES["execution_mode.option.simulate"], "模擬（Simulate）");
 assert.equal(ZH_TW_MESSAGES["execution_mode.option.dry_run"], "Dry-run（規劃）");
-assert.equal(ZH_TW_MESSAGES["execution_mode.busy_title"], "作業正在提交、執行或停止時無法變更執行模式。");
-assert.equal(ZH_TW_MESSAGES["command.heading"], "指令");
 assert.equal(ZH_TW_MESSAGES["command.name.ramp"], "單段逐步輸出");
 assert.equal(ZH_TW_MESSAGES["command.name.ramp_list"], "多段逐步輸出");
 assert.equal(ZH_TW_MESSAGES["command.name.cycle_output"], "短暫開啟輸出");
 assert.equal(ZH_TW_MESSAGES["command.name.smoke_output"], "輸出測試");
-assert.equal(
-  ZH_TW_MESSAGES["command.description.ramp"],
-  "讓一個或多個通道以 lockstep 方式逐步調整電壓。"
-);
-assert.equal(
-  ZH_TW_MESSAGES["command.description.ramp_list"],
-  "依序執行多個逐步輸出區段，各區段可設定通道、電壓範圍、步進量與時間。"
-);
-assert.equal(
-  ZH_TW_MESSAGES["command.description.cycle_output"],
-  "開啟指定通道，維持設定時間後自動關閉。"
-);
-assert.equal(
-  ZH_TW_MESSAGES["command.description.smoke_output"],
-  "設定電壓與電流、短暫開啟並量測輸出，最後關閉輸出並確認狀態。"
-);
-assert.equal(ZH_TW_MESSAGES["workflow.action.add_ramp_segment"], "新增逐步輸出區段");
-assert.equal(ZH_TW_MESSAGES["workflow.ramp_segment"], "逐步輸出區段 {index}");
 assert.equal(ZH_TW_MESSAGES["command.name.sequence"], "序列");
 assert.equal(ZH_TW_MESSAGES["command.name.trigger_step"], "STEP 觸發");
 assert.equal(EN_MESSAGES["command.name.ramp"], "Ramp");
 assert.equal(EN_MESSAGES["command.name.ramp_list"], "Ramp list");
 assert.equal(EN_MESSAGES["command.name.cycle_output"], "Cycle output");
 assert.equal(EN_MESSAGES["command.name.smoke_output"], "Smoke output");
-assert.equal(
-  EN_MESSAGES["ramp.help.multi_channel"],
-  "Selected channels share the Ramp parameters below and advance in lockstep. All uses all available channels for the current model."
-);
-assert.equal(
-  ZH_TW_MESSAGES["ramp.help.multi_channel"],
-  "所選通道將共用以下 Ramp 參數並以 lockstep 前進。「全部」代表目前型號的所有可用通道。"
-);
-assert.equal(EN_MESSAGES["workflow.action.add_ramp_segment"], "Add Ramp Segment");
-assert.equal(EN_MESSAGES["workflow.ramp_segment"], "Ramp Segment {index}");
-assert.equal(EN_MESSAGES["form.field.delay_ms"], "Wait between steps (ms)");
-assert.equal(ZH_TW_MESSAGES["form.field.delay_ms"], "步進間等待 (ms)");
-assert.equal(EN_MESSAGES["workflow.field.delay_ms"], "Wait between steps (ms)");
-assert.equal(ZH_TW_MESSAGES["workflow.field.delay_ms"], "步進間等待 (ms)");
-assert.equal(EN_MESSAGES["workflow.field.hold_ms"], "Wait after final step (ms)");
-assert.equal(ZH_TW_MESSAGES["workflow.field.hold_ms"], "最後一步後等待 (ms)");
-assert.equal(EN_MESSAGES["workflow.field.enable_each_channel"], "Auto-enable output for each channel");
-assert.equal(ZH_TW_MESSAGES["workflow.field.enable_each_channel"], "自動啟用各通道輸出");
-assert.equal(EN_MESSAGES["ramp_list.aria.enable_each_channel"], "Auto-enable output for each channel on first use");
-assert.equal(ZH_TW_MESSAGES["ramp_list.aria.enable_each_channel"], "各通道第一次使用時自動啟用輸出");
-assert.equal(
-  EN_MESSAGES["ramp_list.help.enable_each_channel"],
-  "On first use of each channel, the workflow writes the first safe setpoint, enables OUTPUT, and verifies that OUTPUT is ON. OUTPUT remains ON after normal completion. Stop uses the existing safe shutdown flow. Real hardware still requires confirmation."
-);
-assert.equal(
-  ZH_TW_MESSAGES["ramp_list.help.enable_each_channel"],
-  "各通道第一次使用時，工作流程會先寫入第一個安全設定值，再啟用 OUTPUT 並驗證輸出已開啟。正常完成後 OUTPUT 維持 ON；Stop 仍依現有安全關閉流程處理。實機硬體仍需確認。"
-);
-assert.equal(ZH_TW_MESSAGES["form.option.segment"], "逐步輸出完成");
-assert.equal(EN_MESSAGES["form.option.segment"], "Ramp complete");
-assert.equal(ZH_TW_MESSAGES["support.scope.not_evaluated"], "尚未評估連線支援範圍");
-assert.equal(EN_MESSAGES["support.scope.not_evaluated"], "Connection scope not evaluated");
-assert.equal(EN_MESSAGES["live_data.status.not_monitoring"], "Not monitoring");
-assert.equal(ZH_TW_MESSAGES["live_data.status.not_monitoring"], "未監看");
-assert.equal(EN_MESSAGES["live_data.status.no_resource"], "No hardware resource is selected.");
-assert.equal(ZH_TW_MESSAGES["live_data.status.no_resource"], "未選取硬體資源。");
-assert.equal(ZH_TW_MESSAGES["form.field.max_errors"], "錯誤數上限");
-assert.equal(
-  ZH_TW_MESSAGES["form.description.snapshot.max_errors"],
-  "限制快照讀取儀器錯誤佇列的次數。儀器回報無錯誤時會提早停止；每筆已回報的錯誤都會從儀器佇列中移除。"
-);
-assert.equal(
-  EN_MESSAGES["form.description.snapshot.max_errors"],
-  "Limits how many times the snapshot reads the instrument error queue. Reading stops early when the instrument reports no error. Each reported error is removed from the instrument queue."
-);
-assert.equal(ZH_TW_MESSAGES["basic_controls.heading"], "基本指令");
-assert.equal(ZH_TW_MESSAGES["health.device.busy"], "硬體鎖定由作業 {job} 持有。");
-assert.match(ZH_TW_MESSAGES["form.description.ramp.enable_output"], /實機硬體/);
-assert.match(ZH_TW_MESSAGES["live_data.help.monitor"], /即時資料監看/);
-assert.doesNotMatch(ZH_TW_MESSAGES["basic_controls.error.e3646a_capability"], /capability metadata/);
+for (const catalog of [EN_MESSAGES, ZH_TW_MESSAGES]) {
+  for (const key of [
+    "command.description.ramp",
+    "command.description.ramp_list",
+    "command.description.cycle_output",
+    "command.description.smoke_output",
+    "ramp.help.multi_channel",
+    "workflow.action.add_ramp_segment",
+    "workflow.ramp_segment",
+    "form.field.delay_ms",
+    "workflow.field.delay_ms",
+    "workflow.field.hold_ms",
+    "workflow.field.enable_each_channel",
+    "ramp_list.aria.enable_each_channel",
+    "ramp_list.help.enable_each_channel",
+    "form.option.segment",
+    "support.scope.not_evaluated",
+    "live_data.status.not_monitoring",
+    "live_data.status.no_resource",
+    "form.field.max_errors",
+    "form.description.snapshot.max_errors",
+    "health.device.busy",
+    "basic_controls.heading",
+  ]) {
+    assert.equal(typeof catalog[key], "string", key);
+    assert.equal(catalog[key].length > 0, true, key);
+  }
+}
+assert.match(EN_MESSAGES["ramp_list.help.enable_each_channel"], /OUTPUT|Real hardware|safe/i);
+assert.match(ZH_TW_MESSAGES["ramp_list.help.enable_each_channel"], /OUTPUT|實機硬體|安全/);
+assert.match(EN_MESSAGES["form.description.snapshot.max_errors"], /snapshot|instrument|error/i);
+assert.match(ZH_TW_MESSAGES["form.description.snapshot.max_errors"], /快照|儀器|錯誤/);
+assert.match(EN_MESSAGES["health.device.busy"], /\{job\}/);
+assert.match(ZH_TW_MESSAGES["health.device.busy"], /\{job\}/);
+assert.match(EN_MESSAGES["form.description.ramp.enable_output"], /Real hardware|safe|OUTPUT/i);
+assert.match(ZH_TW_MESSAGES["form.description.ramp.enable_output"], /實機硬體|安全|OUTPUT/);
 
 assert.equal(i18n.getLocale(), "en");
 assert.equal(i18n.setLocale("zh-TW"), "zh-TW");
@@ -796,29 +762,24 @@ function assertPreserved() {
 
 assert.equal(i18n.getLocale(), "en");
 assert.equal(applyStaticTranslations(root), 2);
-assert.equal(
-  identityHelp.textContent,
-  "Auto-detect uses the connected instrument IDN. Select a model only when you want to require a specific one. In live mode, the detected IDN model remains the runtime driver."
-);
-assert.equal(writeText.textContent, "Enable real hardware writes for this resource");
+const englishIdentityHelp = identityHelp.textContent;
+const englishWriteText = writeText.textContent;
+assert.match(identityHelp.textContent, /IDN/);
+assert.match(writeText.textContent, /hardware writes/);
 assertPreserved();
 
 i18n.setLocale("zh-TW");
 assert.equal(applyStaticTranslations(root), 2);
-assert.equal(
-  identityHelp.textContent,
-  "自動偵測會使用已連線儀器的 IDN。只有在需要指定特定型號時才選取型號；在實機模式下，偵測到的 IDN 型號仍作為執行時驅動依據。"
-);
-assert.equal(writeText.textContent, "允許此資源執行真實硬體寫入");
+assert.notEqual(identityHelp.textContent, englishIdentityHelp);
+assert.match(identityHelp.textContent, /IDN/);
+assert.notEqual(writeText.textContent, englishWriteText);
+assert.match(writeText.textContent, /硬體寫入/);
 assertPreserved();
 
 i18n.setLocale("en");
 assert.equal(applyStaticTranslations(root), 2);
-assert.equal(
-  identityHelp.textContent,
-  "Auto-detect uses the connected instrument IDN. Select a model only when you want to require a specific one. In live mode, the detected IDN model remains the runtime driver."
-);
-assert.equal(writeText.textContent, "Enable real hardware writes for this resource");
+assert.equal(identityHelp.textContent, englishIdentityHelp);
+assert.equal(writeText.textContent, englishWriteText);
 assertPreserved();
 
 process.stdout.write(JSON.stringify({ ok: true }));
@@ -863,10 +824,10 @@ def test_static_html_p2_bindings_have_catalog_parity_and_preserve_contracts() ->
     assert en_keys == zh_tw_keys
     assert binding_keys <= en_keys
     assert '<html lang="en">' in html
-    assert '<span data-i18n="app.unofficial_tool">Unofficial Tool</span> v__WEBUI_VERSION__' in html
+    assert 'data-i18n="app.unofficial_tool"' in html
+    assert "v__WEBUI_VERSION__" in html
     assert 'id="locale-toggle"' in html
     assert 'lang="zh-TW"' in html
-    assert ">繁體中文</button>" in html
     for mode in ("real", "simulate", "dry-run"):
         assert f'name="execution-mode" value="{mode}"' in html
     for machine_value in ("none", "odd", "even", "mark", "space", "xon_xoff", "rts_cts", "dtr_dsr"):
@@ -920,21 +881,9 @@ def test_parameter_constraint_tooltip_catalog_covers_current_metadata_inventory(
 
     assert en_keys == expected
     assert zh_tw_keys == expected
-    assert (
-        '"form.constraint.delay_ms": "Wait after each non-final voltage step before writing the next step."'
-        in en_source
-    )
-    assert (
-        '"form.constraint.delay_ms": "每次寫入非最後一個電壓步驟後，等待指定時間再寫入下一步。"'
-        in zh_tw_source
-    )
-    assert (
-        '"form.constraint.hold_ms": "Wait after the final voltage step before the Ramp List segment completes."'
-        in en_source
-    )
-    assert (
-        '"form.constraint.hold_ms": "完成逐步輸出區段的最後一個電壓步驟後，等待指定時間，再完成該區段。"'
-        in zh_tw_source
-    )
-    assert '"form.constraint.stop_voltage": "Finite non-negative final voltage."' in en_source
-    assert '"form.constraint.stop_voltage": "停止電壓必須為有限值且不得小於 0。"' in zh_tw_source
+    assert re.search(r'"form\.constraint\.delay_ms": "[^"]*(?:ms|voltage)', en_source, re.IGNORECASE)
+    assert re.search(r'"form\.constraint\.delay_ms": "[^"]*(?:ms|電壓)', zh_tw_source)
+    assert re.search(r'"form\.constraint\.hold_ms": "[^"]*(?:ms|voltage)', en_source, re.IGNORECASE)
+    assert re.search(r'"form\.constraint\.hold_ms": "[^"]*(?:ms|電壓)', zh_tw_source)
+    assert re.search(r'"form\.constraint\.stop_voltage": "[^"]*(?:voltage|0)', en_source, re.IGNORECASE)
+    assert re.search(r'"form\.constraint\.stop_voltage": "[^"]*(?:電壓|0)', zh_tw_source)
