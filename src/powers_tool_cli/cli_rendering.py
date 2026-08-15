@@ -14,6 +14,7 @@ __all__ = [
     "format_clear_success",
     "format_doctor",
     "format_error_queue",
+    "format_execution_summary_notice",
     "format_hardware_report_success",
     "format_identify",
     "format_list_resources",
@@ -34,6 +35,7 @@ __all__ = [
     "format_snapshot",
     "format_snapshot_diff",
     "format_validate_readonly",
+    "format_verify",
 ]
 
 
@@ -228,6 +230,16 @@ def format_list_resources(
 
 def format_verify(idn_raw: object) -> tuple[str, ...]:
     return tuple([str(idn_raw)])
+
+
+def format_execution_summary_notice(
+    execution_units: int,
+    warning: str | None,
+) -> tuple[str, ...]:
+    lines = [f"Execution units: {execution_units:,} (maximum 1,000,000)."]
+    if warning is not None:
+        lines.append(f"Warning: {warning}")
+    return tuple(lines)
 
 
 def format_error_queue(errors: Sequence[object]) -> tuple[str, ...]:

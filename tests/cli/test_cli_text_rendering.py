@@ -14,6 +14,7 @@ import pytest
 
 import powers_tool_cli.cli as cli
 from powers_tool_cli import cli_rendering
+from powers_tool_cli.commands import output_run, sequence_run
 
 
 def _format_text_value(value: object) -> str:
@@ -415,6 +416,16 @@ def test_format_sequence_summary_preserves_resource_forms(resource: object) -> N
     assert data == before
 
 
+def test_format_execution_summary_notice_preserves_exact_lines() -> None:
+    assert cli_rendering.format_execution_summary_notice(12_345, None) == (
+        "Execution units: 12,345 (maximum 1,000,000).",
+    )
+    assert cli_rendering.format_execution_summary_notice(1_234_567, "long workflow") == (
+        "Execution units: 1,234,567 (maximum 1,000,000).",
+        "Warning: long workflow",
+    )
+
+
 def test_direct_formatters_do_not_write_streams(capsys) -> None:
     cli_rendering.format_output_plan(
         {
@@ -430,10 +441,86 @@ def test_direct_formatters_do_not_write_streams(capsys) -> None:
     cli_rendering.format_sequence_summary(
         {"resource": "USB0::SIM::E36312A::INSTR", "status": "valid", "completed_steps": 0}
     )
+    cli_rendering.format_execution_summary_notice(12_345, "long workflow")
 
     captured = capsys.readouterr()
     assert captured.out == ""
     assert captured.err == ""
+
+
+def test_workflow_execution_notice_callers_keep_stderr_routing_and_gating(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    summary = {
+        "execution_units": 1_234_567,
+        "execution_warning": "long workflow",
+    }
+    warning_payload = [{"code": "long_running_workflow", "message": "long workflow"}]
+
+    monkeypatch.setattr(output_run, "_request_for_args", lambda _args: {})
+    monkeypatch.setattr(output_run, "_safety_limits_for_args", lambda _args: object())
+    monkeypatch.setattr(output_run, "_validate_output_request", lambda *_args: None)
+    monkeypatch.setattr(output_run, "_output_plan_for_args", lambda _args: dict(summary))
+    monkeypatch.setattr(output_run, "_append_completion_pulse_plan", lambda *_args: None)
+    monkeypatch.setattr(output_run, "_print_output_plan", lambda *_args, **_kwargs: None)
+
+    output_text_args = argparse.Namespace(
+        command="ramp",
+        simulate=True,
+        dry_run=True,
+        json=False,
+        completion_pulse_timing="segment",
+    )
+    assert output_run._run_output_plan(output_text_args) == 0
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == (
+        "Execution units: 1,234,567 (maximum 1,000,000).\n"
+        "Warning: long workflow\n"
+    )
+
+    json_calls: list[dict[str, object]] = []
+    monkeypatch.setattr(output_run, "emit_json_success", lambda **kwargs: json_calls.append(kwargs))
+    monkeypatch.setattr(output_run, "_execution_for_args", lambda *_args, **_kwargs: {})
+    output_json_args = argparse.Namespace(
+        command="ramp",
+        simulate=True,
+        dry_run=True,
+        json=True,
+        completion_pulse_timing="segment",
+    )
+    assert output_run._run_output_plan(output_json_args) == 0
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
+    assert json_calls[0]["warnings"] == warning_payload
+
+    monkeypatch.setattr(sequence_run, "validate_request_admission", lambda request: request)
+    monkeypatch.setattr(sequence_run, "workflow_execution_summary", lambda _request: dict(summary))
+    sequence_request = object()
+
+    sequence_text_args = argparse.Namespace(json=False, lint=False)
+    returned_request, returned_summary, warnings = sequence_run._workflow_start_summary(
+        sequence_text_args,
+        sequence_request,
+    )
+    assert returned_request is sequence_request
+    assert returned_summary == summary
+    assert warnings == warning_payload
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == (
+        "Execution units: 1,234,567 (maximum 1,000,000).\n"
+        "Warning: long workflow\n"
+    )
+
+    for args in (argparse.Namespace(json=True, lint=False), argparse.Namespace(json=False, lint=True)):
+        _, _, warnings = sequence_run._workflow_start_summary(args, sequence_request)
+        assert warnings == warning_payload
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert captured.err == ""
 
 
 def test_cli_thin_adapters_emit_each_formatter_line(capsys) -> None:

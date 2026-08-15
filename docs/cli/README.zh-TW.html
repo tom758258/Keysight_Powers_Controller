@@ -131,7 +131,9 @@ file helper、error/exit emission，以及可 patch 的 Core connection binding�
 <li><code>powers_tool_cli.cli_request</code>：JSON request envelope 與 Core request construction
 （<code>OperationRequest</code>、<code>TriggerRequest</code> 等 helper）。</li>
 <li><code>powers_tool_cli.cli_io</code>：穩定的 JSON success/error envelope 與 <code>--save-json</code>。</li>
-<li><code>powers_tool_cli.cli_rendering</code>：純文字 success-line formatter。</li>
+<li><code>powers_tool_cli.cli_rendering</code>：純文字 success-line formatter，包含共用
+workflow execution notice，以及 Output、Trigger、plan、Sequence、discovery、
+read-only、inspection、write、workflow 與 artifact-success summary。</li>
 <li><code>powers_tool_cli.lifecycle_client</code>：Worker lifecycle HTTP request、response
 validation、dry-run 與錯誤 mapping。</li>
 <li><code>powers_tool_cli.request_primitives</code>：共用 argv parsing 與 JSON request fields。</li>

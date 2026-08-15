@@ -398,12 +398,11 @@ def _run_output_plan(args: argparse.Namespace) -> int:
             units = plan.get("execution_units")
             warning = plan.get("execution_warning")
             if not args.json and isinstance(units, int):
-                print(
-                    f"Execution units: {units:,} (maximum 1,000,000).",
-                    file=sys.stderr,
-                )
-                if isinstance(warning, str):
-                    print(f"Warning: {warning}", file=sys.stderr)
+                for line in cli_rendering.format_execution_summary_notice(
+                    units,
+                    warning if isinstance(warning, str) else None,
+                ):
+                    print(line, file=sys.stderr)
             if isinstance(warning, str):
                 execution_warnings.append(
                     {"code": "long_running_workflow", "message": warning}

@@ -43,7 +43,9 @@ SCPI logging，以及供 orchestrator／agent 使用的本機 Power Worker daemo
 - `powers_tool_cli.cli_request`：JSON request envelope 與 Core request construction
   （`OperationRequest`、`TriggerRequest` 等 helper）。
 - `powers_tool_cli.cli_io`：穩定的 JSON success/error envelope 與 `--save-json`。
-- `powers_tool_cli.cli_rendering`：純文字 success-line formatter。
+- `powers_tool_cli.cli_rendering`：純文字 success-line formatter，包含共用
+  workflow execution notice，以及 Output、Trigger、plan、Sequence、discovery、
+  read-only、inspection、write、workflow 與 artifact-success summary。
 - `powers_tool_cli.lifecycle_client`：Worker lifecycle HTTP request、response
   validation、dry-run 與錯誤 mapping。
 - `powers_tool_cli.request_primitives`：共用 argv parsing 與 JSON request fields。

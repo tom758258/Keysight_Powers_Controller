@@ -59,9 +59,10 @@ place.
   construction (`OperationRequest`, `TriggerRequest`, and related helpers).
 - `powers_tool_cli.cli_io`: stable JSON success/error envelope helpers and
   optional `--save-json` output.
-- `powers_tool_cli.cli_rendering`: pure human-readable success-line formatters
-  for shared Output, Trigger, plan, Sequence, discovery, read-only, inspection,
-  write, workflow, and artifact-success summaries.
+- `powers_tool_cli.cli_rendering`: pure human-readable success-line formatters,
+  including shared workflow execution notices, for Output, Trigger, plan,
+  Sequence, discovery, read-only, inspection, write, workflow, and
+  artifact-success summaries.
 - `powers_tool_cli.lifecycle_client`: Worker lifecycle HTTP request construction,
   response validation, dry-run handling, lifecycle output, and error mapping.
 - `powers_tool_cli.request_primitives`: shared argv parsing and JSON request
