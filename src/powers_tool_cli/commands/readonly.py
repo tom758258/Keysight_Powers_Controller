@@ -21,147 +21,70 @@ __all__ = [
 
 import argparse
 import csv
-import importlib.metadata
 import json
-import math
-import os
-import platform
-import signal
-import sys
-import tempfile
-import threading
 import time
-from collections.abc import Iterator, Sequence
-from contextlib import contextmanager
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import powers_tool_core.capabilities as capabilities
-import powers_tool_core.discovery as discovery_core
 import powers_tool_core.instrument_io as instrument_io_core
-import powers_tool_core.operations as operations
 import powers_tool_core.protection as protection_core
-import powers_tool_core.ramp_list as ramp_list_core
 import powers_tool_core.readonly as readonly_core
-import powers_tool_core.restore as restore_core
-import powers_tool_core.sequence as sequence
 import powers_tool_core.snapshot as snapshot_core
-import powers_tool_core.trigger as trigger_core
-import powers_tool_core.validation as validation
-from powers_tool_cli.cli_io import (
-    JsonSaveError,
-    SCHEMA_VERSION,
-    emit_json_error,
-    emit_json_success,
-    set_json_save_path,
-    set_json_start_time,
-)
 from powers_tool_cli import cli_rendering
-from powers_tool_cli.lifecycle_client import (
-    run_send_command as _run_send_command,
-    run_wait_ready_client as _run_wait_ready_client,
-    run_worker_status_client as _run_worker_status_client,
-    run_worker_stop_client as _run_worker_stop_client,
+from powers_tool_cli.cli_io import emit_json_success
+from powers_tool_cli.cli_request import (
+    _request_for_args,
+    _target_core_request_for_args,
+    _validate_readonly_request_for_args,
 )
+from powers_tool_cli.cli_runtime import (
+    _ReadOnlyChannelError,
+    _build_hardware_report,
+    _collect_readback,
+    _collect_status,
+    _compare_snapshot_data,
+    _connection_scpi_logger_for_args,
+    _core_opener_for_args,
+    _core_validation_code,
+    _diff_snapshots,
+    _emit_cli_error,
+    _emit_safe_io_error,
+    _emit_text_lines,
+    _format_text_value,
+    _load_snapshot_document,
+    _log_scpi,
+    _open_jsonl_log,
+    _open_resource,
+    _patchable_run_core_command,
+    _read_only_channels_from_selection,
+    _resolve_optional_resource_alias,
+    _resource_manager_for_args,
+    _resource_payload,
+    _snapshot_compare_tolerances,
+    _write_hardware_report_files,
+    _write_json_file_atomic,
+)
+from powers_tool_cli.commands.sequence_run import _cooperative_workflow_interrupt
 from powers_tool_cli.runtime_mapping import (
     execution_for_args as _execution_for_args,
     mode_for_args as _mode_for_args,
-    runtime_identity_for_args as _runtime_identity_for_args,
-    serial_options_for_args as _serial_options_for_args,
-    support_policy_mode_for_args as _support_policy_mode_for_args,
-    validation_execution_from_argv as _validation_execution_from_argv,
-    with_serial_request_fields as _with_serial_request_fields,
 )
-from powers_tool_cli.request_primitives import (
-    channel_from_argv as _channel_from_argv,
-    completion_pins_from_argv as _completion_pins_from_argv,
-    completion_request_fields_from_argv as _completion_request_fields_from_argv,
-    drop_none_setpoints as _drop_none_setpoints,
-    duration_from_argv as _duration_from_argv,
-    float_list_from_argv as _float_list_from_argv,
-    int_from_argv as _int_from_argv,
-    int_option_from_argv as _int_option_from_argv,
-    json_safe_number as _json_safe_number,
-    max_errors_from_argv as _max_errors_from_argv,
-    number_from_argv as _number_from_argv,
-    option_value as _option_value,
-    pin_from_argv as _pin_from_argv,
-    pins_from_argv as _pins_from_argv,
-    status_channel_from_argv as _status_channel_from_argv,
-    timeout_from_argv as _timeout_from_argv,
-    trigger_pins_for_args as _trigger_pins_for_args,
-    with_serial_request_fields_from_argv as _with_serial_request_fields_from_argv,
-    write_verification_request_fields as _write_verification_request_fields,
-    write_verification_request_fields_from_argv as _write_verification_request_fields_from_argv,
-)
-from powers_tool_core.connection import DEFAULT_TIMEOUT_MS, SerialOptions, list_resources, normalize_serial_termination, open_resource
-from powers_tool_core.command_runner import (
-    run_core_command,
-    validate_request_admission,
-    workflow_execution_summary,
-)
-from powers_tool_core.command_contract import command_parameter_names
+from powers_tool_core.command_runner import validate_request_admission
+from powers_tool_core.connection import SerialOptions
 from powers_tool_core.core import (
     CommandCancelled,
     ConfirmationRequiredError,
     CoreExecutionError,
     CoreIoError,
     CoreValidationError,
-    CoreVerificationError,
-    OperationRequest,
-    RuntimeOptions,
-    SequenceRequest,
-    StopCleanupError,
-    TriggerInterrupted,
-    TriggerRequest,
-    TriggerWaitTimeout,
-    UnsupportedChannelError,
     UnsupportedModelError,
 )
 from powers_tool_core.errors import VisaConnectionError
-from powers_tool_core.identity import (
-    IDENTITY_INDEXES,
-    IdentityResolutionError,
-    canonical_physical_model_id,
-    resolve_physical_model_identity,
-)
-from powers_tool_core.live_support import enforce_live_support_for_idn
-from powers_tool_core.support_policy import (
-    LiveSupportPolicyError,
-    SUPPORT_POLICY_MODE_PRODUCT,
-    SUPPORT_POLICY_MODE_VALIDATION,
-)
+from powers_tool_core.safety import SafetyConfigError
 from powers_tool_core.telemetry import TELEMETRY_ROW_FIELDS
-from powers_tool_core.model_resolution import validate_live_expected_model
-from powers_tool_core.models import parse_idn, resource_interface
-from powers_tool_core.safety import (
-    SafetyConfigError,
-    SafetyLimits,
-    SafetyValidationError,
-    load_safety_config_document,
-    resolve_safety_config,
-    validate_channel,
-    validate_setpoint,
-)
 from powers_tool_core.testing.simulator import SimulatedResourceManager
-from powers_tool_core.transport import dry_run_plan
 
-IDN_QUERY = "*IDN?"
-CLEAR_STATUS_COMMAND = "*CLS"
-ERROR_QUERY = "SYST:ERR?"
-MEASURE_VOLTAGE_QUERY = "MEAS:VOLT?"
-MEASURE_CURRENT_QUERY = "MEAS:CURR?"
-PROGRAMMED_VOLTAGE_QUERY = "VOLT?"
-PROGRAMMED_CURRENT_QUERY = "CURR?"
-OVP_TRIP_QUERY = "VOLT:PROT:TRIP?"
-OCP_TRIP_QUERY = "CURR:PROT:TRIP?"
 LOG_CSV_FIELDS = TELEMETRY_ROW_FIELDS
-from powers_tool_cli import cli_runtime
-from powers_tool_cli.cli_runtime import *
-from powers_tool_cli import cli_request
-from powers_tool_cli.cli_request import *
-from powers_tool_cli.commands.sequence_run import _cooperative_workflow_interrupt
 
 def _run_status(args: argparse.Namespace) -> int:
     result = _run_read_only_command(
@@ -873,4 +796,3 @@ def _collect_log_samples(
         "jsonl": args.jsonl,
         "append": args.append,
     }
-
