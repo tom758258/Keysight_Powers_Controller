@@ -243,6 +243,16 @@ PSM-2010 的 CH1 卡片會額外顯示目前實際 LOW/HIGH 輸出檔位的唯�
 uv run python -m pytest tests/webui -q -p no:cacheprovider
 ```
 
+焦點指令分類與工作接收驗證：
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests\webui\test_webui_api_jobs.py -q -p no:cacheprovider
+```
+
+WebUI 工作測試（`tests/webui/test_webui_api_jobs.py`）包含 Core → WebUI 指令分類
+drift guard，確保 `COMMAND_CONTRACTS` 中的所有正式 Core 指令皆明確劃分於
+`SHARED_CORE_COMMANDS` 或 `WEBUI_UNSUPPORTED_COMMANDS`，防止無聲遺漏或重疊。
+
 焦點啟動器與套件驗證：
 
 ```powershell

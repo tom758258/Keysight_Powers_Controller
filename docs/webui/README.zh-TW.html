@@ -339,6 +339,9 @@ commands 仍不支援；其他 transport 與 backend 仍會 fail closed。完整
 <p>只有 Core 精確矩陣中的命令會在上述連線開放。E3646A 的 USB 與 LAN 目前不在範圍內；其 protection、trigger/native LIST、snapshot/restore 與 completion pulse 也維持停用。</p>
 <h2 id="section-11">測試</h2>
 <div class="code-wrapper"><pre><code class="language-powershell">uv run python -m pytest tests/webui -q -p no:cacheprovider</code></pre></div>
+<p>焦點指令分類與工作接收驗證：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">.\.venv\Scripts\python.exe -m pytest tests\webui\test_webui_api_jobs.py -q -p no:cacheprovider</code></pre></div>
+<p>WebUI 工作測試（<code>tests/webui/test_webui_api_jobs.py</code>）包含 Core → WebUI 指令分類 drift guard，確保 <code>COMMAND_CONTRACTS</code> 中的所有正式 Core 指令皆明確劃分於 <code>SHARED_CORE_COMMANDS</code> 或 <code>WEBUI_UNSUPPORTED_COMMANDS</code>，防止無聲遺漏或重疊。</p>
 <p>聚焦 launcher 與套件驗證：</p>
 <div class="code-wrapper"><pre><code class="language-powershell">.\.venv\Scripts\python.exe -m pytest tests\webui\test_launcher.py tests\webui\test_webui_import.py tests\core\test_distribution_metadata.py -q -p no:cacheprovider</code></pre></div>
 <p>編輯 WebUI JavaScript 後，另執行：</p>

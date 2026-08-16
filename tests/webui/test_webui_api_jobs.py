@@ -547,3 +547,26 @@ def test_api_restore_requires_channel_before_job_or_lock(
     assert response.status_code == 400
     assert "restore-from-snapshot requires channel" in response.json()["detail"]
 
+
+def test_core_commands_are_explicitly_classified_in_webui() -> None:
+    from powers_tool_core.command_contract import COMMAND_CONTRACTS
+    from powers_tool_webui.commands import (
+        SHARED_CORE_COMMANDS,
+        WEBUI_UNSUPPORTED_COMMANDS,
+    )
+
+    core_commands = set(COMMAND_CONTRACTS)
+    shared_commands = set(SHARED_CORE_COMMANDS)
+    unsupported_commands = set(WEBUI_UNSUPPORTED_COMMANDS)
+
+    missing_classification = core_commands - shared_commands - unsupported_commands
+
+    assert not missing_classification, (
+        f"Core commands missing explicit WebUI classification: {sorted(missing_classification)}"
+    )
+    assert shared_commands <= core_commands, (
+        f"WebUI declares non-existent Core commands as shared: {sorted(shared_commands - core_commands)}"
+    )
+    assert shared_commands.isdisjoint(unsupported_commands), (
+        f"WebUI commands cannot be both shared and unsupported: {sorted(shared_commands & unsupported_commands)}"
+    )

@@ -629,6 +629,17 @@ disabled.
 uv run python -m pytest tests/webui -q -p no:cacheprovider
 ```
 
+Focused command classification and job admission validation:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests\webui\test_webui_api_jobs.py -q -p no:cacheprovider
+```
+
+WebUI job tests (`tests/webui/test_webui_api_jobs.py`) include a Core-to-WebUI
+command classification drift guard ensuring all formal Core commands in
+`COMMAND_CONTRACTS` are explicitly partitioned between `SHARED_CORE_COMMANDS`
+and `WEBUI_UNSUPPORTED_COMMANDS` without silent fallback or overlap.
+
 Focused launcher and package validation:
 
 ```powershell
