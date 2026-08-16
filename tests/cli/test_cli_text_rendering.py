@@ -524,7 +524,7 @@ def test_workflow_execution_notice_callers_keep_stderr_routing_and_gating(
 
 
 def test_cli_thin_adapters_emit_each_formatter_line(capsys) -> None:
-    cli._print_core_output_result(
+    output_run._print_core_output_result(
         argparse.Namespace(
             command="set",
             resource="USB0::SIM::E36312A::INSTR",
@@ -534,7 +534,7 @@ def test_cli_thin_adapters_emit_each_formatter_line(capsys) -> None:
         ),
         {},
     )
-    cli._print_sequence_summary(
+    sequence_run._print_sequence_summary(
         {"resource": "USB0::SIM::E36312A::INSTR", "status": "completed", "completed_steps": 2}
     )
 

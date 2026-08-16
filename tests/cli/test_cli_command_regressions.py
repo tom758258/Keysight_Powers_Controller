@@ -4,6 +4,7 @@ import pytest
 
 import powers_tool_core.connection as connection
 import powers_tool_cli.cli as cli
+import powers_tool_cli.cli_runtime as cli_runtime
 from powers_tool_core.errors import VisaConnectionError
 
 from tests.cli.cli_test_helpers import (
@@ -95,7 +96,7 @@ def test_new_real_commands_reject_non_e36312a(
     extra_args,
 ) -> None:
     session = FakeSession(idn="KEYSIGHT,UNKNOWN,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main([command, "--json", "--resource", OUTPUT_RESOURCE, *extra_args]) == 2
 
@@ -107,7 +108,7 @@ def test_new_command_open_failure_uses_connection_failed(monkeypatch, capsys) ->
     def fail_open_resource(*args, **kwargs):
         raise VisaConnectionError("open failed")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
 
     assert cli.main(["measure-all", "--json", "--resource", OUTPUT_RESOURCE]) == 1
 
@@ -124,7 +125,7 @@ def test_new_commands_log_scpi_to_stderr_without_corrupting_json(monkeypatch, ca
             "CURR? (@1)": "0.05",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -159,7 +160,7 @@ def test_new_commands_log_scpi_to_stderr_without_corrupting_json(monkeypatch, ca
 )
 def test_new_e36312a_commands_reject_non_e36312a(monkeypatch, capsys, command, extra_args) -> None:
     session = FakeSession(idn="KEYSIGHT,UNKNOWN,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main([command, "--json", "--resource", OUTPUT_RESOURCE, *extra_args]) == 2
 

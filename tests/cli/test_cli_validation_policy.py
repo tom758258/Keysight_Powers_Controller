@@ -3,6 +3,8 @@ import json
 import pytest
 
 import powers_tool_cli.cli as cli
+import powers_tool_cli.cli_request as cli_request
+import powers_tool_cli.cli_runtime as cli_runtime
 
 from tests.cli.cli_test_helpers import (
     OUTPUT_RESOURCE,
@@ -20,7 +22,7 @@ from tests.cli.cli_test_helpers import (
 )
 def test_live_policy_rejections_use_stable_validation_code(monkeypatch, capsys, argv) -> None:
     session = FakeSession(idn="KEYSIGHT,E36312A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main(argv) == 2
 
@@ -48,7 +50,7 @@ def test_hidden_validation_mode_is_parser_only_and_allows_registered_pending_sco
     assert "--validation-allow-pending-live-support" not in capsys.readouterr().out
 
     product_session = FakeSession(idn="KEYSIGHT,E36312A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: product_session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: product_session)
     assert (
         cli.main(
             [
@@ -70,7 +72,7 @@ def test_hidden_validation_mode_is_parser_only_and_allows_registered_pending_sco
         idn="KEYSIGHT,E36312A,SERIAL0000,1.0",
         query_responses={"MEAS:VOLT?": "1.0", "MEAS:CURR?": "0.05"},
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
     assert (
         cli.main(
             [
@@ -94,7 +96,7 @@ def test_hidden_validation_mode_keeps_no_hardware_feature_locks(monkeypatch, cap
     def fail_open_resource(*args, **kwargs):
         raise AssertionError("dry-run must not open VISA")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
     assert (
         cli.main(
             [
@@ -144,11 +146,11 @@ def test_hidden_validation_argument_is_accepted_and_suppressed_for_each_parser_f
 @pytest.mark.parametrize(
     ("argv", "builder"),
     [
-        (["set", "--resource", OUTPUT_RESOURCE, "--channel", "1", "--voltage", "1", "--current", "0.1"], cli._operation_request_for_args),
-        (["read-status", "--resource", OUTPUT_RESOURCE], cli._target_core_request_for_args),
-        (["trigger-abort", "--resource", OUTPUT_RESOURCE, "--channel", "1"], cli._trigger_request_for_args),
-        (["ramp-list", "--resource", OUTPUT_RESOURCE, "--segment", "1", "0.1", "0", "0.5", "0.5", "0", "0"], cli._ramp_list_request_for_args),
-        (["sequence", "--resource", OUTPUT_RESOURCE, "--file", "sequence.yaml"], cli._sequence_request_for_args),
+        (["set", "--resource", OUTPUT_RESOURCE, "--channel", "1", "--voltage", "1", "--current", "0.1"], cli_request._operation_request_for_args),
+        (["read-status", "--resource", OUTPUT_RESOURCE], cli_request._target_core_request_for_args),
+        (["trigger-abort", "--resource", OUTPUT_RESOURCE, "--channel", "1"], cli_request._trigger_request_for_args),
+        (["ramp-list", "--resource", OUTPUT_RESOURCE, "--segment", "1", "0.1", "0", "0.5", "0.5", "0", "0"], cli_request._ramp_list_request_for_args),
+        (["sequence", "--resource", OUTPUT_RESOURCE, "--file", "sequence.yaml"], cli_request._sequence_request_for_args),
     ],
 )
 @pytest.mark.parametrize("hidden", [False, True])

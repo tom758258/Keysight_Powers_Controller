@@ -1,6 +1,8 @@
 import json
 
 import powers_tool_cli.cli as cli
+import powers_tool_cli.cli_runtime as cli_runtime
+import powers_tool_cli.commands.readonly as readonly_commands
 from powers_tool_core.core import CoreExecutionError
 
 from tests.cli.cli_test_helpers import (
@@ -17,7 +19,7 @@ def test_protection_status_real_reads_flags_then_outputs(monkeypatch, capsys) ->
             "OUTP? (@2)": "OFF",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -58,7 +60,7 @@ def test_protection_status_real_edu36311a_includes_by_channel(monkeypatch, capsy
             "OUTP? (@3)": "OFF",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -118,7 +120,7 @@ def test_protection_set_requires_confirm_for_real_hardware(monkeypatch, capsys) 
     def fail_open_resource(*args, **kwargs):
         raise AssertionError("VISA resource should not be opened without --confirm")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
 
     assert (
         cli.main(
@@ -192,7 +194,7 @@ def test_protection_set_execution_error_writes_json_envelope(
     def fail(*_args, **_kwargs):
         raise CoreExecutionError(message)
 
-    monkeypatch.setattr(cli.protection_core, "run_protection", fail)
+    monkeypatch.setattr(readonly_commands.protection_core, "run_protection", fail)
 
     assert cli.main([
         "protection-set", "--simulate", "--json", "--resource", OUTPUT_RESOURCE,
@@ -215,7 +217,7 @@ def test_protection_set_dry_run_does_not_open_resource(monkeypatch, capsys) -> N
     def fail_open_resource(*args, **kwargs):
         raise AssertionError("VISA resource should not be opened for dry-run")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
 
     assert (
         cli.main(
@@ -258,7 +260,7 @@ def test_protection_set_dry_run_does_not_open_resource(monkeypatch, capsys) -> N
 
 def test_protection_set_real_sends_expected_scpi(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,E36312A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -310,7 +312,7 @@ def test_protection_set_real_sends_expected_scpi(monkeypatch, capsys) -> None:
 
 def test_protection_set_real_edu36311a_sends_expected_scpi(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,EDU36311A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(

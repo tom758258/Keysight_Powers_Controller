@@ -3,6 +3,7 @@ import json
 import pytest
 
 import powers_tool_cli.cli as cli
+import powers_tool_cli.cli_runtime as cli_runtime
 from powers_tool_core.core import CommandCancelled, StopCleanupError
 
 from tests.cli.cli_test_helpers import (
@@ -256,7 +257,7 @@ def test_ramp_simulate_json_does_not_open_resource(monkeypatch, capsys) -> None:
     def fail_open_resource(*args, **kwargs):
         raise AssertionError("VISA resource should not be opened for simulate ramp")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
 
     assert (
         cli.main(
@@ -285,7 +286,7 @@ def test_ramp_simulate_json_does_not_open_resource(monkeypatch, capsys) -> None:
 
 def test_ramp_real_writes_current_voltage_steps_and_exact_stop(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,E36312A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -323,7 +324,7 @@ def test_ramp_real_completion_uses_software_core_path(monkeypatch, capsys) -> No
             "CURR? (@1)": "0.05",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -438,7 +439,7 @@ def test_ramp_enable_output_shapes_dry_run_request_and_plan(capsys) -> None:
     ],
 )
 def test_ramp_cancellation_json_envelope(monkeypatch, capsys, exception, code) -> None:
-    monkeypatch.setattr(cli, "run_core_command", lambda *args, **kwargs: (_ for _ in ()).throw(exception))
+    monkeypatch.setattr(cli_runtime, "run_core_command", lambda *args, **kwargs: (_ for _ in ()).throw(exception))
 
     exit_code = cli.main([
         "ramp",
@@ -468,7 +469,7 @@ def test_ramp_list_lint_inline_does_not_open_resource(monkeypatch, capsys) -> No
     def fail_open_resource(*args, **kwargs):
         raise AssertionError("VISA resource should not be opened for ramp-list lint")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
 
     assert (
         cli.main(
@@ -669,7 +670,7 @@ def test_ramp_list_simulate_inline_does_not_open_resource(monkeypatch, capsys) -
     def fail_open_resource(*args, **kwargs):
         raise AssertionError("VISA resource should not be opened for ramp-list simulate")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
 
     assert (
         cli.main(
@@ -727,7 +728,7 @@ def test_ramp_list_real_executes_segments_in_order(monkeypatch, capsys) -> None:
         opened.append((args, kwargs))
         return session
 
-    monkeypatch.setattr(cli, "open_resource", fake_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fake_open_resource)
 
     assert (
         cli.main(
@@ -778,7 +779,7 @@ def test_ramp_list_real_forwards_serial_options_to_opener(monkeypatch, capsys) -
         opened.append(kwargs)
         return session
 
-    monkeypatch.setattr(cli, "open_resource", fake_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fake_open_resource)
 
     assert (
         cli.main(

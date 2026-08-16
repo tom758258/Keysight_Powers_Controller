@@ -12,6 +12,8 @@ import pytest
 
 import powers_tool_cli.cli as cli
 import powers_tool_cli.cli_parser as cli_parser
+import powers_tool_cli.cli_request as cli_request
+import powers_tool_cli.cli_runtime as cli_runtime
 from powers_tool_cli.commands import output, ramp_list, sequence, trigger
 
 
@@ -562,7 +564,7 @@ def test_trigger_parser_errors_keep_raw_request_order_and_do_not_dispatch(
 
     monkeypatch.setattr(cli_parser, "emit_json_error", capture_error)
     monkeypatch.setattr(cli, "_run_core_trigger", fail_dispatch)
-    monkeypatch.setattr(cli, "open_resource", fail_dispatch)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_dispatch)
 
     assert cli.main(argv) == 2
 
@@ -668,7 +670,7 @@ def test_trigger_parser_errors_preserve_special_raw_requests_before_emission(
     monkeypatch.setattr(cli_parser, "emit_json_error", capture_and_emit)
     monkeypatch.setattr(trigger, "run_trigger", fail_dispatch)
     monkeypatch.setattr(cli, "_run_core_trigger", fail_dispatch)
-    monkeypatch.setattr(cli, "open_resource", fail_dispatch)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_dispatch)
     monkeypatch.setattr(cli, "_log_scpi", fail_dispatch)
 
     assert cli.main(argv) == 2
@@ -729,7 +731,7 @@ def test_trigger_parser_error_messages_match_fixed_baselines(
 
     monkeypatch.setattr(trigger, "run_trigger", fail_dispatch)
     monkeypatch.setattr(cli, "_run_core_trigger", fail_dispatch)
-    monkeypatch.setattr(cli, "open_resource", fail_dispatch)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_dispatch)
     monkeypatch.setattr(cli, "_log_scpi", fail_dispatch)
 
     assert cli.main(argv) == 2
@@ -777,11 +779,11 @@ def test_cli_delegates_trigger_mapping_and_keeps_other_families_independent(
     monkeypatch.setattr(ramp_list, "request_for_args", lambda args: ramp_list_sentinel)
     monkeypatch.setattr(sequence, "request_for_args", lambda args: sequence_sentinel)
 
-    assert cli._request_for_args(argparse.Namespace(command="trigger-fire")) is parsed_sentinel
-    assert cli._request_from_argv("trigger-fire", ["trigger-fire"]) is raw_sentinel
-    assert cli._request_for_args(argparse.Namespace(command="set")) is output_sentinel
-    assert cli._request_for_args(argparse.Namespace(command="ramp-list")) is ramp_list_sentinel
-    assert cli._request_for_args(argparse.Namespace(command="sequence")) is sequence_sentinel
+    assert cli_request._request_for_args(argparse.Namespace(command="trigger-fire")) is parsed_sentinel
+    assert cli_request._request_from_argv("trigger-fire", ["trigger-fire"]) is raw_sentinel
+    assert cli_request._request_for_args(argparse.Namespace(command="set")) is output_sentinel
+    assert cli_request._request_for_args(argparse.Namespace(command="ramp-list")) is ramp_list_sentinel
+    assert cli_request._request_for_args(argparse.Namespace(command="sequence")) is sequence_sentinel
     assert calls == ["parsed", "raw"]
 
 

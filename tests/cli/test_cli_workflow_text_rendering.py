@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 
 import powers_tool_cli.cli as cli
+import powers_tool_cli.cli_runtime as cli_runtime
 from powers_tool_cli import cli_rendering
 from powers_tool_cli.commands import readonly as readonly_commands
 
@@ -203,7 +204,7 @@ def test_p3_core_backed_runners_delegate_text_success(
             ],
         }
 
-    monkeypatch.setattr(cli.protection_core, "run_protection", run_protection)
+    monkeypatch.setattr(readonly_commands.protection_core, "run_protection", run_protection)
     monkeypatch.setattr(cli_rendering, "format_clear_protection_success", sentinel)
     assert cli.main(["clear-protection", "--resource", SIM_RESOURCE, "--channel", "1", "--confirm"]) == 0
     assert capsys.readouterr().out == "formatter sentinel\n"
@@ -244,7 +245,7 @@ def test_p3_json_and_error_paths_skip_success_formatters(
     assert cli.main(["clear", "--simulate", "--json", "--resource", SIM_RESOURCE]) == 0
     assert json.loads(capsys.readouterr().out)["schema_version"] == 2
 
-    monkeypatch.setattr(cli.protection_core, "run_protection", lambda *_args, **_kwargs: {"resource": SIM_RESOURCE, "channels": []})
+    monkeypatch.setattr(readonly_commands.protection_core, "run_protection", lambda *_args, **_kwargs: {"resource": SIM_RESOURCE, "channels": []})
     monkeypatch.setattr(cli_rendering, "format_protection_set_success", fail_formatter)
     assert cli.main([
         "protection-set", "--json", "--resource", SIM_RESOURCE, "--channel", "1", "--ovp-voltage", "5", "--confirm",
@@ -260,7 +261,7 @@ def test_p3_json_and_error_paths_skip_success_formatters(
 
     monkeypatch.setattr(cli_rendering, "format_clear_protection_success", fail_formatter)
     monkeypatch.setattr(
-        cli.protection_core,
+        readonly_commands.protection_core,
         "run_protection",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(
             cli.ConfirmationRequiredError("confirmation required")
@@ -299,7 +300,7 @@ def test_p3_core_io_and_workflow_interruption_skip_success_formatters(
 
     monkeypatch.setattr(cli_rendering, "format_sequence_lint_summary", fail_formatter)
     monkeypatch.setattr(
-        cli,
+        cli_runtime,
         "run_core_command",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(cli.CommandCancelled("sequence stopped")),
     )

@@ -3,6 +3,7 @@ import json
 import pytest
 
 import powers_tool_cli.cli as cli
+import powers_tool_cli.cli_runtime as cli_runtime
 
 from tests.cli.cli_test_helpers import FakeSession
 def test_e3646a_dry_run_all_expands_two_channels_and_rejects_three(capsys) -> None:
@@ -41,7 +42,7 @@ def test_e3646a_real_output_affecting_commands_success(monkeypatch, capsys, comm
             "MEAS:CURR?": "0.05",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main([command, "--json", "--resource", "ASRL1::INSTR", *extra_args]) == 0
 
@@ -50,7 +51,7 @@ def test_e3646a_real_output_on_uses_promoted_asrl_product_scope(monkeypatch, cap
         idn="KEYSIGHT,E3646A,SERIAL0000,1.0",
         query_responses={"INST:NSEL?": "1", "VOLT?": "1.0", "CURR?": "0.05"},
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -88,7 +89,7 @@ def test_e3646a_real_protection_commands_remain_disabled(monkeypatch, capsys, co
             "OUTP?": "0",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main([command, "--json", "--resource", "ASRL1::INSTR", *extra_args]) == 2
 
@@ -111,7 +112,7 @@ def test_e3646a_real_protection_commands_remain_disabled(monkeypatch, capsys, co
 )
 def test_e3646a_real_trigger_write_workflows_remain_disabled(monkeypatch, capsys, command, extra_args) -> None:
     session = FakeSession(idn="KEYSIGHT,E3646A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main([command, "--json", "--resource", "ASRL1::INSTR", *extra_args]) == 2
 

@@ -50,11 +50,12 @@ place.
 
 ## Package Contents
 
-- `powers_tool_cli.cli`: top-level orchestration (`build_parser`, `main`), public
-  re-exports, and Core-delegated handlers that tests inspect directly
-  (`_run_core_trigger`, `_run_sequence`, `_run_restore_from_snapshot`).
+- `powers_tool_cli.cli`: top-level composition and entry point (`build_parser`,
+  `main`), explicit wiring of command-owner handlers, and the retained
+  Core-delegated handlers (`_run_core_trigger`, `_run_sequence`,
+  `_run_restore_from_snapshot`).
 - `powers_tool_cli.cli_runtime`: shared resource I/O, safety resolution, JSON
-  file helpers, error/exit emission, and patchable Core connection bindings.
+  file helpers, error/exit emission, and direct Core/resource adapters.
 - `powers_tool_cli.cli_request`: JSON request envelopes and Core request
   construction (`OperationRequest`, `TriggerRequest`, and related helpers).
 - `powers_tool_cli.cli_io`: stable JSON success/error envelope helpers and
@@ -113,11 +114,13 @@ Parser construction binds explicit runner callables. Command-family modules
 import shared argparse primitives directly from `powers_tool_cli.cli_parser`
 and receive only their own execution callback; parsed argparse Namespaces do
 not carry the top-level `powers_tool_cli.cli` module or another service-locator
-object. Request mapping remains owned by the command-family modules and the
-existing CLI facades.
+object. Command handlers, parser registration, and request mapping remain
+owned by their command-family modules; `cli.py` is the composition root rather
+than a re-export facade.
 
 The CLI owns argument parsing, request mapping, human and machine rendering,
-JSON/JSONL envelopes, exit-code mapping, and compatibility surfaces. Core owns
+JSON/JSONL envelopes, exit-code mapping, and top-level composition. The three
+retained root handlers above remain implemented by `cli.py`. Core owns
 IDN/model resolution, capability metadata, exact live-support admission, driver
 selection, and model-specific execution. `validate-readonly` uses the narrow
 `powers_tool_core.readonly.run_validate_readonly()` adapter boundary; it is not

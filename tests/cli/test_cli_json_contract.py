@@ -3,6 +3,7 @@ import json
 import pytest
 
 import powers_tool_cli.cli as cli
+import powers_tool_cli.cli_runtime as cli_runtime
 
 
 SIM_RESOURCE = "USB0::SIM::E36312A::INSTR"
@@ -538,7 +539,7 @@ def test_validation_error_json_keeps_contract_and_does_not_touch_visa(
     def fail_open_resource(*args, **kwargs):
         raise AssertionError("real VISA resource should not be opened")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
 
     exit_code, payload = parse_json_result(
         [
@@ -572,7 +573,7 @@ def test_ramp_list_file_admission_failure_does_not_touch_hardware(
         opener_calls.append((args, kwargs))
         raise AssertionError("VISA resource must not be opened for admission failure")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
 
     exit_code, payload = parse_json_result(
         [

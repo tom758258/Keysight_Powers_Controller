@@ -4,6 +4,8 @@ import pytest
 
 import powers_tool_core.connection as connection
 import powers_tool_cli.cli as cli
+import powers_tool_cli.cli_request as cli_request
+import powers_tool_cli.cli_runtime as cli_runtime
 from powers_tool_core.errors import VisaConnectionError
 
 from tests.cli.cli_test_helpers import (
@@ -12,7 +14,7 @@ from tests.cli.cli_test_helpers import (
 )
 def test_list_resources_prints_backend_resources(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
-        cli,
+        cli_runtime,
         "list_resources",
         lambda *, backend=None: ("USB0::A::INSTR", "TCPIP0::B::INSTR"),
     )
@@ -24,7 +26,7 @@ def test_list_resources_prints_backend_resources(monkeypatch, capsys) -> None:
     assert captured.err == ""
 
 def test_list_resources_prints_empty_message(monkeypatch, capsys) -> None:
-    monkeypatch.setattr(cli, "list_resources", lambda *, backend=None: ())
+    monkeypatch.setattr(cli_runtime, "list_resources", lambda *, backend=None: ())
 
     assert cli.main(["list-resources"]) == 0
 
@@ -34,7 +36,7 @@ def test_list_resources_prints_empty_message(monkeypatch, capsys) -> None:
 
 def test_list_resources_live_only_prints_openable_idn_resources(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
-        cli,
+        cli_runtime,
         "list_resources",
         lambda *, backend=None: ("USB0::FAKE::INSTR", "USB0::DEAD::INSTR"),
     )
@@ -44,7 +46,7 @@ def test_list_resources_live_only_prints_openable_idn_resources(monkeypatch, cap
             raise VisaConnectionError("not reachable")
         return FakeSession("KEYSIGHT,UNKNOWN,SERIAL0000,1.0")
 
-    monkeypatch.setattr(cli, "open_resource", fake_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fake_open_resource)
 
     assert cli.main(["list-resources", "--live-only"]) == 0
 
@@ -57,9 +59,9 @@ def test_list_resources_live_only_prints_openable_idn_resources(monkeypatch, cap
     assert captured.err == ""
 
 def test_list_resources_live_only_can_log_scpi(monkeypatch, capsys) -> None:
-    monkeypatch.setattr(cli, "list_resources", lambda *, backend=None: ("USB0::FAKE::INSTR",))
+    monkeypatch.setattr(cli_runtime, "list_resources", lambda *, backend=None: ("USB0::FAKE::INSTR",))
     monkeypatch.setattr(
-        cli,
+        cli_runtime,
         "open_resource",
         lambda resource, *, backend=None, timeout_ms=5000: FakeSession(
             "KEYSIGHT,UNKNOWN,SERIAL0000,1.0"
@@ -84,7 +86,7 @@ def test_verify_prints_idn_response(monkeypatch, capsys) -> None:
         opened.append((resource, backend, timeout_ms))
         return FakeSession("KEYSIGHT,UNKNOWN,SERIAL0000,1.0")
 
-    monkeypatch.setattr(cli, "open_resource", fake_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fake_open_resource)
 
     assert (
         cli.main(
@@ -109,8 +111,8 @@ def test_verify_prints_idn_response(monkeypatch, capsys) -> None:
 @pytest.mark.parametrize("model", ["E36103B", "E36232A"])
 def test_identity_diagnostics_report_descoped_raw_idn(monkeypatch, capsys, model: str) -> None:
     raw_idn = f"KEYSIGHT,{model},SERIAL0000,1.0"
-    monkeypatch.setattr(cli, "list_resources", lambda *, backend=None: ("USB0::FAKE::INSTR",))
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: FakeSession(raw_idn))
+    monkeypatch.setattr(cli_runtime, "list_resources", lambda *, backend=None: ("USB0::FAKE::INSTR",))
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: FakeSession(raw_idn))
 
     assert cli.main(["verify", "--resource", "USB0::FAKE::INSTR"]) == 0
     assert capsys.readouterr().out == f"{raw_idn}\n"
@@ -127,7 +129,7 @@ def test_verify_serial_flags_are_forwarded_to_opener(monkeypatch, capsys) -> Non
         opened.append((resource, backend, timeout_ms, kwargs))
         return FakeSession("KEYSIGHT,E3646A,SERIAL0000,1.0")
 
-    monkeypatch.setattr(cli, "open_resource", fake_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fake_open_resource)
 
     assert (
         cli.main(
@@ -185,7 +187,7 @@ def test_verify_serial_termination_aliases_are_normalized_for_runtime(
         opened.append(kwargs)
         return FakeSession("KEYSIGHT,E3646A,SERIAL0000,1.0")
 
-    monkeypatch.setattr(cli, "open_resource", fake_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fake_open_resource)
 
     assert cli.main(["verify", "--resource", "ASRL1::INSTR", flag, alias]) == 0
 
@@ -200,7 +202,7 @@ def test_verify_serial_termination_none_does_not_create_serial_options(monkeypat
         opened.append(kwargs)
         return FakeSession("KEYSIGHT,E3646A,SERIAL0000,1.0")
 
-    monkeypatch.setattr(cli, "open_resource", fake_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fake_open_resource)
 
     assert cli.main(["verify", "--resource", "ASRL1::INSTR", "--serial-read-termination", "NONE"]) == 0
 
@@ -209,7 +211,7 @@ def test_verify_serial_termination_none_does_not_create_serial_options(monkeypat
 
 def test_verify_json_serial_termination_alias_uses_normalized_request_value(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
-        cli,
+        cli_runtime,
         "open_resource",
         lambda resource, *, backend=None, timeout_ms=5000, **kwargs: FakeSession(
             "KEYSIGHT,E3646A,SERIAL0000,1.0"
@@ -238,7 +240,7 @@ def test_verify_json_serial_termination_alias_uses_normalized_request_value(monk
 
 def test_verify_json_omits_serial_options_when_not_provided(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
-        cli,
+        cli_runtime,
         "open_resource",
         lambda resource, *, backend=None, timeout_ms=5000: FakeSession(
             "KEYSIGHT,E3646A,SERIAL0000,1.0"
@@ -256,7 +258,7 @@ def test_verify_returns_failure_when_resource_cannot_be_queried(monkeypatch, cap
     def fake_open_resource(resource, *, backend=None, timeout_ms=5000):
         raise VisaConnectionError("not reachable")
 
-    monkeypatch.setattr(cli, "open_resource", fake_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fake_open_resource)
 
     assert cli.main(["verify", "--resource", "USB0::DEAD::INSTR"]) == 1
 
@@ -266,7 +268,7 @@ def test_verify_returns_failure_when_resource_cannot_be_queried(monkeypatch, cap
 
 def test_list_resources_json_prints_machine_readable_payload(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
-        cli,
+        cli_runtime,
         "list_resources",
         lambda resource_manager=None, *, backend=None: ("USB0::A::INSTR",),
     )
@@ -306,7 +308,7 @@ def test_list_resources_json_failure_uses_stable_error_code(monkeypatch, capsys)
     def fail_list_resources(resource_manager=None, *, backend=None):
         raise VisaConnectionError("backend unavailable")
 
-    monkeypatch.setattr(cli, "list_resources", fail_list_resources)
+    monkeypatch.setattr(cli_runtime, "list_resources", fail_list_resources)
 
     assert cli.main(["list-resources", "--json"]) == 1
 
@@ -336,7 +338,7 @@ def test_list_resources_json_failure_uses_stable_error_code(monkeypatch, capsys)
 
 def test_verify_json_prints_machine_readable_payload(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
-        cli,
+        cli_runtime,
         "open_resource",
         lambda resource, resource_manager=None, *, backend=None, timeout_ms=5000: FakeSession(
             "KEYSIGHT,UNKNOWN,SERIAL0000,1.0"
@@ -381,7 +383,7 @@ def test_verify_json_failure_prints_error_payload(monkeypatch, capsys) -> None:
     def fake_open_resource(resource, resource_manager=None, *, backend=None, timeout_ms=5000):
         raise VisaConnectionError("not reachable")
 
-    monkeypatch.setattr(cli, "open_resource", fake_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fake_open_resource)
 
     assert cli.main(["verify", "--resource", "USB0::DEAD::INSTR", "--json"]) == 1
 
@@ -456,14 +458,14 @@ def test_verify_model_maps_to_live_expected_model_id() -> None:
         ]
     )
 
-    request = cli._target_core_request_for_args(args)
+    request = cli_request._target_core_request_for_args(args)
 
     assert request.runtime.expected_model_id == "keysight-e3646a"
     assert request.runtime.planning_model_id is None
 
 def test_verify_expected_model_mismatch_stops_after_idn(monkeypatch, capsys) -> None:
     session = FakeSession("Agilent Technologies,E3646A,0,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(

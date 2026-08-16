@@ -12,6 +12,7 @@ import pytest
 
 import powers_tool_cli.cli as cli
 import powers_tool_cli.lifecycle_client as lifecycle_client
+from powers_tool_cli.commands import inspection, lifecycle as lifecycle_commands
 
 
 LIFECYCLE_COMMANDS = (
@@ -196,11 +197,11 @@ EXPECTED_ACTIONS = {
     ),
 }
 EXPECTED_RUNNERS = {
-    "worker": cli._run_worker,
-    "send-command": cli._run_send_command,
-    "status": cli._run_worker_status_client,
-    "stop": cli._run_worker_stop_client,
-    "wait-ready": cli._run_wait_ready_client,
+    "worker": inspection._run_worker,
+    "send-command": lifecycle_commands.run_send_command,
+    "status": lifecycle_commands.run_worker_status_client,
+    "stop": lifecycle_commands.run_worker_stop_client,
+    "wait-ready": lifecycle_commands.run_wait_ready_client,
 }
 
 EXPECTED_HELP = {
@@ -360,7 +361,7 @@ def test_lifecycle_registration_preserves_actions_order_and_runner_identity() ->
                 "config": None,
                 "events_jsonl": None,
             },
-            cli._run_worker,
+            inspection._run_worker,
         ),
         (
             [
@@ -384,7 +385,7 @@ def test_lifecycle_registration_preserves_actions_order_and_runner_identity() ->
                 "format": "text",
                 "json": False,
             },
-            cli._run_send_command,
+            lifecycle_commands.run_send_command,
         ),
         (
             ["status"],
@@ -398,7 +399,7 @@ def test_lifecycle_registration_preserves_actions_order_and_runner_identity() ->
                 "format": "text",
                 "json": False,
             },
-            cli._run_worker_status_client,
+            lifecycle_commands.run_worker_status_client,
         ),
         (
             ["stop"],
@@ -412,7 +413,7 @@ def test_lifecycle_registration_preserves_actions_order_and_runner_identity() ->
                 "format": "text",
                 "json": False,
             },
-            cli._run_worker_stop_client,
+            lifecycle_commands.run_worker_stop_client,
         ),
         (
             ["wait-ready"],
@@ -427,7 +428,7 @@ def test_lifecycle_registration_preserves_actions_order_and_runner_identity() ->
                 "format": "text",
                 "json": False,
             },
-            cli._run_wait_ready_client,
+            lifecycle_commands.run_wait_ready_client,
         ),
     ],
 )
@@ -456,14 +457,14 @@ def test_lifecycle_parser_errors_preserve_json_envelope_and_do_not_dispatch(monk
     def fail_dispatch(*_args: object, **_kwargs: object) -> int:
         raise AssertionError("parser failure must not dispatch a lifecycle runner")
 
+    monkeypatch.setattr(inspection, "_run_worker", fail_dispatch)
     for name in (
-        "_run_worker",
-        "_run_send_command",
-        "_run_worker_status_client",
-        "_run_worker_stop_client",
-        "_run_wait_ready_client",
+        "run_send_command",
+        "run_worker_status_client",
+        "run_worker_stop_client",
+        "run_wait_ready_client",
     ):
-        monkeypatch.setattr(cli, name, fail_dispatch)
+        monkeypatch.setattr(lifecycle_commands, name, fail_dispatch)
     monkeypatch.setattr(lifecycle_client.urllib.request, "urlopen", fail_dispatch)
 
     assert cli.main(["send-command", "--json"]) == 2

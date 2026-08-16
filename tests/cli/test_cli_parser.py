@@ -13,10 +13,17 @@ import pytest
 
 import powers_tool_cli.cli as cli
 import powers_tool_cli.cli_parser as cli_parser
-from powers_tool_cli.commands import output as output_commands
-from powers_tool_cli.commands import ramp_list as ramp_list_commands
-from powers_tool_cli.commands import sequence as sequence_commands
-from powers_tool_cli.commands import trigger as trigger_commands
+from powers_tool_cli.commands import (
+    discovery,
+    inspection,
+    output as output_commands,
+    output_run,
+    ramp_list as ramp_list_commands,
+    readonly,
+    sequence as sequence_commands,
+    sequence_run,
+    trigger as trigger_commands,
+)
 
 
 PARSER_PRIMITIVES = (
@@ -104,29 +111,59 @@ FAMILY_RUNNER_BINDINGS = {
 PARSER_RUNNER_BINDINGS = ROOT_RUNNER_BINDINGS | FAMILY_RUNNER_BINDINGS
 
 
+PARSER_RUNNER_EXPRESSIONS = {
+    "run_list_resources": "discovery._run_list_resources",
+    "run_verify": "discovery._run_verify",
+    "run_clear": "discovery._run_clear",
+    "run_error": "discovery._run_error",
+    "run_measure": "discovery._run_measure",
+    "run_measure_all": "discovery._run_measure_all",
+    "run_status": "readonly._run_status",
+    "run_validate_readonly": "readonly._run_validate_readonly",
+    "run_readback": "readonly._run_readback",
+    "run_protection_status": "readonly._run_protection_status",
+    "run_protection_set": "readonly._run_protection_set",
+    "run_clear_protection": "readonly._run_clear_protection",
+    "run_identify": "readonly._run_identify",
+    "run_snapshot": "readonly._run_snapshot",
+    "run_snapshot_diff": "readonly._run_snapshot_diff",
+    "run_hardware_report": "readonly._run_hardware_report",
+    "run_restore_from_snapshot": "_run_restore_from_snapshot",
+    "run_log": "readonly._run_log",
+    "run_doctor": "inspection._run_doctor",
+    "run_capabilities": "inspection._run_capabilities",
+    "run_safety_inspect": "inspection._run_safety_inspect",
+    "run_worker": "inspection._run_worker",
+    "run_output_plan": "output_run._run_output_plan",
+    "run_core_trigger": "_run_core_trigger",
+    "run_sequence_command": "_run_sequence",
+    "run_ramp_list_command": "sequence_run._run_ramp_list",
+}
+
+
 ROOT_COMMAND_HANDLERS = {
-    ("list-resources",): cli._run_list_resources,
-    ("verify",): cli._run_verify,
-    ("clear",): cli._run_clear,
-    ("error",): cli._run_error,
-    ("measure",): cli._run_measure,
-    ("measure-all",): cli._run_measure_all,
-    ("read-status",): cli._run_status,
-    ("validate-readonly",): cli._run_validate_readonly,
-    ("readback",): cli._run_readback,
-    ("protection-status",): cli._run_protection_status,
-    ("protection-set",): cli._run_protection_set,
-    ("clear-protection",): cli._run_clear_protection,
-    ("identify",): cli._run_identify,
-    ("snapshot",): cli._run_snapshot,
-    ("snapshot-diff",): cli._run_snapshot_diff,
-    ("hardware-report",): cli._run_hardware_report,
+    ("list-resources",): discovery._run_list_resources,
+    ("verify",): discovery._run_verify,
+    ("clear",): discovery._run_clear,
+    ("error",): discovery._run_error,
+    ("measure",): discovery._run_measure,
+    ("measure-all",): discovery._run_measure_all,
+    ("read-status",): readonly._run_status,
+    ("validate-readonly",): readonly._run_validate_readonly,
+    ("readback",): readonly._run_readback,
+    ("protection-status",): readonly._run_protection_status,
+    ("protection-set",): readonly._run_protection_set,
+    ("clear-protection",): readonly._run_clear_protection,
+    ("identify",): readonly._run_identify,
+    ("snapshot",): readonly._run_snapshot,
+    ("snapshot-diff",): readonly._run_snapshot_diff,
+    ("hardware-report",): readonly._run_hardware_report,
     ("restore-from-snapshot",): cli._run_restore_from_snapshot,
-    ("log",): cli._run_log,
-    ("doctor",): cli._run_doctor,
-    ("capabilities",): cli._run_capabilities,
-    ("safety", "inspect"): cli._run_safety_inspect,
-    ("worker",): cli._run_worker,
+    ("log",): readonly._run_log,
+    ("doctor",): inspection._run_doctor,
+    ("capabilities",): inspection._run_capabilities,
+    ("safety", "inspect"): inspection._run_safety_inspect,
+    ("worker",): inspection._run_worker,
 }
 
 
@@ -136,7 +173,7 @@ FAMILY_HANDLER_BINDINGS = (
         output_commands,
         "run_output_plan",
         output_commands.run_output,
-        cli._run_output_plan,
+        output_run._run_output_plan,
         (
             ("set",),
             ("output-on",),
@@ -180,7 +217,7 @@ FAMILY_HANDLER_BINDINGS = (
         ramp_list_commands,
         "run_ramp_list_command",
         ramp_list_commands.run_ramp_list,
-        cli._run_ramp_list,
+        sequence_run._run_ramp_list,
         (("ramp-list",),),
         ("ramp-list", "--segment", "1", "0.1", "0", "1", "0.1", "100", "0"),
     ),
@@ -219,9 +256,11 @@ def _function_node(tree: ast.Module, name: str) -> ast.FunctionDef:
     )
 
 
-def test_cli_parser_primitives_have_one_owner_and_keep_facade_imports() -> None:
+def test_cli_parser_primitives_have_one_owner_without_cli_facade_reexports() -> None:
+    assert cli.JsonCliArgumentParser is cli_parser.JsonCliArgumentParser
     for name in PARSER_PRIMITIVES:
-        assert getattr(cli, name) is getattr(cli_parser, name)
+        if name != "JsonCliArgumentParser":
+            assert not hasattr(cli, name)
 
     source = Path(cli.__file__).read_text(encoding="utf-8")
     tree = ast.parse(source)
@@ -408,8 +447,7 @@ def test_cli_build_parser_does_not_pass_whole_module() -> None:
     assert {keyword.arg for keyword in call.keywords} == set(PARSER_RUNNER_BINDINGS)
     for keyword in call.keywords:
         assert keyword.arg is not None
-        assert isinstance(keyword.value, ast.Name)
-        assert keyword.value.id == PARSER_RUNNER_BINDINGS[keyword.arg]
+        assert ast.unparse(keyword.value) == PARSER_RUNNER_EXPRESSIONS[keyword.arg]
 
 
 def test_cli_parser_registers_each_family_with_its_explicit_callback() -> None:
@@ -509,7 +547,7 @@ def test_cli_main_does_not_add_runtime_to_args(monkeypatch: pytest.MonkeyPatch) 
         captured_args = args_obj
         return 0
 
-    monkeypatch.setattr(cli, "_run_doctor", mock_doctor)
+    monkeypatch.setattr(inspection, "_run_doctor", mock_doctor)
 
     assert cli.main(["doctor", "--simulate", "--json"]) == 0
     assert captured_args is not None

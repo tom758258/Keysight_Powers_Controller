@@ -13,7 +13,6 @@ __all__ = [
     "_normalize_positive_integral_core_channel",
     "_output_off_resource_payload",
     "_output_on_resource_payload",
-    "_output_plan_description",
     "_output_state_resource_payload",
     "_print_core_output_result",
     "_print_output_plan",
@@ -717,20 +716,6 @@ def _append_completion_pulse_plan(args: argparse.Namespace, plan: dict[str, Any]
         polarity=args.completion_pulse_polarity,
         source="bus",
     )
-
-def _output_plan_description(command: str) -> str:
-    descriptions = {
-        "set": "Preview setting voltage, current limit, or both.",
-        "output-on": "Preview enabling the selected output channel.",
-        "output-off": "Preview disabling the selected output channel.",
-        "safe-off": "Preview a conservative output-off action without channel expansion.",
-        "output-state": "Preview reading the selected output channel state.",
-        "cycle-output": "Preview briefly enabling then disabling the selected output channel.",
-        "apply": "Preview setting current, voltage, then enabling output.",
-        "ramp": "Preview setting current, then stepping voltage setpoints without changing output state.",
-        "smoke-output": "Preview a guarded set, output, measure, and safe-off sequence.",
-    }
-    return descriptions[command]
 
 def _print_output_plan(plan: dict[str, Any], *, mode: str, dry_run: bool) -> None:
     _emit_text_lines(

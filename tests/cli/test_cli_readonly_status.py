@@ -4,6 +4,7 @@ import pytest
 
 import powers_tool_core.connection as connection
 import powers_tool_cli.cli as cli
+import powers_tool_cli.cli_runtime as cli_runtime
 
 from tests.cli.cli_test_helpers import (
     OUTPUT_RESOURCE,
@@ -19,7 +20,7 @@ def test_status_real_reads_errors_then_outputs(monkeypatch, capsys) -> None:
             "OUTP? (@3)": "1",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main(["read-status", "--json", "--resource", OUTPUT_RESOURCE]) == 0
 
@@ -55,7 +56,7 @@ def test_status_real_edu36311a_reads_errors_then_outputs(monkeypatch, capsys) ->
             "OUTP? (@3)": "0",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main(["read-status", "--json", "--resource", "USB0::FAKE::EDU36311A::INSTR"]) == 0
 
@@ -88,7 +89,7 @@ def test_status_real_e3646a_reads_errors_then_outputs_with_preselection(monkeypa
         opened.append((resource, kwargs))
         return session
 
-    monkeypatch.setattr(cli, "open_resource", fake_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fake_open_resource)
 
     assert (
         cli.main(
@@ -196,7 +197,7 @@ def test_validate_readonly_real_sends_expected_scpi_for_supported_models(
             "MEAS:CURR? (@3)": "0.33",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main(["validate-readonly", "--json", "--resource", resource]) == 0
 
@@ -239,7 +240,7 @@ def test_validate_readonly_real_sends_expected_scpi_for_supported_models(
 
 def test_validate_readonly_rejects_generic_model(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,UNKNOWN,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main(["validate-readonly", "--json", "--resource", OUTPUT_RESOURCE]) == 2
 
@@ -287,7 +288,7 @@ def test_validate_readonly_log_scpi_to_stderr_without_corrupting_json(monkeypatc
             "MEAS:CURR? (@3)": "0.33",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main(["validate-readonly", "--json", "--resource", OUTPUT_RESOURCE, "--log-scpi"]) == 0
 
@@ -326,7 +327,7 @@ def test_status_real_one_channel_text(monkeypatch, capsys) -> None:
             "OUTP? (@2)": "OFF",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main(["read-status", "--resource", OUTPUT_RESOURCE, "--channel", "2"]) == 0
 
@@ -335,7 +336,7 @@ def test_status_real_one_channel_text(monkeypatch, capsys) -> None:
 
 def test_status_unsupported_channel_is_argument_error(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,E36312A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main(["read-status", "--json", "--resource", OUTPUT_RESOURCE, "--channel", "99"]) == 2
 
@@ -367,7 +368,7 @@ def test_status_scpi_failure_uses_status_failed(monkeypatch, capsys) -> None:
         idn="KEYSIGHT,E36312A,SERIAL0000,1.0",
         query_responses={"SYST:ERR?": '0,"No error"'},
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main(["read-status", "--json", "--resource", OUTPUT_RESOURCE]) == 1
 
@@ -387,7 +388,7 @@ def test_readback_real_e36312a_sends_expected_scpi(monkeypatch, capsys) -> None:
             "CURR? (@3)": "0.15",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main(["readback", "--json", "--resource", OUTPUT_RESOURCE]) == 0
 
@@ -416,7 +417,7 @@ def test_readback_real_edu36311a_sends_expected_scpi(monkeypatch, capsys) -> Non
             "CURR? (@2)": "0.10",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -452,7 +453,7 @@ def test_readback_real_forwards_serial_options_to_opener(monkeypatch, capsys) ->
             },
         )
 
-    monkeypatch.setattr(cli, "open_resource", fake_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fake_open_resource)
 
     assert (
         cli.main(
@@ -493,7 +494,7 @@ def test_readback_real_e3646a_preselects_and_restores_channel(monkeypatch, capsy
             "CURR?": "0.10",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -527,7 +528,7 @@ def test_readback_real_e3646a_preselects_and_restores_channel(monkeypatch, capsy
 
 def test_readback_real_e3646a_rejects_channel_outside_driver_capabilities(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,E3646A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main(["readback", "--json", "--resource", "ASRL1::INSTR", "--channel", "3"]) == 2
 
@@ -560,7 +561,7 @@ def test_readback_serial_remote_local_log_scpi_stays_on_stderr(monkeypatch, caps
             scpi_logger(resource, ">>", "SYST:REM")
         return FakeSerialSession(resource, scpi_logger if kwargs.get("serial_local_on_close") else None)
 
-    monkeypatch.setattr(cli, "open_resource", fake_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fake_open_resource)
 
     assert (
         cli.main(
@@ -589,7 +590,7 @@ def test_readback_log_scpi_to_stderr_without_corrupting_json(monkeypatch, capsys
         idn="KEYSIGHT,E36312A,SERIAL0000,1.0",
         query_responses={"VOLT? (@1)": "1.0", "CURR? (@1)": "0.05"},
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(

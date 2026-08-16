@@ -1,6 +1,7 @@
 import json
 
 import powers_tool_cli.cli as cli
+import powers_tool_cli.commands.output_run as output_run
 from powers_tool_core.errors import VisaConnectionError
 
 
@@ -166,7 +167,7 @@ def _output_state_core_result(*, channel=1, output_enabled=False, outputs=None):
 
 
 def _run_output_state_core_result(monkeypatch, capsys, data, *, channel="1"):
-    monkeypatch.setattr(cli.operations, "run_operation", lambda *args, **kwargs: data)
+    monkeypatch.setattr(output_run.operations, "run_operation", lambda *args, **kwargs: data)
     exit_code = cli.main(
         ["output-state", "--json", "--resource", OUTPUT_RESOURCE, "--channel", channel]
     )

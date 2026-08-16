@@ -35,11 +35,12 @@ SCPI logging，以及供 orchestrator／agent 使用的本機 Power Worker daemo
 
 ## 套件內容
 
-- `powers_tool_cli.cli`：top-level orchestration（`build_parser`、`main`）、公開
-  re-export，以及測試直接檢查的 Core-delegated handler（`_run_core_trigger`、
-  `_run_sequence`、`_run_restore_from_snapshot`）。
+- `powers_tool_cli.cli`：top-level composition 與 entry point（`build_parser`、
+  `main`），明確組合各 command owner 的 handler，以及仍由此處保留的
+  Core-delegated handler（`_run_core_trigger`、`_run_sequence`、
+  `_run_restore_from_snapshot`）。
 - `powers_tool_cli.cli_runtime`：共用 resource I/O、safety resolution、JSON
-  file helper、error/exit emission，以及可 patch 的 Core connection binding。
+  file helper、error/exit emission，以及直接呼叫 Core/resource 的 adapter。
 - `powers_tool_cli.cli_request`：JSON request envelope 與 Core request construction
   （`OperationRequest`、`TriggerRequest` 等 helper）。
 - `powers_tool_cli.cli_io`：穩定的 JSON success/error envelope 與 `--save-json`。
@@ -75,11 +76,13 @@ SCPI logging，以及供 orchestrator／agent 使用的本機 Power Worker daemo
 - `powers_tool_cli.commands.*`（lifecycle、output、ramp_list、sequence、trigger）：
   各 command family 的 parser registration 與 request mapping。
 
-Parser construction 使用明確的 runner callable；request mapping 仍由各 command
-family module 與既有 CLI facade 負責，不引入 service-locator。
+Parser construction 使用明確的 runner callable。各 command family module 負責
+handler、parser registration 與 request mapping；`cli.py` 是 composition root，
+不再作為 re-export facade，也不引入 service-locator。
 
 CLI 負責參數解析、request mapping、文字與 machine rendering、JSON/JSONL
-envelope、exit-code mapping 與 compatibility surface。Core 負責 IDN/model
+envelope、exit-code mapping 與 top-level composition；上述三個 root handler
+仍由 `cli.py` 實作。Core 負責 IDN/model
 resolution、capability metadata、exact live-support admission、driver selection
 與 model-specific execution。`validate-readonly` 使用窄的
 `powers_tool_core.readonly.run_validate_readonly()` adapter boundary；不將它加入

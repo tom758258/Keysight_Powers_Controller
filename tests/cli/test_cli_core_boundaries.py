@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 import powers_tool_cli.cli as cli
+import powers_tool_cli.cli_runtime as cli_runtime
+import powers_tool_cli.commands.readonly as readonly_commands
 import powers_tool_cli.commands.output_run as output_run
 
 CLI_IMPLEMENTATION_MODULES = (
@@ -120,9 +122,9 @@ def test_validate_readonly_adapter_delegates_without_driver_workflow(monkeypatch
             ],
         }
 
-    monkeypatch.setattr(cli.readonly_core, "run_validate_readonly", fake_run_validate_readonly)
-    monkeypatch.setattr(cli, "create_power_supply", lambda *args, **kwargs: pytest.fail("CLI created a driver"))
-    monkeypatch.setattr(cli, "select_driver", lambda *args, **kwargs: pytest.fail("CLI selected a driver"))
+    monkeypatch.setattr(readonly_commands.readonly_core, "run_validate_readonly", fake_run_validate_readonly)
+    monkeypatch.setattr(cli_runtime, "create_power_supply", lambda *args, **kwargs: pytest.fail("CLI created a driver"))
+    monkeypatch.setattr(cli_runtime, "select_driver", lambda *args, **kwargs: pytest.fail("CLI selected a driver"))
 
     assert (
         cli.main(
@@ -150,14 +152,13 @@ def test_validate_readonly_adapter_delegates_without_driver_workflow(monkeypatch
 
 
 def test_validate_readonly_adapter_has_no_concrete_driver_import_or_branch() -> None:
-    source = inspect.getsource(cli._run_validate_readonly)
+    source = inspect.getsource(readonly_commands._run_validate_readonly)
     assert "readonly_core.run_validate_readonly" in source
     assert not any(
         token in source
         for token in (
             "_open_resource(",
             "_patchable_select_driver",
-            "_patchable_create_power_supply",
             "driver_class",
             "isinstance(",
             "E36312APowerSupply",

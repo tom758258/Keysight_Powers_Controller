@@ -2,6 +2,8 @@ import csv
 import json
 
 import powers_tool_cli.cli as cli
+import powers_tool_cli.cli_runtime as cli_runtime
+import powers_tool_cli.commands.readonly as readonly_commands
 
 from tests.cli.cli_test_helpers import (
     FakeSession,
@@ -119,7 +121,7 @@ def test_log_simulate_explicit_channels_and_duration_preserve_order(
 ) -> None:
     csv_path = tmp_path / "duration-log.csv"
     clock = iter((0.0, 0.0, 1.0))
-    monkeypatch.setattr(cli.time, "monotonic", lambda: next(clock, 1.0))
+    monkeypatch.setattr(readonly_commands.time, "monotonic", lambda: next(clock, 1.0))
 
     assert cli.main(
         [
@@ -179,7 +181,7 @@ def test_log_live_support_rejection_does_not_create_artifacts(
     monkeypatch, tmp_path, capsys
 ) -> None:
     session = FakeSession(idn="KEYSIGHT,E3646A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
     csv_path = tmp_path / "rejected.csv"
     jsonl_path = tmp_path / "rejected.jsonl"
 
@@ -216,7 +218,7 @@ def test_log_sampling_failure_surfaces_connection_error(monkeypatch, tmp_path, c
             "MEAS:VOLT? (@2)": "2.02",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -254,12 +256,12 @@ def test_promoted_log_keeps_interruptible_sampling_behavior(monkeypatch, tmp_pat
             "OUTP? (@2)": "OFF",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     def interrupting_sleep(seconds):
         raise KeyboardInterrupt
 
-    monkeypatch.setattr(cli.time, "sleep", interrupting_sleep)
+    monkeypatch.setattr(readonly_commands.time, "sleep", interrupting_sleep)
 
     assert (
         cli.main(

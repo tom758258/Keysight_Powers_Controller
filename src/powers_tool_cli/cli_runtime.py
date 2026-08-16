@@ -4,17 +4,13 @@ from __future__ import annotations
 
 __all__ = [
     "_CHANNEL_NOT_PROVIDED",
-    "_E36312AChannelError",
     "_InvalidCoreResult",
     "_MeasureChannelUnsupported",
     "_ReadOnlyChannelError",
     "_ReadOnlyModelError",
     "_ScpiLoggingSession",
     "_build_hardware_report",
-    "_channels_from_selection",
-    "_collect_protection_status",
     "_collect_readback",
-    "_collect_snapshot",
     "_collect_status",
     "_command_from_argv",
     "_compare_channel_measurements",
@@ -42,7 +38,6 @@ __all__ = [
     "_load_snapshot_document",
     "_log_scpi",
     "_max_reads_from_argv",
-    "_measure_voltage_current",
     "_measure_voltage_current_with_driver",
     "_nested_value",
     "_numbers_within_tolerance",
@@ -51,23 +46,16 @@ __all__ = [
     "_output_affecting_allowed",
     "_package_version",
     "_parse_measurement",
-    "_patchable_create_power_supply",
-    "_patchable_list_resources",
-    "_patchable_open_resource",
     "_patchable_run_core_command",
     "_patchable_select_driver",
     "_protection_payload",
     "_protection_settings_payload",
-    "_query_idn",
-    "_raise_on_instrument_errors",
-    "_read_error_queue",
     "_read_error_queue_from_driver",
     "_read_only_channels_from_selection",
     "_records_by_channel",
     "_resolve_optional_resource_alias",
     "_resource_manager_for_args",
     "_resource_payload",
-    "_safe_io_resource_payload",
     "_safety_explanation_for_args",
     "_safety_field_sources",
     "_safety_limits_for_args",
@@ -77,7 +65,6 @@ __all__ = [
     "_snapshot_compare_tolerances",
     "_unsupported_measure_channel_message",
     "_validate_output_request",
-    "_validate_read_only_channel",
     "_write_hardware_report_files",
     "_write_json_file",
     "_write_json_file_atomic",
@@ -104,10 +91,7 @@ from powers_tool_cli.request_primitives import option_value as _option_value
 from powers_tool_core.connection import SerialOptions, list_resources, open_resource
 from powers_tool_core.command_runner import run_core_command
 from powers_tool_core.core import CoreValidationError
-from powers_tool_core.drivers.e36312a import E36312APowerSupply
-from powers_tool_core.drivers.edu36311a import EDU36311APowerSupply
 from powers_tool_core.drivers.generic_scpi import GenericScpiPowerSupply
-from powers_tool_core.drivers.psm2010 import PSM2010PowerSupply
 from powers_tool_core.errors import VisaConnectionError
 from powers_tool_core.factory import create_power_supply, select_driver
 from powers_tool_core.identity import (
@@ -134,41 +118,12 @@ MEASURE_VOLTAGE_QUERY = "MEAS:VOLT?"
 MEASURE_CURRENT_QUERY = "MEAS:CURR?"
 
 
-def _cli_binding(name: str, default: Any) -> Any:
-    import sys
-
-    cli_module = sys.modules.get("powers_tool_cli.cli")
-    if cli_module is not None and hasattr(cli_module, name):
-        return getattr(cli_module, name)
-    return default
-
-
-def _patchable_open_resource(*args: Any, **kwargs: Any) -> Any:
-    import sys
-
-    cli_module = sys.modules.get("powers_tool_cli.cli")
-    if cli_module is not None:
-        patched_private = getattr(cli_module, "_open_resource", None)
-        if patched_private is not None and patched_private is not _open_resource:
-            return patched_private(*args, **kwargs)
-        return cli_module.open_resource(*args, **kwargs)
-    return open_resource(*args, **kwargs)
-
-
-def _patchable_list_resources(*args: Any, **kwargs: Any) -> Any:
-    return _cli_binding("list_resources", list_resources)(*args, **kwargs)
-
-
-def _patchable_create_power_supply(*args: Any, **kwargs: Any) -> Any:
-    return _cli_binding("create_power_supply", create_power_supply)(*args, **kwargs)
-
-
 def _patchable_select_driver(*args: Any, **kwargs: Any) -> Any:
-    return _cli_binding("select_driver", select_driver)(*args, **kwargs)
+    return select_driver(*args, **kwargs)
 
 
 def _patchable_run_core_command(*args: Any, **kwargs: Any) -> Any:
-    return _cli_binding("run_core_command", run_core_command)(*args, **kwargs)
+    return run_core_command(*args, **kwargs)
 
 
 class _MeasureChannelUnsupported(ValueError):
@@ -233,59 +188,6 @@ def _write_json_file_atomic(path: str, data: dict[str, Any]) -> None:
                 pass
         raise
 
-def _query_idn(
-    resource: str,
-    *,
-    resource_manager: SimulatedResourceManager | None,
-    backend: str | None,
-    timeout_ms: int,
-    log_scpi: bool,
-) -> str | None:
-    try:
-        with _open_resource(
-            resource,
-            resource_manager,
-            backend=backend,
-            timeout_ms=timeout_ms,
-        ) as instrument:
-            if log_scpi:
-                _log_scpi(resource, ">>", IDN_QUERY)
-            response = instrument.identify()
-            if log_scpi:
-                _log_scpi(resource, "<<", response)
-            return response
-    except (VisaConnectionError, ValueError):
-        return None
-
-def _read_error_queue(
-    resource: str,
-    *,
-    resource_manager: SimulatedResourceManager | None,
-    backend: str | None,
-    timeout_ms: int,
-    log_scpi: bool,
-    max_reads: int,
-) -> tuple[list[str], int]:
-    errors: list[str] = []
-    read_count = 0
-    with _open_resource(
-        resource,
-        resource_manager,
-        backend=backend,
-        timeout_ms=timeout_ms,
-    ) as instrument:
-        for _ in range(max_reads):
-            if log_scpi:
-                _log_scpi(resource, ">>", ERROR_QUERY)
-            response = instrument.query(ERROR_QUERY)
-            read_count += 1
-            if log_scpi:
-                _log_scpi(resource, "<<", response)
-            if _is_no_error_response(response):
-                break
-            errors.append(response)
-    return errors, read_count
-
 def _open_jsonl_log(args: argparse.Namespace):
     if args.jsonl is None:
         return None
@@ -294,55 +196,6 @@ def _open_jsonl_log(args: argparse.Namespace):
         path.parent.mkdir(parents=True, exist_ok=True)
     mode = "a" if args.append else "w"
     return path.open(mode, encoding="utf-8")
-
-def _measure_voltage_current(
-    resource: str,
-    *,
-    resource_manager: SimulatedResourceManager | None,
-    backend: str | None,
-    timeout_ms: int,
-    log_scpi: bool,
-    channel: int,
-    simulate: bool,
-) -> dict[str, float]:
-    with _open_resource(
-        resource,
-        resource_manager,
-        backend=backend,
-        timeout_ms=timeout_ms,
-    ) as instrument:
-        if simulate:
-            return _measure_voltage_current_with_driver(
-                resource,
-                instrument,
-                channel=channel,
-                log_scpi=log_scpi,
-                mode="simulate",
-            )
-
-        if channel not in GenericScpiPowerSupply.capabilities.real_measure_channels:
-            return _measure_voltage_current_with_driver(
-                resource,
-                instrument,
-                channel=channel,
-                log_scpi=log_scpi,
-                mode="real",
-            )
-
-        if log_scpi:
-            _log_scpi(resource, ">>", MEASURE_VOLTAGE_QUERY)
-        voltage_response = instrument.query(MEASURE_VOLTAGE_QUERY)
-        if log_scpi:
-            _log_scpi(resource, "<<", voltage_response)
-            _log_scpi(resource, ">>", MEASURE_CURRENT_QUERY)
-        current_response = instrument.query(MEASURE_CURRENT_QUERY)
-        if log_scpi:
-            _log_scpi(resource, "<<", current_response)
-
-    return {
-        "voltage": _parse_measurement(voltage_response, "voltage"),
-        "current": _parse_measurement(current_response, "current"),
-    }
 
 def _measure_voltage_current_with_driver(
     resource: str,
@@ -376,26 +229,6 @@ def _measure_voltage_current_with_driver(
         "current": power_supply.measure_current(channel=channel),
     }
 
-def _validate_read_only_channel(
-    power_supply: GenericScpiPowerSupply,
-    channel: int,
-    *,
-    command_label: str,
-) -> None:
-    if not isinstance(
-        power_supply,
-        (E36312APowerSupply, EDU36311APowerSupply, PSM2010PowerSupply),
-    ):
-        raise _ReadOnlyModelError(
-            f"{command_label} is only supported for E36312A, EDU36311A, or PSM-2010; "
-            f"found {type(power_supply).__name__} from *IDN? response"
-        )
-    if channel not in power_supply.capabilities.channels:
-        raise _ReadOnlyChannelError(
-            f"channel {channel} is not supported for {command_label}; "
-            f"supported: {power_supply.capabilities.channels}"
-        )
-
 def _resolve_optional_resource_alias(args: argparse.Namespace) -> None:
     if getattr(args, "resource_alias", None) is None:
         return
@@ -409,19 +242,6 @@ def _read_error_queue_from_driver(
         raise ValueError("max_errors must be at least 1")
 
     return power_supply.read_error_queue(max_reads)
-
-def _raise_on_instrument_errors(
-    power_supply: GenericScpiPowerSupply,
-    operation: str,
-    *,
-    max_reads: int = 20,
-) -> None:
-    errors, _ = _read_error_queue_from_driver(power_supply, max_reads)
-    if errors:
-        raise ValueError(
-            f"{operation} left instrument error queue entries: "
-            + "; ".join(errors)
-        )
 
 def _collect_readback(
     args: argparse.Namespace,
@@ -458,83 +278,6 @@ def _collect_status(
             {"channel": channel, "enabled": power_supply.output_state(channel=channel)}
             for channel in channels
         ],
-    }
-
-def _collect_protection_status(
-    args: argparse.Namespace,
-    power_supply: GenericScpiPowerSupply,
-    idn_raw: str,
-    channels: tuple[int, ...],
-) -> dict[str, Any]:
-    protection = _protection_payload(power_supply)
-    tripped = protection["over_voltage_tripped"] or protection["over_current_tripped"]
-    protection_by_channel = [
-        {
-            "channel": channel,
-            "protection": {
-                "over_voltage_tripped": protection["over_voltage_tripped"],
-                "over_current_tripped": protection["over_current_tripped"],
-            },
-        }
-        for channel in channels
-    ]
-    return {
-        "resource": args.resource,
-        "protection": protection,
-        "protection_by_channel": protection_by_channel,
-        "outputs": [
-            {
-                "channel": channel,
-                "enabled": (enabled := power_supply.output_state(channel=channel)),
-                "disabled_with_protection": (not enabled) and tripped,
-            }
-            for channel in channels
-        ],
-    }
-
-def _collect_snapshot(
-    args: argparse.Namespace,
-    power_supply: E36312APowerSupply,
-    idn_raw: str,
-    channels: tuple[int, ...],
-) -> dict[str, Any]:
-    channels = power_supply.capabilities.channels
-    errors, read_count = _read_error_queue_from_driver(power_supply, args.max_errors)
-    return {
-        "resource": args.resource,
-        "idn": parse_idn(idn_raw).to_dict(),
-        "errors": errors,
-        "read_count": read_count,
-        "outputs": [
-            {"channel": channel, "enabled": power_supply.output_state(channel=channel)}
-            for channel in channels
-        ],
-        "readback": [
-            {
-                "channel": channel,
-                "setpoints": {
-                    "voltage": power_supply.programmed_voltage(channel=channel),
-                    "current": power_supply.programmed_current(channel=channel),
-                },
-            }
-            for channel in channels
-        ],
-        "measurements": [
-            {
-                "channel": channel,
-                "measurements": {
-                    "voltage": power_supply.measure_voltage(channel=channel),
-                    "current": power_supply.measure_current(channel=channel),
-                },
-            }
-            for channel in channels
-        ],
-        "protection": _protection_payload(power_supply),
-        "protection_settings": _protection_settings_payload(
-            power_supply,
-            channels,
-            tolerate_errors=True,
-        ),
     }
 
 def _snapshot_compare_tolerances(args: argparse.Namespace) -> dict[str, float]:
@@ -942,17 +685,6 @@ def _write_hardware_report_files(report: dict[str, Any], report_json: str, summa
 def _confirmation_required_message(command: str) -> str:
     return validation.confirmation_required_message(command)
 
-def _channels_from_selection(
-    selected_channel: int | str,
-    supported_channels: tuple[int, ...],
-) -> tuple[int, ...]:
-    try:
-        return validation.expand_channel_selection(selected_channel, supported_channels)
-    except validation.ChannelSelectionError as exc:
-        raise _E36312AChannelError(
-            str(exc)
-        ) from exc
-
 def _read_only_channels_from_selection(
     selected_channel: int | str,
     supported_channels: tuple[int, ...],
@@ -987,14 +719,6 @@ def _resource_payload(
         "vendor_id": identity.vendor_id if identity is not None else None,
         "model_id": identity.model_id if identity is not None else None,
     }
-
-def _safe_io_resource_payload(args: argparse.Namespace) -> dict[str, Any]:
-    return _resource_payload(
-        args.resource,
-        simulated=args.simulate,
-        reachable=True,
-        idn_raw=None,
-    )
 
 def _resource_manager_for_args(args: argparse.Namespace) -> SimulatedResourceManager | None:
     if args.simulate:
@@ -1096,17 +820,14 @@ class _ReadOnlyModelError(ValueError):
 class _ReadOnlyChannelError(ValueError):
     """Raised when read-only model-specific commands receive an unsupported channel."""
 
-class _E36312AChannelError(ValueError):
-    """Raised when an E36312A command receives an unsupported channel."""
-
 def _list_resources(
     resource_manager: SimulatedResourceManager | None,
     *,
     backend: str | None,
 ) -> tuple[str, ...]:
     if resource_manager is None:
-        return _patchable_list_resources(backend=backend)
-    return _patchable_list_resources(resource_manager, backend=backend)
+        return list_resources(backend=backend)
+    return list_resources(resource_manager, backend=backend)
 
 def _open_resource(
     resource: str,
@@ -1127,7 +848,7 @@ def _open_resource(
     if resource_manager is None:
         if scpi_logger is not None:
             serial_kwargs["scpi_logger"] = scpi_logger
-        return _patchable_open_resource(
+        return open_resource(
             resource,
             backend=backend,
             timeout_ms=timeout_ms,
@@ -1135,7 +856,7 @@ def _open_resource(
         )
     if scpi_logger is not None:
         serial_kwargs["scpi_logger"] = scpi_logger
-    return _patchable_open_resource(
+    return open_resource(
         resource,
         resource_manager,
         backend=backend,
@@ -1401,4 +1122,3 @@ def _format_channel_set(channels: tuple[int, ...]) -> str:
     if channels == (1,):
         return "channel 1 only"
     return "channels " + ", ".join(str(channel) for channel in channels)
-

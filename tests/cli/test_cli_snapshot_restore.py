@@ -1,6 +1,7 @@
 import json
 
 import powers_tool_cli.cli as cli
+import powers_tool_cli.cli_runtime as cli_runtime
 
 from tests.cli.cli_test_helpers import (
     OUTPUT_RESOURCE,
@@ -15,7 +16,7 @@ def test_identify_real_reads_identity_queries(monkeypatch, capsys) -> None:
             "SYST:COMM:RLST?": "RWLock",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main(["identify", "--json", "--resource", OUTPUT_RESOURCE]) == 0
 
@@ -27,7 +28,7 @@ def test_identify_real_reads_identity_queries(monkeypatch, capsys) -> None:
 
 def test_identify_edu36311a_real_reads_only_idn(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,EDU36311A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main(["identify", "--json", "--resource", OUTPUT_RESOURCE]) == 0
 
@@ -40,7 +41,7 @@ def test_identify_edu36311a_real_reads_only_idn(monkeypatch, capsys) -> None:
 
 def test_identify_e3646a_real_reads_only_idn(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,E3646A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main(["identify", "--json", "--resource", OUTPUT_RESOURCE]) == 0
 
@@ -56,7 +57,7 @@ def test_identify_e3646a_real_reads_only_idn(monkeypatch, capsys) -> None:
 
 def test_identify_expected_model_guard_remains_parser_visible(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,E3646A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -78,7 +79,7 @@ def test_identify_expected_model_guard_remains_parser_visible(monkeypatch, capsy
 
 def test_identify_extended_query_failure_is_json_error(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,E36312A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main(["identify", "--json", "--resource", OUTPUT_RESOURCE]) == 1
 
@@ -129,7 +130,7 @@ def test_snapshot_real_reads_full_state(monkeypatch, capsys) -> None:
             "CURR:PROT:DEL:STAR? (@3)": "SCHange",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main(["snapshot", "--json", "--resource", OUTPUT_RESOURCE]) == 0
 
@@ -245,7 +246,7 @@ def test_snapshot_rejects_same_raw_and_envelope_path_before_open(tmp_path, monke
         opened = True
         raise AssertionError("opener must not be called")
 
-    monkeypatch.setattr(cli, "open_resource", forbidden_opener)
+    monkeypatch.setattr(cli_runtime, "open_resource", forbidden_opener)
     assert cli.main([
         "snapshot", "--json", "--resource", OUTPUT_RESOURCE,
         "--save-json", str(output_path), "--snapshot-json", str(output_path),

@@ -123,11 +123,12 @@ SCPI logging，以及供 orchestrator／agent 使用的本機 Power Worker daemo
 會影響硬體的命令仍須明確且 opt-in；預設套件測試不需要硬體。</p>
 <h2 id="套件內容">套件內容</h2>
 <ul>
-<li><code>powers_tool_cli.cli</code>：top-level orchestration（<code>build_parser</code>、<code>main</code>）、公開
-re-export，以及測試直接檢查的 Core-delegated handler（<code>_run_core_trigger</code>、
-<code>_run_sequence</code>、<code>_run_restore_from_snapshot</code>）。</li>
+<li><code>powers_tool_cli.cli</code>：top-level composition 與 entry point（<code>build_parser</code>、
+<code>main</code>），明確組合各 command owner 的 handler，以及仍由此處保留的
+Core-delegated handler（<code>_run_core_trigger</code>、<code>_run_sequence</code>、
+<code>_run_restore_from_snapshot</code>）。</li>
 <li><code>powers_tool_cli.cli_runtime</code>：共用 resource I/O、safety resolution、JSON
-file helper、error/exit emission，以及可 patch 的 Core connection binding。</li>
+file helper、error/exit emission，以及直接呼叫 Core/resource 的 adapter。</li>
 <li><code>powers_tool_cli.cli_request</code>：JSON request envelope 與 Core request construction
 （<code>OperationRequest</code>、<code>TriggerRequest</code> 等 helper）。</li>
 <li><code>powers_tool_cli.cli_io</code>：穩定的 JSON success/error envelope 與 <code>--save-json</code>。</li>
@@ -163,11 +164,13 @@ shared sequence/Trigger compatibility helper。Sequence planning 與 execution
 <li><code>powers_tool_cli.commands.*</code>（lifecycle、output、ramp_list、sequence、trigger）：
 各 command family 的 parser registration 與 request mapping。</li>
 </ul>
-<p>Parser construction 使用明確的 runner callable；request mapping 仍由各 command
-family module 與既有 CLI facade 負責，不引入 service-locator。</p>
+<p>Parser construction 使用明確的 runner callable。各 command family module 負責
+handler、parser registration 與 request mapping；<code>cli.py</code> 是 composition root，
+不再作為 re-export facade，也不引入 service-locator。</p>
 <h2 id="cli-core-ownership">CLI/Core Ownership</h2>
 <p>CLI 負責參數解析、request mapping、文字與 machine rendering、JSON/JSONL
-envelope、exit-code mapping 與 compatibility surface。Core 負責 IDN/model
+envelope、exit-code mapping 與 top-level composition；上述三個 root handler
+仍由 <code>cli.py</code> 實作。Core 負責 IDN/model
 resolution、capability metadata、exact live-support admission、driver selection
 與 model-specific execution。<code>validate-readonly</code> 使用窄的
 <code>powers_tool_core.readonly.run_validate_readonly()</code> adapter boundary；不將它加入

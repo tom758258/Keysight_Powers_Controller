@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from powers_tool_cli import cli
+from powers_tool_cli import cli_request
 from powers_tool_core.core import RuntimeOptions, SequenceRequest
 from powers_tool_core.identity import PHYSICAL_MODELS, VENDORS
 from powers_tool_core.sequence import load_sequence_document, sequence_plan
@@ -2897,7 +2898,7 @@ def test_live_cli_check_verify_arguments_are_accepted_by_production_parser():
         "--save-json",
         ".tmp_tests\\parser-contract.json",
     ]
-    assert cli._target_core_request_for_args(args).runtime.expected_model_id == "keysight-e3646a"
+    assert cli_request._target_core_request_for_args(args).runtime.expected_model_id == "keysight-e3646a"
 
 
 @pytest.mark.parametrize("command", ["error", "clear"])
@@ -2914,7 +2915,7 @@ def test_live_cli_check_identify_retains_expected_model_guard():
 
     args = cli.build_parser().parse_args(arguments)
 
-    assert cli._target_core_request_for_args(args).runtime.expected_model_id == "keysight-e3646a"
+    assert cli_request._target_core_request_for_args(args).runtime.expected_model_id == "keysight-e3646a"
 
 
 def test_live_cli_check_model_aware_command_retains_expected_model_guard():
@@ -2922,7 +2923,7 @@ def test_live_cli_check_model_aware_command_retains_expected_model_guard():
 
     args = cli.build_parser().parse_args(arguments)
 
-    assert cli._target_core_request_for_args(args).runtime.expected_model_id == "keysight-e3646a"
+    assert cli_request._target_core_request_for_args(args).runtime.expected_model_id == "keysight-e3646a"
 
 
 @pytest.mark.parametrize(

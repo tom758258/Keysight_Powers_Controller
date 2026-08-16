@@ -1,6 +1,7 @@
 import json
 
 import powers_tool_cli.cli as cli
+import powers_tool_cli.cli_runtime as cli_runtime
 
 from tests.cli.cli_test_helpers import (
     OUTPUT_RESOURCE,
@@ -101,7 +102,7 @@ def test_doctor_capabilities_and_safety_inspect_json(capsys) -> None:
 
 def test_resource_backed_capabilities_uses_exact_live_scope(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,E36312A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main(["capabilities", "--json", "--resource", OUTPUT_RESOURCE]) == 0
 
@@ -113,7 +114,7 @@ def test_resource_backed_capabilities_uses_exact_live_scope(monkeypatch, capsys)
 
 def test_resource_backed_capabilities_rejects_pyvisa_py_pending_scope(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,E36312A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -133,8 +134,8 @@ def test_resource_backed_capabilities_rejects_pyvisa_py_pending_scope(monkeypatc
 
 def test_resource_backed_doctor_is_not_a_live_policy_exemption(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,E36312A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "_list_resources", lambda *args, **kwargs: ())
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "_list_resources", lambda *args, **kwargs: ())
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main(["doctor", "--json", "--resource", OUTPUT_RESOURCE]) == 0
 

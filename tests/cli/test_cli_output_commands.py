@@ -5,6 +5,8 @@ import pytest
 
 import powers_tool_core.connection as connection
 import powers_tool_cli.cli as cli
+import powers_tool_cli.cli_runtime as cli_runtime
+import powers_tool_cli.commands.output_run as output_run
 from powers_tool_core.errors import VisaConnectionError
 
 from tests.cli.cli_test_helpers import (
@@ -105,7 +107,7 @@ def test_apply_simulate_rejects_explicit_non_sim_resource_before_hardware_io(mon
     def fail_open(*args, **kwargs):
         raise AssertionError("must not open VISA")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open)
 
     assert (
         cli.main(
@@ -135,7 +137,7 @@ def test_live_generic_expected_model_fails_before_hardware_io(monkeypatch, capsy
     def fail_open(*args, **kwargs):
         raise AssertionError("must not open VISA")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open)
 
     assert (
         cli.main(
@@ -640,7 +642,7 @@ def test_real_set_with_alias_without_dry_run_executes_after_validation(
         idn="KEYSIGHT,E36312A,SERIAL0000,1.0",
         query_responses={"VOLT? (@1)": "1.0", "CURR? (@1)": "0.05"},
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
     safety_config = write_safety_config(
         tmp_path,
         f"""
@@ -727,7 +729,7 @@ def test_real_set_with_safety_config_without_dry_run_executes(
         idn="KEYSIGHT,E36312A,SERIAL0000,1.0",
         query_responses={"VOLT? (@1)": "1.0", "CURR? (@1)": "0.05"},
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
     safety_config = write_safety_config(tmp_path)
 
     assert cli.main([*output_command_args("set"), "--json", "--safety-config", safety_config]) == 0
@@ -851,7 +853,7 @@ def test_real_output_commands_without_dry_run_are_rejected_before_visa(
         raise AssertionError("real VISA resource should not be opened")
 
     monkeypatch.setattr(connection, "create_resource_manager", fail_real_manager)
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
 
     assert cli.main([*args, "--dry-run", "--json"]) == 0
 
@@ -873,7 +875,7 @@ def test_output_state_real_e36312a_reads_channel_state(monkeypatch, capsys, chan
         idn="KEYSIGHT,E36312A,SERIAL0000,1.0",
         query_responses={f"OUTP? (@{channel})": "ON"},
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -905,7 +907,7 @@ def test_output_state_real_e36312a_all_uses_canonical_outputs(monkeypatch, capsy
         idn="KEYSIGHT,E36312A,SERIAL0000,1.0",
         query_responses={"OUTP? (@1)": "ON", "OUTP? (@2)": "OFF", "OUTP? (@3)": "ON"},
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main(["output-state", "--json", "--resource", OUTPUT_RESOURCE, "--channel", "all"]) == 0
 
@@ -1095,7 +1097,7 @@ def test_output_state_core_result_rejects_invalid_detected_channels(
         reason="model_specific_driver",
         capabilities=capabilities,
     )
-    monkeypatch.setattr(cli, "select_driver", lambda idn_raw: selection)
+    monkeypatch.setattr(cli_runtime, "select_driver", lambda idn_raw: selection)
     data = _output_state_core_result(
         channel="all",
         output_enabled=None,
@@ -1119,7 +1121,7 @@ def test_safe_off_real_e36312a_expands_all_channels(monkeypatch, capsys) -> None
             "OUTP? (@3)": "0",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -1161,8 +1163,8 @@ def test_cycle_output_real_e36312a_cycles_output_without_delay(monkeypatch, caps
         idn="KEYSIGHT,E36312A,SERIAL0000,1.0",
         query_responses={"VOLT? (@2)": "1.0", "CURR? (@2)": "0.1"},
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
-    monkeypatch.setattr(cli.time, "sleep", lambda seconds: None)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(output_run.time, "sleep", lambda seconds: None)
 
     assert (
         cli.main(
@@ -1189,7 +1191,7 @@ def test_cycle_output_real_e36312a_cycles_output_without_delay(monkeypatch, caps
 
 def test_apply_real_e36312a_sets_then_enables_output(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,E36312A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -1217,7 +1219,7 @@ def test_apply_real_e36312a_sets_then_enables_output(monkeypatch, capsys) -> Non
 
 def test_apply_real_e36312a_all_channels_sets_then_enables_each(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,E36312A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -1260,7 +1262,7 @@ def test_apply_real_e36312a_all_channels_sets_then_enables_each(monkeypatch, cap
 
 def test_apply_real_e36312a_no_output_skips_output_on(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,E36312A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -1657,7 +1659,7 @@ def test_set_real_e36312a_sends_current_before_voltage(
         idn="KEYSIGHT,E36312A,SERIAL0000,1.0",
         query_responses={"VOLT? (@1)": "1.0", "CURR? (@1)": "0.05"},
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -1700,7 +1702,7 @@ def test_set_real_e36312a_sends_current_before_voltage(
 
 def test_set_real_text_output_is_minimal_without_output_enabled(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,E36312A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main(output_command_args("set")) == 0
 
@@ -1726,7 +1728,7 @@ def test_set_real_resource_alias_backend_timeout_resolves_once(
         opened.append((resource, backend, timeout_ms))
         return session
 
-    monkeypatch.setattr(cli, "open_resource", fake_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fake_open_resource)
     safety_config = write_safety_config(
         tmp_path,
         f"""
@@ -1788,7 +1790,7 @@ def test_set_real_safety_config_rejects_before_open(monkeypatch, tmp_path, capsy
     def fail_open_resource(*args, **kwargs):
         raise AssertionError("real VISA resource should not be opened")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
     safety_config = write_safety_config(
         tmp_path,
         """
@@ -1829,7 +1831,7 @@ max_current = 0.5
 
 def test_set_real_e36312a_with_log_scpi(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,E36312A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -1861,7 +1863,7 @@ def test_set_real_e36312a_with_log_scpi(monkeypatch, capsys) -> None:
 @pytest.mark.parametrize("idn", ["KEYSIGHT,UNKNOWN,SERIAL0000,1.0", "UNKNOWN,MODEL,SN,FW"])
 def test_set_real_non_e36312a_models_are_rejected(monkeypatch, capsys, idn) -> None:
     session = FakeSession(idn=idn)
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main([*output_command_args("set"), "--json"]) == 2
 
@@ -1874,7 +1876,7 @@ def test_set_real_non_e36312a_models_are_rejected(monkeypatch, capsys, idn) -> N
 
 def test_set_real_edu36311a_sends_current_before_voltage(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,EDU36311A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -1901,7 +1903,7 @@ def test_set_real_edu36311a_sends_current_before_voltage(monkeypatch, capsys) ->
 
 def test_set_real_edu36311a_rejects_completion_pulse(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,EDU36311A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -1928,7 +1930,7 @@ def test_set_real_edu36311a_rejects_completion_pulse(monkeypatch, capsys) -> Non
 
 def test_set_real_unsupported_channel_is_rejected_after_idn(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,E36312A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main([*output_command_args("set", channel="99"), "--json"]) == 2
 
@@ -1946,7 +1948,7 @@ def test_set_real_open_failure_uses_connection_failed(monkeypatch, capsys) -> No
     def fail_open_resource(*args, **kwargs):
         raise VisaConnectionError("open failed")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
 
     assert cli.main([*output_command_args("set"), "--json"]) == 1
 
@@ -1963,7 +1965,7 @@ def test_set_real_write_failure_uses_set_failed(monkeypatch, capsys) -> None:
             raise VisaConnectionError("write failed")
 
     session = FailingWriteSession(idn="KEYSIGHT,E36312A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main([*output_command_args("set"), "--json"]) == 1
 
@@ -1980,7 +1982,7 @@ def test_set_real_instrument_error_queue_fails_command(monkeypatch, capsys) -> N
         idn="KEYSIGHT,E36312A,SERIAL0000,1.0",
         query_responses={"SYST:ERR?": ['-222,"Data out of range"', '0,"No error"']},
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main([*output_command_args("set"), "--json"]) == 1
 
@@ -2000,7 +2002,7 @@ def test_output_on_real_e36312a_sends_correct_scpi(monkeypatch, capsys, channel)
             f"CURR? (@{channel})": "0.05",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -2026,7 +2028,7 @@ def test_output_on_real_text_output_reports_enabled(monkeypatch, capsys) -> None
         idn="KEYSIGHT,E36312A,SERIAL0000,1.0",
         query_responses={"VOLT? (@2)": "1.0", "CURR? (@2)": "0.05"},
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main([*output_command_args("output-on"), "--channel", "2"]) == 0
 
@@ -2052,7 +2054,7 @@ def test_output_on_real_resource_alias_backend_timeout_resolves_once(
         opened.append((resource, backend, timeout_ms))
         return session
 
-    monkeypatch.setattr(cli, "open_resource", fake_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fake_open_resource)
     safety_config = write_safety_config(
         tmp_path,
         f"""
@@ -2110,7 +2112,7 @@ def test_output_on_real_safety_config_rejects_before_open(
     def fail_open_resource(*args, **kwargs):
         raise AssertionError("real VISA resource should not be opened")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
     safety_config = write_safety_config(
         tmp_path,
         """
@@ -2148,7 +2150,7 @@ def test_output_on_real_e36312a_with_log_scpi(monkeypatch, capsys) -> None:
         idn="KEYSIGHT,E36312A,SERIAL0000,1.0",
         query_responses={"VOLT? (@1)": "1.0", "CURR? (@1)": "0.05"},
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -2176,7 +2178,7 @@ def test_output_on_real_e36312a_with_log_scpi(monkeypatch, capsys) -> None:
 @pytest.mark.parametrize("idn", ["KEYSIGHT,UNKNOWN,SERIAL0000,1.0", "UNKNOWN,MODEL,SN,FW"])
 def test_output_on_real_non_e36312a_models_are_rejected(monkeypatch, capsys, idn) -> None:
     session = FakeSession(idn=idn)
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -2201,7 +2203,7 @@ def test_output_on_real_non_e36312a_models_are_rejected(monkeypatch, capsys, idn
 
 def test_output_on_real_unsupported_channel_is_rejected_after_idn(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,E36312A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -2230,7 +2232,7 @@ def test_output_on_real_open_failure_uses_connection_failed(monkeypatch, capsys)
     def fail_open_resource(*args, **kwargs):
         raise VisaConnectionError("open failed")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
 
     assert cli.main([*output_command_args("output-on"), "--json"]) == 1
 
@@ -2250,7 +2252,7 @@ def test_output_on_real_write_failure_surfaces_connection_error(monkeypatch, cap
         idn="KEYSIGHT,E36312A,SERIAL0000,1.0",
         query_responses={"VOLT? (@1)": "1.0", "CURR? (@1)": "0.05"},
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert cli.main([*output_command_args("output-on"), "--json"]) == 1
 
@@ -2270,7 +2272,7 @@ def test_output_on_real_safety_config_checks_readback_before_enabling(
         idn="KEYSIGHT,E36312A,SERIAL0000,1.0",
         query_responses={"VOLT? (@1)": "1.0", "CURR? (@1)": "0.05"},
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
     safety_config = write_safety_config(tmp_path)
 
     assert (
@@ -2303,7 +2305,7 @@ def test_output_on_real_safety_config_rejects_unsafe_readback(
         idn="KEYSIGHT,E36312A,SERIAL0000,1.0",
         query_responses={"VOLT? (@1)": "5.1", "CURR? (@1)": "0.05"},
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
     safety_config = write_safety_config(tmp_path)
 
     assert (
@@ -2331,7 +2333,7 @@ def test_output_on_real_safety_config_rejects_unsafe_readback(
 @pytest.mark.parametrize("channel", [1, 2, 3])
 def test_output_off_real_e36312a_sends_correct_scpi(monkeypatch, capsys, channel) -> None:
     session = FakeSession(idn="KEYSIGHT,E36312A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -2373,7 +2375,7 @@ def test_output_off_real_resource_alias_resolves_once_and_sends_scpi(
         opened.append((resource, backend, timeout_ms))
         return session
 
-    monkeypatch.setattr(cli, "open_resource", fake_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fake_open_resource)
     safety_config = write_safety_config(
         tmp_path,
         f"""
@@ -2431,7 +2433,7 @@ def test_output_off_real_safety_config_rejects_before_open(
     def fail_open_resource(*args, **kwargs):
         raise AssertionError("real VISA resource should not be opened")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
     safety_config = write_safety_config(
         tmp_path,
         """
@@ -2466,7 +2468,7 @@ allowed_channels = [1]
 
 def test_output_off_real_e36312a_with_log_scpi(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,E36312A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -2493,7 +2495,7 @@ def test_output_off_real_e36312a_with_log_scpi(monkeypatch, capsys) -> None:
 
 def test_output_off_real_generic_e36312a_is_rejected(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,UNKNOWN,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -2518,7 +2520,7 @@ def test_output_off_real_generic_e36312a_is_rejected(monkeypatch, capsys) -> Non
 
 def test_output_off_real_unknown_model_is_rejected(monkeypatch, capsys) -> None:
     session = FakeSession(idn="UNKNOWN,MODEL,SN,FW")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -2540,7 +2542,7 @@ def test_output_off_real_unknown_model_is_rejected(monkeypatch, capsys) -> None:
 
 def test_output_off_real_unsupported_channel_is_rejected(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,E36312A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -2564,7 +2566,7 @@ def test_output_off_real_unsupported_channel_is_rejected(monkeypatch, capsys) ->
 
 def test_output_state_real_non_e36312a_is_rejected(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,UNKNOWN,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -2589,7 +2591,7 @@ def test_output_state_real_edu36311a_reads_channel_state(monkeypatch, capsys) ->
         idn="KEYSIGHT,EDU36311A,SERIAL0000,1.0",
         query_responses={"OUTP? (@3)": "OFF"},
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -2632,7 +2634,7 @@ def test_cycle_output_real_invalid_duration_rejected(capsys) -> None:
 
 def test_apply_real_generic_model_is_rejected(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,UNKNOWN,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -2658,7 +2660,7 @@ def test_apply_real_generic_model_is_rejected(monkeypatch, capsys) -> None:
 
 def test_apply_real_edu36311a_all_no_output_writes_all_channels(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,EDU36311A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -2757,7 +2759,7 @@ def test_safe_off_accepts_serial_options_without_confirm(monkeypatch, capsys) ->
         idn="KEYSIGHT,E3646A,SERIAL0000,1.0",
         query_responses={"INST:NSEL?": "1", "OUTP?": "0"},
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -2804,7 +2806,7 @@ def test_output_family_real_forwards_serial_options_to_opener(
         opened.append(kwargs)
         return session
 
-    monkeypatch.setattr(cli, "open_resource", fake_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fake_open_resource)
 
     assert (
         cli.main(
@@ -2843,7 +2845,7 @@ def test_output_family_real_forwards_serial_options_to_opener(
 )
 def test_write_verification_failure_returns_exit_3(monkeypatch, capsys, command, args, query_responses) -> None:
     session = FakeSession(idn="KEYSIGHT,E36312A,SERIAL0000,1.0", query_responses=query_responses)
-    monkeypatch.setattr(cli, "open_resource", lambda *open_args, **open_kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *open_args, **open_kwargs: session)
 
     assert (
         cli.main(
@@ -2872,8 +2874,8 @@ def test_settle_ms_sleeps_before_verification(monkeypatch, capsys) -> None:
         idn="KEYSIGHT,E36312A,SERIAL0000,1.0",
         query_responses={"VOLT? (@1)": "1.0", "CURR? (@1)": "0.05"},
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
-    monkeypatch.setattr(cli.time, "sleep", lambda seconds: sleeps.append(seconds))
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(output_run.time, "sleep", lambda seconds: sleeps.append(seconds))
 
     assert (
         cli.main(
@@ -2903,7 +2905,7 @@ def test_output_off_dry_run_does_not_open_resource(monkeypatch, capsys) -> None:
     def fail_open_resource(*args, **kwargs):
         raise AssertionError("real VISA resource should not be opened for dry-run")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
 
     assert (
         cli.main(
@@ -2931,7 +2933,7 @@ def test_output_off_simulate_does_not_open_resource(monkeypatch, capsys) -> None
     def fail_open_resource(*args, **kwargs):
         raise AssertionError("VISA resource should not be opened for simulate")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
 
     assert (
         cli.main(
@@ -2964,7 +2966,7 @@ def test_safe_off_dry_run_remains_logical(monkeypatch, capsys, command, extra_ar
         raise AssertionError("real VISA resource should not be opened")
 
     monkeypatch.setattr(connection, "create_resource_manager", fail_real_manager)
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
 
     args = [command, "--json", "--resource", OUTPUT_RESOURCE, "--channel", "1"] + extra_args
     assert cli.main([*args, "--dry-run"]) == 0

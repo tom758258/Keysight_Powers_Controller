@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import powers_tool_cli.cli as cli
+import powers_tool_cli.cli_runtime as cli_runtime
 from powers_tool_core.errors import VisaConnectionError
 
 
@@ -111,7 +112,7 @@ allowed_channels = [1]
         encoding="utf-8",
     )
     session = FakeSession(query_responses={"VOLT? (@1)": "1.0", "CURR? (@1)": "0.05"})
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -149,7 +150,7 @@ allowed_channels = [1]
         encoding="utf-8",
     )
     session = FakeSession()
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -287,7 +288,7 @@ def test_restore_from_snapshot_real_e3646a_remains_disabled(monkeypatch, tmp_pat
     snapshot = tmp_path / "snapshot.json"
     _write_snapshot(snapshot)
     session = FakeSession(idn="KEYSIGHT,E3646A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -318,7 +319,7 @@ def test_restore_from_snapshot_plan_json_requires_dry_run(monkeypatch, tmp_path,
     def fail_open(*args, **kwargs):
         raise AssertionError("restore should not open when --plan-json is invalid")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open)
 
     assert (
         cli.main(
@@ -376,7 +377,7 @@ def test_restore_from_snapshot_product_scope_replays_snapshot(monkeypatch, tmp_p
     snapshot = tmp_path / "snapshot.json"
     _write_snapshot(snapshot, enabled=True)
     session = FakeSession()
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -409,7 +410,7 @@ def test_restore_from_snapshot_real_requires_confirm_before_open(monkeypatch, tm
     def fail_open(*args, **kwargs):
         raise AssertionError("restore should not open without --confirm")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open)
 
     assert (
         cli.main(
@@ -433,7 +434,7 @@ def test_restore_from_snapshot_real_rejects_serial_mismatch(monkeypatch, tmp_pat
     snapshot = tmp_path / "snapshot.json"
     _write_snapshot(snapshot)
     session = FakeSession(idn="KEYSIGHT,E36312A,OTHER,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -508,7 +509,7 @@ def test_sequence_interrupt_attempts_safe_off_and_closes(monkeypatch, tmp_path, 
         "OUTP? (@2)": "0",
         "OUTP? (@3)": "0",
     })
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     def interrupting_sleep(seconds):
         raise KeyboardInterrupt
@@ -656,7 +657,7 @@ def test_capabilities_selected_command_and_unknown_guard(monkeypatch, capsys):
     def fail_open(*args, **kwargs):
         raise AssertionError("unknown command should be rejected before open")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open)
     assert (
         cli.main(
             [
@@ -698,7 +699,7 @@ steps:
     def fail_open(*args, **kwargs):
         raise AssertionError("sequence --lint should not open VISA")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open)
     assert (
         cli.main(
             [
@@ -797,7 +798,7 @@ def test_sequence_failure_cleanup_errors_do_not_replace_original_failure(monkeyp
     sequence = tmp_path / "sequence.yaml"
     sequence.write_text("version: 1\nsteps:\n  - action: measure\n    channel: 1\n", encoding="utf-8")
     session = CleanupFailingSession()
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(

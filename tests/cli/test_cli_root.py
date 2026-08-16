@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import powers_tool_cli.cli as cli
+import powers_tool_cli.cli_runtime as cli_runtime
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -26,7 +27,7 @@ def test_cli_module_entry_version() -> None:
     result = _run_cli_module("--version")
     assert result.returncode == 0
     assert result.stderr == ""
-    assert result.stdout.strip() == f"powers-tool {cli._package_version()}"
+    assert result.stdout.strip() == f"powers-tool {cli_runtime._package_version()}"
 
 
 def test_cli_module_entry_help() -> None:
@@ -58,7 +59,7 @@ def test_root_version_prints_package_version(capsys) -> None:
 
     captured = capsys.readouterr()
 
-    assert captured.out.strip() == f"powers-tool {cli._package_version()}"
+    assert captured.out.strip() == f"powers-tool {cli_runtime._package_version()}"
     assert captured.err == ""
 
 def test_root_help_uses_vendor_neutral_product_identity(capsys) -> None:
@@ -77,11 +78,11 @@ def test_cli_missing_distribution_metadata_uses_nonrelease_fallback(monkeypatch)
     def missing_distribution(_name: str) -> str:
         raise metadata.PackageNotFoundError("powers-tool")
 
-    monkeypatch.setattr(cli.importlib.metadata, "version", missing_distribution)
+    monkeypatch.setattr(cli_runtime.importlib.metadata, "version", missing_distribution)
 
     package_namespace = runpy.run_path("src/powers_tool_cli/__init__.py")
 
     assert package_namespace["__version__"] == "0+unknown"
     assert package_namespace["__version__"] not in {"1.0.0", "2.0.0"}
-    assert cli._package_version() == "0+unknown"
-    assert cli._package_version() not in {"1.0.0", "2.0.0"}
+    assert cli_runtime._package_version() == "0+unknown"
+    assert cli_runtime._package_version() not in {"1.0.0", "2.0.0"}

@@ -1,6 +1,7 @@
 import json
 
 import powers_tool_cli.cli as cli
+import powers_tool_cli.cli_runtime as cli_runtime
 
 from tests.cli.cli_test_helpers import (
     FakeSession,
@@ -10,7 +11,7 @@ def test_sequence_dry_run_does_not_open_resource(monkeypatch, capsys) -> None:
     def fail_open_resource(*args, **kwargs):
         raise AssertionError("VISA resource should not be opened for sequence dry-run")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
 
     assert (
         cli.main(
@@ -105,7 +106,7 @@ def test_sequence_real_forwards_serial_options_to_opener(monkeypatch, tmp_path, 
         opened.append(kwargs)
         return FakeSession(idn="KEYSIGHT,E3646A,SERIAL0000,1.0")
 
-    monkeypatch.setattr(cli, "open_resource", fake_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fake_open_resource)
 
     assert (
         cli.main(

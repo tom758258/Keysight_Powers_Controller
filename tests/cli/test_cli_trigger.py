@@ -3,6 +3,7 @@ import json
 import pytest
 
 import powers_tool_cli.cli as cli
+import powers_tool_cli.cli_runtime as cli_runtime
 from powers_tool_core.core import CoreExecutionError
 from powers_tool_core.errors import VisaConnectionError
 
@@ -26,7 +27,7 @@ def test_trigger_pulse_real_sends_expected_scpi(monkeypatch, capsys) -> None:
             "CURR? (@3)": "0.05",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -56,7 +57,7 @@ def test_trigger_pulse_dry_run_json_does_not_open_resource(monkeypatch, capsys) 
     def fail_open_resource(*args, **kwargs):
         raise AssertionError("real VISA resource should not be opened")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
 
     assert (
         cli.main(
@@ -95,7 +96,7 @@ def test_trigger_dry_run_without_model_or_e36312a_sim_resource_fails(monkeypatch
     def fail_open_resource(*args, **kwargs):
         raise AssertionError("real VISA resource should not be opened")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
 
     assert (
         cli.main(
@@ -118,7 +119,7 @@ def test_trigger_pulse_dry_run_json_accepts_multiple_pins(monkeypatch, capsys) -
     def fail_open_resource(*args, **kwargs):
         raise AssertionError("real VISA resource should not be opened")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
 
     assert (
         cli.main(
@@ -156,7 +157,7 @@ def test_trigger_pulse_real_accepts_multiple_pins(monkeypatch, capsys) -> None:
             "CURR? (@1)": "0.05",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -185,7 +186,7 @@ def test_trigger_pulse_exclusive_pin_clears_other_trigger_pins(monkeypatch, caps
             "CURR? (@1)": "0.05",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -216,7 +217,7 @@ def test_trigger_pulse_exclusive_pins_clears_only_unselected_pin(monkeypatch, ca
             "CURR? (@1)": "0.05",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -241,7 +242,7 @@ def test_trigger_pulse_exclusive_pin_dry_run_lists_clear_steps(monkeypatch, caps
     def fail_open_resource(*args, **kwargs):
         raise AssertionError("real VISA resource should not be opened")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
 
     assert (
         cli.main(
@@ -278,7 +279,7 @@ def test_trigger_pulse_reports_instrument_error_queue(monkeypatch, capsys) -> No
             "SYST:ERR?": ['-211,"Trigger ignored"', '0,"No error"'],
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -313,7 +314,7 @@ def test_trigger_pulse_resource_alias_resolves_before_open(
         opened.append((resource, backend, timeout_ms))
         return session
 
-    monkeypatch.setattr(cli, "open_resource", fake_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fake_open_resource)
     safety_config = write_safety_config(
         tmp_path,
         f"""
@@ -421,7 +422,7 @@ def test_trigger_pulse_write_failure_surfaces_connection_error(monkeypatch, caps
             "CURR? (@1)": "0.05",
         },
     )
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -468,7 +469,7 @@ def test_trigger_status_dry_run_model_plans_without_opening(monkeypatch, capsys)
     def fail_open_resource(*args, **kwargs):
         raise AssertionError("real VISA resource should not be opened")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
 
     assert (
         cli.main(
@@ -516,7 +517,7 @@ def test_trigger_list_dry_run_json_plans_native_list_scpi(monkeypatch, capsys) -
     def fail_open_resource(*args, **kwargs):
         raise AssertionError("real VISA resource should not be opened")
 
-    monkeypatch.setattr(cli, "open_resource", fail_open_resource)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_open_resource)
 
     assert (
         cli.main(
@@ -702,7 +703,7 @@ def test_trigger_step_no_hardware_edu36311a_is_rejected(capsys, mode: str) -> No
 
 def test_trigger_step_real_edu36311a_is_rejected(monkeypatch, capsys) -> None:
     session = FakeSession(idn="KEYSIGHT,EDU36311A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(cli_runtime, "open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(

@@ -4,6 +4,8 @@ from pathlib import Path
 import pytest
 
 import powers_tool_cli.cli as cli
+import powers_tool_cli.cli_request as cli_request
+from powers_tool_cli.commands import output_run
 
 
 GENERIC_PLANNING_COMMANDS = (
@@ -83,19 +85,19 @@ def test_model_specific_commands_do_not_expose_generic_profile(command: str, cap
     [
         (
             ["set", "--dry-run", "--model", "keysight-e3646a", "--channel", "1", "--voltage", "1"],
-            cli._operation_request_for_args,
+            cli_request._operation_request_for_args,
         ),
         (
             ["sequence", "--dry-run", "--model", "keysight-e36312a", "--file", "sequence.json"],
-            cli._sequence_request_for_args,
+            cli_request._sequence_request_for_args,
         ),
         (
             ["ramp-list", "--dry-run", "--model", "keysight-e3646a", "--file", "ramp.json"],
-            cli._ramp_list_request_for_args,
+            cli_request._ramp_list_request_for_args,
         ),
         (
             ["trigger-step", "--dry-run", "--model", "keysight-e36312a", "--channel", "1", "--source", "bus", "--fire"],
-            cli._trigger_request_for_args,
+            cli_request._trigger_request_for_args,
         ),
     ],
 )
@@ -121,7 +123,7 @@ def test_simulator_model_maps_to_planning_model_id() -> None:
         ]
     )
 
-    runtime = cli._operation_request_for_args(args).runtime
+    runtime = cli_request._operation_request_for_args(args).runtime
     assert runtime.planning_model_id == "keysight-e36312a"
     assert runtime.expected_model_id is None
 
@@ -141,7 +143,7 @@ def test_live_model_maps_to_expected_model_id() -> None:
         ]
     )
 
-    runtime = cli._operation_request_for_args(args).runtime
+    runtime = cli_request._operation_request_for_args(args).runtime
     assert runtime.expected_model_id == "keysight-e36312a"
     assert runtime.planning_model_id is None
     assert runtime.planning_profile_id is None
@@ -161,7 +163,7 @@ def test_dry_run_profile_maps_to_planning_profile_id() -> None:
         ]
     )
 
-    runtime = cli._operation_request_for_args(args).runtime
+    runtime = cli_request._operation_request_for_args(args).runtime
     assert runtime.planning_profile_id == "generic-scpi"
     assert runtime.planning_model_id is None
     assert runtime.expected_model_id is None
@@ -188,7 +190,7 @@ def test_invalid_cli_identity_combinations_fail_as_validation(capsys, argv) -> N
 
 def test_live_expected_model_mismatch_stops_after_idn(monkeypatch, capsys) -> None:
     session = FakeLiveSession("Agilent Technologies,E3646A,SERIAL0000,1.0")
-    monkeypatch.setattr(cli, "_open_resource", lambda *args, **kwargs: session)
+    monkeypatch.setattr(output_run, "_open_resource", lambda *args, **kwargs: session)
 
     assert (
         cli.main(
@@ -232,7 +234,7 @@ def test_validation_switch_remains_hidden_and_orthogonal(capsys) -> None:
             "1",
         ]
     )
-    request = cli._operation_request_for_args(args)
+    request = cli_request._operation_request_for_args(args)
     assert request.runtime.planning_model_id == "keysight-e36312a"
     assert request.runtime.support_policy_mode == "validation"
 

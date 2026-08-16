@@ -10,6 +10,9 @@ import textwrap
 import pytest
 
 import powers_tool_cli.cli as cli
+import powers_tool_cli.cli_request as cli_request
+import powers_tool_cli.cli_runtime as cli_runtime
+import powers_tool_cli.commands.output_run as output_run
 from powers_tool_cli.commands import output
 
 
@@ -688,8 +691,8 @@ def test_output_parser_errors_keep_baseline_request_and_do_not_dispatch(
     def fail_dispatch(*_args: object, **_kwargs: object) -> int:
         raise AssertionError("parser failures must not dispatch output execution")
 
-    monkeypatch.setattr(cli, "_run_output_plan", fail_dispatch)
-    monkeypatch.setattr(cli, "open_resource", fail_dispatch)
+    monkeypatch.setattr(output_run, "_run_output_plan", fail_dispatch)
+    monkeypatch.setattr(cli_runtime, "open_resource", fail_dispatch)
 
     assert cli.main(argv) == 2
 
@@ -734,9 +737,9 @@ def test_cli_delegates_output_mapping_and_keeps_ramp_list_independent(monkeypatc
     monkeypatch.setattr(output, "request_from_argv", raw_mapper)
     monkeypatch.setattr(ramp_list, "request_for_args", lambda args: ramp_list_sentinel)
 
-    assert cli._request_for_args(argparse.Namespace(command="set")) is parsed_sentinel
-    assert cli._request_from_argv("set", ["set"]) is raw_sentinel
-    assert cli._request_for_args(argparse.Namespace(command="ramp-list")) is ramp_list_sentinel
+    assert cli_request._request_for_args(argparse.Namespace(command="set")) is parsed_sentinel
+    assert cli_request._request_from_argv("set", ["set"]) is raw_sentinel
+    assert cli_request._request_for_args(argparse.Namespace(command="ramp-list")) is ramp_list_sentinel
     assert calls == ["parsed", "raw"]
 
 
