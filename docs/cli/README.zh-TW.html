@@ -140,7 +140,9 @@ validation、dry-run 與錯誤 mapping。</li>
 <li><code>powers_tool_cli.request_primitives</code>：共用 argv parsing 與 JSON request fields。</li>
 <li><code>powers_tool_cli.runtime_mapping</code>：identity、execution、support-policy 與
 serial-option mapping。</li>
-<li><code>powers_tool_cli.worker</code>：Worker 進入點與 composition root（<code>run_worker</code>），以及相容性 re-export。</li>
+<li><code>powers_tool_cli.worker</code>：Worker 進入點與 composition root（<code>run_worker</code>），
+保留既有 public compatibility re-export；內部/private 使用者直接依賴各自的
+worker_* owner module。</li>
 <li><code>powers_tool_cli.worker_protocol</code>：Worker schema version、command taxonomy、context/request 驗證、response 封裝與參數正規化。</li>
 <li><code>powers_tool_cli.worker_config</code>：Worker 設定載入、驗證、serial 選項解析與 event sink 檢查。</li>
 <li><code>powers_tool_cli.worker_state</code>：執行緒安全的 <code>WorkerState</code> 狀態追蹤容器。</li>

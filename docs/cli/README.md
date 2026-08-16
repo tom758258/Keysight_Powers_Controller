@@ -72,7 +72,8 @@ place.
 - `powers_tool_cli.runtime_mapping`: runtime identity, execution, support-policy,
   and serial-option mapping for Core requests.
 - `powers_tool_cli.worker`: Worker entry point and composition root (`run_worker`),
-  with compatibility re-exports.
+  with retained public compatibility re-exports; internal/private consumers use
+  their owning worker_* modules directly.
 - `powers_tool_cli.worker_protocol`: Worker schema version, command taxonomy,
   context/request validation, response envelopes, and parameter normalization.
 - `powers_tool_cli.worker_config`: Worker configuration loading, validation,

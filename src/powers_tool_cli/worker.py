@@ -8,15 +8,10 @@ import sys
 import threading
 
 from powers_tool_cli.worker_config import (
-    _optional_int,
-    _optional_str,
-    _serial_options_from_settings,
     _validate_event_sink,
-    _validate_worker_config,
     load_worker_config,
 )
 from powers_tool_cli.worker_execution import (
-    _run_job_impl,
     get_opener,
     job_runner,
     record_cleanup_result,
@@ -27,10 +22,7 @@ from powers_tool_cli.worker_http import (
     WorkerHTTPServer,
     request_worker_shutdown,
 )
-from powers_tool_cli.worker_io import (
-    _write_json_artifact_atomic,
-    emit_event,
-)
+from powers_tool_cli.worker_io import emit_event
 from powers_tool_cli.worker_protocol import (
     ALLOWED_COMMANDS,
     CONTEXT_KEYS,
@@ -43,13 +35,6 @@ from powers_tool_cli.worker_protocol import (
     RUNTIME_ARGUMENT_KEYS,
     TRIGGER_COMMANDS,
     WORKER_SCHEMA_VERSION,
-    _FORBIDDEN_VALIDATION_MODE_ARGUMENTS,
-    _FORBIDDEN_VALIDATION_MODE_SETTINGS,
-    _IDENTITY_SETTING_FIELDS,
-    _LEGACY_IDENTITY_ARGUMENTS,
-    _command_parameters,
-    _command_response,
-    _validate_command_body,
     validate_worker_argument_context_fields,
     validate_worker_context,
 )

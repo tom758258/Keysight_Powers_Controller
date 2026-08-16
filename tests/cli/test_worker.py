@@ -9,17 +9,21 @@ import threading
 from pathlib import Path
 import pytest
 
-import powers_tool_cli.worker as worker_mod
+import powers_tool_cli.worker_config as worker_config_mod
 import powers_tool_cli.worker_execution as worker_execution_mod
 import powers_tool_cli.cli as cli
 from powers_tool_cli.worker import (
     WorkerHTTPHandler,
     WorkerHTTPServer,
     WorkerState,
-    _run_job_impl,
-    _write_json_artifact_atomic,
     load_worker_config,
     run_worker,
+)
+from powers_tool_cli.worker_execution import _run_job_impl
+from powers_tool_cli.worker_io import _write_json_artifact_atomic
+from powers_tool_cli.worker_protocol import (
+    FORBIDDEN_CONTEXT_ARGUMENTS,
+    _validate_command_body,
 )
 from powers_tool_cli.cli import build_parser
 from powers_tool_core.command_runner import run_core_command
@@ -72,7 +76,7 @@ def test_worker_command_requires_exact_integer_schema_2(tmp_path: Path, schema_v
     if schema_version is not None:
         body["schema_version"] = schema_version
 
-    status, payload = worker_mod._validate_command_body(body, state)
+    status, payload = _validate_command_body(body, state)
 
     assert status == 400
     assert payload["schema_version"] == 2
@@ -105,7 +109,7 @@ def test_worker_context_matrix(
 ) -> None:
     state = _worker_validation_state(tmp_path, mode=startup_mode)
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "read-status",
@@ -169,7 +173,7 @@ def test_worker_rejects_invalid_context_before_admission(
     if context is not None:
         body["context"] = context
 
-    status, payload = worker_mod._validate_command_body(body, state)
+    status, payload = _validate_command_body(body, state)
 
     assert status == 400
     assert payload["error"]["code"] == "argument_error"
@@ -184,7 +188,7 @@ def test_worker_rejects_malformed_restore_boolean_before_artifacts(
 ) -> None:
     state = _worker_validation_state(tmp_path)
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "restore-from-snapshot",
@@ -211,7 +215,7 @@ def test_worker_rejects_malformed_snapshot_boolean_before_artifacts(tmp_path: Pa
     snapshot = _worker_snapshot_document()
     snapshot["outputs"][0]["enabled"] = "false"
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "restore-from-snapshot",
@@ -235,7 +239,7 @@ def test_worker_rejects_coercible_channel_before_artifacts(
 ) -> None:
     state = _worker_validation_state(tmp_path)
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "set",
@@ -268,7 +272,7 @@ def test_worker_rejects_false_protection_all_before_artifacts(
 ) -> None:
     state = _worker_validation_state(tmp_path)
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": command,
@@ -287,7 +291,7 @@ def test_worker_rejects_false_protection_all_before_artifacts(
 def test_worker_restore_requires_channel_before_artifacts(tmp_path: Path) -> None:
     state = _worker_validation_state(tmp_path)
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "restore-from-snapshot",
@@ -306,7 +310,7 @@ def test_worker_restore_requires_channel_before_artifacts(tmp_path: Path) -> Non
 def test_worker_queues_restore_admitted_runtime(tmp_path: Path) -> None:
     state = _worker_validation_state(tmp_path)
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "restore-from-snapshot",
@@ -337,13 +341,13 @@ def test_worker_uses_core_admission_for_multi_channel_ramp(tmp_path: Path) -> No
         },
     }
 
-    status, payload = worker_mod._validate_command_body(body, state)
+    status, payload = _validate_command_body(body, state)
 
     assert status == 202
     assert payload["_admitted_request"].parameters["channels"] == (1, 3)
 
     body["arguments"]["channel"] = 1
-    status, payload = worker_mod._validate_command_body(body, state)
+    status, payload = _validate_command_body(body, state)
     assert status == 400
     assert "requires exactly one of" in payload["error"]["message"]
 
@@ -355,7 +359,7 @@ def test_worker_rejects_invalid_completion_pulse_channel_before_artifacts(
 ) -> None:
     state = _worker_validation_state(tmp_path)
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "ramp",
@@ -383,7 +387,7 @@ def test_worker_rejects_invalid_completion_pulse_channel_before_artifacts(
 def test_worker_uses_core_contract_for_inapplicable_parameter(tmp_path: Path) -> None:
     state = _worker_validation_state(tmp_path)
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "set",
@@ -403,7 +407,7 @@ def test_worker_uses_core_contract_for_inapplicable_parameter(tmp_path: Path) ->
 def test_worker_rejects_completion_pulse_channel_without_pins_before_artifacts(tmp_path: Path) -> None:
     state = _worker_validation_state(tmp_path)
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "ramp",
@@ -433,7 +437,7 @@ def test_worker_accepts_valid_completion_pulse_channel(
 ) -> None:
     state = _worker_validation_state(tmp_path)
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "ramp",
@@ -462,7 +466,7 @@ def test_worker_rejects_incomplete_protection_inventory_before_artifacts(tmp_pat
     snapshot = _worker_snapshot_document()
     snapshot["protection_settings"] = snapshot["protection_settings"][1:]
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "restore-from-snapshot",
@@ -495,7 +499,7 @@ def test_worker_rejects_validation_mode_request_arguments(field: str) -> None:
         },
         0,
     )
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "measure",
@@ -522,7 +526,7 @@ def test_worker_rejects_validation_mode_setting(field: str) -> None:
         "settings": {"resource": "USB0::FAKE::E36312A::INSTR", field: "validation"},
     }
     with pytest.raises(ValueError, match="validation support policy mode"):
-        worker_mod._validate_worker_config(config)
+        worker_config_mod._validate_worker_config(config)
 
 
 @pytest.mark.parametrize(
@@ -542,7 +546,7 @@ def test_worker_rejects_identity_settings(field: str) -> None:
         "settings": {"resource": "USB0::FAKE::E36312A::INSTR", field: "keysight-e36312a"},
     }
     with pytest.raises(ValueError, match="identity selection belongs to each request"):
-        worker_mod._validate_worker_config(config)
+        worker_config_mod._validate_worker_config(config)
 
 
 @pytest.mark.parametrize(
@@ -578,7 +582,7 @@ def test_worker_rejects_context_arguments_before_queue_mutation(
         0,
     )
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "measure",
@@ -933,7 +937,7 @@ def test_worker_command_execution(running_worker):
     assert request_data["context"] == SIMULATE_CONTEXT
     assert request_data["arguments"]["channel"] == 1
     assert not (
-        worker_mod.FORBIDDEN_CONTEXT_ARGUMENTS
+        FORBIDDEN_CONTEXT_ARGUMENTS
         & set(request_data["arguments"])
     )
     result_data = _wait_for_json_file(result_file)
@@ -1029,7 +1033,7 @@ def test_worker_rejects_invalid_log_before_artifacts(
 ) -> None:
     state = _worker_validation_state(tmp_path)
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "log",
@@ -1525,7 +1529,7 @@ def test_worker_simulate_planning_model_id_resource_mismatch_fails(tmp_path):
     }
     state = WorkerState(config, 0)
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "output-on",
@@ -1956,7 +1960,7 @@ def test_worker_ramp_list_requires_document_or_file():
     config = {"mode": "simulate", "settings": {}, "id": "test", "artifacts_dir": "."}
     state = WorkerState(config, 0)
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "ramp-list",
@@ -1974,7 +1978,7 @@ def test_worker_rejects_invalid_static_parameter_before_enqueue():
     config = {"mode": "simulate", "settings": {}, "id": "test", "artifacts_dir": "."}
     state = WorkerState(config, 0)
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "set",
@@ -1993,7 +1997,7 @@ def test_worker_accepts_partial_set_before_enqueue():
     config = {"mode": "simulate", "settings": {}, "id": "test", "artifacts_dir": "."}
     state = WorkerState(config, 0)
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "set",
@@ -2012,7 +2016,7 @@ def test_worker_rejects_empty_set_before_enqueue():
     config = {"mode": "simulate", "settings": {}, "id": "test", "artifacts_dir": "."}
     state = WorkerState(config, 0)
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "set",
@@ -2031,7 +2035,7 @@ def test_worker_rejects_arm_only_trigger_list_before_enqueue():
     config = {"mode": "simulate", "settings": {}, "id": "test", "artifacts_dir": "."}
     state = WorkerState(config, 0)
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "trigger-list",
@@ -2062,7 +2066,7 @@ def test_worker_rejects_invalid_trigger_control_before_enqueue(command, argument
     config = {"mode": "simulate", "settings": {}, "id": "test", "artifacts_dir": "."}
     state = WorkerState(config, 0)
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": command,
@@ -2082,7 +2086,7 @@ def test_worker_rejects_trigger_fire_wait_without_abort_target_before_enqueue():
     config = {"mode": "simulate", "settings": {}, "id": "test", "artifacts_dir": "."}
     state = WorkerState(config, 0)
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "trigger-fire",
@@ -2102,7 +2106,7 @@ def test_worker_rejects_trigger_list_pulse_without_output_pins_before_enqueue():
     config = {"mode": "simulate", "settings": {}, "id": "test", "artifacts_dir": "."}
     state = WorkerState(config, 0)
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "trigger-list",
@@ -2131,7 +2135,7 @@ def test_worker_ramp_list_rejects_invalid_document_before_enqueue():
     }
     state = WorkerState(config, 0)
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "ramp-list",
@@ -2199,7 +2203,7 @@ def test_worker_ramp_list_rejects_invalid_version_type_before_enqueue(version):
     }
     state = WorkerState(config, 0)
 
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "ramp-list",
@@ -2234,7 +2238,7 @@ def test_worker_live_ramp_list_requires_output_confirmation():
         "artifacts_dir": ".",
     }
     state = WorkerState(config, 0)
-    status, payload = worker_mod._validate_command_body(
+    status, payload = _validate_command_body(
         {
             "schema_version": 2,
             "command": "ramp-list",

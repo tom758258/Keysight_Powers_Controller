@@ -18,7 +18,7 @@ def run_send_command(args: argparse.Namespace) -> int:
         return _lifecycle_error(args, 2, "argument_error", f"--arguments-json must be a JSON object: {exc}")
     if not isinstance(arguments, dict):
         return _lifecycle_error(args, 2, "argument_error", "--arguments-json must be a JSON object")
-    from powers_tool_cli.worker import (
+    from powers_tool_cli.worker_protocol import (
         WORKER_SCHEMA_VERSION,
         validate_worker_argument_context_fields,
         validate_worker_context,
