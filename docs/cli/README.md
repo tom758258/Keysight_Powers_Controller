@@ -243,8 +243,10 @@ Focused suites:
 
 The former monolithic `test_cli.py` is split by command family under
 `tests/cli/` (for example `test_cli_discovery.py`, `test_cli_generic_io.py`,
-`test_cli_output_commands.py`). Shared CLI test helpers live in
-`tests/cli/cli_test_helpers.py`.
+`test_cli_output_commands.py`). CLI parser regression tests (`tests/cli/test_cli_parser.py`)
+include a Core-to-CLI command completeness drift guard ensuring all formal
+Core commands in `COMMAND_CONTRACTS` are present in CLI's `COMMAND_NAMES` inventory.
+Shared CLI test helpers live in `tests/cli/cli_test_helpers.py`.
 
 Pytest uses the ignored repository-local `.tmp_pytest` directory by default,
 so tests do not depend on access to the Windows system temporary directory.

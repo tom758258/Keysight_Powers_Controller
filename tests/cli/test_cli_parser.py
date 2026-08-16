@@ -12,6 +12,7 @@ import textwrap
 import pytest
 
 import powers_tool_cli.cli as cli
+from powers_tool_core.command_contract import COMMAND_CONTRACTS
 import powers_tool_cli.cli_parser as cli_parser
 from powers_tool_cli.commands import (
     discovery,
@@ -569,4 +570,11 @@ def test_cli_main_does_not_set_runtime_locator() -> None:
         and isinstance(node.args[1], ast.Constant)
         and node.args[1].value == "_runtime"
         for node in ast.walk(main_node)
+    )
+
+
+def test_core_commands_are_complete_in_cli_command_inventory() -> None:
+    missing_from_cli = sorted(set(COMMAND_CONTRACTS) - set(cli.COMMAND_NAMES))
+    assert not missing_from_cli, (
+        f"Core commands missing from CLI command inventory: {missing_from_cli}"
     )

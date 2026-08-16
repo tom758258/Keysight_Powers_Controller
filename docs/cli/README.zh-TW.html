@@ -340,8 +340,10 @@ USB、TCPIP、GPIB、pyvisa-py、pyvisa-bt 與 custom VISA scopes 仍會 fail cl
 </code></pre></div>
 <p>原 monolithic <code>test_cli.py</code> 已依 command family 拆到 <code>tests/cli/</code>（例如
 <code>test_cli_discovery.py</code>、<code>test_cli_generic_io.py</code>、
-<code>test_cli_output_commands.py</code>）。共用 CLI test helpers 位於
-<code>tests/cli/cli_test_helpers.py</code>。</p>
+<code>test_cli_output_commands.py</code>）。CLI 解析器測試（<code>tests/cli/test_cli_parser.py</code>）
+包含 Core → CLI command completeness drift guard，確保 <code>COMMAND_CONTRACTS</code>
+中的所有正式 Core 指令皆存在於 CLI 的 <code>COMMAND_NAMES</code> 清單中。
+共用 CLI test helpers 位於 <code>tests/cli/cli_test_helpers.py</code>。</p>
 <p>pytest 預設使用 repository-local、已忽略的 <code>.tmp_pytest</code>，因此不依賴
 Windows system temporary directory。請從 repository 根目錄執行 pytest；若需
 單次覆寫 basetemp，使用 <code>--basetemp .tmp_tests/&lt;purpose&gt;</code>，不要使用 <code>Local/</code>。</p>

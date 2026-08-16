@@ -207,8 +207,10 @@ Focused suites：
 
 原 monolithic `test_cli.py` 已依 command family 拆到 `tests/cli/`（例如
 `test_cli_discovery.py`、`test_cli_generic_io.py`、
-`test_cli_output_commands.py`）。共用 CLI test helpers 位於
-`tests/cli/cli_test_helpers.py`。
+`test_cli_output_commands.py`）。CLI 解析器測試（`tests/cli/test_cli_parser.py`）
+包含 Core → CLI command completeness drift guard，確保 `COMMAND_CONTRACTS`
+中的所有正式 Core 指令皆存在於 CLI 的 `COMMAND_NAMES` 清單中。
+共用 CLI test helpers 位於 `tests/cli/cli_test_helpers.py`。
 
 pytest 預設使用 repository-local、已忽略的 `.tmp_pytest`，因此不依賴
 Windows system temporary directory。請從 repository 根目錄執行 pytest；若需
