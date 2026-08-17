@@ -16,12 +16,41 @@ or exit-code check.
 ## Contract-aware repository diff review
 
 ```text
-Use $powers-tool-cli-orchestration to review the current repository diff. Read the upstream common and Power Worker/CLI/orchestrator contracts, the Core command-parameter contract, and supported-models.md in contract lookup order. Check schema_version 2, top-level POST /command context, identity semantics, Core-owned admission, run/job/artifact correlation, exact Product LIVE scope, and owned-process cleanup. Report findings only; do not edit files or run live hardware.
+Use $powers-tool-cli-orchestration to review the current repository diff. Read the upstream common and Power Worker/CLI/orchestrator contracts, the Core command-parameter contract, Core integration.md, and supported-models.md in contract lookup order. Check schema_version 2, top-level POST /command context, identity semantics, Core-owned admission, run/job/artifact correlation, exact Product LIVE scope, and owned-process cleanup. Report findings only; do not edit files or run live hardware.
 ```
 
 Expected behavior: repository originals take precedence over installed
 references. The review does not treat no-hardware capability, pending evidence,
 or another backend as Product-open.
+
+## Backend identity and exact Product scope review
+
+```text
+Use $powers-tool-cli-orchestration to review this proposed live Powers connection. Read docs/core/integration.md and docs/core/supported-models.md. Normalize an unset or blank backend selector as system_visa, @py as pyvisa_py, @bt as pyvisa_bt, and any other explicit selector, including @ivi, as custom_visa. Keep backend identity separate from any VISA shared library PyVISA may load. Verify the exact detected model + command + transport + backend + required feature Product scope, and do not infer Product-open support from backend loadability, a driver, a simulator, or another transport/backend. Report the evidence and any fail-closed decision; do not run hardware.
+```
+
+Expected behavior: the agent treats backend normalization as Core policy, does
+not describe `@ivi` as `system_visa`, and checks the exact Product scope in
+`supported-models.md` without widening support.
+
+## Multi-channel Ramp and Ramp List v5 contract review
+
+```text
+Use $powers-tool-cli-orchestration to review these Ramp and Ramp List documents against the current Core and Power Worker contracts. Verify that Ramp uses exactly one of channel or channels, that channels is non-empty and unique, and that Core canonicalizes selected channels in model order. Verify that every selected channel shares the logical voltage path, a logical voltage step completes only after every selected write succeeds, and channel count does not multiply progress or execution units. For Ramp List, keep v2/v3/v4 single-channel and require non-empty unique channels only for v5; reject mixed selector versions and preserve logical-step progress/pulse semantics. Report findings only; do not run hardware.
+```
+
+Expected behavior: the agent distinguishes Core admission and canonicalization
+from Worker exposure and Product LIVE support, and does not invent per-channel
+execution-unit multiplication.
+
+## Worker telemetry log and cancellation review
+
+```text
+Use $powers-tool-cli-orchestration to review this Worker telemetry log workflow and its cancellation handling. Distinguish top-level Worker log from the host-side Sequence log note. Verify that Worker log is read-only, Core owns telemetry admission, identity/support/channel validation, instrument reads, cadence, and cooperative cancellation, CLI owns CSV/JSONL/append, and Worker writes fixed job-local telemetry artifacts. Confirm that a started cycle finishes all requested channels and flushes its rows before cancellation is observed, that cancellation does not issue output OFF or Ramp/Ramp List/Sequence safe-off/error-queue cleanup, and that collected telemetry is retained. Report findings only; do not run hardware.
+```
+
+Expected behavior: the agent does not apply output-workflow cancellation rules
+to telemetry and keeps telemetry artifacts available after cancellation.
 
 ## Prepare, but do not execute, a live read-only workflow
 

@@ -17,11 +17,39 @@ correlation、parse、terminal result、summary 或 exit code 檢查失敗。成
 ## Contract-aware repository diff review
 
 ```text
-使用 $powers-tool-cli-orchestration 審查目前 repository diff。依 contract lookup order 讀取上游 Common 與 Power Worker／CLI／orchestrator contracts、Core command-parameter contract 與 supported-models.md。檢查 schema_version 2、POST /command top-level context、identity semantics、Core-owned admission、run/job/artifact correlation、Product LIVE exact scope 與 owned-process cleanup。只回報 findings；不要修改檔案或執行 live hardware。
+使用 $powers-tool-cli-orchestration 審查目前 repository diff。依 contract lookup order 讀取上游 Common 與 Power Worker／CLI／orchestrator contracts、Core command-parameter contract、Core integration.md 與 supported-models.md。檢查 schema_version 2、POST /command top-level context、identity semantics、Core-owned admission、run/job/artifact correlation、Product LIVE exact scope 與 owned-process cleanup。只回報 findings；不要修改檔案或執行 live hardware。
 ```
 
 預期行為：Repository 原始文件優先於 installed references。審查不會將
 no-hardware capability、pending evidence 或其他 backend 視為 Product-open。
+
+## Backend identity 與 exact Product scope review
+
+```text
+使用 $powers-tool-cli-orchestration 審查這個 proposed live Powers connection。讀取 docs/core/integration.md 與 docs/core/supported-models.md。將 unset 或 blank backend selector 正規化為 system_visa、@py 為 pyvisa_py、@bt 為 pyvisa_bt，其他明確 selector（包括 @ivi）為 custom_visa。將 backend identity 與 PyVISA 可能載入的 VISA shared library 分開處理。驗證 exact detected model + command + transport + backend + required feature Product scope，不要因為 backend 可載入、存在 driver、simulator 或其他 transport/backend 就推論 Product-open。只回報證據與 fail-closed 判定；不要執行硬體。
+```
+
+預期行為：Agent 依 Core policy 處理 backend normalization，不會把 `@ivi`
+描述成 `system_visa`，並從 `supported-models.md` 檢查 exact Product scope，
+不擴大 support。
+
+## Multi-channel Ramp 與 Ramp List v5 contract review
+
+```text
+使用 $powers-tool-cli-orchestration 依目前 Core 與 Power Worker contracts 審查這些 Ramp 與 Ramp List documents。確認 Ramp 的 channel 與 channels 必須二選一，channels 必須 non-empty 且 unique，並由 Core 依 model order canonicalize selected channels。確認所有 selected channel 共用 logical voltage path、一個 logical voltage step 必須等所有 selected write 成功才完成，且 channel 數量不乘上 progress 或 execution units。Ramp List 必須讓 v2/v3/v4 保留 single-channel，只有 v5 使用每個 Segment 的 non-empty unique channels；拒絕混用不同版本 selector，並保留 logical-step progress/pulse semantics。只回報 findings；不要執行硬體。
+```
+
+預期行為：Agent 能區分 Core admission／canonicalization、Worker exposure
+與 Product LIVE support，不會自行加入 per-channel execution-unit multiplication。
+
+## Worker telemetry log 與 cancellation review
+
+```text
+使用 $powers-tool-cli-orchestration 審查這個 Worker telemetry log workflow 與 cancellation handling。區分 top-level Worker log 與 host-side Sequence log note。確認 Worker log 是 read-only；Core 負責 telemetry admission、identity/support/channel validation、instrument reads、cadence 與 cooperative cancellation；CLI 負責 CSV/JSONL/append；Worker 寫入固定 job-local telemetry artifacts。確認已開始的 cycle 會完成所有 requested channels 並 flush rows 後才觀察 cancellation；cancellation 不會執行 output OFF 或 Ramp／Ramp List／Sequence safe-off／error-queue cleanup，且已收集 telemetry 會保留。只回報 findings；不要執行硬體。
+```
+
+預期行為：Agent 不會把 output workflow cancellation 規則套用到 telemetry，
+並在 cancellation 後保留 telemetry artifacts。
 
 ## 準備但不執行 live read-only workflow
 

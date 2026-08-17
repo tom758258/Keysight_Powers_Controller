@@ -15,8 +15,8 @@ hardware work.
 Before contract-sensitive work, read these documents in order:
 
 1. Inside the Powers Tool repository, use the original files under
-   `docs/contracts/` and `docs/core/supported-models.md`. They are the upstream
-   source of truth.
+   `docs/contracts/`, `docs/core/integration.md`, and
+   `docs/core/supported-models.md`. They are the upstream source of truth.
 2. In a standalone executable workspace, use the installed Skill's
    `references/` directory. These files are a manually copied snapshot, not a
    second contract.
@@ -35,7 +35,8 @@ Read the common documents before their Power-specific extensions:
 5. `power-cli-jsonl-contract.md`
 6. `power-orchestrator-workflows.md`
 7. `commands-parameter-contract.md`
-8. `supported-models.md`
+8. `integration.md`
+9. `supported-models.md`
 
 ## Scope
 
@@ -113,6 +114,52 @@ simulate and dry-run requests. Reject other startup/request combinations.
 - Consult `supported-models.md` for the current exact Product matrix; never
   reconstruct it from memory or broaden it by analogy.
 
+Keep these three boundaries separate:
+
+- Worker command exposure is a request taxonomy across read-only/status,
+  output/setpoint, protection/restore/sequencing, and trigger commands. A
+  Worker accepting a command does not make it Product-open for every model,
+  transport, or backend.
+- Core owns command parameter allowlists, aliases, exact type validation, and
+  canonicalization for every adapter. Do not add adapter-local admission rules
+  or infer defaults. For Ramp and Ramp List, Core also owns selector validation
+  and canonical channel ordering.
+- Product LIVE support is the exact model, command, transport, backend, and
+  required-feature scope from `supported-models.md`; dry-run or simulator
+  availability is not a Product authorization.
+
+Backend identity is normalized by Core as follows: an unset or blank selector
+is `system_visa`, `@py` is `pyvisa_py`, `@bt` is `pyvisa_bt`, and any other
+explicit selector, including `@ivi`, is `custom_visa`. This is the Powers
+support-policy backend identity. Do not confuse it with a lower-level VISA
+shared library that PyVISA might load, and do not infer Product-open support
+because PyVISA can load a backend. Current Product LIVE support remains the
+exact scope in `supported-models.md`; do not claim `custom_visa` or
+`pyvisa_bt` is Product-open without an exact Product row.
+
+Top-level Worker `log` is a read-only telemetry command. Core owns telemetry
+admission, identity/support/channel validation, instrument reads, complete-cycle
+cadence, and cooperative cancellation. CLI owns CSV/JSONL serialization and
+`append`; Worker owns fixed job-local telemetry artifacts. Sequence `log` is a
+host-side message/note action, not telemetry collection. A started telemetry
+cycle finishes all requested channels and flushes its rows before cancellation
+is observed; cancellation does not issue output OFF or run Ramp, Ramp List, or
+Sequence safe-off/error-queue cleanup, and collected telemetry is retained.
+
+For multi-channel workflows, Ramp requires exactly one of `channel` and
+`channels`; `channels` must be non-empty and unique, and Core orders it by the
+model's canonical channel order. Selected channels share one voltage path, and
+a logical voltage step completes only after every selected-channel write
+succeeds. Channel count does not multiply logical progress or execution units.
+Ramp List v5 uses non-empty unique `channels` in each Segment; v2/v3/v4 keep
+single `channel`, and the selector forms must not be mixed. Multi-channel
+Segment progress and pulses retain logical-step semantics.
+
+Restore workflows require the formal schema-2 snapshot. PSM-2010 snapshots and
+restores include `output_ranges`, with one active `LOW` or `HIGH` range per
+channel; the active range is part of the restore contract. Never infer a range
+from voltage/current values or ignore it.
+
 ## Worker lifecycle and correlation
 
 1. Prefer dry-run or simulate before considering live.
@@ -158,6 +205,10 @@ cleanup and bounded observation through final summary and exit.
 - Require the user to provide the exact live VISA resource explicitly. Never
   guess, scan, rotate, brute-force, infer, or silently substitute a resource
   during a workflow.
+- Before live validation or a live workflow, confirm that no other Powers
+  WebUI, CLI, logger, test process, or external VISA application is using the
+  same physical instrument resource. Powers Tool currently has no
+  cross-process single-client ownership guard; this is an operator prerequisite.
 - Require explicit live authorization separately from resource selection.
 - For every live output-affecting Worker command, require both gates:
   Worker `settings.allow_output_writes: true` and request
@@ -189,7 +240,7 @@ mode selection.
 
 ```powershell
 node .agents\skills\powers-tool-cli-orchestration\scripts\run_power_sim_workflow.mjs `
-  --exe .\powers-tool-<version>.exe `
+  --exe .\dist\powers-tool\powers-tool.exe `
   --out .tmp_tests\power_sim_workflow
 ```
 

@@ -69,8 +69,8 @@ diagnostic，不能取代 machine evidence。
 - 無法確認 cleanup 或 process shutdown。
 
 請參閱 [SKILL.md](SKILL.md)、[Common Worker Protocol](../contracts/common-worker-protocol.md)、
-[Power Worker Contract](../contracts/power-worker-contract.md) 與
-[Power Orchestrator Workflows](../contracts/power-orchestrator-workflows.md)。
+[Core Integration](../core/integration.md)、[Power Worker Contract](../contracts/power-worker-contract.md)
+與 [Power Orchestrator Workflows](../contracts/power-orchestrator-workflows.md)。
 
 ## Standalone references
 
@@ -87,6 +87,7 @@ references/
   power-cli-jsonl-contract.md
   power-orchestrator-workflows.md
   commands-parameter-contract.md
+  integration.md
   supported-models.md
 ```
 
@@ -101,6 +102,7 @@ references/
 | `power-cli-jsonl-contract.md` | `docs/contracts/power-cli-jsonl-contract.md` |
 | `power-orchestrator-workflows.md` | `docs/contracts/power-orchestrator-workflows.md` |
 | `commands-parameter-contract.md` | `docs/contracts/commands-parameter-contract.md` |
+| `integration.md` | `docs/core/integration.md` |
 | `supported-models.md` | `docs/core/supported-models.md` |
 
 已安裝的 `references/` 只是手動建立的文件快照，不是另一套正式合約。上游
@@ -128,6 +130,7 @@ powers-tool/
           power-cli-jsonl-contract.md
           power-orchestrator-workflows.md
           commands-parameter-contract.md
+          integration.md
           supported-models.md
         scripts/
           run_power_sim_workflow.mjs
@@ -148,6 +151,7 @@ Copy-Item "docs\contracts\power-worker-contract.md" "$skill\references\"
 Copy-Item "docs\contracts\power-cli-jsonl-contract.md" "$skill\references\"
 Copy-Item "docs\contracts\power-orchestrator-workflows.md" "$skill\references\"
 Copy-Item "docs\contracts\commands-parameter-contract.md" "$skill\references\"
+Copy-Item "docs\core\integration.md" "$skill\references\"
 Copy-Item "docs\core\supported-models.md" "$skill\references\"
 ```
 
@@ -166,6 +170,7 @@ cp docs/contracts/power-worker-contract.md "$skill/references/"
 cp docs/contracts/power-cli-jsonl-contract.md "$skill/references/"
 cp docs/contracts/power-orchestrator-workflows.md "$skill/references/"
 cp docs/contracts/commands-parameter-contract.md "$skill/references/"
+cp docs/core/integration.md "$skill/references/"
 cp docs/core/supported-models.md "$skill/references/"
 ```
 
@@ -190,6 +195,7 @@ Copy-Item "docs\contracts\power-worker-contract.md" (Join-Path $skill "reference
 Copy-Item "docs\contracts\power-cli-jsonl-contract.md" (Join-Path $skill "references")
 Copy-Item "docs\contracts\power-orchestrator-workflows.md" (Join-Path $skill "references")
 Copy-Item "docs\contracts\commands-parameter-contract.md" (Join-Path $skill "references")
+Copy-Item "docs\core\integration.md" (Join-Path $skill "references")
 Copy-Item "docs\core\supported-models.md" (Join-Path $skill "references")
 ```
 
@@ -208,6 +214,7 @@ cp docs/contracts/power-worker-contract.md "$skill/references/"
 cp docs/contracts/power-cli-jsonl-contract.md "$skill/references/"
 cp docs/contracts/power-orchestrator-workflows.md "$skill/references/"
 cp docs/contracts/commands-parameter-contract.md "$skill/references/"
+cp docs/core/integration.md "$skill/references/"
 cp docs/core/supported-models.md "$skill/references/"
 ```
 
@@ -251,7 +258,7 @@ Wrapper report 使用自己的 `schema_version: 1`，並以
 
 ```powershell
 node .agents\skills\powers-tool-cli-orchestration\scripts\run_power_sim_workflow.mjs `
-  --exe .\powers-tool-<version>.exe `
+  --exe .\dist\powers-tool\powers-tool.exe `
   --out .tmp_tests\power_sim_workflow
 ```
 
@@ -271,7 +278,13 @@ node .agents\skills\powers-tool-cli-orchestration\scripts\run_power_sim_workflow
 ## Live 安全
 
 Live workflow 必須使用使用者明確提供的 exact VISA resource，並取得另一項
-明確 live authorization。不得掃描、猜測、輪替或替換 resource。Live
+明確 live authorization。不得掃描、猜測、輪替或替換 resource。執行 live
+validation 或 live workflow 前，必須確認沒有其他 Powers WebUI、CLI、logger、
+test process 或外部 VISA application 同時使用相同 physical instrument resource。
+Powers Tool 目前沒有 cross-process single-client ownership guard；這是 operator
+prerequisite。Backend identity 依 `docs/core/integration.md`：unset 或 blank 是
+`system_visa`、`@py` 是 `pyvisa_py`、`@bt` 是 `pyvisa_bt`，其他明確 selector 是
+`custom_visa`；backend 可載入不代表 scope 已 Product-open。Live
 output-affecting Worker command 必須同時具備
 `settings.allow_output_writes: true` 與 `arguments.confirm_output: true`。
 使用保守 setpoint、保留 safe-off 與 cleanup，並記住 `expected_model_id` 只是

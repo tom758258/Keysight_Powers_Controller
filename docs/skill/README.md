@@ -70,8 +70,8 @@ Treat the following as failure or incomplete convergence:
 - unconfirmed cleanup or process shutdown.
 
 See [SKILL.md](SKILL.md), [Common Worker Protocol](../contracts/common-worker-protocol.md),
-[Power Worker Contract](../contracts/power-worker-contract.md), and
-[Power Orchestrator Workflows](../contracts/power-orchestrator-workflows.md).
+[Core Integration](../core/integration.md), [Power Worker Contract](../contracts/power-worker-contract.md),
+and [Power Orchestrator Workflows](../contracts/power-orchestrator-workflows.md).
 
 ## Standalone references
 
@@ -88,6 +88,7 @@ references/
   power-cli-jsonl-contract.md
   power-orchestrator-workflows.md
   commands-parameter-contract.md
+  integration.md
   supported-models.md
 ```
 
@@ -102,6 +103,7 @@ Copy them from:
 | `power-cli-jsonl-contract.md` | `docs/contracts/power-cli-jsonl-contract.md` |
 | `power-orchestrator-workflows.md` | `docs/contracts/power-orchestrator-workflows.md` |
 | `commands-parameter-contract.md` | `docs/contracts/commands-parameter-contract.md` |
+| `integration.md` | `docs/core/integration.md` |
 | `supported-models.md` | `docs/core/supported-models.md` |
 
 Installed `references/` files are only a manually created documentation
@@ -132,6 +134,7 @@ powers-tool/
           power-cli-jsonl-contract.md
           power-orchestrator-workflows.md
           commands-parameter-contract.md
+          integration.md
           supported-models.md
         scripts/
           run_power_sim_workflow.mjs
@@ -152,6 +155,7 @@ Copy-Item "docs\contracts\power-worker-contract.md" "$skill\references\"
 Copy-Item "docs\contracts\power-cli-jsonl-contract.md" "$skill\references\"
 Copy-Item "docs\contracts\power-orchestrator-workflows.md" "$skill\references\"
 Copy-Item "docs\contracts\commands-parameter-contract.md" "$skill\references\"
+Copy-Item "docs\core\integration.md" "$skill\references\"
 Copy-Item "docs\core\supported-models.md" "$skill\references\"
 ```
 
@@ -170,6 +174,7 @@ cp docs/contracts/power-worker-contract.md "$skill/references/"
 cp docs/contracts/power-cli-jsonl-contract.md "$skill/references/"
 cp docs/contracts/power-orchestrator-workflows.md "$skill/references/"
 cp docs/contracts/commands-parameter-contract.md "$skill/references/"
+cp docs/core/integration.md "$skill/references/"
 cp docs/core/supported-models.md "$skill/references/"
 ```
 
@@ -195,6 +200,7 @@ Copy-Item "docs\contracts\power-worker-contract.md" (Join-Path $skill "reference
 Copy-Item "docs\contracts\power-cli-jsonl-contract.md" (Join-Path $skill "references")
 Copy-Item "docs\contracts\power-orchestrator-workflows.md" (Join-Path $skill "references")
 Copy-Item "docs\contracts\commands-parameter-contract.md" (Join-Path $skill "references")
+Copy-Item "docs\core\integration.md" (Join-Path $skill "references")
 Copy-Item "docs\core\supported-models.md" (Join-Path $skill "references")
 ```
 
@@ -213,6 +219,7 @@ cp docs/contracts/power-worker-contract.md "$skill/references/"
 cp docs/contracts/power-cli-jsonl-contract.md "$skill/references/"
 cp docs/contracts/power-orchestrator-workflows.md "$skill/references/"
 cp docs/contracts/commands-parameter-contract.md "$skill/references/"
+cp docs/core/integration.md "$skill/references/"
 cp docs/core/supported-models.md "$skill/references/"
 ```
 
@@ -256,7 +263,7 @@ Example:
 
 ```powershell
 node .agents\skills\powers-tool-cli-orchestration\scripts\run_power_sim_workflow.mjs `
-  --exe .\powers-tool-<version>.exe `
+  --exe .\dist\powers-tool\powers-tool.exe `
   --out .tmp_tests\power_sim_workflow
 ```
 
@@ -277,7 +284,14 @@ Use $powers-tool-cli-orchestration to review this repository diff against the Po
 
 Live workflows require an exact VISA resource explicitly supplied by the user
 and separate explicit live authorization. Never scan, guess, rotate, or replace
-that resource. For a live output-affecting Worker command, both
+that resource. Before live validation or a live workflow, confirm that no other
+Powers WebUI, CLI, logger, test process, or external VISA application is using
+the same physical instrument resource. Powers Tool has no cross-process
+single-client ownership guard; this is an operator prerequisite. Backend
+identity follows `docs/core/integration.md`: unset or blank is `system_visa`,
+`@py` is `pyvisa_py`, `@bt` is `pyvisa_bt`, and any other explicit selector is
+`custom_visa`; backend loadability does not make a scope Product-open. For a
+live output-affecting Worker command, both
 `settings.allow_output_writes: true` and `arguments.confirm_output: true` are
 required. Use conservative setpoints, preserve safe-off and cleanup, and
 remember that `expected_model_id` is only a mismatch guard, not driver or
