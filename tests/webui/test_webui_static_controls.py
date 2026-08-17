@@ -849,7 +849,7 @@ def test_static_ramp_list_editor_contract():
     assert "state.rampListEnableOutput = normalized.enableOutput;" in workflows_js
     assert 'name: "completion_pulse_timing"' in command_params_js
     assert 'name: "completion_pulse_step"' not in command_params_js
-    assert 'name: "completion_pulse_segment"' not in app_js
+    assert 'name: "completion_pulse_segment"' not in command_params_js
     assert "state.rampListCompletionPulse = normalized.completionPulse;" in workflows_js
     assert "document.completion_pulse" in ramp_list_js
     assert '"trigger-pulse": [channel()' in workflows_js

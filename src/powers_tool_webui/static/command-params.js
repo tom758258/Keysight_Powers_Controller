@@ -1,6 +1,6 @@
 import * as webuiCommandForm from "./command-form.js";
 
-export function createCommandParams({ rearPinOptions, optionalRearPinOptions }) {
+export function createCommandParams({ rearPinOptions }) {
   const PARAMS = {
     "list-resources": [{ name: "live_only", type: "checkbox", label: "Live only" }],
     verify: [],

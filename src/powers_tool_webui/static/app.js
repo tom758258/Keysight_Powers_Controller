@@ -97,8 +97,7 @@ const STOPPABLE_WORKFLOWS = new Set(["ramp", "ramp-list", "sequence"]);
 const ELECTRICAL_CONSTRAINT_ATTRIBUTES = ["min", "max", "step", "title"];
 
 const PARAMS = createCommandParams({
-  rearPinOptions: REAR_PIN_OPTIONS,
-  optionalRearPinOptions: OPTIONAL_REAR_PIN_OPTIONS
+  rearPinOptions: REAR_PIN_OPTIONS
 });
 
 function defaultRampSegment() {
