@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from io import StringIO
 from urllib.request import urlopen
 
@@ -65,7 +66,7 @@ def test_shutdown_failure_reports_incomplete_without_stopping_server(failure: st
         async def shutdown(self, *, timeout_s: float) -> None:
             if failure == "exception":
                 raise RuntimeError("cleanup failed")
-            await asyncio.sleep(1.0)
+            await asyncio.sleep(0.1)
 
     output = StringIO()
     host = DesktopHost(
@@ -83,6 +84,10 @@ def test_shutdown_failure_reports_incomplete_without_stopping_server(failure: st
         assert events[-1]["event"] == "shutdown_incomplete"
         assert host.server is not None and host.server.should_exit is False
         assert host.server_thread is not None and host.server_thread.is_alive()
+        if failure == "timeout":
+            time.sleep(0.2)
+            assert host.server.should_exit is False
+            assert host.server_thread.is_alive()
     finally:
         if host.server is not None:
             host.server.should_exit = True

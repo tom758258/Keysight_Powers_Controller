@@ -200,8 +200,12 @@ class DesktopHost:
                     timeout=self._job_shutdown_timeout_s + self._shutdown_wait_grace_s
                 )
             except BaseException as exc:
+                future.cancel()
                 self._emit("shutdown_incomplete", self._error_message(exc))
                 return False
+
+            if self._server is not None:
+                self._server.should_exit = True
 
             server_thread = self._server_thread
             if server_thread is not None and server_thread.is_alive():
@@ -218,8 +222,6 @@ class DesktopHost:
 
     async def _shutdown_on_server_loop(self) -> None:
         await self._job_manager.shutdown(timeout_s=self._job_shutdown_timeout_s)
-        if self._server is not None:
-            self._server.should_exit = True
 
     def _run_server(self) -> None:
         server_socket = self._server_socket
