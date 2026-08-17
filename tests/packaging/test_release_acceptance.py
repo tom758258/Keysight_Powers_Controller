@@ -392,11 +392,23 @@ def test_release_acceptance_validates_unified_desktop_bundle() -> None:
         'Join-Path $extractedBundleDir "resources\\backend"',
         '"packaged-cli-version"',
         '"packaged-webui-launcher-version"',
+        '$releaseEntries = @(Get-ChildItem -LiteralPath $versionDir -Force)',
+        '$_.PSIsContainer -or',
+        '$_.Name -notin $expectedRelease',
+        '$releaseEntries.Count -eq $expectedRelease.Count',
+        '$invalidEntries.Count -eq 0',
         '$windowsBundleZip = Get-Item -LiteralPath (',
         'Join-Path $versionDir "powers-tool-$projectVersion-windows-x64.zip"',
     ):
         assert required in text
 
+    artifact_check = text.split(
+        '$script:CurrentStep = "final release artifact checks"', 1
+    )[1].split("$windowsBundleZip", 1)[0]
+    assert "Get-ChildItem -LiteralPath $versionDir -File" not in artifact_check
+    assert text.index("$releaseEntries = @(") < text.index(
+        "$invalidEntries = @("
+    ) < text.index('Name "versioned release folder contents"')
     assert text.index("$windowsBundleZip = Get-Item") < text.index(
         "Expand-Archive -LiteralPath $windowsBundleZip.FullName"
     )

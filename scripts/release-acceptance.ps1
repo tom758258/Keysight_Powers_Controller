@@ -376,10 +376,20 @@ try {
         "$normalizedDistribution-$projectVersion.tar.gz",
         "checksums.txt"
     )
-    $releaseFiles = @(Get-ChildItem -LiteralPath $versionDir -File | Select-Object -ExpandProperty Name)
+    $releaseEntries = @(Get-ChildItem -LiteralPath $versionDir -Force)
+    $invalidEntries = @(
+        $releaseEntries |
+            Where-Object {
+                $_.PSIsContainer -or
+                $_.Name -notin $expectedRelease
+            }
+    )
     Add-Check -Target $script:ArtifactChecks -Name "versioned release folder contents" `
-        -Passed (@(Compare-Object -ReferenceObject $expectedRelease -DifferenceObject $releaseFiles).Count -eq 0) `
-        -Detail ($releaseFiles -join ", ")
+        -Passed (
+            $releaseEntries.Count -eq $expectedRelease.Count -and
+            $invalidEntries.Count -eq 0
+        ) `
+        -Detail (($releaseEntries.Name | Sort-Object) -join ", ")
 
     $windowsBundleZip = Get-Item -LiteralPath (
         Join-Path $versionDir "powers-tool-$projectVersion-windows-x64.zip"
