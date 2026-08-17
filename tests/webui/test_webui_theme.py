@@ -59,6 +59,7 @@ def test_theme_control_and_initial_render_bootstrap_are_present() -> None:
         "--surface-status-error",
         "--surface-status-error-soft",
         "--surface-status-neutral",
+        "--disabled-ink",
     ):
         assert f"{token}:" in light_tokens
         assert f"{token}:" in dark_tokens
@@ -77,6 +78,38 @@ def test_theme_control_and_initial_render_bootstrap_are_present() -> None:
         (".output-status.off", "--surface-status-neutral"),
     ):
         assert f"var({token})" in _css_rule_body(styles, selector)
+
+    disabled_rule = _css_rule_body(styles, "button:disabled")
+    assert "var(--surface-disabled)" in disabled_rule
+    assert "var(--disabled-ink)" in disabled_rule
+    assert "opacity: .42" not in disabled_rule
+
+    no_hardware_disabled_rule = _css_rule_body(styles, ".no-hardware-control[disabled]")
+    assert "var(--surface-disabled)" in no_hardware_disabled_rule
+    assert "var(--disabled-ink)" in no_hardware_disabled_rule
+    assert "opacity: .58" not in no_hardware_disabled_rule
+
+    dark_foreground = styles[styles.index("/* ─── Dark-theme Foreground Readability") :]
+    for selector in (
+        ':root[data-theme="dark"] button.command-pill-button',
+        ':root[data-theme="dark"] button.utility-icon-button',
+        ':root[data-theme="dark"] .category-button:hover',
+        ':root[data-theme="dark"] .trigger-list-tabs button[data-trigger-list-channel="1"]',
+        ':root[data-theme="dark"] .monitor-toggle',
+        ':root[data-theme="dark"] .basic-toggle[data-basic-output="2"]',
+    ):
+        assert selector in dark_foreground
+    assert "var(--ink)" in dark_foreground
+    assert "var(--muted)" in dark_foreground
+    assert "var(--accent-strong)" in dark_foreground
+
+    disabled_override = styles[styles.index("/* Keep specialized controls readable when disabled rules are applied.") :]
+    assert "button#run:disabled" in disabled_override
+    assert ".trigger-list-tabs button[data-trigger-list-channel]:disabled" in disabled_override
+    assert "button.basic-toggle:disabled" in disabled_override
+    assert "button.monitor-toggle:disabled" in disabled_override
+    assert "var(--surface-disabled)" in disabled_override
+    assert "var(--disabled-ink)" in disabled_override
 
 
 @pytest.mark.skipif(NODE is None, reason="Node.js is required for theme runtime tests")

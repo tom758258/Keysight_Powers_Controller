@@ -126,6 +126,8 @@ follows `prefers-color-scheme`; the Electron shell synchronizes its native
 window theme from the same loopback cookie.
 The selected theme applies to the main panels, cards, fields, and status
 surfaces throughout the WebUI, not only the page background.
+Dark theme keeps primary controls, status text, and unavailable or disabled
+controls visually distinguishable against dark surfaces.
 
 ## Purpose
 

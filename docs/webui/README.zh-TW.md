@@ -73,6 +73,8 @@ Header 內的主題控制會依序切換 System、Light、Dark。偏好會以一
 Electron shell 共用。System 模式遵循 `prefers-color-scheme`；Electron shell
 會使用同一個 loopback cookie 同步 native window theme。選定的主題會套用至
 WebUI 主要的 panels、cards、fields 與 status surfaces，不只改變頁面背景。
+深色主題下，主要控制項、狀態文字，以及不可用或停用的控制項，會在深色
+surface 上維持足夠辨識度。
 
 ## Job Parameter Admission
 

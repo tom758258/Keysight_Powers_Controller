@@ -213,6 +213,8 @@ npm start
 Desktop shell 會啟動 private WebUI Host，開啟初始 1920x1080 並依 primary
 display work area 進行 clamp，並支援 System、Light、Dark 主題。選定的主題
 會套用至主要的 panels、cards、fields 與 status surfaces，不只改變頁面背景。
+深色主題下，主要控制項、狀態文字，以及不可用或停用的控制項，會在深色
+surface 上維持足夠辨識度。
 允許同時執行多個 Desktop instance，因此不同 instance 可以操作不同的實體儀器；
 但不同 client 仍不可同時操作同一個 physical instrument resource。
 

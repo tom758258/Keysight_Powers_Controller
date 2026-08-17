@@ -279,6 +279,7 @@ npm start</code></pre></div>
 <p>語言切換只改變瀏覽器 presentation，不會建立 HTTP request、Job 或 workflow action，也不會建立、停止或以其他方式影響 EventSource。</p>
 <p>Header 也提供 System / Light / Dark 主題控制。System 會遵循作業系統的 <code>prefers-color-scheme</code>。主題偏好會透過同一個 loopback browser 的 <code>powers-tool.webui.theme</code> cookie 保留；Electron Desktop shell 會使用該 cookie 同步 native window theme。</p>
 <p>選定的主題會套用至主要的 panels、cards、fields 與 status surfaces，不只改變頁面背景。</p>
+<p>深色主題下，主要控制項、狀態文字，以及不可用或停用的控制項，會在深色 surface 上維持足夠辨識度。</p>
 <p>以下 machine-facing values 保持原值且不翻譯：command IDs、model IDs、VISA resources、API payload/schema、SCPI、raw diagnostics 與原始錯誤內容。</p>
 <p>English 是 source/fallback locale。語言偏好會保留在相同瀏覽器中；如果 browser storage 不可用，WebUI 會安全 fallback，不影響正常操作。</p>
 <h2 id="section-3">畫面總覽</h2>

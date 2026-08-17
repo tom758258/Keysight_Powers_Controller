@@ -109,6 +109,8 @@ Header 也提供 System / Light / Dark 主題控制。System 會遵循作業系�
 `powers-tool.webui.theme` cookie 保留；Electron Desktop shell 會使用該 cookie
 同步 native window theme。選定的主題會套用至主要的 panels、cards、fields
 與 status surfaces，不只改變頁面背景。
+深色主題下，主要控制項、狀態文字，以及不可用或停用的控制項，會在深色
+surface 上維持足夠辨識度。
 
 以下 machine-facing values 保持原值且不翻譯：command IDs、model IDs、VISA
 resources、API payload/schema、SCPI、raw diagnostics 與原始錯誤內容。

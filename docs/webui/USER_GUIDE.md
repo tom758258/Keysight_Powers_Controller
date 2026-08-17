@@ -121,6 +121,8 @@ is retained in the same loopback browser through the
 `powers-tool.webui.theme` cookie; the Electron Desktop shell uses that cookie
 to keep its native window theme synchronized. The selected theme applies to the
 main panels, cards, fields, and status surfaces, not only the page background.
+Dark theme keeps primary controls, status text, and unavailable or disabled
+controls visually distinguishable against dark surfaces.
 
 Machine-facing values remain unchanged and are not translated, including
 command IDs, model IDs, VISA resources, API payloads and schemas, SCPI, raw

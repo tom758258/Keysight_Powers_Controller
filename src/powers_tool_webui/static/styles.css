@@ -32,6 +32,7 @@
   --surface-status-error: #fdecea;
   --surface-status-error-soft: #fff7f6;
   --surface-status-neutral: #f1f4f7;
+  --disabled-ink:     #6b7785;
   --field-hover-line: #b8c2cc;
   --chart-axis:      #d7dee6;
   --chart-line:      #1f7a8c;
@@ -94,6 +95,7 @@
   --surface-status-error: #4a2b30;
   --surface-status-error-soft: #3d272b;
   --surface-status-neutral: #2a3037;
+  --disabled-ink:     #b8c4d0;
   --field-hover-line: #657483;
   --chart-axis:      #526170;
   --chart-line:      #78d1dc;
@@ -241,7 +243,14 @@ button, input, select, textarea { font: inherit; }
 .execution-mode-control input, .real-write-authorization input { width: auto; height: auto; }
 .real-write-authorization { margin: 0 0 12px; color: #6d4c00; }
 
-.no-hardware-control[disabled] { cursor: not-allowed; opacity: .58; }
+.no-hardware-control[disabled] {
+  cursor: not-allowed;
+  color: var(--disabled-ink);
+  background: var(--surface-disabled);
+  border-color: var(--line);
+  opacity: 1;
+  box-shadow: none;
+}
 
 .device-resource-summary {
   margin: 0;
@@ -495,14 +504,18 @@ button:focus {
 }
 
 button:disabled {
-  opacity: .42;
+  color: var(--disabled-ink);
+  background: var(--surface-disabled);
+  border-color: var(--line);
+  opacity: 1;
   cursor: not-allowed;
   box-shadow: none;
 }
 
 button:disabled:hover {
-  background: linear-gradient(180deg, var(--surface-raised) 0%, var(--surface-raised-end) 100%);
+  background: var(--surface-disabled);
   border-color: var(--line);
+  color: var(--disabled-ink);
   box-shadow: none;
 }
 
@@ -2020,6 +2033,106 @@ pre {
   outline: none;
   border-color: var(--accent);
   box-shadow: var(--shadow-focus);
+}
+
+/* ─── Dark-theme Foreground Readability ──────────────────────────────────── */
+:root[data-theme="dark"] .execution-mode-badge.real-locked {
+  color: var(--muted);
+  border-color: var(--line);
+}
+
+:root[data-theme="dark"] .real-write-authorization { color: #f2c76b; }
+:root[data-theme="dark"] .sequence-step-card.invalid { border-color: var(--danger); }
+:root[data-theme="dark"] .sequence-step-error { color: var(--danger); }
+
+:root[data-theme="dark"] button.command-pill-button,
+:root[data-theme="dark"] button.advanced-command-button {
+  color: var(--ink);
+}
+
+:root[data-theme="dark"] button.command-pill-button:hover,
+:root[data-theme="dark"] button.advanced-command-button:hover {
+  color: var(--ink);
+}
+
+:root[data-theme="dark"] button.scan-button { color: var(--accent-strong); }
+:root[data-theme="dark"] button.scan-button:hover { color: var(--accent); }
+
+:root[data-theme="dark"] button.utility-button,
+:root[data-theme="dark"] button.utility-icon-button {
+  color: var(--muted);
+}
+
+:root[data-theme="dark"] button.utility-button:hover,
+:root[data-theme="dark"] button.utility-icon-button:hover {
+  color: var(--ink);
+}
+
+:root[data-theme="dark"] .category-button:hover,
+:root[data-theme="dark"] .category-button.active,
+:root[data-theme="dark"] .command-button:hover,
+:root[data-theme="dark"] .command-button.active {
+  color: var(--accent-strong);
+}
+
+:root[data-theme="dark"] .trigger-list-tabs button[data-trigger-list-channel="1"] {
+  --trigger-channel-strong: #8bbcf5;
+  --trigger-channel-soft: var(--surface-subtle);
+}
+
+:root[data-theme="dark"] .trigger-list-tabs button[data-trigger-list-channel="2"] {
+  --trigger-channel-strong: #d39bff;
+  --trigger-channel-soft: var(--surface-subtle);
+}
+
+:root[data-theme="dark"] .trigger-list-tabs button[data-trigger-list-channel="3"] {
+  --trigger-channel-strong: #ffc766;
+  --trigger-channel-soft: var(--surface-subtle);
+}
+
+:root[data-theme="dark"] .monitor-toggle {
+  --monitor-soft: var(--surface-subtle);
+  --monitor-text: #76d8d0;
+}
+
+:root[data-theme="dark"] .basic-toggle {
+  --toggle-soft: var(--surface-subtle);
+  --toggle-text: #8bbcf5;
+}
+
+:root[data-theme="dark"] .basic-toggle[data-basic-output="2"] {
+  --toggle-soft: var(--surface-subtle);
+  --toggle-text: #d39bff;
+}
+
+:root[data-theme="dark"] .basic-toggle[data-basic-output="3"] {
+  --toggle-soft: var(--surface-subtle);
+  --toggle-text: #ffc766;
+}
+
+:root[data-theme="dark"] .basic-toggle[data-basic-all-output] {
+  --toggle-soft: var(--surface-subtle);
+  --toggle-text: #82e39a;
+}
+
+/* Keep specialized controls readable when disabled rules are applied. */
+button:disabled,
+button:disabled:hover,
+button#run:disabled,
+button#run:disabled:hover,
+button#run.workflow-stop:disabled,
+button#run.workflow-stop:disabled:hover,
+.trigger-list-tabs button[data-trigger-list-channel]:disabled,
+.trigger-list-tabs button[data-trigger-list-channel]:disabled:hover,
+button.basic-toggle:disabled,
+button.basic-toggle:disabled:hover,
+button.monitor-toggle:disabled,
+button.monitor-toggle:disabled:hover {
+  background: var(--surface-disabled);
+  color: var(--disabled-ink);
+  border-color: var(--line);
+  opacity: 1;
+  box-shadow: none;
 }
 
 /* ─── Responsive: 1100px ─────────────────────────────────────────────────── */
