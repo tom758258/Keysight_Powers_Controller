@@ -189,13 +189,27 @@ dist\powers-tool\
   _internal\
 ```
 
-這個 shared Windows onedir bundle 包含 CLI、WebUI Launcher，以及供後續
-desktop integration 使用的 private Desktop Host。`powers-tool-webui-host.exe`
-不是新的公開 CLI entry point；三者共用同一個 `_internal` 目錄。
+這個 shared Windows onedir bundle 包含 CLI、WebUI Launcher，以及供 Desktop
+shell 使用的 private Desktop Host。`powers-tool-webui-host.exe` 不是新的
+公開 CLI entry point；三者共用同一個 `_internal` 目錄。
 
 本機 `powers-tool-webui-launcher.exe` 與已安裝的
 `powers-tool-webui-launcher` console entry point 分開；兩者都使用現有的
 `powers_tool_webui.launcher:main` launcher implementation。
+
+Source-mode Desktop shell 使用 Electron 呈現現有 WebUI，不建立第二套
+WebUI 實作。從 repository root 執行：
+
+```powershell
+Set-Location .\desktop
+npm install
+npm start
+```
+
+Desktop shell 會啟動 private WebUI Host，開啟初始 1920x1080 並依 primary
+display work area 進行 clamp，並支援 System、Light、Dark 主題。允許同時
+執行多個 Desktop instance，因此不同 instance 可以操作不同的實體儀器；
+但不同 client 仍不可同時操作同一個 physical instrument resource。
 
 在不接觸硬體的情況下，快速測試建置完成的 CLI 執行檔：
 

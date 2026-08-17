@@ -73,8 +73,24 @@ Windows GUI launcher. The local shared PyInstaller onedir bundle contains
 `dist\powers-tool\powers-tool.exe`,
 `dist\powers-tool\powers-tool-webui-launcher.exe`, and the private
 `dist\powers-tool\powers-tool-webui-host.exe`, all using the shared
-`dist\powers-tool\_internal\` directory. The Desktop Host is reserved for
-future desktop integration and is not a new public CLI entry point.
+`dist\powers-tool\_internal\` directory. The Desktop Host is a private
+executable used by the source-mode Electron Desktop shell; it is not a new
+public CLI entry point.
+
+The source-mode Desktop shell is the existing WebUI in an Electron window. From
+the repository root, run:
+
+```powershell
+Set-Location .\desktop
+npm install
+npm start
+```
+
+It starts the private Host, opens a 1920x1080 window clamped to the primary
+display work area, and follows the WebUI's System, Light, and Dark theme
+preference. Multiple Desktop instances are allowed for different physical
+instruments, but different clients must not operate the same physical
+instrument resource concurrently.
 
 ## Environment
 
@@ -102,6 +118,12 @@ command IDs, model IDs, VISA resources, SCPI, and raw diagnostics remain
 unchanged. The locale preference uses the independent browser storage key
 `powers-tool.webui.locale`; storage failures safely fall back without making
 the WebUI unusable.
+
+Theme selection cycles through System, Light, and Dark in the header. The
+preference is stored in the `powers-tool.webui.theme` cookie with a one-year
+expiry and is shared by the browser WebUI and the Electron shell. System mode
+follows `prefers-color-scheme`; the Electron shell synchronizes its native
+window theme from the same loopback cookie.
 
 ## Purpose
 

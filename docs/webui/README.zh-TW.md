@@ -26,9 +26,24 @@ WebUI 提供了用於本機 FastAPI 伺服器的 `powers-tool-webui` console wra
 `dist\powers-tool\powers-tool.exe`、
 `dist\powers-tool\powers-tool-webui-launcher.exe`，以及供後續 desktop
 integration 使用的 private `dist\powers-tool\powers-tool-webui-host.exe`；
-三者共用 `dist\powers-tool\_internal\` 目錄。Desktop Host 是 private
-executable，不是新的公開 CLI entry point。Shared bundle artifacts 與已安裝的
-console wrappers 分開，不會重新命名或取代任何 installed entry point。
+三者共用 `dist\powers-tool\_internal\` 目錄。Desktop Host 是供 source-mode
+Electron Desktop shell 使用的 private executable，不是新的公開 CLI entry
+point。Shared bundle artifacts 與已安裝的 console wrappers 分開，不會重新
+命名或取代任何 installed entry point。
+
+Source-mode Desktop shell 是以 Electron 顯示現有 WebUI，不建立第二套 WebUI。
+從 repository root 執行：
+
+```powershell
+Set-Location .\desktop
+npm install
+npm start
+```
+
+它會啟動 private Host，開啟初始 1920x1080 並依 primary display work area
+進行 clamp，並遵循 WebUI 的 System、Light、Dark 主題偏好。允許多個
+Desktop instance 供不同實體儀器使用，但不同 client 不可同時操作同一個
+physical instrument resource。
 
 ## Environment
 
@@ -52,6 +67,11 @@ Locale 只改變瀏覽器 presentation，runtime 切換不 reload，也不會建
 request、Job、workflow action 或 EventSource side effect。Machine values、API
 schema、command IDs、model IDs、VISA resources、SCPI 與 raw diagnostics 保持
 不變。若 browser storage 不可用，WebUI 會安全 fallback，不影響正常操作。
+
+Header 內的主題控制會依序切換 System、Light、Dark。偏好會以一年的
+`Max-Age` 儲存在 `powers-tool.webui.theme` cookie，並由 browser WebUI 與
+Electron shell 共用。System 模式遵循 `prefers-color-scheme`；Electron shell
+會使用同一個 loopback cookie 同步 native window theme。
 
 ## Job Parameter Admission
 

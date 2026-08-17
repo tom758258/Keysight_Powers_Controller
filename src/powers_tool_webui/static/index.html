@@ -4,6 +4,25 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title data-i18n="app.document_title">Powers Tool WebUI</title>
+  <script>
+    (() => {
+      let preference = "system";
+      try {
+        const prefix = "powers-tool.webui.theme=";
+        const saved = document.cookie
+          .split(";")
+          .map((part) => part.trim())
+          .find((part) => part.startsWith(prefix))
+          ?.slice(prefix.length);
+        if (["system", "light", "dark"].includes(saved)) preference = saved;
+      } catch (_error) {}
+      let dark = preference === "dark";
+      if (preference === "system") {
+        try { dark = matchMedia("(prefers-color-scheme: dark)").matches; } catch (_error) {}
+      }
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+    })();
+  </script>
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
@@ -13,13 +32,27 @@
         <h1 data-i18n="app.brand">Powers Tool</h1>
         <p class="brand-subtitle"><span data-i18n="app.unofficial_tool">Unofficial Tool</span> v__WEBUI_VERSION__</p>
       </div>
-      <button
-        id="locale-toggle"
-        class="secondary locale-toggle"
-        type="button"
-        lang="zh-TW"
-        aria-label="Switch language to Traditional Chinese"
-      >繁體中文</button>
+      <div class="page-head-actions">
+        <button
+          id="theme-toggle"
+          class="secondary theme-toggle"
+          type="button"
+          aria-label="Switch theme to Light"
+          data-i18n-aria-label="accessibility.switch_theme_to_light"
+          title="Switch theme to Light"
+          data-i18n-title="accessibility.switch_theme_to_light"
+        >
+          <span class="theme-toggle-icon" aria-hidden="true">◐</span>
+          <span id="theme-toggle-label" data-i18n="theme.system">System</span>
+        </button>
+        <button
+          id="locale-toggle"
+          class="secondary locale-toggle"
+          type="button"
+          lang="zh-TW"
+          aria-label="Switch language to Traditional Chinese"
+        >繁體中文</button>
+      </div>
     </div>
 
     <section class="device-resource-section" aria-labelledby="device-resource-title">

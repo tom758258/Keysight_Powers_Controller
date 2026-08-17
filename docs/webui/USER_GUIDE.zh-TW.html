@@ -256,6 +256,12 @@
 <div class="code-wrapper"><pre><code class="language-text">http://127.0.0.1:7999/</code></pre></div>
 <p>開發人員或原始碼簽出使用者，請參閱 <a href="README.zh-TW.html">WebUI README</a> 取得終端機指令、API、驗證與建置說明。</p>
 <p>WebUI 在可存取儀器的同一台 Windows 電腦上執行，是本機工具而非雲端服務。關閉瀏覽器分頁不一定會停止伺服器；完成操作後請使用啟動器的 <code>Quit</code>，或停止終端機程序。</p>
+<h2>Desktop Shell</h2>
+<p>Source checkout 使用者可以從 <code>desktop/</code> 執行 Electron Desktop shell：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">Set-Location .\desktop
+npm install
+npm start</code></pre></div>
+<p>這個 shell 顯示現有 WebUI，並使用 private WebUI Host。primary display 足夠時，視窗初始大小為 1920x1080；否則會 clamp 到 primary display work area。允許多個 Desktop instance 操作不同的實體儀器，但不可同時讓不同 client 操作同一個 physical instrument resource。</p>
 <h2 id="section-2">瀏覽器語言</h2>
 <p>WebUI 支援 English 與繁體中文。請使用主介面的右上方單一語言切換按鈕；目前語言為 English 時按鈕顯示 <code>繁體中文</code>，目前語言為繁體中文時顯示 <code>English</code>。</p>
 <p>切換會在 執行階段立即生效，不需要 重新載入頁面，並保留目前頁面狀態，包括：</p>
@@ -269,6 +275,7 @@
 <li>Live Data 顯示狀態。</li>
 </ul>
 <p>語言切換只改變瀏覽器 presentation，不會建立 HTTP request、Job 或 workflow action，也不會建立、停止或以其他方式影響 EventSource。</p>
+<p>Header 也提供 System / Light / Dark 主題控制。System 會遵循作業系統的 <code>prefers-color-scheme</code>。主題偏好會透過同一個 loopback browser 的 <code>powers-tool.webui.theme</code> cookie 保留；Electron Desktop shell 會使用該 cookie 同步 native window theme。</p>
 <p>以下 machine-facing values 保持原值且不翻譯：command IDs、model IDs、VISA resources、API payload/schema、SCPI、raw diagnostics 與原始錯誤內容。</p>
 <p>English 是 source/fallback locale。語言偏好會保留在相同瀏覽器中；如果 browser storage 不可用，WebUI 會安全 fallback，不影響正常操作。</p>
 <h2 id="section-3">畫面總覽</h2>

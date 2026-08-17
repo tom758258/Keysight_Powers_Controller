@@ -189,7 +189,7 @@ globalThis.document = {
 
 def run_frontend_javascript_assertions(
     assertions: str,
-    source_names: tuple[str, ...] = ("execution-context.js", "electrical.js", "api.js", "state.js", "device-resource.js", "command-catalog.js", "command-form.js", "results.js", "live-data.js", "json-files.js", "ramp-list.js", "trigger-list.js", "sequence.js", "snapshot-restore.js", "jobs.js", "basic-controls.js", "command-support.js", "workflows.js", "locale_ui.js", "app.js"),
+    source_names: tuple[str, ...] = ("execution-context.js", "electrical.js", "api.js", "state.js", "device-resource.js", "command-catalog.js", "command-form.js", "results.js", "live-data.js", "json-files.js", "ramp-list.js", "trigger-list.js", "sequence.js", "snapshot-restore.js", "jobs.js", "basic-controls.js", "command-support.js", "workflows.js", "locale_ui.js", "theme_ui.js", "app.js"),
     *,
     bootstrap: str = "",
     expected_failure_substrings: tuple[str, ...] = (),
@@ -347,6 +347,15 @@ const setLocale = (locale) => {{ globalThis.__webuiLocale = locale; return local
 const t = globalThis.__webuiTranslate;`)
       .replace(/^export function /gm, "function ")}}
 globalThis.__webuiLocaleUi = {{ normalizeBrowserLanguage, browserLocale, detectBrowserLocale, readSavedLocale, resolveInitialLocale, persistLocale, targetLocale, renderLanguageButton, initializeLocaleUi }};
+ }})();`;
+  }}
+  if (filename === "theme_ui.js") {{
+    return `(function() {{
+${{source
+      .replace('import {{ t }} from "./i18n.js";', 'const t = globalThis.__webuiTranslate;')
+      .replace(/^export const /gm, "const ")
+      .replace(/^export function /gm, "function ")}}
+globalThis.__webuiThemeUi = {{ initializeThemeUi }};
 }})();`;
   }}
   if (filename === "app.js") {{
@@ -431,11 +440,15 @@ globalThis.__webuiLocaleUi = {{ normalizeBrowserLanguage, browserLocale, detectB
                 'import * as webuiWorkflows from "./workflows.js";',
                 'var webuiWorkflows = globalThis.__webuiWorkflows;'
           )
-          .replace(
-                'import * as webuiLocaleUi from "./locale_ui.js";',
-                'var webuiLocaleUi = globalThis.__webuiLocaleUi;'
-          )
+           .replace(
+                 'import * as webuiLocaleUi from "./locale_ui.js";',
+                 'var webuiLocaleUi = globalThis.__webuiLocaleUi;'
+           )
               .replace(
+                    'import * as webuiThemeUi from "./theme_ui.js";',
+                    'var webuiThemeUi = globalThis.__webuiThemeUi;'
+              )
+               .replace(
                     'import {{ applyStaticTranslations }} from "./dom_i18n.js";',
                     'var applyStaticTranslations = () => 0;'
               )

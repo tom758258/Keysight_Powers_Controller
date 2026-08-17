@@ -1,4 +1,10 @@
 export const EN_MESSAGES = Object.freeze({
+  "accessibility.switch_theme_to_dark": "Switch theme to Dark",
+  "accessibility.switch_theme_to_light": "Switch theme to Light",
+  "accessibility.switch_theme_to_system": "Switch theme to System",
+  "theme.dark": "Dark",
+  "theme.light": "Light",
+  "theme.system": "System",
   "accessibility.collapse_device_resource": "Collapse Device / Resource",
   "accessibility.expand_device_resource": "Expand Device / Resource",
   "accessibility.collapse_job_result": "Collapse job result",

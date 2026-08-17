@@ -1,0 +1,14 @@
+{
+  "name": "powers-tool-desktop",
+  "version": "2.0.0",
+  "private": true,
+  "productName": "Powers Tool",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check main.cjs"
+  },
+  "devDependencies": {
+    "electron": "43.3.0"
+  }
+}

@@ -211,9 +211,24 @@ dist\powers-tool\
 The local `powers-tool-webui-launcher.exe` artifact is distinct from the
 installed `powers-tool-webui-launcher` console entry point; both invoke the
 existing `powers_tool_webui.launcher:main` launcher implementation. The
-`powers-tool-webui-host.exe` artifact is a private console executable for
-future desktop integration, not a new public CLI entry point. All three
-executables share the same `_internal` directory.
+`powers-tool-webui-host.exe` artifact is a private console executable for the
+Desktop shell, not a new public CLI entry point. All three executables share
+the same `_internal` directory.
+
+The source-mode Desktop shell is the existing WebUI presented in Electron; it
+does not create a second WebUI implementation. From the repository root:
+
+```powershell
+Set-Location .\desktop
+npm install
+npm start
+```
+
+The shell starts the private WebUI Host, opens a 1920x1080 window clamped to
+the primary display work area, and supports System, Light, and Dark themes.
+Multiple Desktop instances are allowed, so separate instances can operate
+different physical instruments. Do not use different clients concurrently on
+the same physical instrument resource.
 
 Check the built CLI executable without touching hardware:
 

@@ -18,6 +18,7 @@ import * as webuiBasicControls from "./basic-controls.js";
 import * as webuiCommandSupport from "./command-support.js";
 import * as webuiWorkflows from "./workflows.js";
 import * as webuiLocaleUi from "./locale_ui.js";
+import * as webuiThemeUi from "./theme_ui.js";
 import { applyStaticTranslations } from "./dom_i18n.js";
 import { t } from "./i18n.js";
 
@@ -27,6 +28,8 @@ const state = webuiState.createInitialState({
   triggerListChannels: webuiTriggerListDocument.defaultTriggerListChannels(),
   sequenceSteps: [{ action: "wait", seconds: 0 }]
 });
+
+let themeUi = null;
 
 const TRIP_GUARDED_COMMANDS = new Set(["output-on", "cycle-output", "ramp", "ramp-list", "smoke-output", "apply"]);
 const TRIP_WARNING_COMMANDS = new Set([
@@ -312,6 +315,14 @@ const jobEventController = webuiJobTransport.createJobEventController({
 var { subscribeToJob, handleJobEvent } = jobEventController;
 
 document.addEventListener("DOMContentLoaded", async () => {
+  const mediaQuery = window.matchMedia?.("(prefers-color-scheme: dark)") || null;
+  themeUi = webuiThemeUi.initializeThemeUi({
+    button: document.getElementById("theme-toggle"),
+    label: document.getElementById("theme-toggle-label"),
+    documentElement: document.documentElement,
+    cookieDocument: document,
+    mediaQuery,
+  });
   webuiLocaleUi.initializeLocaleUi({ refreshPresentation: refreshLocalizedPresentation });
   applyStaticTranslations(document);
   bind();
@@ -1561,6 +1572,7 @@ function refreshResultPresentation() {
 function refreshLocalizedPresentation() {
   applyStaticTranslations(document);
   webuiLocaleUi.renderLanguageButton(document.getElementById("locale-toggle"));
+  themeUi?.refresh();
   refreshDeviceResourcePresentation();
   refreshCommandPresentation();
   refreshSelectedCommandGuardPresentation();

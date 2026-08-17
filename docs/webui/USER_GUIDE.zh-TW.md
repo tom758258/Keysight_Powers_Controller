@@ -66,6 +66,21 @@ http://127.0.0.1:7999/
 
 WebUI 執行於與儀器連接的同一台 Windows 電腦上。它是一個本機工具，而非雲端服務。關閉瀏覽器分頁並不一定會停止伺服器；使用完畢後，請使用啟動器中的 `Quit` 或停止終端機程序。
 
+## Desktop Shell
+
+Source checkout 使用者可以從 `desktop/` 執行 Electron Desktop shell：
+
+```powershell
+Set-Location .\desktop
+npm install
+npm start
+```
+
+這個 shell 顯示現有 WebUI，並使用 private WebUI Host。primary display 足夠
+時，視窗初始大小為 1920x1080；否則會 clamp 到 primary display work area。
+允許多個 Desktop instance 操作不同的實體儀器，但不可同時讓不同 client
+操作同一個 physical instrument resource。
+
 ## 瀏覽器語言
 
 WebUI 支援 English 與繁體中文。請使用主介面的右上方單一語言切換按鈕；目前
@@ -83,6 +98,11 @@ WebUI 支援 English 與繁體中文。請使用主介面的右上方單一語�
 
 語言切換只改變瀏覽器 presentation，不會建立 HTTP request、Job 或 workflow
 action，也不會建立、停止或以其他方式影響 EventSource。
+
+Header 也提供 System / Light / Dark 主題控制。System 會遵循作業系統的
+`prefers-color-scheme`。主題偏好會透過同一個 loopback browser 的
+`powers-tool.webui.theme` cookie 保留；Electron Desktop shell 會使用該 cookie
+同步 native window theme。
 
 以下 machine-facing values 保持原值且不翻譯：command IDs、model IDs、VISA
 resources、API payload/schema、SCPI、raw diagnostics 與原始錯誤內容。

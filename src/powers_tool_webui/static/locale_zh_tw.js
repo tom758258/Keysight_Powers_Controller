@@ -1,4 +1,10 @@
 export const ZH_TW_MESSAGES = Object.freeze({
+  "accessibility.switch_theme_to_dark": "切換主題至深色",
+  "accessibility.switch_theme_to_light": "切換主題至淺色",
+  "accessibility.switch_theme_to_system": "切換主題至系統",
+  "theme.dark": "深色",
+  "theme.light": "淺色",
+  "theme.system": "系統",
   "accessibility.collapse_device_resource": "收合裝置／資源",
   "accessibility.expand_device_resource": "展開裝置／資源",
   "accessibility.collapse_job_result": "收合作業結果",

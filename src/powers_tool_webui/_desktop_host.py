@@ -192,7 +192,7 @@ class DesktopHost:
                 raise RuntimeError("WebUI server event loop is not running.")
 
             future = asyncio.run_coroutine_threadsafe(
-                self._shutdown_on_server_loop(),
+                self._job_manager.shutdown(timeout_s=self._job_shutdown_timeout_s),
                 server_loop,
             )
             try:
@@ -219,9 +219,6 @@ class DesktopHost:
             return False
         finally:
             self._shutdown_in_progress = False
-
-    async def _shutdown_on_server_loop(self) -> None:
-        await self._job_manager.shutdown(timeout_s=self._job_shutdown_timeout_s)
 
     def _run_server(self) -> None:
         server_socket = self._server_socket

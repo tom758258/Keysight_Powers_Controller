@@ -44,6 +44,7 @@ target/
 # Dependency cache
 .mypy_cache/
 .pytest_cache/
+desktop/node_modules/
 .pytest_tmp_cli_core_split/
 .pytest_tmp_cli_core_review/
 .tmp_tests/

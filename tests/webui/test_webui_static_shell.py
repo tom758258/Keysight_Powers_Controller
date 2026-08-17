@@ -51,6 +51,7 @@ globalThis.location = { reload() { reloads += 1; } };
 
 applyStaticTranslations = () => calls.push("static");
 webuiLocaleUi.renderLanguageButton = () => calls.push("locale");
+themeUi = { refresh: () => calls.push("theme") };
 refreshDeviceResourcePresentation = () => calls.push("device");
 refreshCommandPresentation = () => calls.push("command");
 refreshSelectedCommandGuardPresentation = () => calls.push("command-guards");
@@ -203,7 +204,7 @@ strictAssert.equal(eventSourceConstructions, 0);
 strictAssert.equal(eventSourceCloses, 0);
 strictAssert.equal(reloads, 0);
 strictAssert.deepEqual(calls, Array(4).fill([
-  "static", "locale", "device", "command", "command-guards", "workflow",
+  "static", "locale", "theme", "device", "command", "command-guards", "workflow",
   "workflow-operation", "basic", "result", "live",
 ]).flat());
 """

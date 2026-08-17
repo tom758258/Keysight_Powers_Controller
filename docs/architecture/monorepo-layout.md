@@ -5,6 +5,10 @@ src/
   powers_tool_core/
   powers_tool_cli/
   powers_tool_webui/
+desktop/
+  package.json
+  package-lock.json
+  main.cjs
 tests/
   core/
   cli/

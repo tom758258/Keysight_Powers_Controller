@@ -257,7 +257,7 @@ commands 仍不支援；其他 transport 與 backend 仍會 fail closed。完整
 <li><code>powers-tool-webui</code>：啟動本機 FastAPI 伺服器。</li>
 <li><code>powers-tool-webui-launcher</code>：啟動 Windows GUI 啟動器。</li>
 </ul>
-<p>本機 shared PyInstaller onedir bundle 包含 <code>dist\powers-tool\powers-tool.exe</code>、<code>dist\powers-tool\powers-tool-webui-launcher.exe</code>，以及供後續 desktop integration 使用的 private <code>dist\powers-tool\powers-tool-webui-host.exe</code>；三者共用 <code>dist\powers-tool\_internal\</code> 目錄。Desktop Host 是 private executable，不是新的公開 CLI entry point。Shared bundle artifacts 與已安裝的 console wrappers 分開，不會重新命名或取代任何 installed entry point。</p>
+<p>本機 shared PyInstaller onedir bundle 包含 <code>dist\powers-tool\powers-tool.exe</code>、<code>dist\powers-tool\powers-tool-webui-launcher.exe</code>，以及供 source-mode Electron Desktop shell 使用的 private <code>dist\powers-tool\powers-tool-webui-host.exe</code>；三者共用 <code>dist\powers-tool\_internal\</code> 目錄。Desktop Host 不是新的公開 CLI entry point。Shared bundle artifacts 與已安裝的 console wrappers 分開，不會重新命名或取代任何 installed entry point。</p>
 <h2 id="section-2">Environment</h2>
 <p>根目錄的 <a href="../../README.zh-TW.md#安裝" rel="noopener noreferrer" target="_blank">README Install guide</a> 是 canonical setup reference。從 repository 根目錄準備 WebUI runtime：</p>
 <div class="code-wrapper"><pre><code class="language-powershell">uv sync --extra webui --locked --link-mode=copy</code></pre></div>
@@ -266,6 +266,7 @@ commands 仍不支援；其他 transport 與 backend 仍會 fail closed。完整
 <h2 id="section-3">Localization</h2>
 <p>維護中的 locale 是 <code>en</code> 與 <code>zh-TW</code>；English 是來源與 fallback locale。切換會在執行階段生效且不重新載入頁面，只改變瀏覽器呈現，不得建立 HTTP request、Job、workflow action 或 EventSource side effect。Machine values、API schema、command IDs、model IDs、VISA resources、SCPI 與 raw diagnostics 保持原值。</p>
 <p>語言偏好使用獨立的 browser storage key <code>powers-tool.webui.locale</code>。即使 storage 不可用，也會安全 fallback，不影響 WebUI 的正常操作。</p>
+<p>Header 內的主題控制會依序切換 System、Light、Dark。偏好會以一年的 <code>Max-Age</code> 儲存在 <code>powers-tool.webui.theme</code> cookie，並由 browser WebUI 與 Electron shell 共用。System 模式遵循 <code>prefers-color-scheme</code>；Electron shell 會使用同一個 loopback cookie 同步 native window theme。</p>
 <h2 id="section-4">Job Parameter Admission</h2>
 <p><code>POST /api/jobs</code> 頂層只接受 <code>command</code>、<code>runtime</code>、<code>parameters</code> 與可選的空 <code>artifacts</code>；未知的頂層欄位會回傳 HTTP 400。</p>
 <p><code>parameters</code> 必須先通過 Core 擁有的命令契約，才會排入工作或取得硬體鎖。WebUI 不重複維護各命令 allowlist、alias 或型別強制轉換。錯誤的精確型別、非法 null、未知／不適用欄位與 alias conflict 都會回傳 HTTP 400，而不是伺服器錯誤；實際執行的是 admission 後的 canonical request。</p>

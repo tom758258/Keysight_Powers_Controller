@@ -72,6 +72,22 @@ It is a local tool, not a cloud service. Closing the browser tab does not
 always stop the server; use `Quit` in the launcher or stop the terminal process
 when you are done.
 
+## Desktop Shell
+
+Source-checkout users can run the Electron Desktop shell from `desktop/`:
+
+```powershell
+Set-Location .\desktop
+npm install
+npm start
+```
+
+The shell displays the existing WebUI and uses the private WebUI Host. It opens
+at 1920x1080 when the primary display allows it, otherwise it is clamped to the
+primary display work area. Multiple Desktop instances are allowed for
+different physical instruments. Do not operate the same physical instrument
+resource from different clients at the same time.
+
 ## Browser Language
 
 The WebUI supports English and Traditional Chinese. Use the single language
@@ -93,6 +109,12 @@ the current page state, including:
 The switch changes browser presentation only. It does not make an HTTP request,
 create a Job, run a workflow action, or create, stop, or otherwise affect an
 EventSource.
+
+The header also provides a System / Light / Dark theme control. System follows
+the operating system's `prefers-color-scheme` preference. The theme preference
+is retained in the same loopback browser through the
+`powers-tool.webui.theme` cookie; the Electron Desktop shell uses that cookie
+to keep its native window theme synchronized.
 
 Machine-facing values remain unchanged and are not translated, including
 command IDs, model IDs, VISA resources, API payloads and schemas, SCPI, raw
