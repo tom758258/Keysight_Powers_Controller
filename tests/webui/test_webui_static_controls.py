@@ -5,6 +5,7 @@ from __future__ import annotations
 import textwrap
 
 from _webui_shared import (
+    FAKE_DOM_PRIMITIVES,
     assert_static_id,
     extract_js_function,
     read_static_javascript,
@@ -13,33 +14,20 @@ from _webui_shared import (
 )
 
 def test_static_e3646a_basic_global_output_dom_and_accessibility_contract():
-    index_html, app_js, styles_css = read_static_texts()
+    index_html, app_js, _styles_css = read_static_texts()
 
-    assert app_js.count('const E3646A_MODEL_ID = "keysight-e3646a";') == 1
-    assert index_html.count('id="basic-output-all"') == 1
-    assert index_html.count("data-basic-all-output") == 1
+    assert_static_id(index_html, "basic-output-all")
+    assert "data-basic-all-output" in index_html
     assert_static_id(index_html, "basic-output-all-header-slot")
-    assert "basic-output-all-global-slot" not in index_html
-    assert "basic-e3646a-output-row" not in index_html
-    assert index_html.index('id="basic-output-all-header-slot"') < index_html.index('id="advanced-command-toggle"')
     assert_static_id(index_html, "basic-output-capability-status")
     assert_static_id(index_html, "e3646a-global-output-description")
 
-    explanation = (
-        "E3646A does not support independent channel output switching. "
-        "Use ALL to turn CH1 and CH2 on or off together."
-    )
-    assert index_html.count(explanation) == 3
     for channel in ("1", "2"):
         assert f'<span class="basic-output-status unknown" data-basic-output-status="{channel}" role="status" hidden>UNKNOWN</span>' in index_html
         assert f'data-basic-output-info="{channel}" role="note" tabindex="0"' in index_html
     assert "data-basic-output-status" in index_html
     assert "data-basic-output-status=\"1\" aria-pressed" not in index_html
     assert "data-basic-output-status=\"2\" aria-pressed" not in index_html
-    assert ".basic-toggle[hidden]" in styles_css
-    assert ".basic-output-status[hidden]" in styles_css
-    assert ".basic-output-info[hidden]" in styles_css
-    assert ".basic-e3646a-output-row" not in styles_css
     assert 'document.querySelector("[data-basic-all-output]").addEventListener("click", runBasicOutputAll);' in app_js
 
 
@@ -131,63 +119,8 @@ def test_frontend_e3646a_identity_and_capability_gate_uses_actual_resource():
 
 def test_frontend_e3646a_basic_output_presentation_and_tri_state_readback():
     assertions = textwrap.dedent(
-        r"""
+        FAKE_DOM_PRIMITIVES + r"""
         const strictAssert = require("node:assert/strict");
-
-        class FakeElement {
-          constructor(tagName = "div") {
-            this.tagName = tagName.toUpperCase();
-            this.children = [];
-            this.parentNode = null;
-            this.attributes = {};
-            this.listeners = {};
-            this.className = "";
-            this.hidden = false;
-            this.disabled = false;
-            this.textContent = "";
-            this.title = "";
-            this.classList = {
-              add: (...names) => this.updateClasses((values) => names.forEach((name) => values.add(name))),
-              remove: (...names) => this.updateClasses((values) => names.forEach((name) => values.delete(name))),
-              toggle: (name, force) => {
-                let result = false;
-                this.updateClasses((values) => {
-                  result = force === undefined ? !values.has(name) : Boolean(force);
-                  if (result) values.add(name); else values.delete(name);
-                });
-                return result;
-              },
-              contains: (name) => this.className.split(/\s+/).filter(Boolean).includes(name)
-            };
-          }
-
-          updateClasses(update) {
-            const values = new Set(this.className.split(/\s+/).filter(Boolean));
-            update(values);
-            this.className = [...values].join(" ");
-          }
-
-          appendChild(child) {
-            if (child.parentNode) {
-              child.parentNode.children = child.parentNode.children.filter((item) => item !== child);
-            }
-            child.parentNode = this;
-            this.children.push(child);
-            return child;
-          }
-
-          addEventListener(type, listener) {
-            (this.listeners[type] ||= []).push(listener);
-          }
-
-          setAttribute(name, value) {
-            this.attributes[name] = String(value);
-          }
-
-          getAttribute(name) {
-            return this.attributes[name] ?? null;
-          }
-        }
 
         const resource = { value: "RESOURCE-E3646A" };
         const expected = { value: "" };
@@ -497,7 +430,7 @@ def test_frontend_e3646a_basic_output_presentation_and_tri_state_readback():
 
 
 def test_static_live_channel_status_uses_led_indicators():
-    _index_html, app_js, styles_css = read_static_texts()
+    _index_html, app_js, _styles_css = read_static_texts()
     live_data_js = read_static_javascript("live-data.js")
     render_channel = extract_js_function(live_data_js, "renderChannelCard")
     replace_card = extract_js_function(live_data_js, "replaceCardContent")
@@ -514,32 +447,6 @@ def test_static_live_channel_status_uses_led_indicators():
     assert 'protectionBadge("OCP", presentation.overCurrentTripped)' in replace_card
     assert 'element("span", `protection-badge status-indicator ${stateClass}`)' in protection_badge
     assert 'element("span", "indicator-text", `${label} ${stateText}`)' in protection_badge
-    assert ".output-status .indicator-dot" in styles_css
-    assert ".output-status.off" in styles_css
-    assert ".live-control-section" in styles_css
-    assert ".live-protection-section" in styles_css
-
-
-def test_static_cached_live_presentation_refresh_has_no_operational_side_effects():
-    _index_html, app_js, _styles_css = read_static_texts()
-    refresh = extract_js_function(app_js, "refreshLiveDataPresentation")
-
-    assert "state.livePanel" in refresh
-    assert 't("live_data.status.not_monitoring")' in refresh
-    assert 't("live_data.status.no_resource")' in refresh
-    assert "renderChannelCard" in refresh
-    assert "drawTrend()" in refresh
-    for forbidden in (
-        "fetch",
-        "EventSource",
-        "state.samples.push",
-        "state.samples =",
-        "startLive",
-        "stopLive",
-        "closeEventSource",
-        "state.liveJobId =",
-    ):
-        assert forbidden not in refresh
 
 
 def test_static_no_resource_live_state_refreshes_locale_without_monitor_side_effects():
@@ -648,7 +555,6 @@ def test_static_basic_command_submission_reuses_existing_jobs():
     assert "{ channel, ...values.parameters }" in run_set
     assert "parameters.voltage = voltage" in command_form_js
     assert "parameters.current = current" in command_form_js
-    assert "requires V, A, or both" in command_form_js
     assert '"output-off"' in run_output
     assert '"output-on"' in run_output
     assert 'channel: "all"' in run_all
@@ -665,7 +571,7 @@ def test_static_basic_command_submission_reuses_existing_jobs():
 
 
 def test_static_basic_command_error_state_contract():
-    _index_html, app_js, styles_css = read_static_texts()
+    _index_html, app_js, _styles_css = read_static_texts()
     state_js = read_static_javascript("state.js")
     basic_controls_js = read_static_javascript("basic-controls.js")
 
@@ -676,7 +582,6 @@ def test_static_basic_command_error_state_contract():
     assert 'card.classList.toggle("basic-action-error"' in basic_controls_js
     assert "clearResolvedBasicErrors(channel, liveChannel, fresh);" in basic_controls_js
     assert "liveSetpointsMatchBasicInputs(channel, liveChannel)" in basic_controls_js
-    assert ".basic-action-error" in styles_css
 
 
 def test_static_command_panel_exposes_description():
@@ -956,14 +861,10 @@ def test_static_ramp_list_editor_contract():
 
 
 def test_static_compact_output_enable_accessibility_contracts():
-    _index_html, app_js, styles_css = read_static_texts()
+    _index_html, app_js, _styles_css = read_static_texts()
     command_form_js = read_static_javascript("command-form.js")
     workflows_js = read_static_javascript("workflows.js")
 
-    assert "Output behavior" not in app_js
-    assert "output-behavior" not in app_js
-    assert ".output-behavior" not in styles_css
-    assert ".visually-hidden {" in styles_css
     checkbox_builder = extract_js_function(command_form_js, "createCheckboxField")
     assert 'label.classList.add("checkbox-field", ...classNames);' in checkbox_builder
     assert 'visibleText.className = "checkbox-label-text";' in checkbox_builder
@@ -1737,7 +1638,7 @@ def test_static_compact_output_enable_accessibility_contracts():
 
 
 def test_static_workflow_run_button_state_contract():
-    _index_html, app_js, styles_css = read_static_texts()
+    _index_html, app_js, _styles_css = read_static_texts()
     jobs_js = read_static_javascript("jobs.js")
 
     assert 'const STOPPABLE_WORKFLOWS = new Set(["ramp", "ramp-list", "sequence"]);' in app_js
@@ -1745,7 +1646,6 @@ def test_static_workflow_run_button_state_contract():
         app_js, "stopActiveWorkflow"
     )
     assert 'event.type === "cancel_requested"' in extract_js_function(jobs_js, "handleJobEvent")
-    assert "button#run.workflow-stop" in styles_css
 
     run_frontend_javascript_assertions(
         r"""

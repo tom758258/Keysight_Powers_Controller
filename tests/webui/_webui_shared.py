@@ -187,6 +187,77 @@ globalThis.document = {
 """
 
 
+FAKE_DOM_PRIMITIVES = r"""
+class FakeClassList {
+  constructor(owner) { this.owner = owner; }
+  _values() { return new Set(this.owner.className.split(/\s+/).filter(Boolean)); }
+  add(...names) {
+    const values = this._values();
+    names.forEach((name) => values.add(name));
+    this.owner.className = [...values].join(" ");
+  }
+  remove(...names) {
+    const values = this._values();
+    names.forEach((name) => values.delete(name));
+    this.owner.className = [...values].join(" ");
+  }
+  contains(name) { return this._values().has(name); }
+  toggle(name, force) {
+    const values = this._values();
+    const enabled = force === undefined ? !values.has(name) : Boolean(force);
+    if (enabled) values.add(name);
+    else values.delete(name);
+    this.owner.className = [...values].join(" ");
+    return enabled;
+  }
+}
+
+class FakeElement {
+  constructor(tagName = "div") {
+    this.tagName = tagName.toUpperCase();
+    this.children = [];
+    this.parentNode = null;
+    this.dataset = {};
+    this.attributes = {};
+    this.listeners = {};
+    this.className = "";
+    this.classList = new FakeClassList(this);
+    this.id = "";
+    this.textContent = "";
+    this.title = "";
+    this.style = {};
+    this.value = "";
+    this.checked = false;
+    this.disabled = false;
+    this.hidden = false;
+    this.type = "";
+  }
+  get options() { return this.children; }
+  appendChild(child) {
+    if (child.parentNode) {
+      child.parentNode.children = child.parentNode.children.filter((item) => item !== child);
+    }
+    child.parentNode = this;
+    this.children.push(child);
+    return child;
+  }
+  append(...children) { children.forEach((child) => this.appendChild(child)); }
+  addEventListener(type, listener) {
+    (this.listeners[type] ||= []).push(listener);
+  }
+  querySelectorAll() { return []; }
+  setAttribute(name, value) { this.attributes[name] = String(value); }
+  getAttribute(name) { return this.attributes[name] ?? null; }
+  set innerHTML(_value) {
+    this.textContent = "";
+    this.children = [];
+  }
+}
+
+const descendants = (root) => [root, ...root.children.flatMap((child) => descendants(child))];
+"""
+
+
 def run_frontend_javascript_assertions(
     assertions: str,
     source_names: tuple[str, ...] = ("execution-context.js", "electrical.js", "api.js", "state.js", "device-resource.js", "command-catalog.js", "command-form.js", "results.js", "live-data.js", "json-files.js", "ramp-list.js", "trigger-list.js", "sequence.js", "snapshot-restore.js", "jobs.js", "basic-controls.js", "command-support.js", "workflows.js", "locale_ui.js", "theme_ui.js", "app.js"),

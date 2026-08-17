@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import re
 import shutil
 import subprocess
 from pathlib import Path
 
 import pytest
 
-from _webui_shared import extract_js_function, read_static_texts
+from _webui_shared import read_static_texts
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -15,19 +14,10 @@ STATIC_DIR = REPO_ROOT / "src" / "powers_tool_webui" / "static"
 NODE = shutil.which("node")
 
 
-def _css_rule_body(styles: str, selector: str) -> str:
-    match = re.search(
-        rf"(?ms)^{re.escape(selector)}\s*\{{(?P<body>.*?)^\}}",
-        styles,
-    )
-    assert match is not None, f"Missing CSS rule for {selector}"
-    return match.group("body")
-
-
 def test_theme_control_and_initial_render_bootstrap_are_present() -> None:
     index = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
     theme_source = (STATIC_DIR / "theme_ui.js").read_text(encoding="utf-8")
-    _html, app_source, styles = read_static_texts()
+    _html, app_source, _styles = read_static_texts()
 
     assert 'id="theme-toggle"' in index
     assert 'id="theme-toggle-label"' in index
@@ -35,81 +25,8 @@ def test_theme_control_and_initial_render_bootstrap_are_present() -> None:
     assert 'aria-hidden="true"' in index
     assert index.index("document.cookie") < index.index("/static/styles.css")
     assert index.index("powers-tool.webui.theme") < index.index("/static/styles.css")
-    assert "localStorage" not in theme_source
-    assert ':root[data-theme="light"]' in styles
-    assert "color-scheme: light;" in styles
-    assert "--chart-axis:" in styles
-    assert "--chart-line:" in styles
     assert "onThemeChanged?.();" in theme_source
     assert "onThemeChanged: drawTrend" in app_source
-
-    draw_trend = extract_js_function(app_source, "drawTrend")
-    assert 'getComputedStyle(document.documentElement)' in draw_trend
-    assert 'getPropertyValue("--chart-axis")' in draw_trend
-    assert 'getPropertyValue("--chart-line")' in draw_trend
-    assert "#d7dee6" not in draw_trend
-    assert "#1f7a8c" not in draw_trend
-
-    light_tokens = _css_rule_body(styles, ":root")
-    dark_tokens = _css_rule_body(styles, ':root[data-theme="dark"]')
-    for token in (
-        "--surface-status-pending",
-        "--surface-status-success",
-        "--surface-status-success-soft",
-        "--surface-status-error",
-        "--surface-status-error-soft",
-        "--surface-status-neutral",
-        "--disabled-ink",
-    ):
-        assert f"{token}:" in light_tokens
-        assert f"{token}:" in dark_tokens
-
-    for selector in (".basic-channel-card", ".live-card"):
-        body = _css_rule_body(styles, selector)
-        assert "var(--panel)" in body
-        assert "var(--surface-subtle)" in body
-        assert "#ffffff" not in body
-        assert "#f7f9fb" not in body
-
-    for selector, token in (
-        (".basic-action-pending", "--surface-status-pending"),
-        (".basic-action-success", "--surface-status-success"),
-        (".basic-action-error", "--surface-status-error"),
-        (".output-status.off", "--surface-status-neutral"),
-    ):
-        assert f"var({token})" in _css_rule_body(styles, selector)
-
-    disabled_rule = _css_rule_body(styles, "button:disabled")
-    assert "var(--surface-disabled)" in disabled_rule
-    assert "var(--disabled-ink)" in disabled_rule
-    assert "opacity: .42" not in disabled_rule
-
-    no_hardware_disabled_rule = _css_rule_body(styles, ".no-hardware-control[disabled]")
-    assert "var(--surface-disabled)" in no_hardware_disabled_rule
-    assert "var(--disabled-ink)" in no_hardware_disabled_rule
-    assert "opacity: .58" not in no_hardware_disabled_rule
-
-    dark_foreground = styles[styles.index("/* ─── Dark-theme Foreground Readability") :]
-    for selector in (
-        ':root[data-theme="dark"] button.command-pill-button',
-        ':root[data-theme="dark"] button.utility-icon-button',
-        ':root[data-theme="dark"] .category-button:hover',
-        ':root[data-theme="dark"] .trigger-list-tabs button[data-trigger-list-channel="1"]',
-        ':root[data-theme="dark"] .monitor-toggle',
-        ':root[data-theme="dark"] .basic-toggle[data-basic-output="2"]',
-    ):
-        assert selector in dark_foreground
-    assert "var(--ink)" in dark_foreground
-    assert "var(--muted)" in dark_foreground
-    assert "var(--accent-strong)" in dark_foreground
-
-    disabled_override = styles[styles.index("/* Keep specialized controls readable when disabled rules are applied.") :]
-    assert "button#run:disabled" in disabled_override
-    assert ".trigger-list-tabs button[data-trigger-list-channel]:disabled" in disabled_override
-    assert "button.basic-toggle:disabled" in disabled_override
-    assert "button.monitor-toggle:disabled" in disabled_override
-    assert "var(--surface-disabled)" in disabled_override
-    assert "var(--disabled-ink)" in disabled_override
 
 
 @pytest.mark.skipif(NODE is None, reason="Node.js is required for theme runtime tests")

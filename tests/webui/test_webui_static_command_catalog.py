@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from _webui_shared import read_static_javascript, read_static_texts, run_webui_module_assertions
+from _webui_shared import (
+    FAKE_DOM_PRIMITIVES,
+    read_static_javascript,
+    read_static_texts,
+    run_webui_module_assertions,
+)
 
 
 def test_command_catalog_module_is_explicit_and_pure() -> None:
@@ -68,28 +73,8 @@ i18n.setLocale("en");
 
 def test_command_controller_uses_english_source_order_across_locales() -> None:
     run_webui_module_assertions(
-        r"""
+        FAKE_DOM_PRIMITIVES + r"""
 const i18n = await import(new URL("./i18n.js", moduleUrls["command-catalog.js"]));
-class FakeElement {
-  constructor(tagName = "div") {
-    this.tagName = tagName.toUpperCase();
-    this.children = [];
-    this.listeners = {};
-    this.textContent = "";
-    this.value = "";
-    this.className = "";
-    this.disabled = false;
-    this.dataset = {};
-  }
-  appendChild(child) { this.children.push(child); return child; }
-  append(...children) { children.forEach((child) => this.appendChild(child)); }
-  addEventListener(type, listener) { this.listeners[type] = listener; }
-  querySelectorAll() { return []; }
-  set innerHTML(value) {
-    strictAssert.equal(value, "");
-    this.children = [];
-  }
-}
 const elements = new Map([
   ["command-filter", new FakeElement("input")],
   ["command-categories", new FakeElement()],

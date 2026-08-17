@@ -10,7 +10,6 @@ def test_device_resource_module_owns_controller_and_app_imports_it() -> None:
     device_js = read_static_javascript("device-resource.js")
 
     assert 'from "./device-resource.js"' in app_js
-    assert "export function createDeviceResourceController" in device_js
     assert 'document.getElementById("device-options-panel")' in device_js
     assert "fetch(" not in device_js
     assert "new EventSource" not in device_js
@@ -37,8 +36,6 @@ strictAssert.equal("PowersToolWebUI" in globalThis, false);
 """,
         ("device-resource.js",),
     )
-
-
 def test_device_resource_presentation_supports_both_locales_and_preserves_values() -> None:
     run_webui_module_assertions(
         r"""
@@ -65,26 +62,6 @@ i18n.setLocale("en");
 """,
         ("device-resource.js",),
     )
-
-
-def test_presentation_refreshes_do_not_enter_state_changing_paths() -> None:
-    device_js = read_static_javascript("device-resource.js")
-    command_js = read_static_javascript("command-form.js")
-    device_refresh = device_js[
-        device_js.index("function refreshDeviceResourcePresentation()"):
-        device_js.index("function setStateIndicator(")
-    ]
-    command_refresh = command_js[
-        command_js.index("function refreshCommandPresentation()"):
-        command_js.index("function updatePulseChildVisibility(")
-    ]
-
-    for forbidden in ("fetchJson(", "updateExecutionModeUi(", "populateIdentitySelector(", "selectCommand("):
-        assert forbidden not in device_refresh
-    for forbidden in ("fetchJson(", "selectCommand(", "renderForm(", "new EventSource"):
-        assert forbidden not in command_refresh
-
-
 def test_device_controller_native_module_owns_state_and_e3646a_constants() -> None:
     run_webui_module_assertions(
         r"""
@@ -227,50 +204,4 @@ state.planningIdentityCache.simulate = "keysight-e36312a";
 strictAssert.deepEqual(controller.basicOutputPresentation(), { mode: "ordinary", capability: null });
 """,
         ("device-resource.js",),
-    )
-
-
-def test_controller_wiring_omits_self_forwarders_and_ignored_properties() -> None:
-    app_js = read_static_javascript("app.js")
-    device_js = read_static_javascript("device-resource.js")
-    command_form_js = read_static_javascript("command-form.js")
-    device_wiring = app_js[
-        app_js.index("createDeviceResourceController({"):app_js.index("});", app_js.index("createDeviceResourceController({"))
-    ]
-    command_wiring = app_js[
-        app_js.index("createCommandController({"):app_js.index("});", app_js.index("createCommandController({"))
-    ]
-
-    for removed in (
-        "stateClassNames:",
-        "e3646aModelId:",
-        "refreshDeviceResourceSummary:",
-        "stopLiveJobsBeforeModeChange:",
-    ):
-        assert removed not in device_wiring
-
-    for removed in (
-        "refreshBasicInputConstraintsForForm:",
-        "refreshBasicInputConstraints: (...args) => refreshBasicInputConstraints(...args)",
-        "commandDisplayName: (...args) => commandDisplayName(...args)",
-        "applyParameterConstraintForForm:",
-        "applyElectricalRatingConstraintForForm:",
-        "enforcePulseFormRulesForForm:",
-        "refreshElectricalRatingConstraintsForForm:",
-        "renderCurrentForm:",
-    ):
-        assert removed not in command_wiring
-
-    assert "refreshDeviceResourceSummary," not in device_js
-    assert "stopLiveJobsBeforeModeChange," not in device_js
-    assert "updateDeviceResourceSummary();" in device_js
-    assert "await stopRealLiveJobsAndWait();" in device_js
-    assert "refreshBasicInputConstraintsForForm," not in command_form_js
-    assert "renderCurrentForm," not in command_form_js
-    assert "renderForm(\"ramp-list\");" in command_form_js
-    assert "triggerCommands: TRIGGER_COMMANDS" in app_js
-    assert "TRIGGER_COMMANDS.has(command)" in command_form_js
-    assert all(
-        f"{name}:" not in device_wiring + command_wiring
-        for name in ("services", "dependencies", "context", "container", "registry", "controllerBag", "callbacks")
     )

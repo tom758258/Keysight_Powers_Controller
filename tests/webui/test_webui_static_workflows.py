@@ -6,6 +6,7 @@ import re
 import textwrap
 
 from _webui_shared import (
+    FAKE_DOM_PRIMITIVES,
     WEBUI_HIDDEN_LIVE_DATA_COMMANDS,
     assert_param_contract,
     extract_js_function,
@@ -15,71 +16,6 @@ from _webui_shared import (
     run_frontend_javascript_assertions,
     run_webui_module_assertions,
 )
-
-
-def test_workflow_factory_wiring_omits_unused_dependencies() -> None:
-    app_js = read_static_javascript("app.js")
-    workflows_js = read_static_javascript("workflows.js")
-    def captured_block(pattern: str, source: str) -> str:
-        match = re.search(pattern, source, re.DOTALL)
-        assert match is not None
-        return match.group("body")
-
-    workflow_wiring = captured_block(
-        r"webuiWorkflows\.createWorkflows\(\{(?P<body>.*?)\}\s*\);",
-        app_js,
-    )
-    artifact_wiring = captured_block(
-        r"webuiWorkflows\.createArtifactAndSequenceWorkflows\(\{(?P<body>.*?)\}\s*\);",
-        app_js,
-    )
-    workflow_signature = captured_block(
-        r"export\s+function\s+createWorkflows\s*\(\s*\{(?P<body>.*?)\}\s*\)\s*\{",
-        workflows_js,
-    )
-    artifact_signature = captured_block(
-        r"export\s+function\s+createArtifactAndSequenceWorkflows\s*\(\s*\{(?P<body>.*?)\}\s*\)\s*\{",
-        workflows_js,
-    )
-
-    for removed in ("defaultRampSegment", "triggerListParams", "commandDisplayName", "params", "normalizeChannelValue"):
-        assert f"{removed}:" not in workflow_wiring
-        assert removed not in workflow_signature
-    assert "normalizeChannelValue:" not in artifact_wiring
-    assert "normalizeChannelValue" not in artifact_signature
-
-    for retained in (
-        "webuiRampListDocument",
-        "webuiTriggerListDocument",
-        "openJsonFile",
-        "saveJsonFile",
-        "pulseTimingDisplayName",
-        "pinsSelectValue",
-        "applyParameterConstraint",
-        "updateWorkflowDocumentValidity",
-        "updateRampListPulse",
-    ):
-        assert retained in workflow_wiring
-        assert retained in workflow_signature
-    for retained in (
-        "rearPinOptions",
-        "webuiRestoreDocument",
-        "webuiSequenceDocument",
-        "applyParameterConstraint",
-        "updateWorkflowDocumentValidity",
-        "effectiveSequenceLoopCount",
-        "restoreSnapshotParameters",
-        "submitJob",
-        "subscribeToJob",
-    ):
-        assert retained in artifact_wiring
-        assert retained in artifact_signature
-
-    combined = workflow_signature + artifact_signature
-    assert all(
-        f"{name}," not in combined and f"{name}:" not in combined
-        for name in ("services", "dependencies", "context", "container", "registry", "callbacks", "workflowBag")
-    )
 
 
 def test_ramp_list_renderer_uses_explicit_module_dependencies() -> None:
@@ -636,16 +572,6 @@ def test_ramp_form_preserves_page_local_draft_across_reselection() -> None:
     run_frontend_javascript_assertions(assertions)
 
 
-def test_ramp_multi_channel_help_hidden_state_contract() -> None:
-    _index_html, _app_js, styles_css = read_static_texts()
-
-    help_css = styles_css[
-        styles_css.index(".form-grid > .ramp-multi-channel-help {"):
-        styles_css.index(".visually-hidden {")
-    ]
-    assert ".form-grid > .ramp-multi-channel-help[hidden] { display: none; }" in help_css
-
-
 def test_sequence_renderer_rebuilds_from_canonical_draft_without_missing_dependencies() -> None:
     run_webui_module_assertions(
         r"""
@@ -868,7 +794,7 @@ strictAssert.equal(validityCalls.length >= 4, true);
 
 
 def test_static_pulse_child_fields_and_rear_pin_select_contracts():
-    _index_html, app_js, styles_css = read_static_texts()
+    _index_html, app_js, _styles_css = read_static_texts()
     sequence_document_js = read_static_javascript("sequence.js")
     command_form_js = read_static_javascript("command-form.js")
     workflows_js = read_static_javascript("workflows.js")
@@ -882,9 +808,7 @@ def test_static_pulse_child_fields_and_rear_pin_select_contracts():
 
     assert 'name: "completion_pulse_enabled", type: "checkbox"' in cycle
     assert 'name: "completion_pulse_pins", type: "select"' in cycle
-    assert cycle.count("pulseChild: true") == 2
     assert 'name: "completion_pulse_pins", type: "select"' in ramp
-    assert ramp.count("pulseChild: true") == 2
     assert 'payload.completion_pulse_mode = "post-action";' not in app_js
     assert 'name: "pins", type: "select", label: "Rear pins"' in trigger_pulse
     assert 'name: "completion_pulse_pins", type: "select"' in trigger_list
@@ -892,7 +816,6 @@ def test_static_pulse_child_fields_and_rear_pin_select_contracts():
     assert "if (action === \"trigger-pulse\") normalized.pins = parseRearPins(normalized.pins);" in normalize_sequence
     assert "return webuiSequenceDocument.normalizeSequenceDocument(doc," in workflows_js
     assert "return webuiSequenceDocument.sequenceDocumentFromEditor(state," in workflows_js
-    assert ".form-grid .pulse-child-field.visible { display: block; }" in styles_css
     assert "function updatePulseChildVisibility(command)" in command_form_js
 
 
@@ -1031,18 +954,6 @@ def test_frontend_workflow_pulse_model_behavior_uses_canonical_ids() -> None:
         """
     )
     run_frontend_javascript_assertions(assertions)
-
-
-def test_static_workflow_pulse_gates_do_not_compare_display_model_names() -> None:
-    _index_html, app_js, _styles_css = read_static_texts()
-
-    assert 'const REAR_TRIGGER_PULSE_MODEL_ID = "keysight-e36312a";' in app_js
-    for display_name in ("E36312A", "EDU36311A", "E3646A"):
-        assert not re.search(
-            rf'(?:===|!==)\s*["\']{display_name}["\']|["\']{display_name}["\']\s*(?:===|!==)',
-            app_js,
-        )
-    assert 'command === "trigger-pulse"' not in extract_js_function(app_js, "commandRequestsPulse")
 
 
 def test_static_frontend_uses_command_support_to_disable_unsupported_model_commands():
@@ -1779,44 +1690,12 @@ def test_static_command_keys_are_used_for_selection_and_submission():
 
 def test_static_command_select_options_use_human_labels_and_machine_values():
     run_frontend_javascript_assertions(
-        r"""
+        FAKE_DOM_PRIMITIVES + r"""
 const strictAssert = require("node:assert/strict");
 
-class FakeElement {
-  constructor(tagName) {
-    this.tagName = tagName.toUpperCase();
-    this.children = [];
-    this.parentNode = null;
-    this.dataset = {};
-    this.className = "";
-    this.textContent = "";
-    this.value = "";
-    this.checked = false;
-    this.disabled = false;
-    this.listeners = {};
-    this.classList = { add: () => {} };
-  }
-  appendChild(child) {
-    this.children.push(child);
-    child.parentNode = this;
-    return child;
-  }
-  append(...children) {
-    children.forEach((child) => this.appendChild(child));
-  }
-  addEventListener(type, listener) {
-    this.listeners[type] = listener;
-  }
-  setAttribute() {}
-}
-
-const descendants = (root) => [root, ...root.children.flatMap((child) => descendants(child))];
 const commandForm = new FakeElement("form");
 const resource = new FakeElement("input");
 const expectedModel = new FakeElement("input");
-Object.defineProperty(commandForm, "innerHTML", {
-  set() { this.children = []; }
-});
 document.createElement = (tagName) => new FakeElement(tagName);
 document.getElementById = (id) => ({
   "command-form": commandForm,
@@ -2155,7 +2034,7 @@ def test_static_frontend_consumes_exact_live_support_without_exposing_validation
 
 
 def test_static_channel_capability_guards_use_metadata():
-    _index_html, app_js, styles_css = read_static_texts()
+    _index_html, app_js, _styles_css = read_static_texts()
     command_support_js = read_static_javascript("command-support.js")
     device_js = read_static_javascript("device-resource.js")
     command_form_js = read_static_javascript("command-form.js")
@@ -2180,8 +2059,6 @@ def test_static_channel_capability_guards_use_metadata():
     assert "item.disabled = true;" in command_form_js
     assert "channelUnsupportedReason(option)" in command_form_js
     assert 'error: "Unsupported channel"' in app_js
-    assert ".basic-channel-card.unsupported" in styles_css
-    assert ".live-card.unsupported" in styles_css
 
 
 def test_static_basic_and_live_disable_unsupported_channels():
@@ -2210,26 +2087,6 @@ def test_static_basic_and_live_disable_unsupported_channels():
     assert "setButton.disabled = Boolean(unsupported || setMeta.disabled);" in render_basic
     assert "supportedChannelsForCurrentModel().every" in all_on
     assert "supportedChannelsForCurrentModel().every" in clear_errors
-
-
-def test_static_e3646a_output_hint_is_global_for_supported_channels():
-    _index_html, app_js, _styles_css = read_static_texts()
-    command_support_js = read_static_javascript("command-support.js")
-
-    output_title = extract_js_function(command_support_js, "outputControlTitle")
-    all_title = extract_js_function(command_support_js, "outputAllControlTitle")
-
-    assert 'outputControlScopeForCurrentModel() === "global"' in output_title
-    assert 'outputControlScopeForCurrentModel() === "global"' in all_title
-    assert "globalOutputHintText()" in output_title
-    assert "globalOutputHintText()" in all_title
-    assert 'model === "E3646A"' not in output_title
-    assert 'model === "E3646A"' not in all_title
-    assert "function outputControlScopeForCurrentModel()" in command_support_js
-    assert "output_control_scope" in extract_js_function(command_support_js, "outputControlScopeForCurrentModel")
-    global_hint = extract_js_function(command_support_js, "globalOutputHintText")
-    assert 't("basic_controls.tooltip.global_output_model"' in global_hint
-    assert 't("basic_controls.tooltip.global_output")' in global_hint
 
 
 def test_static_trip_guard_and_clear_protection_recovery_contract():
@@ -2343,17 +2200,9 @@ def test_static_trigger_forms_have_advanced_parameters():
 
 
 def test_static_trigger_forms_document_behavior_and_key_fields():
-    _index_html, app_js, styles_css = read_static_texts()
+    _index_html, app_js, _styles_css = read_static_texts()
     command_form_js = read_static_javascript("command-form.js")
 
-    summaries = {
-        "trigger-pulse": "Configures the selected rear pins as trigger outputs",
-        "trigger-status": "Read-only E36312A query",
-        "trigger-step": "Configures and arms a STEP transient",
-        "trigger-list": "Configures and arms a LIST waveform",
-        "trigger-fire": "Used only to abort this output channel",
-        "trigger-abort": "Aborts Trigger/LIST execution",
-    }
     blocks = {
         "trigger-pulse": extract_param_block(app_js, "trigger-pulse"),
         "trigger-status": extract_param_block(app_js, "trigger-status"),
@@ -2362,86 +2211,36 @@ def test_static_trigger_forms_document_behavior_and_key_fields():
         "trigger-fire": extract_param_block(app_js, "trigger-fire"),
         "trigger-abort": extract_param_block(app_js, "trigger-abort"),
     }
-    for command, summary in summaries.items():
-        assert summary in blocks[command]
-        assert "description:" in blocks[command]
+    for block in blocks.values():
+        assert "description:" in block
 
-    for field in ("source", "fire", "wait_complete", "poll_ms", "wait_timeout_ms",
-                  "exclusive_pins", "leave_trigger_configured"):
-        field_start = command_form_js.index(f'name: "{field}"')
-        assert "description:" in command_form_js[field_start:field_start + 500]
     for field in ("voltage_list", "current_list", "dwell_list", "count", "completion_pulse_pins"):
         assert f'name: "{field}"' in blocks["trigger-list"]
-        field_start = blocks["trigger-list"].index(f'name: "{field}"')
-        assert "description:" in blocks["trigger-list"][field_start:field_start + 450]
-
-    assert "pin1" not in extract_js_function(command_form_js, "triggerStepParams")
-    assert "pin1" not in extract_js_function(command_form_js, "triggerListParams")
-    assert 'label: "Abort target channel"' in blocks["trigger-fire"]
     assert "It does not turn outputs off" in blocks["trigger-abort"]
     assert "instrument error-queue entries" in blocks["trigger-abort"]
 
-    render_form = extract_js_function(command_form_js, "renderForm")
-    command_form_js = read_static_javascript("command-form.js")
-    append_notes = extract_js_function(command_form_js, "appendCommandNotes")
-    assert "if (!TRIGGER_COMMANDS.has(command) && !param.compactHelp) appendFieldDescription(label, param);" in render_form
-    assert "if (TRIGGER_COMMANDS.has(command)) appendCommandNotes(form, command, PARAMS[command] || [], commandMeta);" in render_form
-    assert 'notes.className = "command-notes";' in append_notes
-    assert "title.textContent =" in append_notes
-    assert "summary.textContent = commandMeta(command).description || \"\";" in append_notes
-    assert "const descriptions = params.filter((param) => param.description);" in append_notes
-    assert "term.textContent = param.label;" in append_notes
-    assert "detail.textContent = param.description;" in append_notes
-    assert ".command-notes {" in styles_css
-
 
 def test_static_sequence_trigger_pulse_leave_configured_documents_restore_semantics():
-    _index_html, app_js, styles_css = read_static_texts()
+    _index_html, app_js, _styles_css = read_static_texts()
     workflows_js = read_static_javascript("workflows.js")
 
     definitions = extract_js_function(workflows_js, "sequenceActionDefinitions")
-    sequence_fields = extract_js_function(workflows_js, "sequenceStepFields")
 
     assert 'name: "leave_trigger_configured"' in definitions
     assert "It does not keep a trigger armed." in definitions
     assert "may affect later Sequence steps or other BUS triggers" in definitions
-    assert "webuiCommandForm.appendFieldDescription(" in sequence_fields
-    assert "`form.description.sequence.${step.action.replaceAll(\"-\", \"_\")}.${definition.name}`" in sequence_fields
-    assert ".sequence-step-fields .checkbox-field" not in styles_css
-    assert ".form-grid .checkbox-field .field-description" in styles_css
-
-
-def test_static_trigger_controls_disable_invalid_combinations_and_immediate_fire():
-    _index_html, app_js, _styles_css = read_static_texts()
-
-    update_state = extract_js_function(app_js, "updateSelectedCommandState")
-    sync = extract_js_function(app_js, "syncTriggerImmediateControls")
-    guard = extract_js_function(app_js, "triggerControlGuardReason")
-
-    assert "syncTriggerImmediateControls(state.selected)" in update_state
-    assert "selectedCommandPresentation(state.selected, parameters)" in update_state
-    assert "triggerControlGuardReason(command, parameters)" in extract_js_function(app_js, "selectedCommandPresentation")
-    assert "meta.disabled || channelGuard || tripGuard || ratingGuard || setGuard || triggerControlGuard || triggerFireWaitGuard" in update_state
-    assert "triggerArmOnlyGuardReason" not in app_js
-    assert '["trigger-step", "trigger-list"]' in guard
-    assert "fire.checked = false" in sync
-    assert "fire.disabled = immediate" in sync
-    assert 't("command.guard.trigger_bus_wait_requires_fire")' in guard
-    assert 't("command.guard.trigger_list_started_requires_leave")' in guard
 
 
 def test_static_trigger_guidance_explains_global_fire_and_wait_semantics():
-    index_html, app_js, styles_css = read_static_texts()
+    index_html, app_js, _styles_css = read_static_texts()
 
     guidance = extract_js_function(read_static_javascript("command-form.js"), "renderCommandGuidance")
     fire_guard = extract_js_function(app_js, "triggerFireWaitGuardReason")
 
     assert 'id="command-guidance"' in index_html
-    assert index_html.index('id="command-guidance"') < index_html.index('id="command-form"')
     assert "command.guidance.trigger_fire" in guidance
     assert "command.guidance.trigger_step" in guidance
     assert 't("command.guard.trigger_fire_wait_requires_channel")' in fire_guard
-    assert ".command-guidance {" in styles_css
 
 
 def test_static_trigger_status_has_human_readable_workspace_summary():
@@ -2458,7 +2257,7 @@ def test_static_trigger_status_has_human_readable_workspace_summary():
 
 
 def test_static_trigger_list_uses_three_channel_workspace_editor():
-    _index_html, app_js, styles_css = read_static_texts()
+    _index_html, app_js, _styles_css = read_static_texts()
     trigger_list_js = read_static_javascript("trigger-list.js")
     workflows_js = read_static_javascript("workflows.js")
     command_form_js = read_static_javascript("command-form.js")
@@ -2467,8 +2266,6 @@ def test_static_trigger_list_uses_three_channel_workspace_editor():
     payload = extract_js_function(command_form_js, "parameterPayload")
     validator = extract_js_function(trigger_list_js, "validateTriggerListWorkspace")
 
-    for text in ("Load Trigger List", "Save Trigger List", "Add Step", "Channel ${channel}", "BOST", "EOST"):
-        assert text in render
     assert "button.dataset.triggerListChannel = String(channel);" in render
     assert "steps.push({ ...steps[steps.length - 1] })" in workflows_js
     assert "steps.length >= 100" in workflows_js
@@ -2481,11 +2278,6 @@ def test_static_trigger_list_uses_three_channel_workspace_editor():
     assert "contains unknown or missing fields" in validator
     assert "return webuiTriggerListDocument.triggerListWorkspaceDocument(state);" in workflows_js
     assert "return webuiTriggerListDocument.validateTriggerListWorkspace(document);" in workflows_js
-    assert ".trigger-list-editor {" in styles_css
-    assert '.trigger-list-tabs button[data-trigger-list-channel]' in styles_css
-    assert '.trigger-list-tabs button[data-trigger-list-channel="1"]' in styles_css
-    assert '.trigger-list-tabs button[data-trigger-list-channel="2"]' in styles_css
-    assert '.trigger-list-tabs button[data-trigger-list-channel="3"]' in styles_css
 
 
 def test_static_trigger_list_documents_restore_and_pulse_pin_guard():

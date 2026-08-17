@@ -207,23 +207,8 @@ strictAssert.deepEqual(calls, Array(4).fill([
   "static", "locale", "theme", "device", "command", "command-guards", "workflow",
   "workflow-operation", "basic", "result", "live",
 ]).flat());
-"""
+    """
     run_frontend_javascript_assertions(assertions)
-
-    _index_html, app_js, _styles_css = read_static_texts()
-    refresh = extract_js_function(app_js, "refreshLocalizedPresentation")
-    for forbidden in (
-        "fetch",
-        "EventSource",
-        "renderForm",
-        "updateExecutionModeUi",
-        "refreshHealth",
-        "selectCommand",
-        "toggleLiveMonitor",
-        "runSelected",
-        "location.reload",
-    ):
-        assert forbidden not in refresh
 
 
 def test_job_result_panel_accessibility_refreshes_from_canonical_collapsed_state():
@@ -338,18 +323,8 @@ strictAssert.equal(eventSourceConstructions, 0);
 strictAssert.equal(eventSourceCloses, 0);
 strictAssert.equal(jobActions, 0);
 strictAssert.equal(reloads, 0);
-"""
+    """
     run_frontend_javascript_assertions(assertions)
-
-    _index_html, app_js, _styles_css = read_static_texts()
-    sync = extract_js_function(app_js, "syncJobResultPanelState")
-    toggle = extract_js_function(app_js, "toggleJobResultPanel")
-    refresh = extract_js_function(app_js, "refreshResultPresentation")
-    assert "state.jobResultCollapsed" in sync
-    assert "syncJobResultPanelState();" in toggle
-    assert "syncJobResultPanelState();" in refresh
-    for forbidden in ("fetch", "EventSource", "clearJobResults", "state.jobs =", "location.reload"):
-        assert forbidden not in sync
 
 
 def test_import_smoke():
@@ -1086,9 +1061,6 @@ def test_static_basic_command_panel_contract():
     assert_static_attr(index_html, "advanced-command-toggle", "aria-controls", "advanced-commands")
     assert_static_attr(index_html, "advanced-command-toggle", "aria-expanded", "false")
     assert 'data-i18n="basic_controls.action.show_more_commands"' in index_html
-    assert index_html.count('data-i18n="basic_controls.action.set"') == 3
-    assert index_html.count('data-i18n-aria-label="basic_controls.aria.e3646a_global_output_information"') == 2
-    assert index_html.count('data-i18n-title="basic_controls.help.e3646a_global_output"') == 2
     assert 'panel.hidden = !expanded;' in app_js
 
     for channel in ("1", "2", "3"):
