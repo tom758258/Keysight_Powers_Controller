@@ -98,6 +98,18 @@ planning, simple and surgical changes, and text-file hygiene.
   validation, trigger-routing, and error-path coverage.
 - Run pytest from the repository root. Run the narrowest relevant checks first,
   then broader no-hardware tests when practical.
+- Match verification depth to the changed boundary. Routine documentation,
+  presentation-only, test-only, and hardware-independent refactors should
+  normally use focused or affected no-hardware checks; do not run full release
+  acceptance merely because a change was made.
+- Reserve `scripts/release-acceptance.ps1` for release, packaging, distribution,
+  entry-point, comparable release-gate work, and formal release candidates. Keep
+  release acceptance separate from real-instrument validation.
+- Escalate to approved real-instrument validation when a change materially
+  affects SCPI/driver behavior, output sequencing, VISA/backend/transport
+  behavior, trigger/wait or LIST/sequence timing, protection/restore safety,
+  completion pulses, or stop/release/local/cleanup behavior. Documentation-only
+  and hardware-independent refactors do not normally require a hardware rerun.
 - Use `.tmp_tests/` for intentional test and validation artifacts.
 - Real-instrument validation must be explicit, opt-in, bounded, and use a VISA
   resource supplied by the user. Never infer, scan for, or guess a resource for
