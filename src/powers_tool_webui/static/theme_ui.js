@@ -73,6 +73,7 @@ export function initializeThemeUi({
   documentElement,
   cookieDocument,
   mediaQuery,
+  onThemeChanged,
 } = {}) {
   if (!button || !label || !documentElement) {
     throw new TypeError("button, label, and documentElement are required");
@@ -82,6 +83,7 @@ export function initializeThemeUi({
 
   const apply = () => {
     documentElement.dataset.theme = effectiveTheme(preference, mediaQuery);
+    onThemeChanged?.();
   };
   const refresh = () => renderThemeButton(button, label, preference);
 

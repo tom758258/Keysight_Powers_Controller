@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from _webui_shared import extract_js_function, read_static_texts
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 STATIC_DIR = REPO_ROOT / "src" / "powers_tool_webui" / "static"
@@ -15,6 +17,7 @@ NODE = shutil.which("node")
 def test_theme_control_and_initial_render_bootstrap_are_present() -> None:
     index = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
     theme_source = (STATIC_DIR / "theme_ui.js").read_text(encoding="utf-8")
+    _html, app_source, styles = read_static_texts()
 
     assert 'id="theme-toggle"' in index
     assert 'id="theme-toggle-label"' in index
@@ -23,6 +26,19 @@ def test_theme_control_and_initial_render_bootstrap_are_present() -> None:
     assert index.index("document.cookie") < index.index("/static/styles.css")
     assert index.index("powers-tool.webui.theme") < index.index("/static/styles.css")
     assert "localStorage" not in theme_source
+    assert ':root[data-theme="light"]' in styles
+    assert "color-scheme: light;" in styles
+    assert "--chart-axis:" in styles
+    assert "--chart-line:" in styles
+    assert "onThemeChanged?.();" in theme_source
+    assert "onThemeChanged: drawTrend" in app_source
+
+    draw_trend = extract_js_function(app_source, "drawTrend")
+    assert 'getComputedStyle(document.documentElement)' in draw_trend
+    assert 'getPropertyValue("--chart-axis")' in draw_trend
+    assert 'getPropertyValue("--chart-line")' in draw_trend
+    assert "#d7dee6" not in draw_trend
+    assert "#1f7a8c" not in draw_trend
 
 
 @pytest.mark.skipif(NODE is None, reason="Node.js is required for theme runtime tests")
@@ -95,24 +111,29 @@ const label = new FakeElement();
 const documentElement = new FakeElement();
 const cookieDocument = new CookieDocument("powers-tool.webui.theme=dark");
 const media = new MediaQuery(false);
+let redraws = 0;
 const ui = theme.initializeThemeUi({
   button,
   label,
   documentElement,
   cookieDocument,
   mediaQuery: media,
+  onThemeChanged: () => { redraws += 1; },
 });
 
 assert.equal(ui.getPreference(), "dark");
 assert.equal(documentElement.dataset.theme, "dark");
+assert.equal(redraws, 1);
 assert.equal(label.textContent, "Dark");
 assert.equal(button.attributes["aria-label"], "Switch theme to System");
 media.change(true);
 assert.equal(documentElement.dataset.theme, "dark");
+assert.equal(redraws, 1);
 
 button.click();
 assert.equal(ui.getPreference(), "system");
 assert.equal(documentElement.dataset.theme, "dark");
+assert.equal(redraws, 2);
 const persistedCookie = cookieDocument.writes.at(-1);
 assert.match(persistedCookie, /^powers-tool\.webui\.theme=system;/);
 assert.match(persistedCookie, /(?:^|; )Max-Age=([1-9][0-9]*)(?:;|$)/);
@@ -121,6 +142,7 @@ assert.match(persistedCookie, /(?:^|; )SameSite=Lax(?:;|$)/);
 assert.doesNotMatch(persistedCookie, /(?:^|; )Domain=/i);
 media.change(false);
 assert.equal(documentElement.dataset.theme, "light");
+assert.equal(redraws, 3);
 
 button.click();
 assert.equal(ui.getPreference(), "light");

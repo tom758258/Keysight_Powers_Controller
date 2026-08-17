@@ -27,6 +27,8 @@
   --surface-selected-end: #ddefef;
   --surface-disabled: #f2f5f8;
   --field-hover-line: #b8c2cc;
+  --chart-axis:      #d7dee6;
+  --chart-line:      #1f7a8c;
 
   /* Radius */
   --radius-sm:  6px;
@@ -47,6 +49,10 @@
   font-family: -apple-system, "SF Pro Display", "Helvetica Neue", "Segoe UI", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   font-size: 13px;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
 }
 
 :root[data-theme="dark"] {
@@ -77,6 +83,8 @@
   --surface-selected-end: #203447;
   --surface-disabled: #2a3037;
   --field-hover-line: #657483;
+  --chart-axis:      #526170;
+  --chart-line:      #78d1dc;
   --shadow-sm:       0 1px 3px rgba(0, 0, 0, .35), 0 1px 2px rgba(0, 0, 0, .25);
   --shadow-md:       0 4px 16px rgba(0, 0, 0, .4), 0 1px 4px rgba(0, 0, 0, .3);
   --shadow-focus:    0 0 0 3px rgba(105, 170, 245, .28);

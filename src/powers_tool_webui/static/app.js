@@ -322,6 +322,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     documentElement: document.documentElement,
     cookieDocument: document,
     mediaQuery,
+    onThemeChanged: drawTrend,
   });
   webuiLocaleUi.initializeLocaleUi({ refreshPresentation: refreshLocalizedPresentation });
   applyStaticTranslations(document);
@@ -1993,8 +1994,11 @@ function drawTrend() {
   const canvas = document.getElementById("trend");
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
+  const styles = getComputedStyle(document.documentElement);
+  const chartAxis = styles.getPropertyValue("--chart-axis").trim();
+  const chartLine = styles.getPropertyValue("--chart-line").trim();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeStyle = "#d7dee6";
+  ctx.strokeStyle = chartAxis;
   ctx.beginPath();
   ctx.moveTo(32, 12);
   ctx.lineTo(32, 160);
@@ -2005,7 +2009,7 @@ function drawTrend() {
   const min = Math.min(...values);
   const max = Math.max(...values);
   const span = Math.max(max - min, 0.001);
-  ctx.strokeStyle = "#1f7a8c";
+  ctx.strokeStyle = chartLine;
   ctx.lineWidth = 2;
   ctx.beginPath();
   values.forEach((value, index) => {
