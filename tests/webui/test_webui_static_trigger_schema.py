@@ -2,14 +2,10 @@
 
 from __future__ import annotations
 
-from _webui_shared import read_static_texts, run_webui_module_assertions
+from _webui_shared import run_webui_module_assertions
 
 
 def test_command_form_module_owns_trigger_parameter_descriptors() -> None:
-    _index_html, app_js, _styles_css = read_static_texts()
-
-    assert 'webuiCommandForm.triggerStepParams()' in app_js
-
     run_webui_module_assertions(
         r"""
 const trigger = globalThis.webuiCommandForm;

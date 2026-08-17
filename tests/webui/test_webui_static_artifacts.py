@@ -6,6 +6,7 @@ from _webui_shared import (
     extract_js_function,
     read_static_javascript,
     read_static_texts,
+    run_frontend_javascript_assertions,
     run_webui_module_assertions,
 )
 
@@ -34,7 +35,7 @@ def test_static_json_artifact_file_helpers_have_cancel_and_accept_contracts():
 
 
 def test_frontend_native_json_pickers_use_json_accept_map():
-    run_webui_module_assertions(
+    run_frontend_javascript_assertions(
         r"""
 const openOptions = [];
 const saveOptions = [];
@@ -198,29 +199,48 @@ def test_static_restore_plan_preview_is_safe_and_structured():
 
 
 def test_static_snapshot_max_errors_documents_destructive_queue_reads():
-    _index_html, app_js, _styles_css = read_static_texts()
+    _index_html, _app_js, _styles_css = read_static_texts()
     workflows_js = read_static_javascript("workflows.js")
 
     render_snapshot = extract_js_function(workflows_js, "renderSnapshotForm")
     append_description = extract_js_function(read_static_javascript("command-form.js"), "appendFieldDescription")
 
-    assert 'snapshot: [{' in app_js
-    assert 'name: "max_errors"' in app_js
     assert "webuiCommandForm.appendFieldDescription(" in render_snapshot
     assert "`form.description.snapshot.${param.name}`" in render_snapshot
     assert 'description.className = "field-description";' in append_description
     assert "t(translationKey, undefined, param.description)" in append_description
     assert "description.dataset.workflowI18n = translationKey;" in append_description
 
+    run_frontend_javascript_assertions(
+        r"""
+const strictAssert = require("node:assert/strict");
+const params = globalThis.__webuiCommandParams.createCommandParams({ rearPinOptions: ["1", "2", "3"] });
+const maxErrors = params.snapshot.find((field) => field.name === "max_errors");
+strictAssert.ok(maxErrors);
+strictAssert.equal(maxErrors.type, "number");
+strictAssert.match(maxErrors.description, /error queue/);
+strictAssert.match(maxErrors.description, /removed from the instrument queue/);
+""",
+        ("command-form.js", "command-params.js"),
+    )
+
 
 def test_static_safe_off_channel_documents_behavior():
-    _index_html, app_js, _styles_css = read_static_texts()
+    _index_html, _app_js, _styles_css = read_static_texts()
 
-    safe_off_block = app_js[app_js.index('"safe-off": ['):app_js.index('"cycle-output": [')]
-    assert 'name: "channel"' in safe_off_block
-    assert 'description:' in safe_off_block
-    assert 'options: ["all", "1", "2", "3"]' in safe_off_block
-    assert 'value: "all"' in safe_off_block
+    run_frontend_javascript_assertions(
+        r"""
+const strictAssert = require("node:assert/strict");
+const params = globalThis.__webuiCommandParams.createCommandParams({ rearPinOptions: ["1", "2", "3"] });
+const channel = params["safe-off"].find((field) => field.name === "channel");
+strictAssert.ok(channel);
+strictAssert.deepEqual(channel.options, ["all", "1", "2", "3"]);
+strictAssert.equal(channel.value, "all");
+strictAssert.match(channel.description, /reads back each output state/);
+strictAssert.match(channel.description, /not changed/);
+""",
+        ("command-form.js", "command-params.js"),
+    )
 
 
 def test_static_restore_load_rejects_legacy_envelope_contract():
