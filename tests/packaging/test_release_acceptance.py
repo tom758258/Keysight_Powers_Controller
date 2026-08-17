@@ -392,9 +392,14 @@ def test_release_acceptance_validates_unified_desktop_bundle() -> None:
         'Join-Path $extractedBundleDir "resources\\backend"',
         '"packaged-cli-version"',
         '"packaged-webui-launcher-version"',
+        '$windowsBundleZip = Get-Item -LiteralPath (',
+        'Join-Path $versionDir "powers-tool-$projectVersion-windows-x64.zip"',
     ):
         assert required in text
 
+    assert text.index("$windowsBundleZip = Get-Item") < text.index(
+        "Expand-Archive -LiteralPath $windowsBundleZip.FullName"
+    )
     assert "inspect_pyinstaller.py" not in text
 
 
@@ -446,6 +451,8 @@ def test_release_builder_creates_unified_top_level_artifacts() -> None:
 
     assert "build_cli_exe.ps1" not in text
     assert "build_webui_exe.ps1" not in text
+    assert not (ROOT / "scripts" / "build_cli_exe.ps1").exists()
+    assert not (ROOT / "scripts" / "build_webui_exe.ps1").exists()
 
 
 def test_distribution_inspector_accepts_matching_explicit_future_version(

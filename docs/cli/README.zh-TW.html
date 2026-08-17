@@ -231,8 +231,8 @@ PyVISA selector；對應的 backend package 必須安裝在同一環境中，且
 或 PyVISA 可載入都不會自行授予 Product support；model-aware live execution 仍須符合
 exact Product-open <code>model + command + transport + backend + required feature</code>
 scope。目前沒有使用 <code>pyvisa_bt</code> 的 Product-open exact scope，因此搭配
-<code>--backend "@bt"</code> 的 model-aware Product live execution 會 fail closed。目前官方
-standalone <code>powers-tool.exe</code> 不會 bundle pyvisa-py、<code>pyvisa_bt</code> 等 optional Python
+<code>--backend "@bt"</code> 的 model-aware Product live execution 會 fail closed。封裝後的
+<code>powers-tool.exe</code> 不會 bundle pyvisa-py、<code>pyvisa_bt</code> 等 optional Python
 backend package，也不包含 BT runtime 或 service。</p>
 <h2 id="安裝">安裝</h2>
 <p>根目錄的 <a href="../../README.zh-TW.md#安裝" rel="noopener noreferrer" target="_blank">README 安裝指南</a> 是 canonical setup
@@ -352,12 +352,9 @@ Windows system temporary directory。請從 repository 根目錄執行 pytest；
 <ul>
 <li><code>scripts\build_desktop.ps1</code>：建置整合 shared Python bundle 的 Electron Windows directory application。</li>
 <li><code>scripts\build_windows_bundle.ps1</code>：建置 local shared Windows onedir bundle。</li>
-<li><code>scripts\build_cli_exe.ps1</code>：供 local 使用的 CLI onefile helper。</li>
-<li><code>scripts\build_webui_exe.ps1</code>：供 local 使用的 WebUI onefile helper。</li>
 <li><code>scripts\build_release.ps1</code>：建置正式 release 資料夾。</li>
 </ul>
-<p>正式 Windows release 使用 <code>build_release.ps1</code> 產生的 unified Desktop ZIP，
-不再發布上述 onefile helper 的 standalone release artifacts。</p>
+<p>正式 Windows release 使用 <code>build_release.ps1</code> 產生的 unified Desktop ZIP。</p>
 <h3 id="scripted-validation">Scripted Validation</h3>
 <p>以下是支援的 standalone validation entry points。請從 repository 根目錄在
 PowerShell 執行這些腳本。每個 validation result 僅涵蓋實際執行的 models、

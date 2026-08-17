@@ -100,10 +100,11 @@ pre code { color: var(--text-code); background: transparent; padding: 0; }
 <p>在包含 CLI 執行檔的資料夾中開啟 PowerShell 並檢查：</p>
 <div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe --version
 </code></pre></div>
-<p>發佈資料夾可能包含帶有版本號的執行檔名稱，例如：</p>
-<div class="code-wrapper"><pre><code class="language-text">powers-tool-&lt;version&gt;.exe
+<p>正式 Windows release 請解壓縮帶版本號的 Desktop ZIP，並從 application root 使用 CLI 執行檔：</p>
+<div class="code-wrapper"><pre><code class="language-text">powers-tool-&lt;version&gt;-windows-x64.zip
+\powers-tool-&lt;version&gt;\powers-tool.exe
 </code></pre></div>
-<p>如果您的發佈資料夾使用的是帶有版本號的執行檔，請在以下的命令中使用該檔名。開發人員或簽出原始碼的使用者請參閱 <a href="README.zh-TW.html">CLI README</a> 以了解虛擬環境、模組、建置與 developer commands。</p>
+<p>請在以下命令中使用解壓後的路徑。開發人員或簽出原始碼的使用者請參閱 <a href="README.zh-TW.html">CLI README</a> 以了解虛擬環境、模組、建置與 developer commands。</p>
 <p>若為已安裝的命令，請將 <code>.\powers-tool.exe</code> 替換為 <code>powers-tool</code>：</p>
 <div class="code-wrapper"><pre><code class="language-powershell">powers-tool --version
 </code></pre></div>
@@ -114,8 +115,8 @@ PyVISA selector。<code>@bt</code> 會辨識為 <code>pyvisa_bt</code> backend i
 backend 的 Powers Product-open exact live scope；因此 model-aware Product live
 command 搭配 <code>--backend "@bt"</code> 時會 fail closed。Backend 可載入不代表已取得
 Product support。</p>
-<p>目前官方 standalone <code>powers-tool.exe</code> 不會 bundle <code>pyvisa_bt</code>。本指南中的
-standalone commands 使用正常的 System VISA 路徑。</p>
+<p>封裝後的 <code>powers-tool.exe</code> 不會 bundle <code>pyvisa_bt</code>。本指南中的
+封裝 CLI commands 使用正常的 System VISA 路徑。</p>
 <h2 id="首次實機檢查-first-live-check">首次實機檢查 (First Live Check)</h2>
 <p>在檢查新電腦、VISA runtime、連線或電源供應器設定時，請使用此流程。</p>
 <ol>

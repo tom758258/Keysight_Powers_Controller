@@ -156,7 +156,7 @@ installation and PyVISA loadability do not themselves grant Product support;
 model-aware live execution still requires an exact Product-open `model +
 command + transport + backend + required feature` scope. No current
 Product-open exact scope uses `pyvisa_bt`, so model-aware Product live execution
-with `--backend "@bt"` fails closed. The current official standalone
+with `--backend "@bt"` fails closed. The packaged
 `powers-tool.exe` does not bundle optional Python backend packages such as
 pyvisa-py or `pyvisa_bt`, and it does not include a BT runtime or service.
 
@@ -499,13 +499,10 @@ These are public build entry points; detailed usage is maintained in the root
 [README](../../README.md):
 
 - `scripts\build_desktop.ps1`
-- `scripts\build_cli_exe.ps1`
-- `scripts\build_webui_exe.ps1`
 - `scripts\build_windows_bundle.ps1`
 - `scripts\build_release.ps1`
 
-The two onefile helper scripts remain available for local use, but formal
-Windows releases use the unified Desktop ZIP produced by
+Formal Windows releases use the unified Desktop ZIP produced by
 `scripts\build_release.ps1`.
 
 #### CI quality utilities

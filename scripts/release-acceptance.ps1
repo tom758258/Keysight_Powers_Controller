@@ -381,6 +381,9 @@ try {
         -Passed (@(Compare-Object -ReferenceObject $expectedRelease -DifferenceObject $releaseFiles).Count -eq 0) `
         -Detail ($releaseFiles -join ", ")
 
+    $windowsBundleZip = Get-Item -LiteralPath (
+        Join-Path $versionDir "powers-tool-$projectVersion-windows-x64.zip"
+    )
     $checksumPath = Join-Path $versionDir "checksums.txt"
     $checksumLines = Get-Content -LiteralPath $checksumPath
     $checksumNames = @()
