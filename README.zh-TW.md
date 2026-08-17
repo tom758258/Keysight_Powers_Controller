@@ -174,6 +174,10 @@ development environment；`dev` extra 已提供 PyInstaller，不需要另外安
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_windows_bundle.ps1
 ```
 
+Windows WebUI Launcher 使用 Tkinter，因此用於建置 shared Windows bundle
+的 Python 環境必須提供可正常使用的 Tcl/Tk runtime。建置腳本會在啟動
+PyInstaller 前先檢查這項 prerequisite。
+
 預設情況下，此命令會產生包含兩個執行檔與一個共用 supporting-files
 目錄的 application directory：
 

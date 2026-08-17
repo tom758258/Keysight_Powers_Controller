@@ -20,6 +20,25 @@ if ($pythonBits.Trim() -ne "64") {
     throw "Windows shared bundle requires 64-bit Python; detected $($pythonBits.Trim())-bit Python"
 }
 
+$tkProbe = @'
+import sys
+import tkinter as tk
+
+root = None
+try:
+    root = tk.Tk()
+    root.withdraw()
+except Exception:
+    sys.exit(1)
+finally:
+    if root is not None:
+        root.destroy()
+'@
+& $Python -c $tkProbe | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    throw "Windows shared bundle includes a Tkinter WebUI Launcher and requires a working Tcl/Tk runtime; no bundle was built."
+}
+
 if ([System.IO.Path]::IsPathRooted($DistPath)) {
     $distFull = [System.IO.Path]::GetFullPath($DistPath)
 } else {

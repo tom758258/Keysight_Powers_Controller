@@ -192,6 +192,10 @@ Build the shared Windows onedir bundle containing the CLI and WebUI launcher:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_windows_bundle.ps1
 ```
 
+The Windows WebUI Launcher uses Tkinter, so the Python environment used to
+build the shared Windows bundle must provide a working Tcl/Tk runtime. The
+build script checks this prerequisite before starting PyInstaller.
+
 By default, this command produces one application directory with two
 executables and one shared supporting-files directory:
 

@@ -32,6 +32,22 @@ def test_shared_spec_has_two_onedir_executables_and_one_collect() -> None:
     assert "MERGE" not in text
 
 
+def test_windows_bundle_script_guards_tk_before_cleanup_and_pyinstaller() -> None:
+    text = (ROOT / "scripts" / "build_windows_bundle.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert "import tkinter as tk" in text
+    assert "root = tk.Tk()" in text
+    assert "Tkinter WebUI Launcher" in text
+    assert "Tcl/Tk runtime" in text
+
+    probe = text.index("& $Python -c $tkProbe")
+    cleanup = text.index("Remove-Item -LiteralPath $bundlePath")
+    pyinstaller = text.index("& $Python -m PyInstaller")
+    assert probe < cleanup < pyinstaller
+
+
 def test_bundle_inspector_compares_the_complete_static_tree(tmp_path: Path) -> None:
     inspector = _load_inspector()
     source_static = tmp_path / "source-static"
