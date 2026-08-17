@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 import textwrap
 
 from _webui_shared import (

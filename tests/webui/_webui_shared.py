@@ -248,7 +248,10 @@ class FakeElement {
   querySelectorAll() { return []; }
   setAttribute(name, value) { this.attributes[name] = String(value); }
   getAttribute(name) { return this.attributes[name] ?? null; }
-  set innerHTML(_value) {
+  set innerHTML(value) {
+    if (value !== "") {
+      throw new Error("FakeElement.innerHTML only supports clearing");
+    }
     this.textContent = "";
     this.children = [];
   }
