@@ -290,10 +290,10 @@ Pytest 預設使用已忽略的 repository-local `.tmp_pytest` 目錄，因此�
 .\.venv\Scripts\python.exe -m ruff check src tests
 ```
 
-執行每日 fast no-hardware 測試：
+執行 fast no-hardware 測試：
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider --ignore=tests\cli\test_cli_wrappers.py
+.\.venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider --ignore=tests\cli\test_cli_wrappers.py --ignore=tests\packaging\test_release_acceptance.py
 ```
 
 CI 也會檢查 tracked WebUI JavaScript syntax、執行必要的 WebUI Node runtime

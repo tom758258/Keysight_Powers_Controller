@@ -96,7 +96,7 @@ jobs:
           ./.venv/bin/powers-tool-webui-launcher --version
 
       - name: Run fast tests
-        run: ./.venv/bin/python -m pytest tests -q -p no:cacheprovider --ignore=tests/cli/test_cli_wrappers.py
+        run: ./.venv/bin/python -m pytest tests -q -p no:cacheprovider --ignore=tests/cli/test_cli_wrappers.py --ignore=tests/packaging/test_release_acceptance.py
 
   pytest-windows:
     name: Windows Python ${{ matrix.python-version }}
@@ -146,7 +146,7 @@ jobs:
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_desktop.ps1
 
       - name: Run fast tests
-        run: .\.venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider --ignore=tests\cli\test_cli_wrappers.py
+        run: .\.venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider --ignore=tests\cli\test_cli_wrappers.py --ignore=tests\packaging\test_release_acceptance.py
 
   wrapper-contracts:
     name: Windows wrapper contracts

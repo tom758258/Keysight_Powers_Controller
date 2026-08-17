@@ -323,10 +323,10 @@ Run the static checks used by CI:
 .\.venv\Scripts\python.exe -m ruff check src tests
 ```
 
-Run the daily fast no-hardware suite:
+Run the fast no-hardware suite:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider --ignore=tests\cli\test_cli_wrappers.py
+.\.venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider --ignore=tests\cli\test_cli_wrappers.py --ignore=tests\packaging\test_release_acceptance.py
 ```
 
 CI also checks tracked WebUI JavaScript syntax, runs the focused WebUI Node
