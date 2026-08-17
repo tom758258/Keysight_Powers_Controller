@@ -10,13 +10,16 @@
 .\powers-tool.exe --version
 ```
 
-發佈資料夾可能包含帶有版本號的執行檔名稱，例如：
+正式 Windows release 請解壓縮帶版本號的 Desktop ZIP，並從 application root
+使用 CLI 執行檔：
 
 ```text
-powers-tool-<version>.exe
+powers-tool-<version>-windows-x64.zip
+\powers-tool-<version>\powers-tool.exe
 ```
 
-如果您的發佈資料夾使用的是帶有版本號的執行檔，請在以下的命令中使用該檔名。開發人員或簽出原始碼的使用者請參閱 [CLI README](README.zh-TW.md) 以了解虛擬環境、模組、建置與 developer commands。
+請在以下命令中使用解壓後的路徑。開發人員或簽出原始碼的使用者請參閱
+[CLI README](README.zh-TW.md) 以了解虛擬環境、模組、建置與 developer commands。
 
 若為已安裝的命令，請將 `.\powers-tool.exe` 替換為 `powers-tool`：
 
@@ -32,8 +35,8 @@ backend 的 Powers Product-open exact live scope；因此 model-aware Product li
 command 搭配 `--backend "@bt"` 時會 fail closed。Backend 可載入不代表已取得
 Product support。
 
-目前官方 standalone `powers-tool.exe` 不會 bundle `pyvisa_bt`。本指南中的
-standalone commands 使用正常的 System VISA 路徑。
+封裝後的 `powers-tool.exe` 不會 bundle `pyvisa_bt`。本指南中的封裝 CLI
+commands 使用正常的 System VISA 路徑。
 
 ## 首次實機檢查 (First Live Check)
 

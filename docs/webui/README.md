@@ -693,7 +693,7 @@ does not need a separate install:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_windows_bundle.ps1
 ```
 
-After building, confirm the standalone launcher reports the package version:
+After building, confirm the shared-bundle launcher reports the package version:
 
 ```powershell
 .\dist\powers-tool\powers-tool-webui-launcher.exe --version

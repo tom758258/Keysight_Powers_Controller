@@ -6,9 +6,19 @@
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
-    "check": "node --check main.cjs"
+    "check": "node --check main.cjs",
+    "dist:win": "electron-builder --dir --win --x64"
   },
   "devDependencies": {
-    "electron": "43.3.0"
+    "electron": "43.3.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "directories": {
+      "output": "../dist/desktop"
+    },
+    "files": [
+      "main.cjs"
+    ]
   }
 }

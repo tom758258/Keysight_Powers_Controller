@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Prepares the shared Windows onedir and Electron Desktop directory packaging
+  flow, including a unified versioned Windows ZIP release contract.
 - Removes obsolete private CLI Trigger execution compatibility helpers; active
   Trigger execution remains owned by Core, with CLI/live behavior unchanged.
 - Adds multi-channel Ramp support and Ramp List v5 per-Segment channel selections while

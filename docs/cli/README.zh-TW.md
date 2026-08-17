@@ -221,10 +221,14 @@ Windows system temporary directory。請從 repository 根目錄執行 pytest；
 以下是公開的建置入口；詳細用法維護於根目錄的
 [README](../../README.zh-TW.md)：
 
+- `scripts\build_desktop.ps1`：建置整合 shared Python bundle 的 Electron Windows directory application。
 - `scripts\build_windows_bundle.ps1`：建置 local shared Windows onedir bundle。
-- `scripts\build_cli_exe.ps1`：建置供現有 release caller 使用的 CLI onefile。
-- `scripts\build_webui_exe.ps1`：建置供現有 release caller 使用的 WebUI onefile。
+- `scripts\build_cli_exe.ps1`：供 local 使用的 CLI onefile helper。
+- `scripts\build_webui_exe.ps1`：供 local 使用的 WebUI onefile helper。
 - `scripts\build_release.ps1`：建置正式 release 資料夾。
+
+正式 Windows release 使用 `build_release.ps1` 產生的 unified Desktop ZIP，
+不再發布上述 onefile helper 的 standalone release artifacts。
 
 ### Scripted Validation
 

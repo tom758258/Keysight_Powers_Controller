@@ -165,8 +165,12 @@ dist\powers_tool-<version>-py3-none-any.whl
 dist\powers_tool-<version>.tar.gz
 ```
 
-獨立的執行檔有分開的 PyInstaller 工作流程。請先準備上方的 locked
-development environment；`dev` extra 已提供 PyInstaller，不需要另外安裝：
+Product distribution inspector 會排除 repository validation scripts、private
+fixtures、candidate evidence 與 internal-only tests，並驗證 Python wheel 與
+source distribution；Desktop application 會另外組裝至 Windows ZIP。
+
+請先準備上方的 locked development environment；`dev` extra 已提供
+PyInstaller，不需要另外安裝：
 
 建置包含 CLI、WebUI 啟動器與 private Desktop Host 的 Windows shared onedir bundle：
 
@@ -211,6 +215,16 @@ display work area 進行 clamp，並支援 System、Light、Dark 主題。允許
 執行多個 Desktop instance，因此不同 instance 可以操作不同的實體儀器；
 但不同 client 仍不可同時操作同一個 physical instrument resource。
 
+建置整合 shared Python bundle 的 Electron Windows directory application：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_desktop.ps1
+```
+
+產生的 application directory 包含 `Powers Tool.exe`、三個 Python 執行檔、
+Electron runtime files，以及位於 root 的單一共用 `_internal` 目錄。正式
+Windows release 會將同一個 application directory 放入帶版本號的 ZIP。
+
 在不接觸硬體的情況下，快速測試建置完成的 CLI 執行檔：
 
 ```powershell
@@ -218,7 +232,7 @@ display work area 進行 clamp，並支援 System、Light、Dark 主題。允許
 .\dist\powers-tool\powers-tool.exe doctor --simulate --json
 ```
 
-建置包含 wheel、sdist、獨立執行檔與檢查碼 (checksums) 的發佈資料夾：
+建置包含 wheel、sdist 與 unified Desktop Windows ZIP 的版本化發佈資料夾：
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_release.ps1
@@ -227,15 +241,19 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_release.
 這會產生以所選專案版本命名的發佈產物：
 
 ```text
-release\<version>\powers-tool-<version>.exe
-release\<version>\powers-tool-webui-<version>.exe
+release\<version>\powers-tool-<version>-windows-x64.zip
 release\<version>\powers_tool-<version>-py3-none-any.whl
 release\<version>\powers_tool-<version>.tar.gz
 release\<version>\checksums.txt
 ```
 
+ZIP 內只有一個 `powers-tool-<version>\` application root，包含 Electron
+shell、CLI、WebUI launcher、private WebUI Host、Electron runtime files，以及
+共用的 `_internal\` 目錄。`checksums.txt` 只計算 ZIP、wheel 與 sdist 的
+hash。
+
 正式 release acceptance 必須從 clean、fully committed source working tree 執行。
-它會檢查 HEAD、`uv.lock`、wheel、sdist、standalone executable、console entry
+它會檢查 HEAD、`uv.lock`、wheel、sdist、unified Desktop ZIP、console entry
 points 與 checksums，並執行 no-hardware CLI smoke、代表性 deep preflight 與
 simulator PlanOnly。此 acceptance script 不會進行 VISA discovery、開啟 resource
 或送出 SCPI，也不會自動 publication release。可直接執行：

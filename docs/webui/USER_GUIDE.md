@@ -22,11 +22,16 @@ To confirm the launcher version from PowerShell:
 .\dist\powers-tool\powers-tool-webui-launcher.exe --version
 ```
 
-Release folders may instead include a versioned onefile launcher name, such as:
+For a formal Windows release, extract the versioned Desktop ZIP and open the
+Desktop shell from its application root:
 
 ```text
-powers-tool-webui-<version>.exe
+powers-tool-<version>-windows-x64.zip
+\powers-tool-<version>\Powers Tool.exe
 ```
+
+The extracted application root contains the CLI, WebUI launcher, private WebUI
+Host, Electron runtime files, and one shared `_internal` directory.
 
 With no command-line options, the launcher remains hidden while it
 automatically tries port `7999` followed by up to 99 higher ports. Wait for the

@@ -300,7 +300,7 @@ PyInstaller 由 `dev` extra 提供，不需要另外安裝：
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_windows_bundle.ps1
 ```
 
-建置完成後，請確認 standalone artifact 能回報套件版本：
+建置完成後，請確認 shared bundle launcher 能回報套件版本：
 
 ```powershell
 .\dist\powers-tool\powers-tool-webui-launcher.exe --version

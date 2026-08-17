@@ -371,8 +371,7 @@ try {
     $versionDir = Join-Path $releaseRoot $projectVersion
     $normalizedDistribution = $distributionName.Replace("-", "_")
     $expectedRelease = @(
-        "powers-tool-$projectVersion.exe",
-        "powers-tool-webui-$projectVersion.exe",
+        "powers-tool-$projectVersion-windows-x64.zip",
         "$normalizedDistribution-$projectVersion-py3-none-any.whl",
         "$normalizedDistribution-$projectVersion.tar.gz",
         "checksums.txt"
@@ -403,15 +402,58 @@ try {
         -Passed (-not ($checksumBytes.Length -ge 3 -and $checksumBytes[0] -eq 0xEF -and `
             $checksumBytes[1] -eq 0xBB -and $checksumBytes[2] -eq 0xBF))
 
-    $standaloneCli = Join-Path $versionDir "powers-tool-$projectVersion.exe"
-    $standaloneWebui = Join-Path $versionDir "powers-tool-webui-$projectVersion.exe"
-    Run-Python -Name "inspect-final-standalone" -Python $python -WorkingDirectory $script:RepoRoot `
-        -Arguments @(
-            "tests\packaging\inspect_pyinstaller.py",
-            "--expected-version", $projectVersion,
-            $standaloneCli,
-            $standaloneWebui
-        ) | Out-Null
+    $script:CurrentStep = "extract unified Windows bundle"
+    $bundleExtractRoot = Join-Path $script:RunRoot "windows-bundle"
+    New-Item -ItemType Directory -Force -Path $bundleExtractRoot | Out-Null
+    Expand-Archive -LiteralPath $windowsBundleZip.FullName -DestinationPath $bundleExtractRoot
+    $expectedBundleDirName = "powers-tool-$projectVersion"
+    $bundleRootEntries = @(Get-ChildItem -LiteralPath $bundleExtractRoot -Force)
+    if (
+        $bundleRootEntries.Count -ne 1 -or
+        -not $bundleRootEntries[0].PSIsContainer -or
+        $bundleRootEntries[0].Name -cne $expectedBundleDirName
+    ) {
+        $found = ($bundleRootEntries.Name | Sort-Object) -join ", "
+        throw "Windows bundle ZIP must contain only $expectedBundleDirName`: $found"
+    }
+
+    $extractedBundleDir = $bundleRootEntries[0].FullName
+    foreach ($requiredFile in @(
+        "Powers Tool.exe",
+        "powers-tool.exe",
+        "powers-tool-webui-launcher.exe",
+        "powers-tool-webui-host.exe"
+    )) {
+        if (-not (Test-Path -LiteralPath (Join-Path $extractedBundleDir $requiredFile) -PathType Leaf)) {
+            throw "Unified Windows bundle is missing required file: $requiredFile"
+        }
+    }
+    foreach ($requiredDirectory in @("_internal", "resources")) {
+        if (-not (Test-Path -LiteralPath (Join-Path $extractedBundleDir $requiredDirectory) -PathType Container)) {
+            throw "Unified Windows bundle is missing required directory: $requiredDirectory"
+        }
+    }
+    $internalDirectories = @(
+        Get-ChildItem -LiteralPath $extractedBundleDir -Directory -Recurse -Force |
+            Where-Object { $_.Name -eq "_internal" }
+    )
+    if ($internalDirectories.Count -ne 1) {
+        throw "Unified Windows bundle must contain exactly one _internal directory."
+    }
+    if (-not $internalDirectories[0].FullName.Equals(
+        (Join-Path $extractedBundleDir "_internal"),
+        [System.StringComparison]::OrdinalIgnoreCase
+    )) {
+        throw "Unified Windows bundle _internal directory must be at the application root."
+    }
+    if (Test-Path -LiteralPath (Join-Path $extractedBundleDir "resources\backend")) {
+        throw "Unified Windows bundle must not contain resources\backend."
+    }
+    if (@(Get-ChildItem -LiteralPath $extractedBundleDir -Filter "*-portable.exe" -File -Recurse).Count -ne 0) {
+        throw "Unified Windows bundle must not contain a portable executable."
+    }
+    $packagedCli = Join-Path $extractedBundleDir "powers-tool.exe"
+    $packagedLauncher = Join-Path $extractedBundleDir "powers-tool-webui-launcher.exe"
 
     $script:CurrentStep = "clean sdist install"
     $sdist = Join-Path $versionDir "$normalizedDistribution-$projectVersion.tar.gz"
@@ -450,12 +492,12 @@ for filename in ("index.html", "styles.css", "app.js"):
         -Passed $true -Detail "Installed final sdist and verified package metadata, imports, and WebUI assets"
     Test-InstalledEntryPoints -Python $artifactPython
 
-    $script:CurrentStep = "final standalone smoke"
-    $cliVersion = Invoke-Recorded -Name "standalone-cli-version" -FilePath $standaloneCli `
+    $script:CurrentStep = "final packaged smoke"
+    $cliVersion = Invoke-Recorded -Name "packaged-cli-version" -FilePath $packagedCli `
         -Arguments @("--version") -WorkingDirectory $script:RunRoot -TimeoutSeconds 30
     Add-Check -Target $script:StandaloneChecks -Name "CLI --version" `
         -Passed ($cliVersion.Trim() -eq "powers-tool $projectVersion") -Detail $cliVersion.Trim()
-    $webuiVersion = Invoke-Recorded -Name "standalone-webui-version" -FilePath $standaloneWebui `
+    $webuiVersion = Invoke-Recorded -Name "packaged-webui-launcher-version" -FilePath $packagedLauncher `
         -Arguments @("--version") -WorkingDirectory $script:RunRoot -TimeoutSeconds 30
     $webuiDetail = $webuiVersion.Trim()
     if (-not $webuiDetail) { $webuiDetail = "clean exit; no windowed stdout" }

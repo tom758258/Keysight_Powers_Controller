@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import io
+import json
 from pathlib import Path
 import re
 import shutil
@@ -16,6 +17,9 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "release-acceptance.ps1"
+BUILD_RELEASE = ROOT / "scripts" / "build_release.ps1"
+BUILD_DESKTOP = ROOT / "scripts" / "build_desktop.ps1"
+DESKTOP_PACKAGE = ROOT / "desktop" / "package.json"
 PACKAGING_DIR = ROOT / "tests" / "packaging"
 
 if str(PACKAGING_DIR) not in sys.path:
@@ -287,7 +291,8 @@ def test_release_acceptance_preserves_required_no_hardware_release_flow() -> Non
     for required in (
         "scripts\\build_release.ps1",
         '"pytest-full-no-hardware"',
-        "tests\\packaging\\inspect_pyinstaller.py",
+        '"extract unified Windows bundle"',
+        '"resources\\backend"',
         '"lock", "--check"',
         '"install-final-sdist"',
         '"live-cli-plan-only"',
@@ -370,13 +375,77 @@ def test_console_entry_point_help_smoke_uses_stable_usage_contract() -> None:
         assert brittle_description not in text
 
 
-def test_release_acceptance_passes_project_version_to_standalone_inspector() -> None:
+def test_release_acceptance_validates_unified_desktop_bundle() -> None:
     text = SCRIPT.read_text(encoding="utf-8")
-    pattern = (
-        r'"tests\\packaging\\inspect_pyinstaller\.py".{0,160}'
-        r'"--expected-version", \$projectVersion'
-    )
-    assert re.search(pattern, text, flags=re.DOTALL)
+
+    for required in (
+        '"powers-tool-$projectVersion-windows-x64.zip"',
+        '"Powers Tool.exe"',
+        '"powers-tool.exe"',
+        '"powers-tool-webui-launcher.exe"',
+        '"powers-tool-webui-host.exe"',
+        '"_internal"',
+        '"resources"',
+        '"*-portable.exe"',
+        "exactly one _internal directory",
+        "_internal directory must be at the application root",
+        'Join-Path $extractedBundleDir "resources\\backend"',
+        '"packaged-cli-version"',
+        '"packaged-webui-launcher-version"',
+    ):
+        assert required in text
+
+    assert "inspect_pyinstaller.py" not in text
+
+
+def test_desktop_package_uses_directory_windows_builder_without_portable_target() -> None:
+    package = json.loads(DESKTOP_PACKAGE.read_text(encoding="utf-8"))
+
+    assert package["version"] == "2.0.0"
+    assert package["scripts"]["dist:win"] == "electron-builder --dir --win --x64"
+    assert package["build"]["directories"]["output"] == "../dist/desktop"
+    assert package["build"]["files"] == ["main.cjs"]
+    assert "electron-builder" in package["devDependencies"]
+    assert "portable" not in package
+
+
+def test_desktop_builder_merges_existing_shared_bundle() -> None:
+    text = BUILD_DESKTOP.read_text(encoding="utf-8")
+
+    for required in (
+        "build_windows_bundle.ps1",
+        "-DistPath $DistRoot",
+        '"win-unpacked"',
+        '"Powers Tool.exe"',
+        '"powers-tool.exe"',
+        '"powers-tool-webui-launcher.exe"',
+        '"powers-tool-webui-host.exe"',
+        '"resources"',
+        "contain exactly one _internal directory",
+        '"resources\\backend"',
+        '"*-portable.exe"',
+    ):
+        assert required in text
+
+
+def test_release_builder_creates_unified_top_level_artifacts() -> None:
+    text = BUILD_RELEASE.read_text(encoding="utf-8")
+
+    for required in (
+        '"build_desktop.ps1"',
+        '"powers-tool-$Version-windows-x64.zip"',
+        '"powers_tool-$Version-py3-none-any.whl"',
+        '"powers_tool-$Version.tar.gz"',
+        '"powers-tool-$Version"',
+        "Compress-Archive",
+        "$expectedArtifactNames",
+        "Get-Sha256File",
+        '"checksums.txt"',
+    ):
+        assert required in text
+
+    assert "build_cli_exe.ps1" not in text
+    assert "build_webui_exe.ps1" not in text
 
 
 def test_distribution_inspector_accepts_matching_explicit_future_version(

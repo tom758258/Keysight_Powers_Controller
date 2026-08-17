@@ -17,14 +17,15 @@ Open PowerShell in the folder that contains the CLI executable and check it:
 .\powers-tool.exe --version
 ```
 
-Release folders may include a versioned executable name, such as:
+For a formal Windows release, extract the versioned Desktop ZIP and use the CLI
+executable from its application root:
 
 ```text
-powers-tool-<version>.exe
+powers-tool-<version>-windows-x64.zip
+\powers-tool-<version>\powers-tool.exe
 ```
 
-Use that file name in the commands below if your release folder uses a
-versioned executable. Developers or source-checkout users should use the
+Use that extracted path in the commands below. Developers or source-checkout users should use the
 [CLI README](README.md) for virtual environment, module, build, and developer
 commands.
 
@@ -44,8 +45,8 @@ scope uses that backend; model-aware Product live commands therefore fail
 closed with `--backend "@bt"`. Backend loadability does not grant Product
 support.
 
-The current official standalone `powers-tool.exe` does not bundle `pyvisa_bt`.
-The standalone commands in this guide use the normal System VISA path.
+The packaged `powers-tool.exe` does not bundle `pyvisa_bt`. The packaged CLI
+commands in this guide use the normal System VISA path.
 
 ## First Live Check
 

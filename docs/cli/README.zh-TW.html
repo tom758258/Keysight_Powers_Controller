@@ -350,11 +350,14 @@ Windows system temporary directory。請從 repository 根目錄執行 pytest；
 <h3 id="建置入口-build-entry-points">建置入口 (Build entry points)</h3>
 <p>以下是公開的建置入口；詳細用法維護於根目錄的 <a href="../../README.zh-TW.md">README</a>：</p>
 <ul>
+<li><code>scripts\build_desktop.ps1</code>：建置整合 shared Python bundle 的 Electron Windows directory application。</li>
 <li><code>scripts\build_windows_bundle.ps1</code>：建置 local shared Windows onedir bundle。</li>
-<li><code>scripts\build_cli_exe.ps1</code>：建置供現有 release caller 使用的 CLI onefile。</li>
-<li><code>scripts\build_webui_exe.ps1</code>：建置供現有 release caller 使用的 WebUI onefile。</li>
+<li><code>scripts\build_cli_exe.ps1</code>：供 local 使用的 CLI onefile helper。</li>
+<li><code>scripts\build_webui_exe.ps1</code>：供 local 使用的 WebUI onefile helper。</li>
 <li><code>scripts\build_release.ps1</code>：建置正式 release 資料夾。</li>
 </ul>
+<p>正式 Windows release 使用 <code>build_release.ps1</code> 產生的 unified Desktop ZIP，
+不再發布上述 onefile helper 的 standalone release artifacts。</p>
 <h3 id="scripted-validation">Scripted Validation</h3>
 <p>以下是支援的 standalone validation entry points。請從 repository 根目錄在
 PowerShell 執行這些腳本。每個 validation result 僅涵蓋實際執行的 models、

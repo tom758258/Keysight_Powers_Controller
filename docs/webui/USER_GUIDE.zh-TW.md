@@ -16,13 +16,18 @@ dist\powers-tool\powers-tool-webui-launcher.exe
 .\dist\powers-tool\powers-tool-webui-launcher.exe --version
 ```
 
-release 資料夾可能改用帶有版本號的 onefile launcher，例如：
+正式 Windows release 請解壓縮帶版本號的 Desktop ZIP，並從 application root
+啟動 Desktop shell：
 
 ```text
-powers-tool-webui-<version>.exe
+powers-tool-<version>-windows-x64.zip
+\powers-tool-<version>\Powers Tool.exe
 ```
 
-本機 shared bundle 與 release launcher 都是獨立的 GUI launcher artifacts；
+解壓後的 application root 包含 CLI、WebUI launcher、private WebUI Host、
+Electron runtime files，以及共用的 `_internal` 目錄。
+
+本機 shared bundle 與已解壓的 Desktop application 都包含 GUI launcher；
 `.venv\Scripts\powers-tool-webui.exe` 是 FastAPI server wrapper，
 `.venv\Scripts\powers-tool-webui-launcher.exe` 是已安裝的 GUI launcher wrapper。
 這些 wrappers 與 bundle/release artifacts 使用相同的 launcher implementation，

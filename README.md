@@ -169,18 +169,17 @@ the `dev` extra installed above:
 This produces only one Python distribution:
 
 ```text
-dist\powers_tool-2.0.0-py3-none-any.whl
-dist\powers_tool-2.0.0.tar.gz
+dist\powers_tool-<version>-py3-none-any.whl
+dist\powers_tool-<version>.tar.gz
 ```
 
-The Product artifact inspector rejects repository validation scripts, private
-fixtures, candidate evidence, and internal-only tests. Normal release
-automation builds and copies only these Product wheel and source-distribution
-artifacts.
+The Product distribution inspector rejects repository validation scripts,
+private fixtures, candidate evidence, and internal-only tests. It validates the
+Python wheel and source distribution; the Desktop application is assembled
+separately for the Windows ZIP.
 
-Standalone executables are separate PyInstaller workflows. Prepare the locked
-development environment, which includes PyInstaller, before building exe
-artifacts:
+Prepare the locked development environment, which includes PyInstaller, before
+building Windows application artifacts:
 
 ```powershell
 uv sync --all-extras --locked --link-mode=copy
@@ -197,8 +196,8 @@ The Windows WebUI Launcher uses Tkinter, so the Python environment used to
 build the shared Windows bundle must provide a working Tcl/Tk runtime. The
 build script checks this prerequisite before starting PyInstaller.
 
-By default, this command produces one application directory with three
-executables and one shared supporting-files directory:
+By default, this command produces one shared Python application directory with
+three executables and one shared supporting-files directory:
 
 ```text
 dist\powers-tool\
@@ -230,6 +229,18 @@ Multiple Desktop instances are allowed, so separate instances can operate
 different physical instruments. Do not use different clients concurrently on
 the same physical instrument resource.
 
+Build the Electron Windows directory application, including the shared Python
+bundle:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_desktop.ps1
+```
+
+The resulting application directory contains `Powers Tool.exe`, the three
+Python executables, Electron runtime files, and one shared root `_internal`
+directory. The formal Windows release uses the same application directory in a
+versioned ZIP.
+
 Check the built CLI executable without touching hardware:
 
 ```powershell
@@ -237,29 +248,32 @@ Check the built CLI executable without touching hardware:
 .\dist\powers-tool\powers-tool.exe doctor --simulate --json
 ```
 
-Build a release folder with wheel, sdist, standalone executables, and checksums:
+Build the versioned Python distributions and unified Desktop Windows ZIP:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_release.ps1
 ```
 
-For version 2.0.0, this produces release artifacts named with the selected
-project version:
+This produces artifacts named with the selected project version:
 
 ```text
-release\<version>\powers-tool-<version>.exe
-release\<version>\powers-tool-webui-<version>.exe
+release\<version>\powers-tool-<version>-windows-x64.zip
 release\<version>\powers_tool-<version>-py3-none-any.whl
 release\<version>\powers_tool-<version>.tar.gz
 release\<version>\checksums.txt
 ```
 
+The ZIP contains one `powers-tool-<version>\` application root with the
+Electron shell, CLI, WebUI launcher, private WebUI Host, Electron runtime
+files, and the shared `_internal\` directory. `checksums.txt` hashes the ZIP,
+wheel, and sdist only.
+
 Run the final no-hardware release acceptance from a clean, fully committed
 source working tree. The script uses the existing `.venv`, checks that the
 working tree matches committed HEAD, verifies `uv.lock`, and runs the complete
 no-hardware test suite once. It then calls `build_release.ps1` once to produce
-the final versioned artifacts, inspects the wheel, sdist, and standalone
-executables, installs the final sdist in one clean environment, checks all
+the final versioned artifacts, inspects the wheel, sdist, and unified Desktop
+ZIP, installs the final sdist in one clean environment, checks all
 console entry points, verifies checksums, runs fast CLI smoke for every
 Product-active model, runs deeper CLI workflows for capability-representative
 models, and checks a simulator `PlanOnly` contract. A new model needs another
