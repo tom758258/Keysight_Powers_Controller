@@ -7,7 +7,6 @@ from _webui_shared import (
     read_static_javascript,
     read_static_texts,
     run_frontend_javascript_assertions,
-    run_webui_module_assertions,
 )
 
 def test_static_json_artifact_file_helpers_have_cancel_and_accept_contracts():
