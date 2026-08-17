@@ -119,7 +119,8 @@ The header also provides a System / Light / Dark theme control. System follows
 the operating system's `prefers-color-scheme` preference. The theme preference
 is retained in the same loopback browser through the
 `powers-tool.webui.theme` cookie; the Electron Desktop shell uses that cookie
-to keep its native window theme synchronized.
+to keep its native window theme synchronized. The selected theme applies to the
+main panels, cards, fields, and status surfaces, not only the page background.
 
 Machine-facing values remain unchanged and are not translated, including
 command IDs, model IDs, VISA resources, API payloads and schemas, SCPI, raw

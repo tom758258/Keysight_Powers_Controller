@@ -124,6 +124,8 @@ preference is stored in the `powers-tool.webui.theme` cookie with a one-year
 expiry and is shared by the browser WebUI and the Electron shell. System mode
 follows `prefers-color-scheme`; the Electron shell synchronizes its native
 window theme from the same loopback cookie.
+The selected theme applies to the main panels, cards, fields, and status
+surfaces throughout the WebUI, not only the page background.
 
 ## Purpose
 

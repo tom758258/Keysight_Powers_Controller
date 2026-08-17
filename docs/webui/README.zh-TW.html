@@ -267,6 +267,7 @@ commands 仍不支援；其他 transport 與 backend 仍會 fail closed。完整
 <p>維護中的 locale 是 <code>en</code> 與 <code>zh-TW</code>；English 是來源與 fallback locale。切換會在執行階段生效且不重新載入頁面，只改變瀏覽器呈現，不得建立 HTTP request、Job、workflow action 或 EventSource side effect。Machine values、API schema、command IDs、model IDs、VISA resources、SCPI 與 raw diagnostics 保持原值。</p>
 <p>語言偏好使用獨立的 browser storage key <code>powers-tool.webui.locale</code>。即使 storage 不可用，也會安全 fallback，不影響 WebUI 的正常操作。</p>
 <p>Header 內的主題控制會依序切換 System、Light、Dark。偏好會以一年的 <code>Max-Age</code> 儲存在 <code>powers-tool.webui.theme</code> cookie，並由 browser WebUI 與 Electron shell 共用。System 模式遵循 <code>prefers-color-scheme</code>；Electron shell 會使用同一個 loopback cookie 同步 native window theme。</p>
+<p>選定的主題會套用至 WebUI 主要的 panels、cards、fields 與 status surfaces，不只改變頁面背景。</p>
 <h2 id="section-4">Job Parameter Admission</h2>
 <p><code>POST /api/jobs</code> 頂層只接受 <code>command</code>、<code>runtime</code>、<code>parameters</code> 與可選的空 <code>artifacts</code>；未知的頂層欄位會回傳 HTTP 400。</p>
 <p><code>parameters</code> 必須先通過 Core 擁有的命令契約，才會排入工作或取得硬體鎖。WebUI 不重複維護各命令 allowlist、alias 或型別強制轉換。錯誤的精確型別、非法 null、未知／不適用欄位與 alias conflict 都會回傳 HTTP 400，而不是伺服器錯誤；實際執行的是 admission 後的 canonical request。</p>

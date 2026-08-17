@@ -107,7 +107,8 @@ action，也不會建立、停止或以其他方式影響 EventSource。
 Header 也提供 System / Light / Dark 主題控制。System 會遵循作業系統的
 `prefers-color-scheme`。主題偏好會透過同一個 loopback browser 的
 `powers-tool.webui.theme` cookie 保留；Electron Desktop shell 會使用該 cookie
-同步 native window theme。
+同步 native window theme。選定的主題會套用至主要的 panels、cards、fields
+與 status surfaces，不只改變頁面背景。
 
 以下 machine-facing values 保持原值且不翻譯：command IDs、model IDs、VISA
 resources、API payload/schema、SCPI、raw diagnostics 與原始錯誤內容。

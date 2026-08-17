@@ -71,7 +71,8 @@ schema、command IDs、model IDs、VISA resources、SCPI 與 raw diagnostics 保
 Header 內的主題控制會依序切換 System、Light、Dark。偏好會以一年的
 `Max-Age` 儲存在 `powers-tool.webui.theme` cookie，並由 browser WebUI 與
 Electron shell 共用。System 模式遵循 `prefers-color-scheme`；Electron shell
-會使用同一個 loopback cookie 同步 native window theme。
+會使用同一個 loopback cookie 同步 native window theme。選定的主題會套用至
+WebUI 主要的 panels、cards、fields 與 status surfaces，不只改變頁面背景。
 
 ## Job Parameter Admission
 

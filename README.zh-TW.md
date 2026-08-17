@@ -211,8 +211,9 @@ npm start
 ```
 
 Desktop shell 會啟動 private WebUI Host，開啟初始 1920x1080 並依 primary
-display work area 進行 clamp，並支援 System、Light、Dark 主題。允許同時
-執行多個 Desktop instance，因此不同 instance 可以操作不同的實體儀器；
+display work area 進行 clamp，並支援 System、Light、Dark 主題。選定的主題
+會套用至主要的 panels、cards、fields 與 status surfaces，不只改變頁面背景。
+允許同時執行多個 Desktop instance，因此不同 instance 可以操作不同的實體儀器；
 但不同 client 仍不可同時操作同一個 physical instrument resource。
 
 建置整合 shared Python bundle 的 Electron Windows directory application：

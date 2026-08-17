@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -12,6 +13,15 @@ from _webui_shared import extract_js_function, read_static_texts
 REPO_ROOT = Path(__file__).resolve().parents[2]
 STATIC_DIR = REPO_ROOT / "src" / "powers_tool_webui" / "static"
 NODE = shutil.which("node")
+
+
+def _css_rule_body(styles: str, selector: str) -> str:
+    match = re.search(
+        rf"(?ms)^{re.escape(selector)}\s*\{{(?P<body>.*?)^\}}",
+        styles,
+    )
+    assert match is not None, f"Missing CSS rule for {selector}"
+    return match.group("body")
 
 
 def test_theme_control_and_initial_render_bootstrap_are_present() -> None:
@@ -39,6 +49,34 @@ def test_theme_control_and_initial_render_bootstrap_are_present() -> None:
     assert 'getPropertyValue("--chart-line")' in draw_trend
     assert "#d7dee6" not in draw_trend
     assert "#1f7a8c" not in draw_trend
+
+    light_tokens = _css_rule_body(styles, ":root")
+    dark_tokens = _css_rule_body(styles, ':root[data-theme="dark"]')
+    for token in (
+        "--surface-status-pending",
+        "--surface-status-success",
+        "--surface-status-success-soft",
+        "--surface-status-error",
+        "--surface-status-error-soft",
+        "--surface-status-neutral",
+    ):
+        assert f"{token}:" in light_tokens
+        assert f"{token}:" in dark_tokens
+
+    for selector in (".basic-channel-card", ".live-card"):
+        body = _css_rule_body(styles, selector)
+        assert "var(--panel)" in body
+        assert "var(--surface-subtle)" in body
+        assert "#ffffff" not in body
+        assert "#f7f9fb" not in body
+
+    for selector, token in (
+        (".basic-action-pending", "--surface-status-pending"),
+        (".basic-action-success", "--surface-status-success"),
+        (".basic-action-error", "--surface-status-error"),
+        (".output-status.off", "--surface-status-neutral"),
+    ):
+        assert f"var({token})" in _css_rule_body(styles, selector)
 
 
 @pytest.mark.skipif(NODE is None, reason="Node.js is required for theme runtime tests")

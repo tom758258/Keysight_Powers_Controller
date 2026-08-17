@@ -225,6 +225,8 @@ npm start
 
 The shell starts the private WebUI Host, opens a 1920x1080 window clamped to
 the primary display work area, and supports System, Light, and Dark themes.
+The selected theme applies to the main panels, cards, fields, and status
+surfaces, not only the page background.
 Multiple Desktop instances are allowed, so separate instances can operate
 different physical instruments. Do not use different clients concurrently on
 the same physical instrument resource.
