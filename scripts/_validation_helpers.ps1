@@ -1,5 +1,79 @@
 Set-StrictMode -Version Latest
 
+function Get-PackageVersion {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $pyproject = Join-Path $ProjectRoot "pyproject.toml"
+    $match = Select-String -LiteralPath $pyproject -Pattern '^version\s*=\s*"([^"]+)"' |
+        Select-Object -First 1
+    if ($null -eq $match) {
+        return $null
+    }
+    return $match.Matches[0].Groups[1].Value
+}
+
+function Write-Utf8NoBomText {
+    param(
+        [Parameter(Mandatory = $true)][string]$LiteralPath,
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string]$Text
+    )
+
+    [System.IO.File]::WriteAllText(
+        $LiteralPath,
+        $Text,
+        [System.Text.UTF8Encoding]::new($false)
+    )
+}
+
+function Write-Utf8NoBomLines {
+    param(
+        [Parameter(Mandatory = $true)][string]$LiteralPath,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][AllowEmptyString()][string[]]$Lines
+    )
+
+    [System.IO.File]::WriteAllLines(
+        $LiteralPath,
+        $Lines,
+        [System.Text.UTF8Encoding]::new($false)
+    )
+}
+
+function Get-FullPath {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [string]$BaseRoot
+    )
+
+    if ([System.IO.Path]::IsPathRooted($Path) -or [string]::IsNullOrWhiteSpace($BaseRoot)) {
+        return [System.IO.Path]::GetFullPath($Path)
+    }
+    return [System.IO.Path]::GetFullPath((Join-Path $BaseRoot $Path))
+}
+
+function Assert-PathUnderRoot {
+    param(
+        [Parameter(Mandatory = $true)][string]$RootPath,
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Message
+    )
+
+    $rootFull = (Get-FullPath -Path $RootPath).TrimEnd(
+        [char[]]@(
+            [System.IO.Path]::DirectorySeparatorChar,
+            [System.IO.Path]::AltDirectorySeparatorChar
+        )
+    )
+    $pathFull = Get-FullPath -Path $Path
+    $comparison = [System.StringComparison]::OrdinalIgnoreCase
+    if ($pathFull.Equals($rootFull, $comparison)) {
+        return
+    }
+    $prefix = $rootFull + [System.IO.Path]::DirectorySeparatorChar
+    if (-not $pathFull.StartsWith($prefix, $comparison)) {
+        throw ($Message -f $pathFull)
+    }
+}
+
 $script:ValidationTargetProfiles = [ordered]@{
     "keysight-e36312a" = [pscustomobject]@{
         model_id = "keysight-e36312a"

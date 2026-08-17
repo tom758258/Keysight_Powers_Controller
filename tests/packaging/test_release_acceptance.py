@@ -189,6 +189,10 @@ def _make_acceptance_repository(request: pytest.FixtureRequest) -> Path:
     scripts = repository / "scripts"
     scripts.mkdir(parents=True)
     shutil.copy2(SCRIPT, scripts / SCRIPT.name)
+    shutil.copy2(
+        ROOT / "scripts" / "_validation_helpers.ps1",
+        scripts / "_validation_helpers.ps1",
+    )
     (repository / "pyproject.toml").write_text(
         '[project]\nname = "powers-tool"\nversion = "3.4.5"\n',
         encoding="utf-8",
@@ -456,7 +460,6 @@ def test_release_builder_creates_unified_top_level_artifacts() -> None:
         '"powers-tool-$Version"',
         "Compress-Archive",
         "$expectedArtifactNames",
-        "Get-Sha256File",
         '"checksums.txt"',
     ):
         assert required in text

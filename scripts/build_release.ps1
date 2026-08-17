@@ -8,73 +8,28 @@ $ErrorActionPreference = "Stop"
 
 $RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
 $Python = Join-Path $RepoRoot ".venv\Scripts\python.exe"
+. (Join-Path $PSScriptRoot "_validation_helpers.ps1")
 
 if (-not (Test-Path -LiteralPath $Python)) {
     throw "Python executable not found: $Python"
 }
 
-function Get-ProjectVersion {
-    $pyproject = Join-Path $RepoRoot "pyproject.toml"
-    $match = Select-String -LiteralPath $pyproject -Pattern '^version\s*=\s*"([^"]+)"' | Select-Object -First 1
-    if ($null -eq $match) {
-        throw "Could not read project version from $pyproject"
-    }
-    return $match.Matches[0].Groups[1].Value
+$pyproject = Join-Path $RepoRoot "pyproject.toml"
+$projectVersion = Get-PackageVersion -ProjectRoot $RepoRoot
+if ([string]::IsNullOrWhiteSpace($projectVersion)) {
+    throw "Could not read project version from $pyproject"
 }
-
-function Write-Utf8NoBomFile {
-    param(
-        [Parameter(Mandatory = $true)][string]$LiteralPath,
-        [Parameter(Mandatory = $true)][AllowEmptyCollection()][string[]]$Value
-    )
-
-    $encoding = New-Object System.Text.UTF8Encoding($false)
-    [System.IO.File]::WriteAllLines($LiteralPath, $Value, $encoding)
-}
-
-function Get-Sha256File {
-    param(
-        [Parameter(Mandatory = $true)][string]$LiteralPath
-    )
-
-    $stream = $null
-    $sha256 = $null
-    try {
-        $stream = [System.IO.File]::Open(
-            $LiteralPath,
-            [System.IO.FileMode]::Open,
-            [System.IO.FileAccess]::Read,
-            [System.IO.FileShare]::Read
-        )
-        $sha256 = [System.Security.Cryptography.SHA256]::Create()
-        $hash = $sha256.ComputeHash($stream)
-        return [System.BitConverter]::ToString($hash).Replace("-", "").ToLowerInvariant()
-    } finally {
-        if ($null -ne $sha256) { $sha256.Dispose() }
-        if ($null -ne $stream) { $stream.Dispose() }
-    }
-}
-
-$projectVersion = Get-ProjectVersion
 if ([string]::IsNullOrWhiteSpace($Version)) {
     $Version = $projectVersion
 } elseif ($Version -ne $projectVersion) {
     throw "Version $Version does not match project version $projectVersion"
 }
 
-if ([System.IO.Path]::IsPathRooted($ReleaseRoot)) {
-    $releaseRootFull = [System.IO.Path]::GetFullPath($ReleaseRoot)
-} else {
-    $releaseRootFull = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot $ReleaseRoot))
-}
-$repoFull = [System.IO.Path]::GetFullPath($RepoRoot)
-$repoPrefix = $repoFull.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
-if (-not (
-    $releaseRootFull.Equals($repoFull, [System.StringComparison]::OrdinalIgnoreCase) -or
-    $releaseRootFull.StartsWith($repoPrefix, [System.StringComparison]::OrdinalIgnoreCase)
-)) {
-    throw "ReleaseRoot must stay under the repository: $releaseRootFull"
-}
+$releaseRootFull = Get-FullPath -Path $ReleaseRoot -BaseRoot $RepoRoot
+Assert-PathUnderRoot `
+    -RootPath $RepoRoot `
+    -Path $releaseRootFull `
+    -Message "ReleaseRoot must stay under the repository: {0}"
 
 $versionDir = Join-Path $releaseRootFull $Version
 if (Test-Path -LiteralPath $versionDir) {
@@ -150,9 +105,9 @@ if (
 
 $checksums = foreach ($artifactName in ($expectedArtifactNames | Sort-Object)) {
     $artifact = Get-Item -LiteralPath (Join-Path $versionDir $artifactName)
-    $hash = Get-Sha256File -LiteralPath $artifact.FullName
+    $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $artifact.FullName).Hash.ToLowerInvariant()
     "$hash  $($artifact.Name)"
 }
-Write-Utf8NoBomFile -LiteralPath (Join-Path $versionDir "checksums.txt") -Value $checksums
+Write-Utf8NoBomLines -LiteralPath (Join-Path $versionDir "checksums.txt") -Lines $checksums
 
 Write-Host "release artifacts: $versionDir"

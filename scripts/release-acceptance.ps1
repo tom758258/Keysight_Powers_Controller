@@ -17,6 +17,7 @@ $script:Ok = $false
 $script:CurrentStep = "initialization"
 $script:RunRoot = $null
 $script:RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
+. (Join-Path $PSScriptRoot "_validation_helpers.ps1")
 $script:PythonVersion = $null
 $script:FullAcceptanceCompleted = $false
 $script:BuildStarted = $false
@@ -30,68 +31,25 @@ $finalStatus = @()
 
 # Local/, README.zh-TW.md, and generated localized files are outside this script's write scope.
 
-function Write-Utf8NoBomFile {
-    param(
-        [Parameter(Mandatory = $true)][string]$LiteralPath,
-        [Parameter(Mandatory = $true)][string]$Content
-    )
-
-    $encoding = New-Object System.Text.UTF8Encoding($false)
-    [System.IO.File]::WriteAllText($LiteralPath, $Content, $encoding)
-}
-
-function Get-Sha256File {
-    param(
-        [Parameter(Mandatory = $true)][string]$LiteralPath
-    )
-
-    $stream = $null
-    $sha256 = $null
-    try {
-        $stream = [System.IO.File]::Open(
-            $LiteralPath,
-            [System.IO.FileMode]::Open,
-            [System.IO.FileAccess]::Read,
-            [System.IO.FileShare]::Read
-        )
-        $sha256 = [System.Security.Cryptography.SHA256]::Create()
-        $hash = $sha256.ComputeHash($stream)
-        return [System.BitConverter]::ToString($hash).Replace("-", "").ToLowerInvariant()
-    } finally {
-        if ($null -ne $sha256) { $sha256.Dispose() }
-        if ($null -ne $stream) { $stream.Dispose() }
-    }
-}
-
 function Get-ReleaseOutputPath {
     param(
         [Parameter(Mandatory = $true)][string]$RepoRoot,
         [Parameter(Mandatory = $true)][string]$CandidatePath
     )
 
-    if ([System.IO.Path]::IsPathRooted($CandidatePath)) {
-        $full = [System.IO.Path]::GetFullPath($CandidatePath)
-    } else {
-        $full = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot $CandidatePath))
-    }
-    $base = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot ".tmp_tests")).TrimEnd(
-        [char[]]@(
-            [System.IO.Path]::DirectorySeparatorChar,
-            [System.IO.Path]::AltDirectorySeparatorChar
-        )
-    )
-    $prefix = $base + [System.IO.Path]::DirectorySeparatorChar
-    if (-not ($full.Equals($base, [System.StringComparison]::OrdinalIgnoreCase) -or
-        $full.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase))) {
-        throw "Release acceptance output must stay under the repository .tmp_tests directory: $full"
-    }
+    $full = Get-FullPath -Path $CandidatePath -BaseRoot $RepoRoot
+    $base = Get-FullPath -Path ".tmp_tests" -BaseRoot $RepoRoot
+    Assert-PathUnderRoot `
+        -RootPath $base `
+        -Path $full `
+        -Message "Release acceptance output must stay under the repository .tmp_tests directory: {0}"
     return $full
 }
 
 function Get-ReportPath {
     param([Parameter(Mandatory = $true)][string]$Path)
 
-    $full = [System.IO.Path]::GetFullPath($Path)
+    $full = Get-FullPath -Path $Path
     $runPrefix = $script:RunRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) +
         [System.IO.Path]::DirectorySeparatorChar
     if ($full.StartsWith($runPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
@@ -324,12 +282,11 @@ try {
     $pyprojectPath = Join-Path $script:RepoRoot "pyproject.toml"
     $pyprojectText = Get-Content -LiteralPath $pyprojectPath -Raw
     $nameMatch = [regex]::Match($pyprojectText, '(?m)^name\s*=\s*"([^"]+)"')
-    $versionMatch = [regex]::Match($pyprojectText, '(?m)^version\s*=\s*"([^"]+)"')
-    if (-not $nameMatch.Success -or -not $versionMatch.Success) {
+    $projectVersion = Get-PackageVersion -ProjectRoot $script:RepoRoot
+    if (-not $nameMatch.Success -or [string]::IsNullOrWhiteSpace($projectVersion)) {
         throw "Could not read project metadata"
     }
     $distributionName = $nameMatch.Groups[1].Value
-    $projectVersion = $versionMatch.Groups[1].Value
     if ($distributionName -ne "powers-tool") {
         throw "Unexpected project identity: $distributionName $projectVersion"
     }
@@ -402,7 +359,7 @@ try {
             throw "Invalid checksum line: $line"
         }
         $checksumNames += $Matches[2]
-        $actual = Get-Sha256File -LiteralPath (Join-Path $versionDir $Matches[2])
+        $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $versionDir $Matches[2])).Hash.ToLowerInvariant()
         Add-Check -Target $script:ArtifactChecks -Name ("SHA-256 " + $Matches[2]) `
             -Passed ($actual -eq $Matches[1].ToLowerInvariant()) -Detail $actual
     }
@@ -497,8 +454,8 @@ for filename in ("index.html", "styles.css", "app.js"):
     assert static.joinpath(filename).is_file(), filename
 '@
     $identityScript = Join-Path $script:RunRoot "identity_check.py"
-    Write-Utf8NoBomFile -LiteralPath $identityScript `
-        -Content $identityCode.Replace("__PROJECT_VERSION__", $projectVersion)
+    Write-Utf8NoBomText -LiteralPath $identityScript `
+        -Text $identityCode.Replace("__PROJECT_VERSION__", $projectVersion)
     Run-Python -Name "inspect-sdist-install" -Python $artifactPython `
         -WorkingDirectory $script:RunRoot -Arguments @($identityScript) | Out-Null
     Add-Check -Target $script:InstallChecks -Name "sdist package identity and contents" `
@@ -640,8 +597,8 @@ finally {
             repository_renamed = $false
         }
         $reportJson = $report | ConvertTo-Json -Depth 8
-        Write-Utf8NoBomFile -LiteralPath (Join-Path $script:RunRoot "report.json") `
-            -Content $reportJson
+        Write-Utf8NoBomText -LiteralPath (Join-Path $script:RunRoot "report.json") `
+            -Text $reportJson
         $summary = @(
             "# Powers Tool Release Acceptance",
             "",
@@ -666,8 +623,8 @@ finally {
             $summary += "Failed step: ``$($script:FailedStep)``"
             $summary += "Failure: $($script:FailureMessage)"
         }
-        Write-Utf8NoBomFile -LiteralPath (Join-Path $script:RunRoot "summary.md") `
-            -Content ($summary -join "`n")
+        Write-Utf8NoBomText -LiteralPath (Join-Path $script:RunRoot "summary.md") `
+            -Text ($summary -join "`n")
         Write-Host "Acceptance report: $(Join-Path $script:RunRoot 'report.json')"
     }
 }
