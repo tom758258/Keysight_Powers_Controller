@@ -10,20 +10,19 @@ validation, and UI change boundaries are documented in the
 
 ## Start The WebUI
 
-For normal use, double-click the WebUI launcher provided with the release or
-local build:
+For a local shared onedir build, double-click the WebUI launcher in the bundle:
 
 ```text
-powers-tool-webui.exe
+dist\powers-tool\powers-tool-webui-launcher.exe
 ```
 
 To confirm the launcher version from PowerShell:
 
 ```powershell
-.\powers-tool-webui.exe --version
+.\dist\powers-tool\powers-tool-webui-launcher.exe --version
 ```
 
-Release folders may include a versioned launcher name, such as:
+Release folders may instead include a versioned onefile launcher name, such as:
 
 ```text
 powers-tool-webui-<version>.exe
@@ -45,8 +44,8 @@ From PowerShell, `--port` requests one fixed port. It never switches to another
 port unless `--auto-port` is also supplied:
 
 ```powershell
-.\powers-tool-webui.exe --port 9000
-.\powers-tool-webui.exe --port 9000 --auto-port
+.\dist\powers-tool\powers-tool-webui-launcher.exe --port 9000
+.\dist\powers-tool\powers-tool-webui-launcher.exe --port 9000 --auto-port
 ```
 
 A fixed-port conflict reports the selected port and exits instead of opening

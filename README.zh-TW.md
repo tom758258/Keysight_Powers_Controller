@@ -168,25 +168,31 @@ dist\powers_tool-<version>.tar.gz
 獨立的執行檔有分開的 PyInstaller 工作流程。請先準備上方的 locked
 development environment；`dev` extra 已提供 PyInstaller，不需要另外安裝：
 
-建置獨立的 CLI 與 WebUI 啟動器執行檔：
+建置包含 CLI 與 WebUI 啟動器的 Windows shared onedir bundle：
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_cli_exe.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_webui_exe.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_windows_bundle.ps1
 ```
 
-預設情況下，這些命令會產生：
+預設情況下，此命令會產生包含兩個執行檔與一個共用 supporting-files
+目錄的 application directory：
 
 ```text
-dist\powers-tool.exe
-dist\powers-tool-webui.exe
+dist\powers-tool\
+  powers-tool.exe
+  powers-tool-webui-launcher.exe
+  _internal\
 ```
+
+本機 `powers-tool-webui-launcher.exe` 與已安裝的
+`powers-tool-webui-launcher` console entry point 分開；兩者都使用現有的
+`powers_tool_webui.launcher:main` launcher implementation。
 
 在不接觸硬體的情況下，快速測試建置完成的 CLI 執行檔：
 
 ```powershell
-.\dist\powers-tool.exe --version
-.\dist\powers-tool.exe doctor --simulate --json
+.\dist\powers-tool\powers-tool.exe --version
+.\dist\powers-tool\powers-tool.exe doctor --simulate --json
 ```
 
 建置包含 wheel、sdist、獨立執行檔與檢查碼 (checksums) 的發佈資料夾：

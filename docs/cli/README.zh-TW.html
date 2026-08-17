@@ -347,6 +347,14 @@ USB、TCPIP、GPIB、pyvisa-py、pyvisa-bt 與 custom VISA scopes 仍會 fail cl
 <p>pytest 預設使用 repository-local、已忽略的 <code>.tmp_pytest</code>，因此不依賴
 Windows system temporary directory。請從 repository 根目錄執行 pytest；若需
 單次覆寫 basetemp，使用 <code>--basetemp .tmp_tests/&lt;purpose&gt;</code>，不要使用 <code>Local/</code>。</p>
+<h3 id="建置入口-build-entry-points">建置入口 (Build entry points)</h3>
+<p>以下是公開的建置入口；詳細用法維護於根目錄的 <a href="../../README.zh-TW.md">README</a>：</p>
+<ul>
+<li><code>scripts\build_windows_bundle.ps1</code>：建置 local shared Windows onedir bundle。</li>
+<li><code>scripts\build_cli_exe.ps1</code>：建置供現有 release caller 使用的 CLI onefile。</li>
+<li><code>scripts\build_webui_exe.ps1</code>：建置供現有 release caller 使用的 WebUI onefile。</li>
+<li><code>scripts\build_release.ps1</code>：建置正式 release 資料夾。</li>
+</ul>
 <h3 id="scripted-validation">Scripted Validation</h3>
 <p>以下是支援的 standalone validation entry points。請從 repository 根目錄在
 PowerShell 執行這些腳本。每個 validation result 僅涵蓋實際執行的 models、

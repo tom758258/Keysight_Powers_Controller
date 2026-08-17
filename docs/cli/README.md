@@ -500,6 +500,7 @@ These are public build entry points; detailed usage is maintained in the root
 
 - `scripts\build_cli_exe.ps1`
 - `scripts\build_webui_exe.ps1`
+- `scripts\build_windows_bundle.ps1`
 - `scripts\build_release.ps1`
 
 #### CI quality utilities

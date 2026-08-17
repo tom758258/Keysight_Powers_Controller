@@ -4,32 +4,29 @@
 
 ## 啟動 WebUI
 
-一般使用時，請雙擊 release 或本機 PyInstaller build 提供的 WebUI standalone
-artifact：
+使用本機 shared onedir build 時，請雙擊 bundle 中的 WebUI 啟動器：
 
 ```text
-powers-tool-webui.exe
+dist\powers-tool\powers-tool-webui-launcher.exe
 ```
 
-若要從 PowerShell 確認 standalone artifact 版本：
+若要從 PowerShell 確認本機 bundle launcher 版本：
 
 ```powershell
-.\powers-tool-webui.exe --version
+.\dist\powers-tool\powers-tool-webui-launcher.exe --version
 ```
 
-release 資料夾可能包含帶有版本號的 standalone artifact，例如：
+release 資料夾可能改用帶有版本號的 onefile launcher，例如：
 
 ```text
 powers-tool-webui-<version>.exe
 ```
 
-這些 standalone artifact 與 installed console wrappers 是分開的 artifacts。`dist`
-中的 `powers-tool-webui.exe` 或 release 中的 `powers-tool-webui-<version>.exe` 是
-standalone GUI launcher；`.venv\Scripts\powers-tool-webui.exe` 則是 FastAPI server
-wrapper。本機 `dist` artifact 與 server wrapper 的 basename 都是
-`powers-tool-webui.exe`，但所在路徑與用途不同；versioned release artifact 的名稱
-則包含版本號。`.venv\Scripts\powers-tool-webui-launcher.exe` 是 GUI launcher
-wrapper，且 standalone artifact 與它使用相同的 launcher implementation。
+本機 shared bundle 與 release launcher 都是獨立的 GUI launcher artifacts；
+`.venv\Scripts\powers-tool-webui.exe` 是 FastAPI server wrapper，
+`.venv\Scripts\powers-tool-webui-launcher.exe` 是已安裝的 GUI launcher wrapper。
+這些 wrappers 與 bundle/release artifacts 使用相同的 launcher implementation，
+但用途與所在路徑不同。
 
 
 不帶命令列選項時，啟動器會在 `127.0.0.1` 上從 port `7999` 開始，最多嘗試
@@ -48,8 +45,8 @@ address-in-use 失敗，視窗會保留以便編輯與重試。重試成功後�
 不會自動切換到其他 port：
 
 ```powershell
-.\powers-tool-webui.exe --port 9000
-.\powers-tool-webui.exe --port 9000 --auto-port
+.\dist\powers-tool\powers-tool-webui-launcher.exe --port 9000
+.\dist\powers-tool\powers-tool-webui-launcher.exe --port 9000 --auto-port
 ```
 
 固定 port 衝突會回報選定的 port、完成清理並以非零狀態結束，不會改用其他 port

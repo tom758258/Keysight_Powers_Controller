@@ -22,13 +22,12 @@ WebUI 內建於單一 `powers-tool` 發行套件中，同時保留了 `powers_to
 WebUI 提供了用於本機 FastAPI 伺服器的 `powers-tool-webui` console wrapper，執行
 `powers_tool_webui.server:main`；也提供用於 Windows GUI 啟動器的
 `powers-tool-webui-launcher` console wrapper，執行 `powers_tool_webui.launcher:main`。
-獨立的 PyInstaller GUI standalone artifact 位於 `dist\powers-tool-webui.exe`，它與
-兩個 installed console wrapper 是分開的 artifacts，不會重新命名或取代任何 installed
-entry point。Standalone artifact 與 installed server wrapper 的 basename 都是
-`powers-tool-webui.exe`，但前者位於 `dist\`、後者位於 `.\.venv\Scripts\`，且分別
-執行 launcher 與 server implementation；standalone artifact 與
-`powers-tool-webui-launcher` wrapper 共用 `powers_tool_webui.launcher:main` launcher
-implementation。
+本機 shared PyInstaller onedir bundle 包含
+`dist\powers-tool\powers-tool-webui-launcher.exe` 與共用的
+`dist\powers-tool\_internal\` 目錄；它與兩個 installed console wrapper 是分開的
+artifacts，不會重新命名或取代任何 installed entry point。Shared bundle artifact
+與 `powers-tool-webui-launcher` wrapper 共用 `powers_tool_webui.launcher:main`
+launcher implementation。
 
 ## Environment
 
@@ -273,17 +272,17 @@ node --check src\powers_tool_webui\static\app.js
 uv run python -m pytest tests -q -p no:cacheprovider
 ```
 
-從上述 locked development environment 建置選用的本機 WebUI standalone artifact。
+從上述 locked development environment 建置本機 shared Windows onedir bundle。
 PyInstaller 由 `dev` extra 提供，不需要另外安裝：
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_webui_exe.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_windows_bundle.ps1
 ```
 
 建置完成後，請確認 standalone artifact 能回報套件版本：
 
 ```powershell
-.\dist\powers-tool-webui.exe --version
+.\dist\powers-tool\powers-tool-webui-launcher.exe --version
 ```
 
 數字欄位限制來自共用的[命令參數契約](../contracts/commands-parameter-contract.md)。在辨識出資源型號後，UI 會套用已驗證的官方獨立通道直流輸出額定值，並對已知超出額定的請求停用「Run」。未知的型號不會套用憑空發明的限制；Core 仍具有最終決定權。

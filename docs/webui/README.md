@@ -69,9 +69,10 @@ tests; it does not replace the native graph check.
 
 The WebUI exposes the `powers-tool-webui` console command for the local
 FastAPI server and the `powers-tool-webui-launcher` console command for the
-Windows GUI launcher. The standalone PyInstaller GUI artifact is named
-`dist\powers-tool-webui.exe`; it is separate from both installed console
-wrappers and does not rename either entry point.
+Windows GUI launcher. The local shared PyInstaller onedir bundle contains
+`dist\powers-tool\powers-tool-webui-launcher.exe` and its shared
+`dist\powers-tool\_internal\` directory; it is separate from both installed
+console wrappers and does not rename either entry point.
 
 ## Environment
 
@@ -203,9 +204,9 @@ times out, the launcher stays open and reports that shutdown is incomplete.
 The compact/fallback presentation does not change port selection, startup
 failure classification, cleanup, or process exit-code behavior.
 
-The standalone PyInstaller GUI artifact is a separate executable at
-`dist\powers-tool-webui.exe`; it is built from the same launcher implementation
-but is not the installed server wrapper above.
+The local shared PyInstaller GUI artifact is a separate executable at
+`dist\powers-tool\powers-tool-webui-launcher.exe`; it is built from the same
+launcher implementation but is not the installed server wrapper above.
 
 ## API
 
@@ -660,18 +661,18 @@ Broader no-hardware validation when practical:
 uv run python -m pytest tests -q -p no:cacheprovider
 ```
 
-Build the optional local WebUI launcher exe from the locked development
+Build the local shared Windows onedir bundle from the locked development
 environment described above. PyInstaller is provided by the `dev` extra and
 does not need a separate install:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_webui_exe.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_windows_bundle.ps1
 ```
 
 After building, confirm the standalone launcher reports the package version:
 
 ```powershell
-.\dist\powers-tool-webui.exe --version
+.\dist\powers-tool\powers-tool-webui-launcher.exe --version
 ```
 
 Numeric field limits come from the shared

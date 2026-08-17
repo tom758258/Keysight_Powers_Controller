@@ -62,4 +62,4 @@ def test_webui_docs_distinguish_installed_wrappers_and_standalone_artifact() -> 
 
     assert "powers-tool-webui" in readme
     assert "powers-tool-webui-launcher" in readme
-    assert "dist\\powers-tool-webui.exe" in readme
+    assert "dist\\powers-tool\\powers-tool-webui-launcher.exe" in readme

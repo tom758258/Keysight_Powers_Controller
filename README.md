@@ -186,29 +186,31 @@ artifacts:
 uv sync --all-extras --locked --link-mode=copy
 ```
 
-Build the standalone CLI and WebUI launcher executables:
+Build the shared Windows onedir bundle containing the CLI and WebUI launcher:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_cli_exe.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_webui_exe.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_windows_bundle.ps1
 ```
 
-By default, these commands produce:
+By default, this command produces one application directory with two
+executables and one shared supporting-files directory:
 
 ```text
-dist\powers-tool.exe
-dist\powers-tool-webui.exe
+dist\powers-tool\
+  powers-tool.exe
+  powers-tool-webui-launcher.exe
+  _internal\
 ```
 
-The standalone `powers-tool-webui.exe` artifact is distinct from the installed
-`powers-tool-webui-launcher` console entry point; both invoke the existing
-`powers_tool_webui.launcher:main` launcher implementation where applicable.
+The local `powers-tool-webui-launcher.exe` artifact is distinct from the
+installed `powers-tool-webui-launcher` console entry point; both invoke the
+existing `powers_tool_webui.launcher:main` launcher implementation.
 
 Check the built CLI executable without touching hardware:
 
 ```powershell
-.\dist\powers-tool.exe --version
-.\dist\powers-tool.exe doctor --simulate --json
+.\dist\powers-tool\powers-tool.exe --version
+.\dist\powers-tool\powers-tool.exe doctor --simulate --json
 ```
 
 Build a release folder with wheel, sdist, standalone executables, and checksums:

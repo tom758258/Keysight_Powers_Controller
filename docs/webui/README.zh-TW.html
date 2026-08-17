@@ -257,7 +257,7 @@ commands 仍不支援；其他 transport 與 backend 仍會 fail closed。完整
 <li><code>powers-tool-webui</code>：啟動本機 FastAPI 伺服器。</li>
 <li><code>powers-tool-webui-launcher</code>：啟動 Windows GUI 啟動器。</li>
 </ul>
-<p>PyInstaller 獨立 GUI 執行檔位於 <code>dist\powers-tool-webui.exe</code>，它與上述兩個已安裝 wrapper 分開，不會重新命名或取代任何 entry point。獨立執行檔與 GUI launcher wrapper 共用同一套 launcher implementation。</p>
+<p>本機 shared PyInstaller onedir bundle 包含 <code>dist\powers-tool\powers-tool-webui-launcher.exe</code> 與共用的 <code>dist\powers-tool\_internal\</code> 目錄；它與上述兩個已安裝 wrapper 分開，不會重新命名或取代任何 entry point。Shared bundle artifact 與 GUI launcher wrapper 共用同一套 launcher implementation。</p>
 <h2 id="section-2">Environment</h2>
 <p>根目錄的 <a href="../../README.zh-TW.md#安裝" rel="noopener noreferrer" target="_blank">README Install guide</a> 是 canonical setup reference。從 repository 根目錄準備 WebUI runtime：</p>
 <div class="code-wrapper"><pre><code class="language-powershell">uv sync --extra webui --locked --link-mode=copy</code></pre></div>
@@ -350,9 +350,9 @@ node --check src\powers_tool_webui\static\electrical.js
 node --check src\powers_tool_webui\static\app.js</code></pre></div>
 <p>可行時執行更廣泛的無硬體驗證：</p>
 <div class="code-wrapper"><pre><code class="language-powershell">uv run python -m pytest tests -q -p no:cacheprovider</code></pre></div>
-<p>從 locked development environment 建置本機 WebUI launcher：</p>
-<div class="code-wrapper"><pre><code class="language-powershell">powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_webui_exe.ps1
-.\dist\powers-tool-webui.exe --version</code></pre></div>
+<p>從 locked development environment 建置本機 shared Windows onedir bundle：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_windows_bundle.ps1
+.\dist\powers-tool\powers-tool-webui-launcher.exe --version</code></pre></div>
 <p>數字欄位限制來自共用的 <a href="../contracts/commands-parameter-contract.md" rel="noopener noreferrer" target="_blank">Commands parameter contract</a>。辨識資源型號後，UI 會套用已驗證的官方獨立通道直流輸出額定值；未知型號不會被套用臆測限制，Core 仍是最終權威。</p>
 <h2 id="section-12">文件導覽</h2>
 <ul>

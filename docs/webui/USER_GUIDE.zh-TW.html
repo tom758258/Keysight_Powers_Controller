@@ -241,17 +241,17 @@
 <h1>Powers Tool WebUI 使用者指南</h1>
 <p>本指南供取得已建置 WebUI 啟動器的操作員使用，說明如何檢查與控制支援的直流電源供應器。Powers Tool 的架構不綁定特定廠牌；目前硬體支援範圍以 <a href="../core/supported-models.md">Supported Models</a> 所記載的 Product scopes 為準；未知或未註冊的 live hardware 會 fail closed。本文聚焦一般本機 WebUI 操作，不涵蓋開發環境細節。API、驗證與 UI 變更邊界請參閱 <a href="README.zh-TW.html">WebUI README</a> 與 <a href="web-ui-change-rules.md" rel="noopener noreferrer" target="_blank">WebUI 變更規則</a>。</p>
 <h2 id="section-1">啟動 WebUI</h2>
-<p>一般使用時，請雙擊 release 或本機建置所提供的 WebUI 啟動器：</p>
-<div class="code-wrapper"><pre><code class="language-text">powers-tool-webui.exe</code></pre></div>
-<p>若要從 PowerShell 確認版本：</p>
-<div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool-webui.exe --version</code></pre></div>
-<p>release 資料夾可能使用帶版本號的檔名，例如：</p>
+<p>使用本機 shared onedir build 時，請雙擊 bundle 中的 WebUI 啟動器：</p>
+<div class="code-wrapper"><pre><code class="language-text">dist\powers-tool\powers-tool-webui-launcher.exe</code></pre></div>
+<p>若要從 PowerShell 確認本機 bundle launcher 版本：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">.\dist\powers-tool\powers-tool-webui-launcher.exe --version</code></pre></div>
+<p>release 資料夾可能使用帶版本號的 onefile launcher 檔名，例如：</p>
 <div class="code-wrapper"><pre><code class="language-text">powers-tool-webui-&lt;version&gt;.exe</code></pre></div>
 <p>不帶命令列選項時，啟動器會先保持隱藏，從 <code>7999</code> 開始自動嘗試，最多再測試 99 個較高的連接埠。啟動成功且 <code>/api/health</code> 回報就緒後，瀏覽器才會開啟；此時啟動器顯示精簡的 Running 視窗，包含實際 URL、執行狀態與 <code>Quit</code>。</p>
 <p>只有全部自動候選連接埠都已被占用時，才會顯示完整的手動連接埠視窗。輸入另一個本機連接埠並按下 <code>Start</code>；若該連接埠仍被占用，視窗會保留以便再次修改。其他啟動錯誤不會轉入手動備援，而會保留原始錯誤、完成清理並以非零狀態結束。</p>
 <p>從 PowerShell 使用 <code>--port</code> 可指定單一固定連接埠；只有同時提供 <code>--auto-port</code> 時，才會繼續嘗試其他連接埠：</p>
-<div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool-webui.exe --port 9000
-.\powers-tool-webui.exe --port 9000 --auto-port</code></pre></div>
+<div class="code-wrapper"><pre><code class="language-powershell">.\dist\powers-tool\powers-tool-webui-launcher.exe --port 9000
+.\dist\powers-tool\powers-tool-webui-launcher.exe --port 9000 --auto-port</code></pre></div>
 <p>若瀏覽器沒有自動開啟，請開啟啟動器顯示的實際 URL。使用預設連接埠時為：</p>
 <div class="code-wrapper"><pre><code class="language-text">http://127.0.0.1:7999/</code></pre></div>
 <p>開發人員或原始碼簽出使用者，請參閱 <a href="README.zh-TW.html">WebUI README</a> 取得終端機指令、API、驗證與建置說明。</p>

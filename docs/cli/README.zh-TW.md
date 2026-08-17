@@ -216,6 +216,16 @@ pytest 預設使用 repository-local、已忽略的 `.tmp_pytest`，因此不依
 Windows system temporary directory。請從 repository 根目錄執行 pytest；若需
 單次覆寫 basetemp，使用 `--basetemp .tmp_tests/<purpose>`，不要使用 `Local/`。
 
+### 建置入口 (Build entry points)
+
+以下是公開的建置入口；詳細用法維護於根目錄的
+[README](../../README.zh-TW.md)：
+
+- `scripts\build_windows_bundle.ps1`：建置 local shared Windows onedir bundle。
+- `scripts\build_cli_exe.ps1`：建置供現有 release caller 使用的 CLI onefile。
+- `scripts\build_webui_exe.ps1`：建置供現有 release caller 使用的 WebUI onefile。
+- `scripts\build_release.ps1`：建置正式 release 資料夾。
+
 ### Scripted Validation
 
 以下是支援的 standalone validation entry points。請從 repository 根目錄在
