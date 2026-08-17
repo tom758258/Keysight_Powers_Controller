@@ -149,8 +149,10 @@ Worker does not fabricate telemetry. Worker requests reject `csv`, `jsonl`,
 `append`, and caller-selected artifact paths; it writes fixed job-local
 telemetry artifacts. Core owns telemetry admission, identity/support/channel
 validation, instrument reads, complete-cycle cadence, and cooperative
-cancellation. CLI owns CSV/JSONL serialization and `append`; Sequence `log` is
-a host-side message/note action, not telemetry collection. A started telemetry
+cancellation. CLI and Worker own their adapter-side CSV/JSONL serialization; CLI
+owns `append` behavior, while Worker owns its fixed job-local telemetry
+artifacts. Sequence `log` is a host-side message/note action, not telemetry
+collection. A started telemetry
 cycle finishes all requested channels and flushes its rows before cancellation
 is observed; cancellation does not issue output OFF or run Ramp, Ramp List, or
 Sequence safe-off/error-queue cleanup, and collected telemetry is retained.
