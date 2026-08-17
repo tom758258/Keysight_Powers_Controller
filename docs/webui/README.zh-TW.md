@@ -23,11 +23,12 @@ WebUI 提供了用於本機 FastAPI 伺服器的 `powers-tool-webui` console wra
 `powers_tool_webui.server:main`；也提供用於 Windows GUI 啟動器的
 `powers-tool-webui-launcher` console wrapper，執行 `powers_tool_webui.launcher:main`。
 本機 shared PyInstaller onedir bundle 包含
-`dist\powers-tool\powers-tool-webui-launcher.exe` 與共用的
-`dist\powers-tool\_internal\` 目錄；它與兩個 installed console wrapper 是分開的
-artifacts，不會重新命名或取代任何 installed entry point。Shared bundle artifact
-與 `powers-tool-webui-launcher` wrapper 共用 `powers_tool_webui.launcher:main`
-launcher implementation。
+`dist\powers-tool\powers-tool.exe`、
+`dist\powers-tool\powers-tool-webui-launcher.exe`，以及供後續 desktop
+integration 使用的 private `dist\powers-tool\powers-tool-webui-host.exe`；
+三者共用 `dist\powers-tool\_internal\` 目錄。Desktop Host 是 private
+executable，不是新的公開 CLI entry point。Shared bundle artifacts 與已安裝的
+console wrappers 分開，不會重新命名或取代任何 installed entry point。
 
 ## Environment
 

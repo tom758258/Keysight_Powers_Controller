@@ -70,9 +70,11 @@ tests; it does not replace the native graph check.
 The WebUI exposes the `powers-tool-webui` console command for the local
 FastAPI server and the `powers-tool-webui-launcher` console command for the
 Windows GUI launcher. The local shared PyInstaller onedir bundle contains
-`dist\powers-tool\powers-tool-webui-launcher.exe` and its shared
-`dist\powers-tool\_internal\` directory; it is separate from both installed
-console wrappers and does not rename either entry point.
+`dist\powers-tool\powers-tool.exe`,
+`dist\powers-tool\powers-tool-webui-launcher.exe`, and the private
+`dist\powers-tool\powers-tool-webui-host.exe`, all using the shared
+`dist\powers-tool\_internal\` directory. The Desktop Host is reserved for
+future desktop integration and is not a new public CLI entry point.
 
 ## Environment
 

@@ -186,7 +186,8 @@ artifacts:
 uv sync --all-extras --locked --link-mode=copy
 ```
 
-Build the shared Windows onedir bundle containing the CLI and WebUI launcher:
+Build the shared Windows onedir bundle containing the CLI, WebUI launcher, and
+private Desktop Host:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_windows_bundle.ps1
@@ -196,19 +197,23 @@ The Windows WebUI Launcher uses Tkinter, so the Python environment used to
 build the shared Windows bundle must provide a working Tcl/Tk runtime. The
 build script checks this prerequisite before starting PyInstaller.
 
-By default, this command produces one application directory with two
+By default, this command produces one application directory with three
 executables and one shared supporting-files directory:
 
 ```text
 dist\powers-tool\
   powers-tool.exe
   powers-tool-webui-launcher.exe
+  powers-tool-webui-host.exe
   _internal\
 ```
 
 The local `powers-tool-webui-launcher.exe` artifact is distinct from the
 installed `powers-tool-webui-launcher` console entry point; both invoke the
-existing `powers_tool_webui.launcher:main` launcher implementation.
+existing `powers_tool_webui.launcher:main` launcher implementation. The
+`powers-tool-webui-host.exe` artifact is a private console executable for
+future desktop integration, not a new public CLI entry point. All three
+executables share the same `_internal` directory.
 
 Check the built CLI executable without touching hardware:
 

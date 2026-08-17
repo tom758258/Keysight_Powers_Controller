@@ -18,16 +18,20 @@ def _load_inspector():
     return module
 
 
-def test_shared_spec_has_two_onedir_executables_and_one_collect() -> None:
+def test_shared_spec_has_three_onedir_executables_and_one_collect() -> None:
     text = (ROOT / "scripts" / "powers-tool-windows.spec").read_text(
         encoding="utf-8"
     )
 
-    assert text.count("Analysis(") == 2
-    assert text.count("PYZ(") == 2
-    assert text.count("EXE(") == 2
-    assert text.count("exclude_binaries=True") == 2
-    assert text.count('contents_directory="_internal"') == 2
+    assert text.count("Analysis(") == 3
+    assert text.count("PYZ(") == 3
+    assert text.count("EXE(") == 3
+    assert text.count("exclude_binaries=True") == 3
+    assert text.count('contents_directory="_internal"') == 3
+    assert "host_analysis = Analysis(" in text
+    assert "host_pyz = PYZ(host_analysis.pure)" in text
+    assert 'name="powers-tool-webui-host"' in text
+    assert text.count("datas=[*PROJECT_METADATA, *WEBUI_STATIC]") == 2
     assert text.count("COLLECT(") == 1
     assert "MERGE" not in text
 
@@ -65,6 +69,7 @@ def test_bundle_inspector_compares_the_complete_static_tree(tmp_path: Path) -> N
     bundle = tmp_path / "bundle"
     (bundle / "powers-tool.exe").write_bytes(b"")
     (bundle / "powers-tool-webui-launcher.exe").write_bytes(b"")
+    (bundle / "powers-tool-webui-host.exe").write_bytes(b"")
     metadata_dir = bundle / "_internal" / "powers_tool-2.0.0.dist-info"
     metadata_dir.mkdir(parents=True)
     (metadata_dir / "METADATA").write_text(

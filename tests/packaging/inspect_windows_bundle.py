@@ -9,6 +9,7 @@ from _inspector_utils import resolve_expected_version
 EXPECTED_EXECUTABLES = {
     "powers-tool.exe",
     "powers-tool-webui-launcher.exe",
+    "powers-tool-webui-host.exe",
 }
 
 

@@ -168,7 +168,7 @@ dist\powers_tool-<version>.tar.gz
 獨立的執行檔有分開的 PyInstaller 工作流程。請先準備上方的 locked
 development environment；`dev` extra 已提供 PyInstaller，不需要另外安裝：
 
-建置包含 CLI 與 WebUI 啟動器的 Windows shared onedir bundle：
+建置包含 CLI、WebUI 啟動器與 private Desktop Host 的 Windows shared onedir bundle：
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_windows_bundle.ps1
@@ -178,15 +178,20 @@ Windows WebUI Launcher 使用 Tkinter，因此用於建置 shared Windows bundle
 的 Python 環境必須提供可正常使用的 Tcl/Tk runtime。建置腳本會在啟動
 PyInstaller 前先檢查這項 prerequisite。
 
-預設情況下，此命令會產生包含兩個執行檔與一個共用 supporting-files
+預設情況下，此命令會產生包含三個執行檔與一個共用 supporting-files
 目錄的 application directory：
 
 ```text
 dist\powers-tool\
   powers-tool.exe
   powers-tool-webui-launcher.exe
+  powers-tool-webui-host.exe
   _internal\
 ```
+
+這個 shared Windows onedir bundle 包含 CLI、WebUI Launcher，以及供後續
+desktop integration 使用的 private Desktop Host。`powers-tool-webui-host.exe`
+不是新的公開 CLI entry point；三者共用同一個 `_internal` 目錄。
 
 本機 `powers-tool-webui-launcher.exe` 與已安裝的
 `powers-tool-webui-launcher` console entry point 分開；兩者都使用現有的
