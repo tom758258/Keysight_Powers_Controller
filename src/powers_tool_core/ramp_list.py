@@ -49,7 +49,6 @@ from powers_tool_core.workflow_validation import (
     validate_completion_pulse_planning_model,
     validate_execution_units,
 )
-from powers_tool_core.command_contract import validate_and_normalize_request
 
 RAMP_LIST_KIND = "powers-tool-ramp-list"
 RAMP_LIST_VERSION_V2 = 2

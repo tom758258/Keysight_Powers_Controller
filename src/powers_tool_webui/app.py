@@ -7,10 +7,10 @@ import json
 import math
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
+from fastapi.responses import HTMLResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from powers_tool_core.core import CommandCancelled, CoreExecutionError, CoreValidationError, OperationRequest, RuntimeOptions, SequenceRequest, StopCleanupError, TriggerRequest
 from powers_tool_core.identity import IdentityResolutionError, resolve_physical_model_identity

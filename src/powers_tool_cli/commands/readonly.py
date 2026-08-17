@@ -31,6 +31,7 @@ import powers_tool_core.protection as protection_core
 import powers_tool_core.readonly as readonly_core
 import powers_tool_core.snapshot as snapshot_core
 from powers_tool_cli import cli_rendering
+from powers_tool_cli.commands.output_run import _print_scpi_plan
 from powers_tool_cli.cli_io import emit_json_success
 from powers_tool_cli.cli_request import (
     _request_for_args,
@@ -225,7 +226,6 @@ def _run_read_only_command(
 ) -> tuple[int, dict[str, Any]]:
     request = _request_for_args(args)
     execution = _execution_for_args(args, hardware_intent=True)
-    manager = _resource_manager_for_args(args)
     try:
         _resolve_optional_resource_alias(args)
         request = _request_for_args(args)

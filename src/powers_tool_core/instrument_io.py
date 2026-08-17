@@ -7,8 +7,6 @@ from typing import Any, Callable
 from powers_tool_core.connection import open_resource, serial_open_kwargs
 from powers_tool_core.core import CoreIoError, CoreValidationError, OperationRequest, UnsupportedChannelError
 from powers_tool_core.discovery import resource_payload
-from powers_tool_core.drivers.e36312a import E36312APowerSupply
-from powers_tool_core.drivers.edu36311a import EDU36311APowerSupply
 from powers_tool_core.errors import VisaConnectionError
 from powers_tool_core.factory import create_power_supply
 from powers_tool_core.identity import IdentityResolutionError, resolve_physical_model_identity

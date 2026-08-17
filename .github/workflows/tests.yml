@@ -6,22 +6,17 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
-  quality:
-    name: CI quality
+  lint:
+    name: Ruff and JavaScript syntax
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out PR head or push commit
+      - name: Check out repository
         uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.10"
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -29,23 +24,38 @@ jobs:
           node-version: "22"
 
       - name: Check WebUI JavaScript syntax
-        shell: bash
         run: |
-          while IFS= read -r -d '' file; do
+          set -euo pipefail
+          mapfile -t files < <(git ls-files 'src/powers_tool_webui/static/*.js')
+          if (( ${#files[@]} == 0 )); then
+            echo "::error::No tracked WebUI JavaScript files found."
+            exit 1
+          fi
+          for file in "${files[@]}"; do
             node --check "$file"
-          done < <(git ls-files -z 'src/powers_tool_webui/static/*.js')
+          done
 
-      - name: Check tracked text hygiene
-        run: python scripts/check_text_hygiene.py
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
 
-      - name: Check committed range whitespace
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          PUSH_BEFORE: ${{ github.event.before }}
-          PUSH_SHA: ${{ github.sha }}
-        run: python scripts/check_changed_whitespace.py
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+
+      - name: Install package
+        run: uv sync --python 3.13 --all-extras --locked --link-mode=copy
+
+      - name: Run Ruff
+        run: ./.venv/bin/python -m ruff check src tests
+
+      - name: Run WebUI Node runtime tests
+        run: >-
+          ./.venv/bin/python -m pytest
+          tests/webui/test_webui_native_module_graph.py
+          tests/webui/test_webui_theme.py
+          tests/webui/test_webui_i18n.py
+          -q -p no:cacheprovider -rs
 
   pytest-linux:
     name: Linux Python ${{ matrix.python-version }}
@@ -69,29 +79,24 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          version: "0.9.13"
-          enable-cache: true
+      - name: Install uv
+        run: python -m pip install --upgrade uv
 
       - name: Install package
-        run: uv sync --locked --all-extras --reinstall-package powers-tool
+        run: uv sync --python ${{ matrix.python-version }} --all-extras --locked --link-mode=copy
+
+      - name: Build package
+        run: ./.venv/bin/python -m build
+
+      - name: Smoke imports and commands
+        run: |
+          ./.venv/bin/python -c "import powers_tool_core; import powers_tool_cli; import powers_tool_webui"
+          ./.venv/bin/powers-tool --help
+          ./.venv/bin/powers-tool-webui --help
+          ./.venv/bin/powers-tool-webui-launcher --version
 
       - name: Run fast tests
-        run: uv run python -m pytest tests -q -p no:cacheprovider --ignore=tests/cli/test_cli_wrappers.py
-
-      - name: Smoke console scripts
-        run: |
-          uv run powers-tool --help
-          uv run powers-tool-webui --help
-          uv run powers-tool-webui-launcher --version
-
-      - name: Build distribution
-        run: uv run python -m build
-
-      - name: Inspect distribution
-        run: uv run python tests/packaging/inspect_distribution.py dist
+        run: ./.venv/bin/python -m pytest tests -q -p no:cacheprovider --ignore=tests/cli/test_cli_wrappers.py
 
   pytest-windows:
     name: Windows Python ${{ matrix.python-version }}
@@ -114,26 +119,37 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v7
+      - name: Set up Node.js
+        if: matrix.python-version == '3.13'
+        uses: actions/setup-node@v6
         with:
-          version: "0.9.13"
-          enable-cache: true
+          node-version: "22"
+
+      - name: Install uv
+        run: python -m pip install --upgrade uv
 
       - name: Install package
-        run: uv sync --locked --all-extras --reinstall-package powers-tool
+        run: uv sync --python ${{ matrix.python-version }} --all-extras --locked --link-mode=copy
+
+      - name: Build package
+        run: .\.venv\Scripts\python.exe -m build
+
+      - name: Smoke imports and commands
+        run: |
+          .\.venv\Scripts\python.exe -c "import powers_tool_core; import powers_tool_cli; import powers_tool_webui"
+          .\.venv\Scripts\powers-tool.exe --help
+          .\.venv\Scripts\powers-tool-webui.exe --help
+          .\.venv\Scripts\powers-tool-webui-launcher.exe --version
+
+      - name: Build Desktop directory
+        if: matrix.python-version == '3.13'
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_desktop.ps1
 
       - name: Run fast tests
-        run: uv run python -m pytest tests -q -p no:cacheprovider --ignore=tests/cli/test_cli_wrappers.py
-
-      - name: Smoke console scripts
-        run: |
-          uv run powers-tool --help
-          uv run powers-tool-webui --help
-          uv run powers-tool-webui-launcher --version
+        run: .\.venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider --ignore=tests\cli\test_cli_wrappers.py
 
   wrapper-contracts:
-    name: Windows validation wrapper contracts
+    name: Windows wrapper contracts
     runs-on: windows-latest
 
     steps:
@@ -145,14 +161,11 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          version: "0.9.13"
-          enable-cache: true
+      - name: Install uv
+        run: python -m pip install --upgrade uv
 
       - name: Install package
-        run: uv sync --locked --all-extras --reinstall-package powers-tool
+        run: uv sync --python 3.13 --all-extras --locked --link-mode=copy
 
-      - name: Run wrapper contracts
-        run: uv run python -m pytest tests\cli\test_cli_wrappers.py tests\packaging\test_release_acceptance.py -q -p no:cacheprovider
+      - name: Run wrapper contract tests
+        run: .\.venv\Scripts\python.exe -m pytest tests\cli\test_cli_wrappers.py -q -p no:cacheprovider

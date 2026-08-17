@@ -31,7 +31,6 @@ import sys
 import time
 from typing import Any
 
-import powers_tool_core.capabilities as capabilities
 import powers_tool_core.operations as operations
 from powers_tool_cli import cli_rendering
 from powers_tool_cli.cli_io import emit_json_error, emit_json_success
@@ -162,7 +161,7 @@ def _run_core_output_real(args: argparse.Namespace) -> int:
             execution=execution,
             exc=CommandCancelled("ramp cancelled before a VISA session was opened"),
         )
-    except ConfirmationRequiredError as exc:
+    except ConfirmationRequiredError:
         return _emit_cli_error(
             args,
             request=request,

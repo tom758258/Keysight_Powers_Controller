@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from _webui_shared import read_static_javascript, read_static_texts, run_webui_module_assertions
+from _webui_shared import read_static_texts, run_webui_module_assertions
 
 
 def test_command_form_module_owns_fixed_output_parameters() -> None:
     _index_html, app_js, _styles_css = read_static_texts()
-    command_form_js = read_static_javascript("command-form.js")
 
     assert 'webuiCommandForm.setOutputParams()' in app_js
 

@@ -6,6 +6,22 @@ import powers_tool_cli.cli as cli
 import powers_tool_cli.cli_runtime as cli_runtime
 
 from tests.cli.cli_test_helpers import FakeSession
+
+
+E3646A_FORBIDDEN_WRITE_PREFIXES = (
+    "VOLT",
+    "CURR",
+    "OUTP",
+    "APPL",
+    "TRIG",
+    "INIT",
+    "ABOR",
+    "*TRG",
+    "LIST:",
+    "DIG:",
+)
+
+
 def test_e3646a_dry_run_all_expands_two_channels_and_rejects_three(capsys) -> None:
     assert cli.main(["output-on", "--dry-run", "--json", "--model", "keysight-e3646a", "--channel", "all"]) == 0
 

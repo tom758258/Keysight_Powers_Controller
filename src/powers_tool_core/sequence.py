@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import math
 import time
 from dataclasses import replace
 from pathlib import Path
@@ -40,7 +39,7 @@ from powers_tool_core.workflow_validation import (
     normalize_loop_count,
     validate_execution_units,
 )
-from powers_tool_core.command_contract import validate_and_normalize_request, validate_sequence_action_parameters
+from powers_tool_core.command_contract import validate_sequence_action_parameters
 
 IDN_QUERY = "*IDN?"
 OUTPUT_WRITE_POWER_SUPPLY_TYPES = (
@@ -373,7 +372,7 @@ def validate_sequence_step(request: SequenceRequest, step: dict[str, Any]) -> No
             raise CoreValidationError("trigger-pulse polarity must be positive or negative")
     if action == "wait":
         # The centralized sequence action contract already enforces this type.
-        seconds = parameters["seconds"]
+        parameters["seconds"]
     if action in {"set", "apply"}:
         channel = sequence_channel(parameters.get("channel", 1), allow_all=(action == "apply"))
         _validate_no_hardware_sequence_channels(request, channel)

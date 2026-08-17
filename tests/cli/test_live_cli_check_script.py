@@ -2026,7 +2026,6 @@ $nonmatchingCandidateCount = @(
         "clear-protection-all",
         "protection-status-after-clear",
     ]
-    by_name = {case["name"]: case for case in protection}
     assert all(case["candidate"] is False for case in protection)
     assert not any("--ocp-delay" in case["arguments"] for case in protection)
     assert not any("--ocp-delay-trigger" in case["arguments"] for case in protection)
@@ -2577,7 +2576,7 @@ catch { $_.Exception.Message }
 
 
 def test_trigger_pulse_observation_occurs_only_after_command_and_cleanup(tmp_path) -> None:
-    command = rf'''
+    command = r'''
 $env:POWERS_TOOL_LIVE_CLI_CHECK_IMPORT_ONLY = "1"
 . .\scripts\live-cli-check.ps1
 $script:TriggerEvidence = New-TriggerEvidence
@@ -2596,6 +2595,7 @@ $case = New-CommandCase -Name "pulse" -Suite "trigger-list" -Phase "live" -Args 
 Invoke-TriggerPulseCandidateCase -Case $case
 [pscustomobject]@{{ trace = $trace; failures = $script:Failures.Count; observation = $script:TriggerEvidence.pulse.operator_observation; error_queue_empty = $script:TriggerEvidence.pulse.error_queue_empty; outputs_all_off = $script:TriggerEvidence.pulse.outputs_all_off }} | ConvertTo-Json -Compress
 '''
+    command = command.replace("{{", "{").replace("}}", "}")
     result = _run_powershell_command(command)
 
     assert result.returncode == 0, result.stdout + result.stderr

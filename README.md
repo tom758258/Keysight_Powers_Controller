@@ -317,11 +317,24 @@ Run focused tests while iterating:
 .\.venv\Scripts\python.exe -m pytest tests\webui -q -p no:cacheprovider
 ```
 
-Run the full no-hardware suite:
+Run the static checks used by CI:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider
+.\.venv\Scripts\python.exe -m ruff check src tests
 ```
+
+Run the daily fast no-hardware suite:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider --ignore=tests\cli\test_cli_wrappers.py
+```
+
+CI also checks tracked WebUI JavaScript syntax, runs the focused WebUI Node
+runtime tests, builds the Python package on Linux and Windows, and runs package
+import plus CLI, WebUI, and Launcher smokes. The Windows Python 3.13 job also
+builds the Desktop directory. Wrapper contracts run in a separate Windows job.
+The complete `release-acceptance.ps1` gate, distribution inspection, and release
+acceptance tests remain release validation rather than ordinary pull-request CI.
 
 For scripted validation, live hardware checks, and release acceptance, see the
 [CLI README](docs/cli/README.md#scripted-validation). Hardware validation is

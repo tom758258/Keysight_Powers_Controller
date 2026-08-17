@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, replace
-from typing import Any, Callable, Mapping
+from typing import Any, Mapping
 
 from powers_tool_core.core import CoreValidationError, OperationRequest, SequenceRequest, TriggerRequest
 from powers_tool_core.workflow_validation import MAX_LOOP_COUNT

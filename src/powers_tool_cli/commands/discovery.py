@@ -41,6 +41,7 @@ from powers_tool_cli.runtime_mapping import (
 from powers_tool_core.core import CoreIoError, CoreValidationError, UnsupportedChannelError
 from powers_tool_core.models import parse_idn
 from powers_tool_core.safety import SafetyConfigError
+from powers_tool_cli.commands.output_run import _print_scpi_plan
 
 def _run_list_resources(args: argparse.Namespace) -> int:
     execution = _execution_for_args(args, hardware_intent=args.live_only)

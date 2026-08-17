@@ -157,6 +157,6 @@ def test_pull_request_without_merge_base_fails_clearly(tmp_path: Path) -> None:
 def test_workflow_uses_changed_range_helper_without_empty_tree_fallback() -> None:
     workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
 
-    assert "python scripts/check_changed_whitespace.py" in workflow
+    assert "check_changed_whitespace.py" not in workflow
     assert "hash-object -t tree" not in workflow
     assert "check_full_tree" not in workflow

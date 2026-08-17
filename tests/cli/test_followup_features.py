@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 
 import powers_tool_cli.cli as cli
 import powers_tool_cli.cli_runtime as cli_runtime

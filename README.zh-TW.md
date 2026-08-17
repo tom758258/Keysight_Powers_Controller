@@ -284,11 +284,24 @@ Pytest 預設使用已忽略的 repository-local `.tmp_pytest` 目錄，因此�
 .\.venv\Scripts\python.exe -m pytest tests\webui -q -p no:cacheprovider
 ```
 
-執行完整無硬體測試：
+執行 CI 使用的靜態檢查：
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider
+.\.venv\Scripts\python.exe -m ruff check src tests
 ```
+
+執行每日 fast no-hardware 測試：
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider --ignore=tests\cli\test_cli_wrappers.py
+```
+
+CI 也會檢查 tracked WebUI JavaScript syntax、執行必要的 WebUI Node runtime
+tests，在 Linux 與 Windows 建置 Python package，並執行 package import 以及
+CLI、WebUI、Launcher smoke。Windows Python 3.13 job 也會建置 Desktop directory。
+Wrapper contracts 會在獨立的 Windows job 執行。完整的
+`release-acceptance.ps1` gate、distribution inspection 與 release acceptance
+tests 仍保留給 release validation，不屬於一般 pull-request CI。
 
 Scripted no-hardware 與 live validation 工作流程記錄在
 [CLI README](docs/cli/README.zh-TW.md)。

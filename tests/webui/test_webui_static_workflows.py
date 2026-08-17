@@ -1035,8 +1035,6 @@ def test_frontend_workflow_pulse_model_behavior_uses_canonical_ids() -> None:
 
 def test_static_workflow_pulse_gates_do_not_compare_display_model_names() -> None:
     _index_html, app_js, _styles_css = read_static_texts()
-    workflows_js = read_static_javascript("workflows.js")
-    command_form_js = read_static_javascript("command-form.js")
 
     assert 'const REAR_TRIGGER_PULSE_MODEL_ID = "keysight-e36312a";' in app_js
     for display_name in ("E36312A", "EDU36311A", "E3646A"):

@@ -11,7 +11,6 @@ from tests.cli.cli_test_helpers import (
     OUTPUT_RESOURCE,
     FakeSession,
     assert_live_scope_rejected,
-    output_command_args,
     write_safety_config,
     _all_trigger_snapshot_query_responses,
     _trigger_snapshot_query_responses,

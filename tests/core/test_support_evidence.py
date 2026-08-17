@@ -20,7 +20,6 @@ from powers_tool_core.support_evidence import (
 )
 from powers_tool_core.support_policy import (
     BACKEND_PYVISA_PY,
-    BACKEND_SYSTEM_VISA,
     LIVE_SUPPORT_POLICY_REGISTRY,
     VALIDATION_STATUS_FEATURE_PENDING,
     VALIDATION_STATUS_LIVE_VALIDATED_FULL_SUITE,

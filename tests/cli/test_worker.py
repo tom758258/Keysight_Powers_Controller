@@ -1434,7 +1434,6 @@ def test_worker_readonly_dry_run_does_not_open_live_resource(tmp_path, monkeypat
 
 def test_worker_measure_all_rejects_channel_filter(running_worker):
     port = running_worker["port"]
-    artifacts_dir = running_worker["artifacts_dir"]
     req = urllib.request.Request(
         f"http://127.0.0.1:{port}/command",
         data=json.dumps({
@@ -1716,7 +1715,6 @@ def test_worker_model_unsupported_error_mapping(running_worker):
     # Verify unsupported models correctly propagate validation/unsupported error rather than connection_failed
     # EDU36311A does not support measure-all command!
     # Let's change the worker config's resource dynamically, or start an EDU36311A simulated worker
-    port = running_worker["port"]
     artifacts_dir = running_worker["artifacts_dir"]
     
     # Start separate worker for EDU36311A simulate

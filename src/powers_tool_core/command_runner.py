@@ -23,10 +23,7 @@ from powers_tool_core.operations import run_operation
 from powers_tool_core.command_contract import validate_and_normalize_request
 from powers_tool_core.parameter_constraints import validate_request_parameters
 from powers_tool_core.protection import run_protection
-from powers_tool_core.ramp_list import run_ramp_list
 from powers_tool_core.readonly import run_readonly
-from powers_tool_core.restore import run_restore
-from powers_tool_core.sequence import run_sequence
 from powers_tool_core.snapshot import run_snapshot
 from powers_tool_core.telemetry import SampleReporter, run_telemetry
 from powers_tool_core.trigger import run_trigger

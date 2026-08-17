@@ -26,8 +26,8 @@ from powers_tool_core.identity import IdentityResolutionError, resolve_physical_
 from powers_tool_core.live_support import enforce_product_live_support_for_idn
 from powers_tool_core.model_resolution import validate_live_expected_model
 from powers_tool_core.model_metadata import product_active_model_metadata
-from powers_tool_core.models import parse_idn
 from powers_tool_core.readonly import run_live_panel_read
+from powers_tool_core.testing.simulator import SimulatedResourceManager
 from powers_tool_core.support_policy import (
     BACKEND_SYSTEM_VISA,
     EXEMPT_LIVE_DIAGNOSTIC_COMMANDS,
@@ -41,6 +41,7 @@ from powers_tool_core.support_policy import (
     normalize_backend,
     normalize_transport,
     )
+from .jobs import Job
 
 _SUPPORTED_DEVICES_REFERENCE_COMMAND = "set"
 _SUPPORTED_DEVICES_TRANSPORT_ORDER = (
@@ -48,9 +49,6 @@ _SUPPORTED_DEVICES_TRANSPORT_ORDER = (
     TRANSPORT_TCPIP,
     TRANSPORT_ASRL,
 )
-from powers_tool_core.testing.simulator import SimulatedResourceManager
-
-from .jobs import Job
 
 
 MUTATING_COMMANDS = {
