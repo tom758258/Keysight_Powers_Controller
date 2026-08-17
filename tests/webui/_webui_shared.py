@@ -76,9 +76,9 @@ def assert_static_attr(html: str, element_id: str, attr: str, value: str | None 
 
 
 def extract_param_block(app_js: str, command_name: str) -> str:
-    params_block = app_js[
-        app_js.index("const PARAMS = {"):app_js.index("function defaultRampSegment()")
-    ]
+    params_start = app_js.index("const PARAMS = {")
+    params_end = app_js.index("};", params_start) + 2
+    params_block = app_js[params_start:params_end]
     match = re.search(rf'(?m)^\s*(?:"{re.escape(command_name)}"|{re.escape(command_name)}):', params_block)
     if not match:
         raise AssertionError(f"Missing PARAMS entry for {command_name}")
@@ -263,7 +263,7 @@ const descendants = (root) => [root, ...root.children.flatMap((child) => descend
 
 def run_frontend_javascript_assertions(
     assertions: str,
-    source_names: tuple[str, ...] = ("execution-context.js", "electrical.js", "api.js", "state.js", "device-resource.js", "command-catalog.js", "command-form.js", "results.js", "live-data.js", "json-files.js", "ramp-list.js", "trigger-list.js", "sequence.js", "snapshot-restore.js", "jobs.js", "basic-controls.js", "command-support.js", "workflows.js", "locale_ui.js", "theme_ui.js", "app.js"),
+    source_names: tuple[str, ...] = ("execution-context.js", "electrical.js", "api.js", "state.js", "device-resource.js", "command-catalog.js", "command-form.js", "command-params.js", "results.js", "live-data.js", "json-files.js", "ramp-list.js", "trigger-list.js", "sequence.js", "snapshot-restore.js", "jobs.js", "basic-controls.js", "command-support.js", "workflows.js", "locale_ui.js", "theme_ui.js", "app.js"),
     *,
     bootstrap: str = "",
     expected_failure_substrings: tuple[str, ...] = (),
@@ -365,6 +365,10 @@ globalThis.__webuiCommandCatalog = {{ COMMAND_CATEGORIES, COMMAND_CATEGORY_LABEL
     return source.replace('import {{ t }} from "./i18n.js";', '').replace(/^export function /gm, "function ") + `
     globalThis.__webuiCommandForm = {{ createCheckboxField, renderCommandGuidance, appendFieldDescription, configureCompactCheckboxHelp, appendSetGuidance, appendCommandNotes, setOutputParams, applyOutputParams, smokeOutputParams, triggerWaitParams, triggerStepParams, triggerListParams, createCommandController }};`;
   }}
+  if (filename === "command-params.js") {{
+    return source.replace('import * as webuiCommandForm from "./command-form.js";', 'var webuiCommandForm = globalThis.__webuiCommandForm;').replace(/^export function /gm, "function ") + `
+globalThis.__webuiCommandParams = {{ createCommandParams }};`;
+  }}
   if (filename === "results.js") {{
     return source.replace('import {{ t }} from "./i18n.js";', '').replace(/^export function /gm, "function ") + `
  globalThis.__webuiResults = {{ jobSummary, eventSummary, successfulJobSummary, capabilitiesSummary, identifySummary, verifySummary, readStatusSummary, readbackSummary, snapshotSummary, safetyInspectSummary, outputStatesSummary, setpointSummary, formatSetpointValue, errorQueueSummary, compactParts, statusSummary, statusLabel, statusClass, renderWorkspaceEmpty, renderWorkspaceJob, renderCapabilitiesWorkspaceSummary, renderIdentifyWorkspaceSummary, renderTriggerStatusWorkspaceSummary, appendWorkspaceFields, channelList, featureAvailability }};`;
@@ -461,6 +465,10 @@ globalThis.__webuiThemeUi = {{ initializeThemeUi }};
       .replace(
             'import * as webuiCommandForm from "./command-form.js";',
             'var webuiCommandForm = globalThis.__webuiCommandForm;'
+      )
+      .replace(
+            'import {{ createCommandParams }} from "./command-params.js";',
+            'var createCommandParams = globalThis.__webuiCommandParams.createCommandParams;'
       )
       .replace(
             'import * as webuiResults from "./results.js";',

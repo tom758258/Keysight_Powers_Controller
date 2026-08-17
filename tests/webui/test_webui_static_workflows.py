@@ -794,13 +794,14 @@ strictAssert.equal(validityCalls.length >= 4, true);
 
 def test_static_pulse_child_fields_and_rear_pin_select_contracts():
     _index_html, app_js, _styles_css = read_static_texts()
+    command_params_js = read_static_javascript("command-params.js")
     sequence_document_js = read_static_javascript("sequence.js")
     command_form_js = read_static_javascript("command-form.js")
     workflows_js = read_static_javascript("workflows.js")
 
-    cycle = extract_param_block(app_js, "cycle-output")
-    ramp = extract_param_block(app_js, "ramp")
-    trigger_pulse = extract_param_block(app_js, "trigger-pulse")
+    cycle = extract_param_block(command_params_js, "cycle-output")
+    ramp = extract_param_block(command_params_js, "ramp")
+    trigger_pulse = extract_param_block(command_params_js, "trigger-pulse")
     trigger_list = extract_js_function(command_form_js, "triggerListParams")
     sequence_definitions = extract_js_function(workflows_js, "sequenceActionDefinitions")
     normalize_sequence = extract_js_function(sequence_document_js, "normalizeSequenceStep")
@@ -990,10 +991,11 @@ def test_static_frontend_policy_for_edu_and_e3646a_disabled_controls():
 
 def test_static_e3646a_ramp_list_and_sequence_wording_does_not_imply_native_list_support():
     index_html, app_js, _styles_css = read_static_texts()
+    command_params_js = read_static_javascript("command-params.js")
 
     assert "native LIST" not in index_html
-    assert "native LIST" not in extract_param_block(app_js, "ramp-list")
-    assert "Native LIST" not in extract_param_block(app_js, "ramp-list")
+    assert "native LIST" not in extract_param_block(command_params_js, "ramp-list")
+    assert "Native LIST" not in extract_param_block(command_params_js, "ramp-list")
 
 
 def test_static_job_result_summary_contract():
@@ -2090,9 +2092,10 @@ def test_static_basic_and_live_disable_unsupported_channels():
 
 def test_static_trip_guard_and_clear_protection_recovery_contract():
     _index_html, app_js, _styles_css = read_static_texts()
+    command_params_js = read_static_javascript("command-params.js")
     live_data_js = read_static_javascript("live-data.js")
 
-    clear_block = extract_param_block(app_js, "clear-protection")
+    clear_block = extract_param_block(command_params_js, "clear-protection")
     assert_param_contract(clear_block, "channel", "select", ["", "all", "1", "2", "3"])
     assert 'value: ""' in clear_block
     assert 'const TRIP_GUARDED_COMMANDS = new Set(["output-on", "cycle-output", "ramp", "ramp-list", "smoke-output", "apply"]);' in app_js
@@ -2113,10 +2116,11 @@ def test_static_trip_guard_and_clear_protection_recovery_contract():
 
 def test_static_channel_confirmation_and_job_detail_contracts():
     _index_html, app_js, _styles_css = read_static_texts()
+    command_params_js = read_static_javascript("command-params.js")
     command_form_js = read_static_javascript("command-form.js")
     workflows_js = read_static_javascript("workflows.js")
 
-    assert 'set: webuiCommandForm.setOutputParams()' in app_js
+    assert 'set: webuiCommandForm.setOutputParams()' in command_params_js
     assert 'export function setOutputParams()' in command_form_js
     assert "{ ...params[1], optional: true }" in command_form_js
     assert "{ ...params[2], optional: true }" in command_form_js
@@ -2129,17 +2133,17 @@ def test_static_channel_confirmation_and_job_detail_contracts():
     assert "guidance.textContent = SET_PARTIAL_GUIDANCE;" in append_set_guidance
     assert "SET_PARTIAL_GUIDANCE" not in render_guidance
     assert "setRequiresSetpointGuardReason(command, parameters)" in extract_js_function(app_js, "selectedCommandPresentation")
-    assert '"smoke-output": webuiCommandForm.smokeOutputParams()' in app_js
-    assert_param_contract(app_js, "channel", "select", ["1", "2", "3"])
+    assert '"smoke-output": webuiCommandForm.smokeOutputParams()' in command_params_js
+    assert_param_contract(command_params_js, "channel", "select", ["1", "2", "3"])
     assert_param_contract(workflows_js, "voltage", "number")
     assert_param_contract(workflows_js, "current", "number")
     assert_param_contract(workflows_js, "no_output", "checkbox")
     assert_param_contract(workflows_js, "duration_ms", "number")
     for command in ("output-on", "output-off", "cycle-output"):
-        assert_param_contract(extract_param_block(app_js, command), "channel", "select", ["all", "1", "2", "3"])
-    params_block = app_js[app_js.index("const PARAMS = {"):app_js.index("function defaultRampSegment()")]
+        assert_param_contract(extract_param_block(command_params_js, command), "channel", "select", ["all", "1", "2", "3"])
+    params_block = extract_js_function(command_params_js, "createCommandParams")
     assert '"protection-set"' in params_block
-    protection_block = extract_param_block(app_js, "protection-set")
+    protection_block = extract_param_block(command_params_js, "protection-set")
     assert_param_contract(protection_block, "ocp_delay", "number")
     assert_param_contract(protection_block, "ocp_delay_trigger", "select", ["", "setting-change", "cc-transition"])
     for command in WEBUI_HIDDEN_LIVE_DATA_COMMANDS:
@@ -2172,8 +2176,9 @@ def test_static_form_has_no_advanced_json_injection():
 
 def test_static_trigger_forms_have_advanced_parameters():
     _index_html, app_js, _styles_css = read_static_texts()
+    command_params_js = read_static_javascript("command-params.js")
     command_form_js = read_static_javascript("command-form.js")
-    params_block = app_js[app_js.index("const PARAMS = {"):app_js.index("function defaultRampSegment()")]
+    params_block = extract_js_function(command_params_js, "createCommandParams")
 
     for command in (
         "trigger-pulse",
@@ -2185,8 +2190,8 @@ def test_static_trigger_forms_have_advanced_parameters():
     ):
         assert f'"{command}"' in params_block
 
-    assert_param_contract(extract_param_block(app_js, "trigger-pulse"), "pins", "select")
-    assert 'parser: "intList"' in app_js
+    assert_param_contract(extract_param_block(command_params_js, "trigger-pulse"), "pins", "select")
+    assert 'parser: "intList"' in command_params_js
     assert_param_contract(command_form_js, "voltage_list", "text")
     assert_param_contract(command_form_js, "current_list", "text")
     assert_param_contract(command_form_js, "dwell_list", "text")
@@ -2200,15 +2205,16 @@ def test_static_trigger_forms_have_advanced_parameters():
 
 def test_static_trigger_forms_document_behavior_and_key_fields():
     _index_html, app_js, _styles_css = read_static_texts()
+    command_params_js = read_static_javascript("command-params.js")
     command_form_js = read_static_javascript("command-form.js")
 
     blocks = {
-        "trigger-pulse": extract_param_block(app_js, "trigger-pulse"),
-        "trigger-status": extract_param_block(app_js, "trigger-status"),
+        "trigger-pulse": extract_param_block(command_params_js, "trigger-pulse"),
+        "trigger-status": extract_param_block(command_params_js, "trigger-status"),
         "trigger-step": extract_js_function(command_form_js, "triggerStepParams"),
         "trigger-list": extract_js_function(command_form_js, "triggerListParams"),
-        "trigger-fire": extract_param_block(app_js, "trigger-fire"),
-        "trigger-abort": extract_param_block(app_js, "trigger-abort"),
+        "trigger-fire": extract_param_block(command_params_js, "trigger-fire"),
+        "trigger-abort": extract_param_block(command_params_js, "trigger-abort"),
     }
     for block in blocks.values():
         assert "description:" in block

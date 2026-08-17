@@ -819,11 +819,12 @@ def test_job_result_is_expanded_collapsible_and_clearable():
 
 def test_static_ramp_list_editor_contract():
     _index_html, app_js, _styles_css = read_static_texts()
+    command_params_js = read_static_javascript("command-params.js")
     json_files_js = read_static_javascript("json-files.js")
     ramp_list_js = read_static_javascript("ramp-list.js")
     workflows_js = read_static_javascript("workflows.js")
 
-    assert '"ramp-list": []' in app_js
+    assert '"ramp-list": []' in command_params_js
     for field in ("channels", "current", "start_voltage", "stop_voltage", "step_voltage", "delay_ms", "hold_ms"):
         assert f'name: "{field}"' in ramp_list_js
     assert "state.rampListSegments.length >= 10" in workflows_js
@@ -846,8 +847,8 @@ def test_static_ramp_list_editor_contract():
     assert "state.rampListSegments = normalized.segments;" in workflows_js
     assert "state.rampListCompletionPulse = normalized.completionPulse;" in workflows_js
     assert "state.rampListEnableOutput = normalized.enableOutput;" in workflows_js
-    assert 'name: "completion_pulse_timing"' in app_js
-    assert 'name: "completion_pulse_step"' not in app_js
+    assert 'name: "completion_pulse_timing"' in command_params_js
+    assert 'name: "completion_pulse_step"' not in command_params_js
     assert 'name: "completion_pulse_segment"' not in app_js
     assert "state.rampListCompletionPulse = normalized.completionPulse;" in workflows_js
     assert "document.completion_pulse" in ramp_list_js
