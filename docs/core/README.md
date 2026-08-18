@@ -228,8 +228,8 @@ A feature family does not open other commands. Software `ramp-list` and step-lim
 `sequence` are not native LIST support.
 
 For output workflows, `voltage` is the output voltage setpoint and `current`
-is the output current limit/current setting on E36312A, EDU36311A, and
-E3646A. Core exposes official programming-range metadata separately from
+is the output current limit/current setting on supported Product-active
+models. Core exposes official programming-range metadata separately from
 independent-channel DC output rating safety limits. The manuals document common
 SCPI numeric parameter handling, so this metadata does not introduce
 decimal-place rejection or silent rounding/truncation in Core.

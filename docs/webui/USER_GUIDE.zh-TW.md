@@ -1,6 +1,6 @@
 # Powers Tool WebUI 使用者指南
 
-本指南針對取得已建置之 WebUI 啟動器並使用它來檢查與控制支援的 Keysight 直流電源供應器的操作員。本指南避開了開發人員細節，專注於一般的本機 WebUI 工作流程。開發人員環境設定、API 行為、驗證以及 UI 變更邊界，皆記錄於 [WebUI README](README.zh-TW.md) 與 [Web UI 變更規則](web-ui-change-rules.md)。
+本指南供取得已建置之 WebUI 啟動器的操作員使用，說明如何檢查與控制支援的直流電源供應器。Powers Tool 的架構不綁定特定廠牌；目前硬體支援範圍以 [Supported Models](../core/supported-models.md) 所記載的 Product scopes 為準；未知或未註冊的 live hardware 會 fail closed。本指南避開了開發人員細節，專注於一般的本機 WebUI 工作流程。開發人員環境設定、API 行為、驗證以及 UI 變更邊界，皆記錄於 [WebUI README](README.zh-TW.md) 與 [Web UI 變更規則](web-ui-change-rules.md)。
 
 ## 啟動 WebUI
 

@@ -150,8 +150,8 @@ normal product support, and not automatic promotion.
 
 The option never bypasses model/profile recognition, detected `*IDN?`,
 expected-model mismatch, missing metadata, unsupported commands, hard model or
-channel limits, official ratings and setpoint safety, E3646A range
-combinations, confirmation, OVP/OCP, trigger restrictions, sequence
+channel limits, official ratings, range-dependent voltage/current constraints,
+setpoint safety, confirmation, OVP/OCP, trigger restrictions, sequence
 restrictions, cleanup, or session close. Missing metadata is not pending support.
 
 For a bounded bootstrap case without a wrapper entry, use the hidden option
