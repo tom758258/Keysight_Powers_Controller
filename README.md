@@ -409,5 +409,8 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE).
 This project is independent and unofficial. It is not affiliated with,
 endorsed by, or sponsored by supported instrument manufacturers or vendors.
 
+All manufacturer names, product names, model names, and trademarks referenced
+by Powers Tool remain the property of their respective owners.
+
 Users are responsible for complying with applicable software, driver,
 instrument, and documentation license terms from those vendors.
