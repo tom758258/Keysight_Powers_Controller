@@ -1,4 +1,4 @@
-"""Private local WebUI host for a future desktop integration."""
+"""Private local WebUI host for the Electron Desktop shell."""
 
 from __future__ import annotations
 

@@ -22,7 +22,6 @@ def test_webui_missing_distribution_metadata_uses_nonrelease_fallback(monkeypatc
     namespace = runpy.run_path(str(package_init))
 
     assert namespace["__version__"] == "0+unknown"
-    assert namespace["__version__"] not in {"1.0.0", "2.0.0"}
 
 
 def test_webui_server_version_prints_without_starting_server(monkeypatch, capsys) -> None:

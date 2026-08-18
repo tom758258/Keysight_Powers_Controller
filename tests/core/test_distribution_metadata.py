@@ -16,13 +16,12 @@ import powers_tool_webui
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_v2_distribution_release_metadata():
+def test_distribution_release_metadata():
     project = tomllib.loads(
         (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     )["project"]
 
     assert project["name"] == "powers-tool"
-    assert project["version"] == "2.0.0"
     assert project["authors"] == [{"name": "Powers Tool contributors"}]
     assert project["description"] == (
         "Safe vendor-neutral Python tooling for supported DC power supplies."

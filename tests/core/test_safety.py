@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from powers_tool_core.errors import KeysightPowerError
+from powers_tool_core.errors import PowersToolError
 from powers_tool_core.safety import (
     SafetyConfigError,
     SafetyLimits,
@@ -88,7 +88,7 @@ def test_confirm_thresholds_are_advisory_below_hard_max() -> None:
 def test_safety_error_type_matches_project_and_value_errors() -> None:
     error = SafetyValidationError("bad setpoint")
 
-    assert isinstance(error, KeysightPowerError)
+    assert isinstance(error, PowersToolError)
     assert isinstance(error, ValueError)
 
 

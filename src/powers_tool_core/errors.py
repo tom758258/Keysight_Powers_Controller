@@ -1,9 +1,9 @@
 """Project exception types."""
 
 
-class KeysightPowerError(Exception):
-    """Base exception for keysight_power failures."""
+class PowersToolError(Exception):
+    """Base exception for Powers Tool failures."""
 
 
-class VisaConnectionError(KeysightPowerError):
+class VisaConnectionError(PowersToolError):
     """Raised when VISA discovery, connection, or I/O fails."""

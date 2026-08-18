@@ -83,6 +83,4 @@ def test_cli_missing_distribution_metadata_uses_nonrelease_fallback(monkeypatch)
     package_namespace = runpy.run_path("src/powers_tool_cli/__init__.py")
 
     assert package_namespace["__version__"] == "0+unknown"
-    assert package_namespace["__version__"] not in {"1.0.0", "2.0.0"}
     assert cli_runtime._package_version() == "0+unknown"
-    assert cli_runtime._package_version() not in {"1.0.0", "2.0.0"}

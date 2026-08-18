@@ -13,7 +13,7 @@ try:  # pragma: no cover - exercised only on Python 3.10
 except ModuleNotFoundError:  # pragma: no cover - exercised only on Python 3.10
     import tomli as tomllib
 
-from powers_tool_core.errors import KeysightPowerError
+from powers_tool_core.errors import PowersToolError
 
 Channel = int | str | None
 SUPPORTED_SAFETY_CONFIG_KEYS = frozenset(
@@ -29,11 +29,11 @@ SUPPORTED_RESOURCE_CONFIG_KEYS = SUPPORTED_SAFETY_CONFIG_KEYS | {"alias", "resou
 SUPPORTED_TOP_LEVEL_CONFIG_KEYS = frozenset({"safety", "models", "resources"})
 
 
-class SafetyValidationError(KeysightPowerError, ValueError):
+class SafetyValidationError(PowersToolError, ValueError):
     """Raised when a requested setpoint violates configured safety rules."""
 
 
-class SafetyConfigError(KeysightPowerError, ValueError):
+class SafetyConfigError(PowersToolError, ValueError):
     """Raised when a safety config file is missing or invalid."""
 
 

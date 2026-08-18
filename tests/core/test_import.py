@@ -90,6 +90,5 @@ def test_core_missing_distribution_metadata_uses_nonrelease_fallback(monkeypatch
     source = Path("src/powers_tool_core/__init__.py").read_text(encoding="utf-8")
 
     assert namespace["__version__"] == "0+unknown"
-    assert namespace["__version__"] not in {"1.0.0", "2.0.0"}
     assert "powers_tool_cli" not in source
     assert "powers_tool_webui" not in source
