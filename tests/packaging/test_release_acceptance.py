@@ -14,6 +14,11 @@ import zipfile
 
 import pytest
 
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - Python 3.10
+    import tomli as tomllib
+
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "release-acceptance.ps1"
@@ -419,10 +424,19 @@ def test_release_acceptance_validates_unified_desktop_bundle() -> None:
     assert "inspect_pyinstaller.py" not in text
 
 
-def test_desktop_package_uses_directory_windows_builder_without_portable_target() -> None:
+def test_desktop_package_matches_canonical_version_and_uses_directory_builder() -> None:
     package = json.loads(DESKTOP_PACKAGE.read_text(encoding="utf-8"))
+    project = tomllib.loads(
+        (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    )["project"]
+    package_lock = json.loads(
+        (DESKTOP_PACKAGE.parent / "package-lock.json").read_text(encoding="utf-8")
+    )
+    canonical_version = project["version"]
 
-    assert package["version"] == "2.0.0"
+    assert package["version"] == canonical_version
+    assert package_lock["version"] == canonical_version
+    assert package_lock["packages"][""]["version"] == canonical_version
     assert package["scripts"]["dist:win"] == "electron-builder --dir --win --x64"
     assert package["build"]["directories"]["output"] == "../dist/desktop"
     assert package["build"]["files"] == ["main.cjs"]

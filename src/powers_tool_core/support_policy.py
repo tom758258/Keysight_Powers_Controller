@@ -1,4 +1,4 @@
-"""Exact live support-policy metadata for future Core enforcement."""
+"""Exact live support-policy metadata for Core enforcement."""
 
 from __future__ import annotations
 

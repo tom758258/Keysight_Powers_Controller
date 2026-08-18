@@ -22,6 +22,8 @@ LEGACY_IDENTITY_TOKENS = (
     "keysight-power-ramp-list",
     "model_profile",
     "KeysightPowerError",
+    "Keysight power CLI",
+    "Keysight power supply commands",
 )
 ACTIVE_AUDIT_PATHS = (
     "pyproject.toml",
@@ -47,7 +49,6 @@ NEGATIVE_REGRESSION_EXEMPTIONS = {
         "keysight_power_webui",
     },
     "tests/packaging/inspect_pyinstaller.py": {"keysight-powers", "keysight-power"},
-    "tests/packaging/test_packaging_identity.py": {"KeysightPowerError"},
 }
 
 

@@ -1,4 +1,4 @@
-"""Shared command capability metadata for the CLI and future adapters."""
+"""Shared command capability metadata for command adapters."""
 
 from __future__ import annotations
 

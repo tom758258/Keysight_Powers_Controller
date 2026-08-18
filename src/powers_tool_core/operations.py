@@ -1,4 +1,4 @@
-"""Parser-neutral operation core for Keysight power supply commands."""
+"""Parser-neutral operation core for supported power-supply commands."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Parser-neutral validation helpers shared by CLI and future adapters."""
+"""Parser-neutral validation helpers shared by command adapters."""
 
 from __future__ import annotations
 
