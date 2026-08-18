@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 3.0.0
+
 - Adds Product LIVE support for the GW Instek PSM-2010 over ASRL / RS-232 +
   system VISA, with 23 model-aware commands covering read-only, output,
   protection, snapshot/restore, ramp, and software-sequence workflows.
