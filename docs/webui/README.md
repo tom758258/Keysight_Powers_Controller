@@ -82,7 +82,7 @@ the repository root, run:
 
 ```powershell
 Set-Location .\desktop
-npm install
+npm ci
 npm start
 ```
 

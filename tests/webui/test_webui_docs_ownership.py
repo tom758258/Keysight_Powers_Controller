@@ -23,7 +23,6 @@ def test_webui_docs_are_root_local():
         assert (DOC_ROOT / path).exists()
 
     for cli_doc in (
-        "cli-integration.md",
         "power-cli-jsonl-contract.md",
         "power-worker-contract.md",
         "power-orchestrator-workflows.md",

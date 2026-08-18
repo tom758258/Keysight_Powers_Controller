@@ -129,6 +129,10 @@ added to `COMMAND_CONTRACTS` or shared command routing. A model that supports
 an existing command contract is integrated in Core without a new concrete
 driver branch in the CLI.
 
+CLI-only fields such as `measurement_cli_name`, parsed `argparse.Namespace`
+values, command aliases, and adapter error text remain adapter concerns rather
+than Core schema.
+
 ## Requirements
 
 The root [README Install guide](../../README.md#install) is the canonical setup

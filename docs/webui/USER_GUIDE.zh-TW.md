@@ -77,7 +77,7 @@ Source checkout 使用者可以從 `desktop/` 執行 Electron Desktop shell：
 
 ```powershell
 Set-Location .\desktop
-npm install
+npm ci
 npm start
 ```
 

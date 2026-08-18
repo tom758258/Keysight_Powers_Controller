@@ -3,7 +3,7 @@
 # Powers Tool
 
 Powers Tool 是用於支援之直流電源供應器的 vendor-neutral Python 控制工具。
-2.0.0 版本提供單一可安裝發行套件 `powers-tool`，並保留三個獨立的
+它提供單一可安裝發行套件 `powers-tool`，並保留三個獨立的
 import package：`powers_tool_core`、`powers_tool_cli` 與 `powers_tool_webui`。
 
 本架構是 vendor-neutral，但目前 Product support 僅限
@@ -34,8 +34,8 @@ transport、backend 與 required-feature scope 限制。
 
 ## 功能特性
 
-- 透過 VISA 使用 USB、LAN 或明確的 RS-232/ASRL 設定控制支援的 Keysight
-  直流電源供應器。
+- 透過 VISA 使用 USB、LAN 或明確的 RS-232/ASRL 設定控制支援的直流電源
+  供應器。
 - 可使用 `powers-tool` CLI 或本機 `powers-tool-webui` 儀表板。
 - WebUI 支援 English 與繁體中文，可在 runtime 切換語言，且不需 reload。
 - 使用 dry-run 模式在開啟 VISA 前預覽會影響硬體的命令。
@@ -45,14 +45,6 @@ transport、backend 與 required-feature scope 限制。
   snapshot、restore 與 protection 流程。
 - 產生 JSON 與 JSONL 輸出，供自動化、agent 與 orchestrator 使用。
 - 保持真實硬體輸出為選用 (opt-in)；預設測試與模擬流程不會啟用儀器輸出。
-
-## 選用 Codex／Agent Skill
-
-專案提供選用、需手動安裝的
-[Powers Tool CLI 調度 Skill](docs/skill/README.zh-TW.md)，供合約導向的 CLI
-與 Power Worker workflow 使用。它是附屬範本，不是 Powers Tool runtime
-功能，也不包含在 Python package、standalone executable、build、release 或
-CI 中。
 
 ## 專案結構
 
@@ -71,6 +63,10 @@ src/
   powers_tool_core/
   powers_tool_cli/
   powers_tool_webui/
+desktop/
+  package.json
+  package-lock.json
+  main.cjs
 tests/
   core/
   cli/
@@ -149,6 +145,34 @@ Windows 會建立虛擬環境 console wrapper，例如
 進行安全的 no-hardware 檢查，或參閱
 [WebUI 使用者指南](docs/webui/USER_GUIDE.zh-TW.md) 啟動本機瀏覽器介面。
 
+## 快速開始
+
+以下入口都是安全的 no-hardware 或本機操作；不會搜尋 VISA resource，
+也不會啟用儀器輸出。
+
+執行 simulator CLI smoke：
+
+```powershell
+uv run powers-tool doctor --simulate --json
+```
+
+啟動本機 WebUI launcher：
+
+```powershell
+uv run powers-tool-webui-launcher
+```
+
+啟動 source-mode Electron Desktop shell：
+
+```powershell
+Set-Location .\desktop
+npm ci
+npm start
+```
+
+詳細 CLI 操作請參閱 [CLI README](docs/cli/README.zh-TW.md)；瀏覽器與 Desktop
+操作請參閱 [WebUI 使用者指南](docs/webui/USER_GUIDE.zh-TW.md)。
+
 ## 建置
 
 建置 wheel 與 source distribution。這會使用前面安裝的 `dev` extra 中的
@@ -206,7 +230,7 @@ WebUI 實作。從 repository root 執行：
 
 ```powershell
 Set-Location .\desktop
-npm install
+npm ci
 npm start
 ```
 
@@ -309,9 +333,13 @@ Scripted no-hardware 與 live validation 工作流程記錄在
 公開文件與驗證腳本請以目前英文 README、CLI README 與 contracts 為準；
 繁中文件保留操作員導覽與安全邊界，不改變 runtime 行為。
 
-## 貢獻
+## Codex／Agent Skill
 
-貢獻、變更規則與驗證要求請參閱 [CONTRIBUTING](docs/CONTRIBUTING.md)。
+專案提供選用、需手動安裝的
+[Powers Tool CLI 調度 Skill](docs/skill/README.zh-TW.md)，供合約導向的 CLI
+與 Power Worker workflow 使用。它是附屬範本，不是 Powers Tool runtime
+功能，也不包含在 Python package、standalone executable、build、release 或
+CI 中。
 
 ## 文件
 
@@ -327,13 +355,16 @@ Scripted no-hardware 與 live validation 工作流程記錄在
 - [Public Contracts](docs/contracts)
 - [Power CLI JSONL Contract](docs/contracts/power-cli-jsonl-contract.md)
 - [Power Worker Contract](docs/contracts/power-worker-contract.md)
-- [選用 Codex／Agent Skill](docs/skill/README.zh-TW.md)
+
+## 貢獻
+
+貢獻、變更規則與驗證要求請參閱 [CONTRIBUTING](docs/CONTRIBUTING.md)。
 
 ## 授權條款與免責聲明
 
 本專案採用 MIT License。詳見 [LICENSE](LICENSE)。
 
-本專案是獨立且非官方的專案，未與 Keysight Technologies 建立從屬、
+本專案是獨立且非官方的專案，未與支援之儀器製造商或 vendor 建立從屬、
 背書或贊助關係。
 
-使用者需自行遵守所有適用的 Keysight 軟體、driver、儀器與文件授權條款。
+使用者需自行遵守支援之 vendor 所適用的軟體、driver、儀器與文件授權條款。

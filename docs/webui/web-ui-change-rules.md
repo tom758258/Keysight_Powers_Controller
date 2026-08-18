@@ -117,9 +117,11 @@ http://127.0.0.1:7999/
 The WebUI is an instrument control dashboard:
 
 - Backend: FastAPI/Uvicorn in `src/powers_tool_webui/app.py`.
-- Frontend: static HTML/CSS/JavaScript in `src/powers_tool_webui/static/`.
-- No Node build step.
-- No frontend package manager.
+- Browser frontend: static HTML/CSS/JavaScript in
+  `src/powers_tool_webui/static/`.
+- The browser WebUI itself has no Node build step or frontend package manager.
+- The separate Electron Desktop shell is under `desktop/` and uses npm for
+  source-mode development and Windows packaging.
 - No external CDN dependency.
 - No framework migration unless explicitly approved by the user.
 

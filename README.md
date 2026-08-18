@@ -3,7 +3,7 @@
 # Powers Tool
 
 Powers Tool is a vendor-neutral Python toolkit for controlling supported DC
-power supplies. Version 2.0.0 provides one installable distribution,
+power supplies. It provides one installable distribution,
 `powers-tool`, with three import packages: `powers_tool_core`,
 `powers_tool_cli`, and `powers_tool_webui`.
 
@@ -40,7 +40,7 @@ and required-feature scopes in [Supported Models](docs/core/supported-models.md)
 
 ## Features
 
-- Control supported Keysight DC power supplies over USB, LAN, or explicit
+- Control supported DC power supplies over USB, LAN, or explicit
   RS-232/ASRL settings using VISA
 - Use either the `powers-tool` CLI or the local `powers-tool-webui`
   dashboard
@@ -75,6 +75,10 @@ src/
   powers_tool_core/
   powers_tool_cli/
   powers_tool_webui/
+desktop/
+  package.json
+  package-lock.json
+  main.cjs
 tests/
   core/
   cli/
@@ -157,6 +161,34 @@ for a safe no-hardware check, or see the
 [WebUI User Guide](docs/webui/USER_GUIDE.md) to start the local browser
 interface.
 
+## Quick Start
+
+These entry points are safe no-hardware or local-only checks. They do not
+discover VISA resources or enable instrument output.
+
+Run a simulator CLI smoke:
+
+```powershell
+uv run powers-tool doctor --simulate --json
+```
+
+Start the local WebUI launcher:
+
+```powershell
+uv run powers-tool-webui-launcher
+```
+
+Start the source-mode Electron Desktop shell:
+
+```powershell
+Set-Location .\desktop
+npm ci
+npm start
+```
+
+For detailed CLI operation, see the [CLI README](docs/cli/README.md). For
+browser and Desktop usage, see the [WebUI User Guide](docs/webui/USER_GUIDE.md).
+
 ## Build
 
 Build the wheel and source distribution. This uses the `build` package from
@@ -219,7 +251,7 @@ does not create a second WebUI implementation. From the repository root:
 
 ```powershell
 Set-Location .\desktop
-npm install
+npm ci
 npm start
 ```
 
@@ -340,14 +372,7 @@ For scripted validation, live hardware checks, and release acceptance, see the
 [CLI README](docs/cli/README.md#scripted-validation). Hardware validation is
 explicit opt-in and requires a user-provided VISA resource.
 
-## Contributing
-
-See [Contributing](docs/CONTRIBUTING.md) for development ownership, no-hardware
-test expectations, and the contributor validation-artifact workflow. Changes
-to live model, command, transport, or backend support require reviewable
-real-instrument evidence when applicable.
-
-## Optional Codex / Agent Skill
+## Codex / Agent Skill
 
 The project publishes an optional, manually installed
 [Powers Tool CLI Orchestration Skill](docs/skill/README.md) for contract-aware
@@ -369,14 +394,20 @@ executables, builds, releases, or CI.
 - [Public Contracts](docs/contracts)
 - [Power CLI JSONL Contract](docs/contracts/power-cli-jsonl-contract.md)
 - [Power Worker Contract](docs/contracts/power-worker-contract.md)
-- [Optional Codex / Agent Skill](docs/skill/README.md)
+
+## Contributing
+
+See [Contributing](docs/CONTRIBUTING.md) for development ownership, no-hardware
+test expectations, and the contributor validation-artifact workflow. Changes
+to live model, command, transport, or backend support require reviewable
+real-instrument evidence when applicable.
 
 ## License and Disclaimer
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE).
 
 This project is independent and unofficial. It is not affiliated with,
-endorsed by, or sponsored by Keysight Technologies.
+endorsed by, or sponsored by supported instrument manufacturers or vendors.
 
-Users are responsible for complying with all applicable Keysight software,
-driver, instrument, and documentation license terms.
+Users are responsible for complying with applicable software, driver,
+instrument, and documentation license terms from those vendors.

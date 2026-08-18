@@ -2,15 +2,11 @@
 
 ## Unreleased
 
-- Prepares the shared Windows onedir and Electron Desktop directory packaging
-  flow, including a unified versioned Windows ZIP release contract.
-- Removes obsolete private CLI Trigger execution compatibility helpers; active
-  Trigger execution remains owned by Core, with CLI/live behavior unchanged.
-- Adds multi-channel Ramp support and Ramp List v5 per-Segment channel selections while
-  preserving legacy Ramp List compatibility.
-- Clarifies Product support and contributor-validation documentation by
-  removing stale implementation history and making explicit that passing
-  validation evidence does not automatically open Product support.
+- Adds the Electron Desktop shell with System, Light, and Dark themes.
+- Adds the shared Windows onedir bundle and unified versioned Windows ZIP
+  packaging flow.
+- Adds multi-channel Ramp support and Ramp List v5 per-Segment channel
+  selections while preserving legacy Ramp List compatibility.
 
 ## 2.0.0
 

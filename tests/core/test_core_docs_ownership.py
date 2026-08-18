@@ -22,7 +22,6 @@ def test_core_docs_are_root_local():
         assert (DOC_ROOT / path).exists()
 
     for adapter_doc in (
-        "cli-integration.md",
         "power-cli-jsonl-contract.md",
         "power-worker-contract.md",
     ):

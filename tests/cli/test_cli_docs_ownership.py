@@ -35,11 +35,8 @@ def test_cli_docs_are_root_local_and_contracts_are_root_level():
     assert (REPO_ROOT / "CHANGELOG.md").exists()
     assert not (DOC_ROOT / "CHANGELOG.md").exists()
 
-    for path in (
-        "cli-integration.md",
-        "USER_GUIDE.md",
-    ):
-        assert (DOC_ROOT / path).exists()
+    assert not (DOC_ROOT / "cli-integration.md").exists()
+    assert (DOC_ROOT / "USER_GUIDE.md").exists()
 
     for package_contract in (
         "power-cli-jsonl-contract.md",
@@ -60,12 +57,14 @@ def test_cli_docs_are_root_local_and_contracts_are_root_level():
         assert (REPO_ROOT / "docs" / "contracts" / contract).exists()
 
 
-def test_cli_integration_keeps_cli_fields_out_of_core_schema():
-    text = read_cli_doc("cli-integration.md")
+def test_cli_readme_keeps_cli_fields_out_of_core_schema():
+    text = read_cli_doc("README.md")
+    section = read_markdown_section(text, "Package Contents")
 
-    assert "measurement_cli_name" in text
-    assert "argparse.Namespace" in text
-    assert "--enable-hw-trigger" in text
+    assert "measurement_cli_name" in section
+    assert "argparse.Namespace" in section
+    assert "CLI owns" in section
+    assert "Core owns" in section
 
 
 def test_power_contracts_link_common_contracts():

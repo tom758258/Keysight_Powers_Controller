@@ -19,12 +19,6 @@ Contributor validation and evidence workflow is maintained in
 
 ## Product LIVE Exact-Scope Matrix
 
-Core parses `*IDN?` and resolves reported manufacturer plus model to one
-canonical physical `model_id`, checks any expected-model guard, and then
-requires an exact `model_id + command + transport + backend + required
-feature` match. Missing or non-Product-open scopes fail closed. A system VISA
-scope does not extend to pyvisa-py, pyvisa-bt, or a custom backend.
-
 The current `live_validated_full_suite` command inventories are:
 
 | Model | Exact product connections | Product-open model-aware commands |

@@ -36,7 +36,7 @@ Source-mode Desktop shell 是以 Electron 顯示現有 WebUI，不建立第二�
 
 ```powershell
 Set-Location .\desktop
-npm install
+npm ci
 npm start
 ```
 

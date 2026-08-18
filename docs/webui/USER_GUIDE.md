@@ -83,7 +83,7 @@ Source-checkout users can run the Electron Desktop shell from `desktop/`:
 
 ```powershell
 Set-Location .\desktop
-npm install
+npm ci
 npm start
 ```
 
