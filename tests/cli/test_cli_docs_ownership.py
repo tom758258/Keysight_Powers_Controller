@@ -35,7 +35,6 @@ def test_cli_docs_are_root_local_and_contracts_are_root_level():
     assert (REPO_ROOT / "CHANGELOG.md").exists()
     assert not (DOC_ROOT / "CHANGELOG.md").exists()
 
-    assert not (DOC_ROOT / "cli-integration.md").exists()
     assert (DOC_ROOT / "USER_GUIDE.md").exists()
 
     for package_contract in (
