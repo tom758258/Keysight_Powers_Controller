@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Adds Product LIVE support for the GW Instek PSM-2010 over ASRL / RS-232 +
+  system VISA, with 23 model-aware commands covering read-only, output,
+  protection, snapshot/restore, ramp, and software-sequence workflows.
+- Adds range-aware electrical rating validation for instruments with multiple
+  operating ranges, requiring combined voltage/current setpoints to fit an
+  official range.
+- Adds bounded Power Worker telemetry logging with job-local CSV/JSONL
+  artifacts and cooperative cancellation.
+- Expands Keysight E3646A ASRL + system VISA Product LIVE support with the
+  telemetry `log` command.
 - Adds the Electron Desktop shell with System, Light, and Dark themes.
 - Adds the shared Windows onedir bundle and unified versioned Windows ZIP
   packaging flow.
