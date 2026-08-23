@@ -204,11 +204,14 @@ CLI `log` 執行有界的唯讀 telemetry，並寫入呼叫者選擇的路徑：
 .\powers-tool.exe log --simulate --model keysight-e36312a --channel all --interval-sec 1 --samples 5 --csv telemetry.csv --jsonl telemetry.jsonl
 ```
 
-Worker `log` 則必須提供 sample 或 duration bound，並在自己的 job directory 擁有
-`telemetry.csv`／`telemetry.jsonl`。它可取消、不會 safe-off output、取消或失敗後
-保留已完成 cycles、不接受呼叫者 artifact path，也不會和另一個 Worker job 並行。
-Sequence `log` 只是 message/note action；`--log-scpi` 是 SCPI traffic tracing，
-不是 telemetry。
+Worker `log` 則必須提供 sample 或 duration bound。它支援 cooperative
+cancellation、不會 safe-off output、不接受呼叫者 artifact path，也不會和另一個
+Worker job 並行。`files` artifact mode 會在自己的 job directory 擁有固定的
+`telemetry.csv`／`telemetry.jsonl`，並在 cancellation 或 failure 後保留已完成的
+telemetry evidence。`memory` mode 不建立 job-directory telemetry files；每筆 row
+會透過 schema-2 `sample` stdout JSONL event 輸出，terminal result 只保留 bounded
+summary。Sequence `log` 只是 message/note action；`--log-scpi` 是 SCPI traffic
+tracing，不是 telemetry。
 
 ## 影響輸出的工作流程
 

@@ -221,11 +221,14 @@ powers-tool output-state --resource "$env:POWERS_TOOL_ASRL_RESOURCE" --channel 1
 <p>CLI <code>log</code> 執行有界的唯讀 telemetry，並寫入呼叫者選擇的路徑：</p>
 <div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe log --simulate --model keysight-e36312a --channel all --interval-sec 1 --samples 5 --csv telemetry.csv --jsonl telemetry.jsonl
 </code></pre></div>
-<p>Worker <code>log</code> 則必須提供 sample 或 duration bound，並在自己的 job directory 擁有
-<code>telemetry.csv</code>／<code>telemetry.jsonl</code>。它可取消、不會 safe-off output、取消或失敗後
-保留已完成 cycles、不接受呼叫者 artifact path，也不會和另一個 Worker job 並行。
-Sequence <code>log</code> 只是 message/note action；<code>--log-scpi</code> 是 SCPI traffic tracing，
-不是 telemetry。</p>
+<p>Worker <code>log</code> 則必須提供 sample 或 duration bound。它支援 cooperative
+cancellation、不會 safe-off output、不接受呼叫者 artifact path，也不會和另一個
+Worker job 並行。<code>files</code> artifact mode 會在自己的 job directory 擁有固定的
+<code>telemetry.csv</code>／<code>telemetry.jsonl</code>，並在 cancellation 或 failure 後保留已完成的
+telemetry evidence。<code>memory</code> mode 不建立 job-directory telemetry files；每筆 row
+會透過 schema-2 <code>sample</code> stdout JSONL event 輸出，terminal result 只保留 bounded
+summary。Sequence <code>log</code> 只是 message/note action；<code>--log-scpi</code> 是 SCPI traffic
+tracing，不是 telemetry。</p>
 <h2 id="影響輸出的工作流程">影響輸出的工作流程</h2>
 <p>影響輸出的命令需要明確指定。使用前，請確認儀器型號、通道、DUT 接線、電壓、電流限制與保護設定。</p>
 <p>在不啟用輸出的情況下設定較低的設定點：</p>

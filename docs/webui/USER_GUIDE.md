@@ -143,7 +143,7 @@ The page is an instrument control console. The main areas are:
 - `Live resource`: resources discovered by the Scan Device workflow.
 - `Scan Device`: searches for live VISA resources and fills the selector.
 - `Live Data`: read-only channel cards and state indicators.
-- `Basic command`: per-channel Voltage, Current, Set, and output ON controls.
+- `Basic command`: per-channel Voltage, Current, Set, and output controls.
 - `Show more commands`: opens the advanced command rail and generated form.
 - `Job Result`: recent submitted jobs and their state.
 - `Result Detail`: raw JSON details for the selected job.

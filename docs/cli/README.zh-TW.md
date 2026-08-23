@@ -754,10 +754,10 @@ Worker 預設為 file-backed（`--artifact-mode files`）：啟動時建立 arti
 `events.jsonl`，每個 accepted job 在 `jobs/<worker_job_id>/` 寫入 `request.json`
 與 `result.json`。Orchestrator 可明確選用 `--artifact-mode memory`：啟動不建立
 任何 artifact 目錄、事件檔或 request/result/telemetry 檔案；accepted 回應省略
-`artifact_path`；終端事件 `job_finished`／`job_failed` 與 `GET /status` 的
-`last_job` 直接帶入完整 result envelope；`log` 的每筆 telemetry row 改以
-schema-2 `sample` stdout JSONL 事件輸出。memory 模式會拒絕明確的
-`--events-jsonl`，因為 stdout 是唯一事件流。詳細欄位語意請參閱
+`artifact_path`；終端事件 `job_finished`／`job_failed`／`job_cancelled` 與
+`GET /status` 的 `last_job` 直接帶入完整 result envelope；`log` 的每筆
+telemetry row 改以 schema-2 `sample` stdout JSONL 事件輸出。memory 模式會拒絕
+明確的 `--events-jsonl`，因為 stdout 是唯一事件流。詳細欄位語意請參閱
 [Power Worker 契約](../contracts/power-worker-contract.md)。
 
 Worker 啟動後會在 stdout 輸出 `ready` event，包含 dynamic control endpoints；該事件

@@ -797,10 +797,10 @@ background telemetry，也不能和另一個 active Worker job 並行。Sequence
 <code>events.jsonl</code>，每個 accepted job 在 <code>jobs/&lt;worker_job_id&gt;/</code> 寫入 <code>request.json</code>
 與 <code>result.json</code>。Orchestrator 可明確選用 <code>--artifact-mode memory</code>：啟動不建立
 任何 artifact 目錄、事件檔或 request/result/telemetry 檔案；accepted 回應省略
-<code>artifact_path</code>；終端事件 <code>job_finished</code>／<code>job_failed</code> 與 <code>GET /status</code> 的
-<code>last_job</code> 直接帶入完整 result envelope；<code>log</code> 的每筆 telemetry row 改以
-schema-2 <code>sample</code> stdout JSONL 事件輸出。memory 模式會拒絕明確的
-<code>--events-jsonl</code>，因為 stdout 是唯一事件流。詳細欄位語意請參閱
+<code>artifact_path</code>；終端事件 <code>job_finished</code>／<code>job_failed</code>／<code>job_cancelled</code> 與
+<code>GET /status</code> 的 <code>last_job</code> 直接帶入完整 result envelope；<code>log</code> 的每筆
+telemetry row 改以 schema-2 <code>sample</code> stdout JSONL 事件輸出。memory 模式會拒絕
+明確的 <code>--events-jsonl</code>，因為 stdout 是唯一事件流。詳細欄位語意請參閱
 <a href="../contracts/power-worker-contract.md" rel="noopener noreferrer" target="_blank">Power Worker 契約</a>。</p>
 <p>Worker 啟動後會在 stdout 輸出 <code>ready</code> event，包含 dynamic control endpoints；該事件
 只表示 control plane 可用，不是任何 domain command 的 terminal completion。</p>

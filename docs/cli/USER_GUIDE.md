@@ -232,12 +232,15 @@ caller:
 .\powers-tool.exe log --simulate --model keysight-e36312a --channel all --interval-sec 1 --samples 5 --csv telemetry.csv --jsonl telemetry.jsonl
 ```
 
-Worker `log` instead requires a sample or duration bound and owns
-`telemetry.csv`/`telemetry.jsonl` inside its job directory. It is cancellable,
-does not safe-off outputs, preserves completed cycles after cancellation or
-failure, accepts no caller artifact paths, and does not run concurrently with
-another Worker job. Sequence `log` is only a message/note action;
-`--log-scpi` traces SCPI traffic and is not telemetry.
+Worker `log` instead requires a sample or duration bound. It is cooperatively
+cancellable, does not safe-off outputs, accepts no caller artifact paths, and
+does not run concurrently with another Worker job. In `files` artifact mode it
+owns fixed `telemetry.csv`/`telemetry.jsonl` files inside its job directory and
+retains completed telemetry evidence after cancellation or failure. In
+`memory` mode it creates no job-directory telemetry files, emits each row as a
+schema-2 `sample` stdout JSONL event, and keeps only the bounded summary in the
+terminal result. Sequence `log` is only a message/note action; `--log-scpi`
+traces SCPI traffic and is not telemetry.
 
 ## Output-Affecting Workflow
 
