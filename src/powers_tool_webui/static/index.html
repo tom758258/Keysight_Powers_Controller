@@ -33,25 +33,37 @@
         <p class="brand-subtitle"><span data-i18n="app.unofficial_tool">Unofficial Tool</span> v__WEBUI_VERSION__</p>
       </div>
       <div class="page-head-actions">
-        <button
-          id="theme-toggle"
-          class="secondary theme-toggle"
-          type="button"
-          aria-label="Switch theme to Light"
-          data-i18n-aria-label="accessibility.switch_theme_to_light"
-          title="Switch theme to Light"
-          data-i18n-title="accessibility.switch_theme_to_light"
-        >
-          <span class="theme-toggle-icon" aria-hidden="true">◐</span>
-          <span id="theme-toggle-label" data-i18n="theme.system">System</span>
-        </button>
-        <button
-          id="locale-toggle"
-          class="secondary locale-toggle"
-          type="button"
-          lang="zh-TW"
-          aria-label="Switch language to Traditional Chinese"
-        >繁體中文</button>
+        <div class="page-head-setting">
+          <span class="page-head-setting-label" data-i18n="app.appearance">Appearance</span>
+          <button
+            id="theme-toggle"
+            class="secondary theme-toggle"
+            type="button"
+            aria-label="Switch theme to Light"
+            data-i18n-aria-label="accessibility.switch_theme_to_light"
+            title="Switch theme to Light"
+            data-i18n-title="accessibility.switch_theme_to_light"
+          >
+            <span class="theme-toggle-icon" aria-hidden="true">◐</span>
+            <span id="theme-toggle-label" data-i18n="theme.system">System</span>
+          </button>
+        </div>
+        <div class="page-head-setting">
+          <span class="page-head-setting-label" data-i18n="app.language">Language</span>
+          <button
+            id="locale-toggle"
+            class="secondary locale-toggle"
+            type="button"
+            aria-label="Switch language to Traditional Chinese"
+            data-i18n-aria-label="accessibility.switch_language_to_zh_tw"
+          >
+            <svg class="locale-toggle-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"></circle>
+              <path d="M3 12h18M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3Z" fill="none" stroke="currentColor" stroke-width="1.5"></path>
+            </svg>
+            <span id="locale-toggle-label" lang="en" data-i18n="locale.display_en">English</span>
+          </button>
+        </div>
       </div>
     </div>
 

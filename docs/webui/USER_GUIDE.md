@@ -95,10 +95,10 @@ resource from different clients at the same time.
 
 ## Browser Language
 
-The WebUI supports English and Traditional Chinese. Use the single language
-toggle button in the upper-right of the main interface. When the current
-language is English, the button shows `繁體中文`; when the current language is
-Traditional Chinese, it shows `English`.
+The upper-right of the main interface provides two labeled controls:
+Appearance and Language. The Language button displays the current locale:
+`English` for English and `繁體中文` for Traditional Chinese. Its accessible
+name describes the language that clicking the button will switch to.
 
 Language switching takes effect at runtime without reloading the page. It keeps
 the current page state, including:
@@ -115,9 +115,10 @@ The switch changes browser presentation only. It does not make an HTTP request,
 create a Job, run a workflow action, or create, stop, or otherwise affect an
 EventSource.
 
-The header also provides a System / Light / Dark theme control. System follows
-the operating system's `prefers-color-scheme` preference. The theme preference
-is retained in the same loopback browser through the
+The Appearance control displays the current System / Light / Dark preference
+and cycles to the next preference when clicked. System follows the operating
+system's `prefers-color-scheme` preference. The theme preference is retained
+in the same loopback browser through the
 `powers-tool.webui.theme` cookie; the Electron Desktop shell uses that cookie
 to keep its native window theme synchronized. The selected theme applies to the
 main panels, cards, fields, and status surfaces, not only the page background.

@@ -41,11 +41,14 @@ replacement, or permissive canonicalization. Browser-language matching is
 case-insensitive and normalizes `_` to `-`. Other Chinese language tags do not
 map to `zh-TW`.
 
-The locale control is a single button in the upper-right of the main
-interface. It displays the target language: `繁體中文` in English and `English`
-in Traditional Chinese. Switching takes effect immediately,
-updates `<html lang>`, and persists a manual selection when storage is
+The upper-right of the main interface presents labeled Appearance and Language
+controls. The Language control displays the current locale: `English` in
+English and `繁體中文` in Traditional Chinese. Its accessible name describes the
+destination locale. Switching takes effect immediately, updates the visible
+locale name and `<html lang>`, and persists a manual selection when storage is
 available. Storage read or write failures must not make the WebUI unusable.
+The Appearance control displays the current System, Light, or Dark preference;
+its accessible name and title describe the next preference in the cycle.
 
 ## Ownership and Architecture Boundary
 

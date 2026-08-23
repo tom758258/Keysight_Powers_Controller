@@ -266,7 +266,7 @@ commands 仍不支援；其他 transport 與 backend 仍會 fail closed。完整
 <h2 id="section-3">Localization</h2>
 <p>維護中的 locale 是 <code>en</code> 與 <code>zh-TW</code>；English 是來源與 fallback locale。切換會在執行階段生效且不重新載入頁面，只改變瀏覽器呈現，不得建立 HTTP request、Job、workflow action 或 EventSource side effect。Machine values、API schema、command IDs、model IDs、VISA resources、SCPI 與 raw diagnostics 保持原值。</p>
 <p>語言偏好使用獨立的 browser storage key <code>powers-tool.webui.locale</code>。即使 storage 不可用，也會安全 fallback，不影響 WebUI 的正常操作。</p>
-<p>Header 內的主題控制會依序切換 System、Light、Dark。偏好會以一年的 <code>Max-Age</code> 儲存在 <code>powers-tool.webui.theme</code> cookie，並由 browser WebUI 與 Electron shell 共用。System 模式遵循 <code>prefers-color-scheme</code>；Electron shell 會使用同一個 loopback cookie 同步 native window theme。</p>
+<p>Header 右上角提供「外觀」與「語言」兩個標示清楚的控制項。語言控制會顯示目前 locale（<code>English</code> 或 <code>繁體中文</code>），accessible name 則描述切換目的地。外觀控制會顯示目前的主題偏好，並依序切換 System、Light、Dark。主題偏好會以一年的 <code>Max-Age</code> 儲存在 <code>powers-tool.webui.theme</code> cookie，並由 browser WebUI 與 Electron shell 共用。System 模式遵循 <code>prefers-color-scheme</code>；Electron shell 會使用同一個 loopback cookie 同步 native window theme。</p>
 <p>選定的主題會套用至 WebUI 主要的 panels、cards、fields 與 status surfaces，不只改變頁面背景。</p>
 <p>深色主題下，主要控制項、狀態文字，以及不可用或停用的控制項，會在深色 surface 上維持足夠辨識度。</p>
 <h2 id="section-4">Job Parameter Admission</h2>

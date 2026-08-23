@@ -133,9 +133,21 @@ button, input, select, textarea { font: inherit; }
 
 .page-head-actions {
   display: inline-flex;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
   flex: none;
+}
+
+.page-head-setting {
+  display: grid;
+  gap: 6px;
+}
+
+.page-head-setting-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .brand { min-width: 0; }
@@ -165,6 +177,7 @@ button, input, select, textarea { font: inherit; }
 
 .theme-toggle { white-space: nowrap; }
 .theme-toggle-icon { font-size: 16px; line-height: 1; }
+.locale-toggle-icon { width: 16px; height: 16px; flex: none; }
 
 /* ─── Device / Resource ──────────────────────────────────────────────────── */
 .device-resource-section {

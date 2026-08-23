@@ -103,18 +103,30 @@ assert.equal(
 );
 assert.equal(localeUi.persistLocale("zh-TW", { setItem() { throw new Error("write denied"); } }), false);
 
-class FakeButton {
+class FakeElement {
   constructor() {
     this.attributes = {};
-    this.listeners = [];
     this.textContent = "";
   }
   setAttribute(name, value) { this.attributes[name] = value; }
+}
+
+class FakeButton extends FakeElement {
+  constructor(label = new FakeElement()) {
+    super();
+    this.listeners = [];
+    this.label = label;
+  }
+  querySelector(selector) {
+    assert.equal(selector, "#locale-toggle-label");
+    return this.label;
+  }
   addEventListener(type, listener) { this.listeners.push({ type, listener }); }
   click() { this.listeners.filter(({ type }) => type === "click").forEach(({ listener }) => listener()); }
 }
 
 const button = new FakeButton();
+const label = button.label;
 const documentObject = {
   documentElement: { lang: "en" },
   getElementById(id) {
@@ -132,9 +144,11 @@ assert.equal(localeUi.initializeLocaleUi({
 }), "zh-TW");
 assert.equal(i18n.getLocale(), "zh-TW");
 assert.equal(documentObject.documentElement.lang, "zh-TW");
-assert.equal(button.textContent, i18n.t("locale.switch_to_en"));
-assert.equal(button.attributes.lang, "en");
+assert.equal(label.textContent, i18n.t("locale.display_zh_tw"));
+assert.equal(label.attributes.lang, "zh-TW");
+assert.equal(label.attributes["data-i18n"], "locale.display_zh_tw");
 assert.equal(button.attributes["aria-label"], i18n.t("accessibility.switch_language_to_en"));
+assert.equal(button.attributes["data-i18n-aria-label"], "accessibility.switch_language_to_en");
 assert.equal(button.listeners.length, 1);
 
 localeUi.initializeLocaleUi({
@@ -149,9 +163,11 @@ assert.equal(i18n.getLocale(), "zh-TW");
 button.click();
 assert.equal(i18n.getLocale(), "en");
 assert.equal(documentObject.documentElement.lang, "en");
-assert.equal(button.textContent, i18n.t("locale.switch_to_zh_tw"));
-assert.equal(button.attributes.lang, "zh-TW");
+assert.equal(label.textContent, i18n.t("locale.display_en"));
+assert.equal(label.attributes.lang, "en");
+assert.equal(label.attributes["data-i18n"], "locale.display_en");
 assert.equal(button.attributes["aria-label"], i18n.t("accessibility.switch_language_to_zh_tw"));
+assert.equal(button.attributes["data-i18n-aria-label"], "accessibility.switch_language_to_zh_tw");
 assert.deepEqual(storage.writes, [[i18n.LOCALE_STORAGE_KEY, "en"]]);
 assert.equal(refreshes, 1);
 
@@ -169,9 +185,20 @@ localeUi.initializeLocaleUi({
   },
   refreshPresentation() { refreshes += 1; },
 });
+assert.equal(i18n.getLocale(), "en");
+assert.equal(failingDocument.documentElement.lang, "en");
+assert.equal(failingButton.label.textContent, i18n.t("locale.display_en"));
+assert.equal(failingButton.label.attributes.lang, "en");
+assert.equal(
+  failingButton.attributes["aria-label"],
+  i18n.t("accessibility.switch_language_to_zh_tw")
+);
 failingButton.click();
 assert.equal(i18n.getLocale(), "zh-TW");
 assert.equal(failingDocument.documentElement.lang, "zh-TW");
+assert.equal(failingButton.label.textContent, i18n.t("locale.display_zh_tw"));
+assert.equal(failingButton.label.attributes.lang, "zh-TW");
+assert.equal(failingButton.attributes["aria-label"], i18n.t("accessibility.switch_language_to_en"));
 assert.equal(refreshes, 2);
 """
     completed = subprocess.run(
@@ -841,9 +868,18 @@ def test_static_html_p2_bindings_have_catalog_parity_and_preserve_contracts() ->
     assert binding_keys <= en_keys
     assert '<html lang="en">' in html
     assert 'data-i18n="app.unofficial_tool"' in html
+    assert 'data-i18n="app.appearance"' in html
+    assert 'data-i18n="app.language"' in html
     assert "v__WEBUI_VERSION__" in html
     assert 'id="locale-toggle"' in html
-    assert 'lang="zh-TW"' in html
+    assert 'id="locale-toggle-label"' in html
+    assert 'data-i18n="locale.display_en"' in html
+    assert 'lang="en"' in html
+    assert re.search(
+        r'<svg\b(?=[^>]*\bclass="locale-toggle-icon")'
+        r'(?=[^>]*\baria-hidden="true")[^>]*>',
+        html,
+    )
     for mode in ("real", "simulate", "dry-run"):
         assert f'name="execution-mode" value="{mode}"' in html
     for machine_value in ("none", "odd", "even", "mark", "space", "xon_xoff", "rts_cts", "dtr_dsr"):

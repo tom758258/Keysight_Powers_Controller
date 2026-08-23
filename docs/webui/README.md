@@ -119,7 +119,10 @@ unchanged. The locale preference uses the independent browser storage key
 `powers-tool.webui.locale`; storage failures safely fall back without making
 the WebUI unusable.
 
-Theme selection cycles through System, Light, and Dark in the header. The
+The upper-right header presents labeled Appearance and Language controls. The
+Language control displays the current locale (`English` or `繁體中文`), while
+its accessible name describes the destination locale. Appearance displays the
+current theme preference and cycles through System, Light, and Dark. The theme
 preference is stored in the `powers-tool.webui.theme` cookie with a one-year
 expiry and is shared by the browser WebUI and the Electron shell. System mode
 follows `prefers-color-scheme`; the Electron shell synchronizes its native

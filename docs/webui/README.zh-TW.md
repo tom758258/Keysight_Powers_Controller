@@ -68,9 +68,11 @@ request、Job、workflow action 或 EventSource side effect。Machine values、A
 schema、command IDs、model IDs、VISA resources、SCPI 與 raw diagnostics 保持
 不變。若 browser storage 不可用，WebUI 會安全 fallback，不影響正常操作。
 
-Header 內的主題控制會依序切換 System、Light、Dark。偏好會以一年的
-`Max-Age` 儲存在 `powers-tool.webui.theme` cookie，並由 browser WebUI 與
-Electron shell 共用。System 模式遵循 `prefers-color-scheme`；Electron shell
+Header 右上角提供「外觀」與「語言」兩個標示清楚的控制項。語言控制會顯示
+目前 locale（`English` 或 `繁體中文`），accessible name 則描述切換目的地。
+外觀控制會顯示目前的主題偏好，並依序切換 System、Light、Dark。主題偏好會
+以一年的 `Max-Age` 儲存在 `powers-tool.webui.theme` cookie，並由 browser WebUI
+與 Electron shell 共用。System 模式遵循 `prefers-color-scheme`；Electron shell
 會使用同一個 loopback cookie 同步 native window theme。選定的主題會套用至
 WebUI 主要的 panels、cards、fields 與 status surfaces，不只改變頁面背景。
 深色主題下，主要控制項、狀態文字，以及不可用或停用的控制項，會在深色

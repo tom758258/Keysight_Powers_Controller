@@ -89,15 +89,18 @@ export function targetLocale(locale = getLocale()) {
 
 export function renderLanguageButton(button, locale = getLocale()) {
   if (!button) return;
+  const label = button.querySelector?.("#locale-toggle-label");
+  if (!label) return;
   const target = targetLocale(locale);
-  button.textContent = t(target === "zh-TW" ? "locale.switch_to_zh_tw" : "locale.switch_to_en");
-  button.setAttribute(
-    "aria-label",
-    t(target === "zh-TW"
-      ? "accessibility.switch_language_to_zh_tw"
-      : "accessibility.switch_language_to_en")
-  );
-  button.setAttribute("lang", target);
+  const displayKey = locale === "zh-TW" ? "locale.display_zh_tw" : "locale.display_en";
+  const destinationKey = target === "zh-TW"
+    ? "accessibility.switch_language_to_zh_tw"
+    : "accessibility.switch_language_to_en";
+  label.setAttribute("data-i18n", displayKey);
+  label.setAttribute("lang", locale);
+  label.textContent = t(displayKey);
+  button.setAttribute("data-i18n-aria-label", destinationKey);
+  button.setAttribute("aria-label", t(destinationKey));
 }
 
 export function initializeLocaleUi({

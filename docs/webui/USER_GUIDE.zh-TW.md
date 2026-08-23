@@ -88,8 +88,9 @@ npm start
 
 ## 瀏覽器語言
 
-WebUI 支援 English 與繁體中文。請使用主介面的右上方單一語言切換按鈕；目前
-語言為 English 時按鈕顯示 `繁體中文`，目前語言為繁體中文時顯示 `English`。
+主介面右上方提供「外觀」與「語言」兩個標示清楚的控制項。語言按鈕會顯示
+目前 locale：English 顯示 `English`，繁體中文顯示 `繁體中文`；accessible name
+則描述點擊後要切換到的語言。
 
 切換會在 runtime 立即生效，不需要 reload page，並保留目前頁面狀態，包括：
 
@@ -104,8 +105,8 @@ WebUI 支援 English 與繁體中文。請使用主介面的右上方單一語�
 語言切換只改變瀏覽器 presentation，不會建立 HTTP request、Job 或 workflow
 action，也不會建立、停止或以其他方式影響 EventSource。
 
-Header 也提供 System / Light / Dark 主題控制。System 會遵循作業系統的
-`prefers-color-scheme`。主題偏好會透過同一個 loopback browser 的
+外觀控制會顯示目前的 System / Light / Dark 主題偏好，點擊後依序切換至下一個
+偏好。System 會遵循作業系統的 `prefers-color-scheme`。主題偏好會透過同一個 loopback browser 的
 `powers-tool.webui.theme` cookie 保留；Electron Desktop shell 會使用該 cookie
 同步 native window theme。選定的主題會套用至主要的 panels、cards、fields
 與 status surfaces，不只改變頁面背景。
