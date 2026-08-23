@@ -100,7 +100,9 @@ export function renderLanguageButton(button, locale = getLocale()) {
   label.setAttribute("lang", locale);
   label.textContent = t(displayKey);
   button.setAttribute("data-i18n-aria-label", destinationKey);
+  button.setAttribute("data-i18n-title", destinationKey);
   button.setAttribute("aria-label", t(destinationKey));
+  button.setAttribute("title", t(destinationKey));
 }
 
 export function initializeLocaleUi({

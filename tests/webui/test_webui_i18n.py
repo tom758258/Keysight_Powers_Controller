@@ -149,6 +149,8 @@ assert.equal(label.attributes.lang, "zh-TW");
 assert.equal(label.attributes["data-i18n"], "locale.display_zh_tw");
 assert.equal(button.attributes["aria-label"], i18n.t("accessibility.switch_language_to_en"));
 assert.equal(button.attributes["data-i18n-aria-label"], "accessibility.switch_language_to_en");
+assert.equal(button.attributes.title, i18n.t("accessibility.switch_language_to_en"));
+assert.equal(button.attributes["data-i18n-title"], "accessibility.switch_language_to_en");
 assert.equal(button.listeners.length, 1);
 
 localeUi.initializeLocaleUi({
@@ -168,6 +170,8 @@ assert.equal(label.attributes.lang, "en");
 assert.equal(label.attributes["data-i18n"], "locale.display_en");
 assert.equal(button.attributes["aria-label"], i18n.t("accessibility.switch_language_to_zh_tw"));
 assert.equal(button.attributes["data-i18n-aria-label"], "accessibility.switch_language_to_zh_tw");
+assert.equal(button.attributes.title, i18n.t("accessibility.switch_language_to_zh_tw"));
+assert.equal(button.attributes["data-i18n-title"], "accessibility.switch_language_to_zh_tw");
 assert.deepEqual(storage.writes, [[i18n.LOCALE_STORAGE_KEY, "en"]]);
 assert.equal(refreshes, 1);
 
@@ -873,6 +877,7 @@ def test_static_html_p2_bindings_have_catalog_parity_and_preserve_contracts() ->
     assert "v__WEBUI_VERSION__" in html
     assert 'id="locale-toggle"' in html
     assert 'id="locale-toggle-label"' in html
+    assert 'data-i18n-title="accessibility.switch_language_to_zh_tw"' in html
     assert 'data-i18n="locale.display_en"' in html
     assert 'lang="en"' in html
     assert re.search(
