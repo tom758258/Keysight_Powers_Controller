@@ -234,8 +234,8 @@ Sequence <code>log</code> 只是 message/note action；<code>--log-scpi</code> �
 <p>讀回已設定的狀態：</p>
 <div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe readback --resource "$env:POWERS_TOOL_RESOURCE" --json --log-scpi
 </code></pre></div>
-<p>僅在確認設定點安全後才啟用輸出。對 E3646A 而言，<code>OUTP ON/OFF</code> 是全域輸出啟用/停用行為；啟用輸出前請先確認實體接線與連接負載：</p>
-<div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe output-on --resource "$env:POWERS_TOOL_RESOURCE" --channel 1 --confirm --json --log-scpi
+<p>在不開啟真實硬體的情況下，預覽已實作的輸出啟用計畫：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe output-on --dry-run --model keysight-e36312a --channel 1 --json
 </code></pre></div>
 <p>檢查完成後關閉輸出：</p>
 <div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe output-off --resource "$env:POWERS_TOOL_RESOURCE" --channel 1 --json --log-scpi
@@ -292,7 +292,7 @@ Sequence <code>log</code> 只是 message/note action；<code>--log-scpi</code> �
 </tr>
 <tr>
 <td><code>output-on</code> / <code>output-off</code></td>
-<td>明確啟用或停用輸出。</td>
+<td>在接受的 exact LIVE scope 上啟用或停用輸出；dry-run 與 simulator 預覽仍可用。</td>
 </tr>
 <tr>
 <td><code>safe-off</code></td>
@@ -301,19 +301,30 @@ Sequence <code>log</code> 只是 message/note action；<code>--log-scpi</code> �
 </tbody>
 </table>
 <h2 id="無硬體檢查">無硬體檢查</h2>
-<p>若只要確認安裝、CLI entry point 與 simulator 路徑，請使用：</p>
-<div class="code-wrapper"><pre><code class="language-powershell">uv run powers-tool --version
-uv run powers-tool doctor --simulate --json
+<p>Dry-run 與 simulator 命令不會開啟真實 VISA 硬體。當命令需要 model-specific
+planning 時，請以 <code>--model</code> 傳入 canonical 的 simulation/dry-run model ID，或使用
+deterministic SIM resource，例如 <code>USB0::SIM::E36312A::INSTR</code>：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe set --dry-run --model keysight-e3646a --channel 1 --voltage 1 --current 0.05
+.\powers-tool.exe readback --simulate --resource USB0::SIM::E36312A::INSTR --channel all
+.\powers-tool.exe trigger-step --dry-run --model keysight-e36312a --channel 1 --source bus --fire
+.\powers-tool.exe set --dry-run --profile generic-scpi --channel 1 --voltage 1 --current 0.05
 </code></pre></div>
-<p>這些命令不會進行 live 或 system-VISA resource discovery、不會開啟 VISA resource、
-不會送出 SCPI、不會修改實體儀器狀態，也不會啟用輸出；不需要實體儀器或 vendor
-VISA runtime。</p>
-<p><code>--model</code> 不是 feature unlock；live mode 仍以實際 <code>*IDN?</code> 偵測出的 model 選擇 driver。
-Unsupported model、command、mode、connection、backend 或 feature combinations 會 fail closed。
-Product LIVE support 是 detected model、command、transport、backend 與 required feature 的 exact
-scope；missing 或 pending scopes 也會 fail closed。No-hardware plan 或 feature family 不代表其中
-所有 commands 都是 Product-open。請參閱 <a href="../core/supported-models.md#product-live-exact-scope-matrix" rel="noopener noreferrer" target="_blank">Supported Models</a>
-確認目前支援組合。</p>
+<p><code>--profile generic-scpi</code> 僅限 dry-run，且只出現在既有 support matrix 允許 Generic
+planning 的命令上。它不可與 <code>--model</code> 併用，在 simulator 或 live execution 中都是
+無效選項。</p>
+<p>在 no-hardware 模式下，不要用 fake 或看似真實的 resource 字串暗示 model。例如
+<code>USB0::FAKE::E36312A::INSTR</code> 只是 placeholder，不是 model identity。</p>
+<p>對 live commands，<code>--model</code> 接受 canonical ID（例如 <code>keysight-e36312a</code>）並作為
+expected-model guard。CLI 仍會查詢 <code>*IDN?</code>，並以偵測到的 model 選擇 driver。若指定的
+model 與連線 IDN model 不符，命令會在 setup 或 write SCPI 前失敗：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe set --model keysight-e36312a --resource "$env:POWER_USB_RESOURCE" --channel 1 --voltage 1 --current 0.05
+</code></pre></div>
+<p>這要求連線的 model 必須是 E36312A，但不會強制使用 E36312A driver。</p>
+<p><code>--model</code> 不是 feature unlock。不支援的 model、command、mode、connection、backend 或
+feature 組合都會 fail closed。Product LIVE support 以偵測到的 model、command、
+transport、backend 與 required feature 為 exact scope；missing 或 pending scope 都會
+fail closed。Feature family 或 no-hardware plan 不代表該 family 中每個命令都是
+product-open。請參閱 <a href="../core/supported-models.md#product-live-exact-scope-matrix" rel="noopener noreferrer" target="_blank">exact matrix</a>。</p>
 <h2 id="常見問題">常見問題</h2>
 <p>如果找不到 <code>powers-tool.exe</code>，請確認您位於包含 CLI 執行檔的資料夾中，並使用該資料夾中實際的檔名。</p>
 <p>如果找不到實機存活的資源，請檢查儀器電源、USB/LAN 纜線、VISA 驅動程式可見度，以及是否有其他程式佔用了該儀器。</p>

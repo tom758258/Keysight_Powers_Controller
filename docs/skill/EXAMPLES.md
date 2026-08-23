@@ -6,12 +6,13 @@ angle-bracket placeholders before using a live-workflow prompt.
 ## No-hardware simulator read-only workflow
 
 ```text
-Use $powers-tool-cli-orchestration to run the bundled deterministic E36312A simulator helper with <POWERS_TOOL_EXECUTABLE>. Use only USB0::SIM::E36312A::INSTR, simulate mode, planning_model_id keysight-e36312a, and read-status. Write artifacts under .tmp_tests/power_skill_smoke and decide success only from schema-2 machine evidence, request/result artifacts, correlation, final summary, and Worker exit code. Do not perform VISA discovery or any output-affecting command.
+Use $powers-tool-cli-orchestration to run the bundled deterministic E36312A simulator helper with <POWERS_TOOL_EXECUTABLE>. This helper uses the Worker's default files artifact mode. Use only USB0::SIM::E36312A::INSTR, simulate mode, planning_model_id keysight-e36312a, and read-status. Write artifacts under .tmp_tests/power_skill_smoke and decide success only from schema-2 machine evidence, request/result artifacts, correlation, final summary, and Worker exit code. Do not perform VISA discovery or any output-affecting command.
 ```
 
-Expected behavior: the agent uses the fixed helper workflow, never opens real
-hardware, and reports any failed correlation, parse, terminal-result, summary,
-or exit-code check.
+Expected behavior: the agent uses the fixed `files`-mode helper workflow, never
+opens real hardware, and reports any failed correlation, parse,
+terminal-result, summary, or exit-code check. Its artifact requirements are
+not generalized to memory-mode Worker workflows.
 
 ## Contract-aware repository diff review
 
@@ -46,11 +47,12 @@ execution-unit multiplication.
 ## Worker telemetry log and cancellation review
 
 ```text
-Use $powers-tool-cli-orchestration to review this Worker telemetry log workflow and its cancellation handling. Distinguish top-level Worker log from the host-side Sequence log note. Verify that Worker log is read-only, Core owns telemetry admission, identity/support/channel validation, instrument reads, cadence, and cooperative cancellation, CLI owns CSV/JSONL/append, and Worker writes fixed job-local telemetry artifacts. Confirm that a started cycle finishes all requested channels and flushes its rows before cancellation is observed, that cancellation does not issue output OFF or Ramp/Ramp List/Sequence safe-off/error-queue cleanup, and that collected telemetry is retained. Report findings only; do not run hardware.
+Use $powers-tool-cli-orchestration to review this Worker telemetry log workflow and its cancellation handling. Distinguish top-level Worker log from the host-side Sequence log note. Verify that Worker log is read-only, Core owns telemetry admission, identity/support/channel validation, instrument reads, cadence, and cooperative cancellation, and CLI owns CSV/JSONL/append. In files mode, verify that Worker writes fixed job-local telemetry artifacts; in memory mode, verify that it creates no telemetry files and streams schema-2 sample events on stdout. Confirm that a started cycle finishes all requested channels and flushes its rows before cancellation is observed, that cancellation does not issue output OFF or Ramp/Ramp List/Sequence safe-off/error-queue cleanup, and that collected telemetry evidence remains available through the mode-appropriate machine surfaces. Report findings only; do not run hardware.
 ```
 
 Expected behavior: the agent does not apply output-workflow cancellation rules
-to telemetry and keeps telemetry artifacts available after cancellation.
+to telemetry and keeps files-mode artifacts or memory-mode machine evidence
+available after cancellation.
 
 ## Prepare, but do not execute, a live read-only workflow
 
@@ -71,5 +73,6 @@ Use $powers-tool-cli-orchestration to prepare but not execute a live output-affe
 
 Expected behavior: the agent prepares the config and request but performs no
 live I/O. Both output-write gates remain explicit; cleanup includes safe-off,
-terminal artifact verification, cooperative stop, final summary, and Worker
-exit code. The placeholder must be replaced before the plan is actionable.
+mode-appropriate terminal result verification, cooperative stop, final summary,
+and Worker exit code. The placeholder must be replaced before the plan is
+actionable.

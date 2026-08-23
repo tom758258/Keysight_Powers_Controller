@@ -773,13 +773,13 @@ uv run powers-tool ramp-list --json --resource "$env:POWERS_TOOL_RESOURCE" --seg
 ## Power Worker Daemon
 
 The Powers Tool Worker is a local background service that listens on
-localhost and accepts HTTP commands to control Keysight instruments
+localhost and accepts HTTP commands to control supported DC power supplies
 asynchronously.
 
 For full details on the REST API, JSONL lifecycle events, and job result
-artifacts, see the [Power Worker Contract](../contracts/power-worker-contract.md).
+surfaces, see the [Power Worker Contract](../contracts/power-worker-contract.md).
 For the orchestrator/agent handoff flow, including ready-event discovery and
-result artifact polling, see the
+artifact-mode-aware terminal result observation, see the
 [Power Worker Orchestrator Guide](../contracts/power-orchestrator-workflows.md).
 
 Start the worker in simulation mode on a dynamic port:

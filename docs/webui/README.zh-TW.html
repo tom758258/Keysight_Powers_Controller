@@ -250,7 +250,14 @@ matrix 所列的 23 個 model-aware commands，包括 setpoint／output、protec
 snapshot／restore、ramp 與 software sequence workflows。Powers Trigger
 commands 仍不支援；其他 transport 與 backend 仍會 fail closed。完整範圍以
 <a href="../core/supported-models.md">Supported Models</a> 為準。</p>
-<p>WebUI 內建於單一 <code>powers-tool</code> 發行套件中，同時保留 <code>powers_tool_webui</code> 的 import 邊界。前端由靜態 HTML/CSS 與以 <code>app.js</code> 為 composition root 的原生 JavaScript modules 組成，不需要 bundler 或 npm build pipeline；各功能則分散到 API、execution context、state、device/resource、command form、results、jobs、Live Data、JSON files、workflow editors、i18n 與 locale UI 等聚焦模組。</p>
+<p>WebUI 內建於單一 <code>powers-tool</code> 發行套件中，同時保留 <code>powers_tool_webui</code> 的 import 邊界。它依賴共用的 <code>powers_tool_core</code> runtime 與發行套件的 <code>webui</code> extra。前端由靜態 <code>index.html</code>、<code>styles.css</code>，以及以 <code>app.js</code> 為 bootstrap／composition root 的原生 JavaScript modules 組成；執行或建置 frontend 不需要 Node toolchain。</p>
+<ul>
+<li><code>api.js</code> 擁有共用的 JSON HTTP request/response 邊界；<code>execution-context.js</code> 擁有純 execution/workspace context；<code>state.js</code> 擁有初始 page-local state；<code>device-resource.js</code> 擁有 Device/Resource 與 execution-mode 控制項；<code>command-form.js</code> 擁有命令目錄／表單渲染、payload 建構與參數限制。</li>
+<li><code>results.js</code> 擁有 job-result summary 呈現；<code>jobs.js</code> 擁有 Job HTTP 提交、SSE transport 與 Job History；<code>live-data.js</code> 擁有 Live Data 取樣、lifecycle 與通道呈現；<code>json-files.js</code> 擁有共用的 JSON file picker 與下載 helper。</li>
+<li><code>ramp-list.js</code>、<code>trigger-list.js</code>、<code>sequence.js</code> 與 <code>snapshot-restore.js</code> 分別擁有各自文件的純 materialization 與驗證；<code>workflows.js</code> 擁有瀏覽器端 Ramp List、Trigger List、Sequence、Snapshot 與 Restore 編輯器及其 JSON Load/Save orchestration，文件 schema 仍由各自的 focused document modules 擁有。</li>
+<li><code>basic-controls.js</code> 擁有 Basic 控制動作與 Live-readback 呈現；<code>command-support.js</code> 擁有 command-support 與 channel-capability 呈現；<code>i18n.js</code> 擁有 locale 驗證、catalog lookup、English fallback 與 interpolation；<code>locale_ui.js</code> 擁有瀏覽器語言偵測、locale 偏好儲存、<code>&lt;html lang&gt;</code> 與 runtime 語言控制項；<code>locale_en.js</code> 與 <code>locale_zh_tw.js</code> 分別提供 English source catalog 與維護中的 Traditional Chinese catalog。</li>
+</ul>
+<p><code>app.js</code> 維持 bootstrap 與 composition root：controller factory 參數僅代表跨模組邊界提供的相依性，某個 controller 擁有的 helpers 彼此直接呼叫，不會繞回 <code>app.js</code> 路由。Frontend tests 包含 native module-graph smoke，會在不改寫 import/export 的前提下匯入真實的 <code>app.js</code> graph root；既有 global compatibility harness 仍可用於更廣泛的 frontend 行為測試，但不取代 native graph 檢查。</p>
 <h2 id="section-1">套件與進入點 (Package And Entry Point)</h2>
 <p>WebUI 提供兩個已安裝的 console command：</p>
 <ul>
@@ -290,8 +297,9 @@ commands 仍不支援；其他 transport 與 backend 仍會 fail closed。完整
 <p><code>--port 9000</code> 只嘗試固定連接埠；加上 <code>--auto-port</code> 才會從指定值繼續自動嘗試：</p>
 <div class="code-wrapper"><pre><code class="language-powershell">.\.venv\Scripts\powers-tool-webui-launcher.exe --port 9000
 .\.venv\Scripts\powers-tool-webui-launcher.exe --port 9000 --auto-port</code></pre></div>
-<p>只有全部自動候選都因 address-in-use 失敗時才顯示手動 fallback。其他 bind、application initialization、server-thread early exit 或 readiness timeout 都是 fatal startup failure，會保留原始細節並完成清理。</p>
-<p><code>Quit</code> 會先要求取消所有活動中的 WebUI 工作（包含 Live Data、Simulate 與 Dry-run workflow），等待正常清理，再停止 launcher 擁有的伺服器。若清理或關閉逾時，launcher 會保持開啟並回報 shutdown incomplete。</p>
+<p>只有全部自動候選都因 address-in-use 失敗時，才會顯示完整 port fallback 視窗、回報嘗試範圍並允許手動輸入其他 port；手動重試若也 address-in-use，視窗保持開啟並重新啟用欄位與 <code>Start</code>。自動候選不會超過 port <code>65535</code>。非 address-in-use 的 bind 失敗、application initialization、server-thread early exit 與 readiness timeout 都是 fatal startup failure：launcher 保留原始錯誤細節、要求部分建立的 server 停止、關閉自有 socket 並以非零狀態結束；這些失敗永不重新開啟 manual port window，包括發生在手動 fallback retry 時。</p>
+<p><code>Quit</code> 會先要求取消所有活動中的 WebUI 工作（包含 Live Data、Simulate 與 Dry-run workflow），等待正常清理，再停止 launcher 擁有的伺服器。若清理或關閉逾時，launcher 會保持開啟並回報 shutdown incomplete。精簡／fallback 呈現不改變 port 選擇、startup 失敗分類、cleanup 或 process exit-code 行為。</p>
+<p>本機 shared PyInstaller GUI artifact 是位於 <code>dist\powers-tool\powers-tool-webui-launcher.exe</code> 的獨立執行檔；它由同一份 launcher implementation 建置，但不是安裝的 server wrapper。</p>
 <h2 id="section-7">API</h2>
 <ul>
 <li><code>GET /api/health</code>：伺服器與硬體鎖狀態。</li>
@@ -304,32 +312,39 @@ commands 仍不支援；其他 transport 與 backend 仍會 fail closed。完整
 <li><code>GET /api/live/{job_id}/events</code>：Live Data SSE stream。</li>
 <li><code>POST /api/live/{job_id}/stop</code>：停止 Live Data 輪詢。</li>
 </ul>
-<p><code>/api/commands</code> 的實體 metadata 只會以 canonical <code>model_id</code> 作為各 model map 的 key；非實體 profile（例如 <code>generic-scpi</code>）位於獨立的 <code>planning_profiles</code>，不會混入實體型號 map。Evidence 與私有支援 metadata 不會對外暴露。</p>
+<p><code>/api/commands</code> 的實體 metadata 只會以 canonical <code>model_id</code> 作為 <code>command_support_by_model_id</code>、<code>live_support_by_model_id</code>、<code>channel_capabilities_by_model_id</code>、<code>electrical_ratings_by_model_id</code> 與 <code>setpoint_ranges_by_model_id</code> 各 map 的 key；非實體 profile（例如 <code>generic-scpi</code>）位於獨立的 <code>planning_profiles</code> 物件，不會混入實體型號 map。其 metadata 直接由 Core projection 而來，WebUI 只負責隨 command response 序列化。Evidence 與私有支援 metadata 不會對外暴露。</p>
 <p><code>/api/health</code> 的 <code>package</code> 保留 adapter 識別碼 <code>powers-tool-webui</code>，<code>version</code> 則來自單一已安裝的 <code>powers-tool</code> distribution。</p>
 <h2 id="section-8">Runtime 邊界 (Runtime Boundary)</h2>
 <p>WebUI 不 import <code>powers_tool_cli</code>，也不直接執行 VISA 或 SCPI；它把 HTTP payload 對應到 Core 的 <code>RuntimeOptions</code> 與 request objects，再呼叫 <code>powers_tool_core.command_runner</code>。</p>
 <p>真實硬體工作由單一硬體鎖序列化；Simulate、Dry-run、離線 metadata 與 Live Data 工作不占用該鎖。同步 Core 執行位於 worker thread，因此 FastAPI event loop 仍可服務 health、工作狀態、取消與 SSE。</p>
 <p>Raw <code>/api/jobs</code> 使用 V2 runtime identity：Dry-run 必須且只能提供 <code>planning_model_id</code> 或 <code>planning_profile_id</code> 其中之一；Simulate 只接受實體 <code>planning_model_id</code>；Real 只接受可選的 <code>expected_model_id</code>。Core 會查詢 <code>*IDN?</code>、解析廠牌與型號，並在命令特定 SCPI 前檢查預期型號；安全護欄永遠不能覆蓋 IDN 選出的實際驅動程式。</p>
-<p>Legacy <code>runtime.model_profile</code> 與 <code>runtime.model</code> 會被拒絕。WebUI 不會從看似真實或虛假的 resource string 猜測規劃型號；請提供 V2 planning field，或使用 deterministic SIM resource。</p>
+<p>Legacy <code>runtime.model_profile</code> 與 <code>runtime.model</code> 會被拒絕。WebUI 不會從看似真實或虛假的 resource string 猜測規劃型號；請提供 V2 planning field，或使用 deterministic SIM resource（例如 <code>USB0::SIM::E36312A::INSTR</code>）。WebUI 的 live resource 支援由 scan/job IDN metadata 學習而來。</p>
+<p>Raw runtime 值採嚴格型別：boolean 欄位只接受 JSON <code>true</code>／<code>false</code>，<code>"false"</code> 之類的字串無法滿足 confirmation 或啟用模式；integer、string、identity 與 serial-option 欄位同樣在提交前驗證。Raw <code>parameters.channel</code> 只接受 exact 正整數或支援命令的 exact <code>"all"</code>，boolean、float 與數字字串不會被轉型。未知命令與刻意不支援的命令也會在 job/task 建立前同步拒絕。</p>
+<p>Browser 與 raw WebUI jobs 一律使用 product support-policy mode；validation-policy runtime 欄位會被拒絕而非忽略。Frontend 的 enabled 狀態僅供 UX，Core 仍是最終由 IDN 選擇的 exact-scope authority。</p>
+<p>對 Ramp、Ramp List 與 Sequence，主要 Run 按鈕是有狀態的：<code>Run</code>、<code>Starting...</code>、紅色 <code>Stop</code>、<code>Stopping...</code>，直到 terminal SSE event 確認作用中 job 已清除才回到 <code>Run</code>。清理執行期間顯示 Waiting for safe-off and cleanup，並保持命令切換與 Live Data 硬體存取封鎖；SSE 中斷透過 job-status reconciliation 處理。</p>
 <p>瀏覽器的 Real、Simulate 與 Dry-run 都是頁面內狀態；重新載入時一律回到 Real，且不把模式、身分或實機寫入授權存入 browser storage。No-hardware request 會省略 live resource、serial options、expected-model guard 與 confirmation。</p>
 <p>取消執行中的工作會先進入非終止狀態 <code>cancel_requested</code>；WebUI 保留 <code>active_job_id</code> 與硬體鎖，直到 I/O 與 Core 清理結束。之後才進入 <code>cancelled</code>；清理失敗則為 <code>failed</code>。</p>
 <h2 id="section-9">使用者介面 (UI)</h2>
 <p>靜態 UI 是三區塊儀表板：上方連線與版本區、Basic command 與可折疊 command rail、以及 Live Data、Job History 和結果 JSON 的右側面板。命令 ID 保持 kebab-case；面向使用者的名稱使用空格與 sentence case。</p>
 <p>連線區域包含 <strong>Supported devices / 支援裝置</strong> 唯讀清單與 Device options（裝置選項）。Device options 提供 Real、Simulate、Dry-run 與 Real 模式的 <code>Expected model</code>。<code>Auto-detect</code> 依連線儀器 IDN 判定；<code>Require &lt;model&gt;</code> 只建立預期型號護欄與前端規劃提示，不會覆蓋 IDN 選出的驅動程式。Supported devices 列出目前 Product-open 且 WebUI 可使用的 <code>system_visa</code> 連線。頁面會分別顯示已偵測型號、Expected model、transport/backend 與支援內容。</p>
 <p>Real 模式使用頁面內的寫入授權。非空白資源會為目前的資源、Expected model 與偵測型號內容建立預設啟用的授權；Device options 可鎖定寫入。資源或身分內容改變時會建立新授權內容。標題中的 Writes locked／enabled 只是狀態顯示。</p>
-<p>前端可隱藏或停用不支援命令，但這只是 UX；直接呼叫 <code>/api/jobs</code> 仍必須通過 WebUI backend 與 Core 的精確 model/command/transport/backend/feature gate。WebUI 是 Product-only，不提供 validation override 或 backend selector。</p>
-<p>Basic <code>set</code> 可只設定 Voltage、Current 或兩者。空白欄位會從 payload 省略。E3646A 使用一個全域輸出開關：CH1／CH2 的輸出控制會顯示由 ALL 控制，但各通道的 Voltage、Current 與 Set 仍保持獨立。</p>
+<p>前端可隱藏或停用不支援命令，但這只是 UX；直接呼叫 <code>/api/jobs</code> 仍必須通過 WebUI backend 與 Core 的精確 model/command/transport/backend/feature gate。WebUI 是 Product-only，標準瀏覽器使用預設 system-VISA backend，沒有 validation mode 或 backend selector。</p>
+<p>瀏覽器會區分 profile support 與 exact Product-mode live availability。在真實資源回傳 capabilities 之前，commands 保持 model-planning 行為並顯示連線 scope 尚未評估。在已 Product-open 的 scope 上成功執行 resource-backed <code>capabilities</code>，或成功的真實 <code>identify</code>，會加入 IDN 偵測的 model、正規化 transport/backend scope 與 per-command exact status；diagnostic 路徑在 expected-model guard 下讀取身分，但不開放 pending feature commands。pending 或缺少的 exact scopes 以不同原因顯示停用，identity/status diagnostics 則明確屬於 policy-exempt。更換 resource 會清除 exact context。</p>
+<p>若成功的 <code>identify</code>／<code>verify</code> 偵測到未知或已移除的 model，diagnostic 結果仍可用，但 support projection 為 unevaluated 且不含 command availability；這會清除過期 exact context，也不啟用 Generic fallback。Expected-model mismatch 仍在附加支援 metadata 前使 diagnostic 失敗。Device / Resource summary 亦顯示精簡的 validated/pending/unavailable 計數；pending metadata 只在實際 transport/backend 符合已註冊 pending scope 時出現。</p>
+<p>安全的 Core projection 可為 exact scope 附加 <code>sequence_action</code> 與 <code>trigger_source</code> inventories，只暴露狀態與 Product availability，不暴露 evidence 或內部 notes。Projection contract 為 schema version 2：已評估結果使用 canonical <code>model_id</code>；unevaluated diagnostics 將回報的 manufacturer/model 與可為 null 的 resolved <code>model_id</code> 分開，且永不暴露 evidence IDs、歷史路徑、checksums 或 private notes。由於文件與 trigger request 在執行時選擇 feature，command rail 維持 command-level，不會因其他 feature pending 就全域停用命令。純 offline utilities 與 identity/status diagnostics 分類不同，不是 policy-exempt 的硬體 diagnostics。</p>
+<p>Basic <code>set</code> 可只設定 Voltage、Current 或兩者。空白欄位會從 payload 省略。Voltage 是輸出電壓設定點，Current 是輸出電流限制／設定值（E36312A、EDU36311A、E3646A）。<code>/api/commands</code> 提供官方 setpoint programming-range metadata；E3646A 對 LOW/P8V 與 HIGH/P20V 是 range-dependent，目前 WebUI 不依此新增 range selector，也不引入硬性小數位數拒絕或靜默 rounding/truncation。E3646A 使用一個全域輸出開關：CH1／CH2 的輸出控制會顯示由 ALL 控制，但各通道的 Voltage、Current 與 Set 仍保持獨立；readback 未知時 ALL 控制項仍可用並送出 output-on。</p>
 <p>Ramp 的 Channel selector 會依目前型號 metadata 動態顯示單一通道、通道組合與 All。單一選項送出 <code>channel</code>；組合與 All 送出明確、canonical 的 <code>channels</code> 清單。所有所選通道共用相同 Ramp 參數，並以 lockstep logical steps 前進。全寬的多通道提示只會在選取通道組合或 All 時顯示於 Channel 與 Current 下方；選取單一通道時不會保留空白提示列，其餘 Ramp 參數會維持雙欄對齊。</p>
-<p>Ramp List 編輯器最多 10 個有序 segment，可載入 v2 至 v5，並一律儲存 strict v5；每個 Segment 可依目前型號選擇不同通道組合，All 會寫成明確的 canonical <code>channels</code> 清單。Sequence 編輯器最多 250 步，儲存 strict v2。兩者都明確包含 <code>loop_count</code>。Ramp、Ramp List 與 Sequence 的 Loop count 在啟用時接受 2 至 10,000；Core admission 另限制最多 1,000,000 個 logical execution units，超過 100,000 時 UI 會顯示長時間執行警告。</p>
+<p>Ramp List 編輯器最多 10 個有序 segment，可載入 v2 至 v5，並一律儲存 strict v5；每個 Segment 可依目前型號選擇不同通道組合，All 會寫成明確的 canonical <code>channels</code> 清單。Sequence 編輯器最多 250 步，儲存 strict v2 且永不序列化內部 camel-case 狀態名稱。兩者都明確包含 <code>loop_count</code>。對 Ramp 與每個 Ramp List segment，Wait between steps (ms) 只在非最終 voltage step 後套用；Ramp List 的 Wait after final step (ms) 在最後一步之後、segment 完成之前套用。</p>
+<p>Ramp、Ramp List 與 Sequence 的 Loop count 在啟用時接受 2 至 10,000；Core admission 另限制最多 1,000,000 個 logical execution units，超過 100,000 時 UI 會顯示長時間執行警告，工作透過既有 Job/SSE stream 發布整數百分比進度，結果 detail 最多保留前 100 與後 100 筆並附加 truncation metadata。關閉 Loop 會移除欄位、使 effective value 變為 1，並將已選的 Loop-complete pulse 重設為 None；無效的已啟用 count 會在重新渲染時保持可見，並讓 Run 與 Save 維持停用直到修正或關閉 Loop。</p>
 <h3>脈波工作流程</h3>
 <p>Cycle Output 可選 finished pulse；Ramp 的 Pulse timing 為 None、Every step、Ramp complete 或 Loop complete；Ramp List 為 None、Every step、Segment complete 或 Loop complete；Sequence 只保留 per-Step Trigger pulse。多通道 Ramp List 的 step/segment pulse 每次只發一次，使用該 Segment 第一個 canonical channel；Loop-complete 使用最後一個 Segment 的第一個 canonical channel，且使用者不能設定此 anchor。</p>
 <p>E3646A 的輸出啟用為全域控制。Ramp List 會先為清單中會使用到的每個通道寫入第一組安全設定值，再一次啟用全域輸出；WebUI 只在 E3646A context 顯示此提示。</p>
-<p>後面板 pulse pin 與輸出通道互相獨立，且只支援 E36312A。完成脈波是軟體排程的後續 <code>*TRG</code>，不是 native LIST；它會暫時修改並還原 trigger／rear-pin 設定，而全域 <code>*TRG</code> 可能影響其他已 arm 的 BUS 行為。</p>
+<p>後面板 pulse pin 與輸出通道互相獨立，且只支援 E36312A。當已知所選資源確定是其他型號時控制項停用；身分未知時脈波詳情仍可設定，但 <code>Run</code> 會被封鎖並顯示 E36312A planning/support 指引。完成脈波是軟體排程的後續 <code>*TRG</code>，不是 native LIST；它會暫時修改並還原 trigger／rear-pin 設定，而全域 <code>*TRG</code> 可能影響其他已 arm 的 BUS 行為。Sequence Trigger pulse 的 Leave configured 只控制這些設定是否在脈波後還原。</p>
 <h3>觸發執行</h3>
 <p>Trigger Fire 會對所有已 arm 的 BUS trigger 發送全域 <code>*TRG</code>。Trigger Step/List 使用 Immediate 時會在送出 <code>INIT</code> 即啟動，因此 Fire now 會被清除並停用。BUS 的 Wait complete 必須在同一命令中搭配 Fire now；不等待完成的 LIST 則必須選擇 Leave configured。</p>
 <h3>Trigger List 工作區</h3>
 <p>Trigger List 使用三通道工作區，每個通道保留自己的 count 與 1 至 100 個 step row，包含 Voltage、Current、Dwell、BOST 與 EOST。Run 只提交所選通道；Load/Save 使用 strict <code>powers-tool-trigger-list-workspace</code> version 1 JSON。</p>
-<p>Live Data 樣本包含解析後型號與各通道 OVP/OCP trip state。新鮮且明確的 trip 狀態會對該通道的直接輸出命令加入 WebUI soft guard；safe/off 與復原命令仍可用。Advanced Diagnostics 提供 Clear Status / Errors、Get capabilities、Read device information 與 Read errors。</p>
+<p>Live Data 樣本包含解析後型號與各通道 OVP/OCP trip state。新鮮且明確的 trip 狀態會對該通道的直接輸出命令加入 WebUI soft guard；過時或未知狀態不加入保護，safe/off 與復原命令仍可用。Advanced Diagnostics 提供 Clear Status / Errors、Get capabilities、Read device information 與 Read errors。Workspace 為每個完整執行 context 保留最新成功結果：Real 包含 resource、Expected Model guard 與解析後 canonical identity，Simulate／Dry-run 包含其 physical planning model 或 planning profile；Result Detail 保留完整 raw job payload。</p>
 <p>PSM-2010 的 CH1 卡片會額外顯示目前實際 LOW/HIGH 輸出檔位的唯讀 badge。尚未知或尚未取得資料時顯示 <code>--</code>；其他型號不顯示此 badge。</p>
 <h2 id="section-10">限制</h2>
 <p>不在 WebUI 介面範圍內的命令會由 <code>/api/commands</code> 標示停用，直接提交時回傳 <code>not_implemented_in_webui</code>。後端／Core 也會拒絕不支援型號、命令、模式與必要功能的直接請求；瀏覽器顯示不是安全邊界。</p>
@@ -338,8 +353,46 @@ commands 仍不支援；其他 transport 與 backend 仍會 fail closed。完整
 <li>E36312A：USB + system VISA；LAN + system VISA。</li>
 <li>EDU36311A：USB + system VISA；LAN + system VISA。</li>
 <li>E3646A：ASRL／RS-232 + system VISA。</li>
+<li>PSM-2010：ASRL／RS-232 + system VISA。</li>
 </ul>
-<p>只有 Core 精確矩陣中的命令會在上述連線開放。E3646A 的 USB 與 LAN 目前不在範圍內；其 protection、trigger/native LIST、snapshot/restore 與 completion pulse 也維持停用。</p>
+<p>只有 Core 精確矩陣中的命令會在上述連線開放。E3646A 與 PSM-2010 仍限於 ASRL／RS-232 + system VISA；兩者的 USB 與 LAN 不在目前範圍內。PSM-2010 開放 Core Product matrix 中確切的 23 個 model-aware commands，涵蓋 setpoint／output、protection、snapshot／restore、ramp 與 software-sequence workflows；Powers Trigger commands 維持不支援。</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>USB</th>
+<th>LAN</th>
+<th>ASRL / RS-232</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>E36312A</td>
+<td>accepted exact commands</td>
+<td>accepted exact commands</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td>EDU36311A</td>
+<td>accepted exact commands</td>
+<td>accepted exact commands</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td>E3646A</td>
+<td>not current scope</td>
+<td>not current scope</td>
+<td>accepted exact commands</td>
+</tr>
+<tr>
+<td>PSM-2010</td>
+<td>not current scope</td>
+<td>not current scope</td>
+<td>accepted exact commands</td>
+</tr>
+</tbody>
+</table>
+<p>E36312A 的 <code>full</code> 在 read-only、output、protection、snapshot 與 trigger-list suites 外包含 <code>software-sequence</code>；EDU36311A 的 <code>full</code> 在 read-only、output 與 protection 外包含 <code>software-sequence</code>，其 trigger/native LIST 與 snapshot/restore 維持停用。E3646A 的 <code>full</code> 仍是 <code>readonly</code>、<code>output</code> 與 <code>software-sequence</code>；其 <code>ramp-list</code> 與 <code>sequence</code> 是軟體工作流程而非 native LIST，protection、trigger/native LIST、snapshot/restore 與 completion-pulse 維持停用。WebUI expected-model 欄位只是 safety guard 與 planning hint，不會改變 IDN 選出的 live driver，也不會讓瀏覽器開啟不同連線類型。</p>
 <h2 id="section-11">測試</h2>
 <div class="code-wrapper"><pre><code class="language-powershell">uv run python -m pytest tests/webui -q -p no:cacheprovider</code></pre></div>
 <p>焦點指令分類與工作接收驗證：</p>

@@ -36,14 +36,23 @@ lifecycle、capabilities 與 exact live-support policy 仍是彼此分離的 aut
 `planning_model_id` 是 canonical physical planning identity，`expected_model_id`
 是 optional live safety guard，`planning_profile_id` 是 nonphysical dry-run profile。
 `generic-scpi` 不是 physical model 或 live expected model，也不在 physical registry
-中。
+中。`powers_tool_core.model_metadata.planning_profile_metadata()` 是 nonphysical
+planning-profile metadata 的公開 Core-owned projection。它不會把 planning profile
+放進 physical model、driver、electrical-rating 或 setpoint-range metadata。
 
 ## Live Support Policy 模式
 
-Product execution 必須通過 exact `model_id + command + transport + backend +
-required feature` scope；缺少、未知或 pending scope 都會 fail closed。`expected_model_id`
-只作 live mismatch guard，不會選擇 driver 或解鎖 command。No-hardware capability、
-另一種 transport/backend 或另一個 feature 都不代表 Product-open。
+Product mode 是預設值並維持 fail-closed。Contributor Validation mode 僅供明確註冊的
+validation scope 使用；其 workflow 維護於 [Contributing](../CONTRIBUTING.md)。
+Validation 不會修改 Product metadata。
+
+`RuntimeOptions.support_policy_mode` 預設為 `product`。Core 讀取 `*IDN?` 後，
+會將回報的 manufacturer 加 model 解析為 canonical physical `model_id`，並檢查
+expected-model guard。Product execution 在送出 command-specific SCPI 前，必須符合
+exact `model_id + command + transport + backend + required feature` scope；缺少、
+不支援與 pending scope 都會 fail closed。No-hardware capability、另一種
+transport/backend 或另一個 feature 都不代表 Product-open；`expected_model_id`
+只作 live mismatch guard，不會選擇 driver 或解鎖 command。
 
 Backend selector 與 Product support 分開正規化：未設定或空白代表
 `system_visa`，`@py` 代表 `pyvisa_py`，`@bt` 代表 `pyvisa_bt`，其他 selector
@@ -51,12 +60,34 @@ Backend selector 與 Product support 分開正規化：未設定或空白代表
 `pyvisa_bt` 的 Product-open exact scope，因此 model-aware Product execution 搭配
 `@bt` 時會 fail closed。
 
-`list-resources`、`verify`、`identify`、`error` 與 `clear` 是明確的 diagnostic
-exemptions。它們的成功只證明該 diagnostic operation，不會開放 model、feature
-family、transport/backend scope 或其他 command。Exact Product matrix 請以
-[Supported Models](supported-models.md) 為準；不同 transport/backend scope 不會互相繼承。
-Contributor validation workflow 請參閱 [Contributing](../CONTRIBUTING.md)；驗證不會修改
-Product metadata。
+Exact policy evaluation 對 `sequence_action` 與 `trigger_source` 是 feature-aware
+的。Sequence 在第一個 step 前會驗證每個與儀器相關的 normalized action；host-only
+的 `wait` 與 `log` action 不需要 live feature entry。`trigger-step` 與
+`trigger-list` 會在 trigger setup 前驗證其有效的 BUS 或 Immediate source。已驗證的
+command scope 不會開放未註冊的 action/source。缺少、未知、不支援，以及 Product
+mode 下的 pending feature entry 都會 fail closed；Validation mode 只接受明確註冊的
+`feature_pending` entry。已驗證的 transport/backend parent 可以混合 validated 與
+pending command features：validated siblings 保持 Product-open，而每個 pending
+feature 仍僅限 Validation 使用。transport-pending 的 parent 不能包含 validated
+feature。
+
+`powers_tool_core.support_policy.live_support_policy_metadata()` 與
+`exact_live_support_metadata()` 提供可直接 JSON 化的顯示 projection，且不會暴露
+validation artifacts 或可變的 registry records。Model-level projection 會區分
+profile support、明確的 diagnostic exemptions 與已註冊 scopes。Exact projection 在
+Product mode 下針對單一偵測到的 model、resource transport 與 backend 進行評估，供
+adapter UX 使用；它不取代強制執行的 runtime gate。這些 projection 使用 schema
+version 2 與 canonical `model_id`，不會暴露 evidence IDs、artifact paths、checksums
+或 private evidence notes。未評估的 diagnostics 會將回報的 manufacturer/model 欄位
+與解析後的 physical identity 分開，且不暴露任何 Product-open command map。
+
+Identity/status diagnostics 與純 offline utilities 在此 projection 中是分開的。
+Exempt diagnostic 在讀取真實 IDN 後可以回報 exact Product-policy metadata，而不需要
+取得 model feature scope。若偵測到的 model 沒有 active exact policy，diagnostic 仍
+可以 unevaluated 且空的 support projection 成功；這不會開放 live commands，也不會
+啟用 Generic fallback。Expected-model mismatch 仍是 validation error。
+Offline-only utilities 會標記為 `offline_only`；它們不是 diagnostics，也永遠不會被
+回報為 Product-open exact live commands。
 
 ## 套件內容
 
@@ -74,10 +105,14 @@ Product metadata。
 - `powers_tool_core.cancellation` 與 `stop_cleanup`: 協作取消、可中斷的等待、僅限 GPIB 的 local release，以及 Worker 與 WebUI 共用的結構化停止清理結果。
 - `powers_tool_core.safety`: 明確的本機安全設定檔載入與計畫驗證。
 - `powers_tool_core.electrical_ratings` 與 `setpoint_limits`: 已驗證的獨立通道直流輸出額定值、可選的 range-dependent voltage/current 組合，以及有效的安全限制。
+- `powers_tool_core.setpoint_ranges`: 來自 model programming manuals 的官方輸出
+  voltage setpoint 與 output current limit programming-range metadata。
 - `powers_tool_core.capabilities`: 指令與型號的能力 (capability) 報告。
-- `powers_tool_core.model_metadata`、`support_policy`、`model_resolution` 與
-  `model_enablement`：公開的 model projection、exact live-support metadata、
-  身分驗證與 metadata 一致性檢查。
+- `powers_tool_core.model_metadata` 與 `support_policy`: 公開的 physical-model
+  projections 與 exact live-support metadata。
+- `powers_tool_core.model_resolution`: 供 dry-run/simulator planning 與 live
+  expected-model guard 使用的集中式 runtime identity 驗證。
+- `powers_tool_core.model_enablement`: model metadata projections 的一致性驗證。
 - `powers_tool_core.testing`: 供測試與 CLI 模擬模式使用的無硬體模擬器。
 
 ## 安裝
@@ -138,7 +173,14 @@ E36312A 與 EDU36311A 的保護觸發讀取使用 channel-list 查詢。共用�
 原生 LIST 執行僅限於 `trigger-list`；Ramp 一律使用軟體
 設定點步進。`generic-scpi` 是 nonphysical no-hardware
 planning profile，不是 physical trigger planning model。影響硬體的行為保持明確
-且需主動啟用 (opt-in)。
+且需主動啟用 (opt-in)。Feature family 不會開啟其他 commands；軟體 `ramp-list`
+與 step-limited `sequence` 不是 native LIST 支援。
+
+對輸出工作流程而言，`voltage` 是輸出電壓設定點，`current` 是輸出電流限制／電流
+設定值（適用於支援的 Product-active models）。Core 會另外公開來自 model
+programming manuals 的官方 programming-range metadata，與獨立通道直流輸出額定的
+安全限制分開。Manuals 已記載常見的 SCPI 數值參數處理方式，因此這份 metadata 不會
+在 Core 中引入小數位數拒絕或靜默的四捨五入／截斷。
 
 官方 electrical rating 可為同一通道定義多個 operating ranges。此時獨立的最大
 voltage 與 current 只描述整體 envelope，不能單獨證明每一組 voltage/current
@@ -151,6 +193,24 @@ Core 也負責 CLI 使用的窄 model-specific execution boundary，包括
 `readonly.run_validate_readonly()`；adapter 只消費其 result 與 error，不選擇、建立或依
 concrete driver class 分支。支援既有 command contract 的 model 應整合在 Core，而不是在
 CLI 增加 concrete-driver branch。
+
+Dry-run 與 simulator planning 不會從任意 resource string 猜測 model。Output-family、
+Ramp List、Sequence、protection write 與 trigger planner 需要
+`RuntimeOptions.planning_model_id`、允許的 dry-run `planning_profile_id`，或已知的
+deterministic simulator resource。回傳的 plans 會分別標示 physical 與 nonphysical
+planning identities。諸如 `USB0::FAKE::E36312A::INSTR` 這類 fake 或 live-looking
+resources 只是 test placeholder，不得暗示 model；諸如
+`USB0::SIM::E36312A::INSTR` 的 deterministic SIM resources 會被接受，因為它們對應到
+已知的 simulator IDN/model data。Trigger no-hardware planning 僅接受 E36312A。Live
+hardware 使用 manufacturer 加 model 的 IDN 解析。在 live 模式下，`expected_model_id`
+是 safety guard：`*IDN?` 之後，Core 要求偵測到的 canonical `model_id` 必須相符，才會
+送出 setup/write SCPI。被選擇的 model 永遠不會覆寫由 IDN 選出的 driver。
+
+在該 guard 之後，Product mode 會以解析後的 canonical `model_id`、有效 command、VISA
+resource transport、runtime backend 與 required feature 強制執行 exact Product
+support。缺少或 pending scope 會在 command-specific I/O 前 fail closed。Contributor
+Validation mode 只接受明確註冊的 validation scope，且不會繞過 identity、request、
+safety、confirmation、cleanup 或 exact-scope enforcement。
 
 ## 輸出工作流程脈波 (Pulses)
 
@@ -186,7 +246,49 @@ Sequence 沒有 top-level completion pulse，只有既有的 per-Step `trigger-p
 action。軟體脈波會為觸發與數位腳位設定建立快照並進行還原，並可能發送全域
 `*TRG`，影響其他已經 armed 的 BUS 行為。
 
-Ramp List v2/v3/v4 的每個 Segment 使用單一 `channel`；v5 是最新格式，要求明確的
-`enable_output`、`loop_count`，以及每個 Segment 非空、不可重複的 `channels` 清單。
+Ramp List version 2 保留 `kind: "powers-tool-ramp-list"`，以固定的
+`enable_output: false` 與 `loop_count: 1` 語意繼續被接受。Version 3 要求 top-level
+的 exact JSON boolean `enable_output`，並隱含單次 iteration。Version 4 同時要求
+`enable_output` 與 `loop_count`；v2/v3/v4 的每個 Segment 使用單一 `channel`。
+Version 5 是最新格式，要求上述兩個 top-level 欄位，並將每個 Segment 的 `channel`
+換成非空、不可重複的 `channels` 清單；Sequence v1 隱含單次 iteration 且禁止
+`loop_count`，Sequence v2 則要求它。缺少、型別錯誤、未知、legacy 與未來版本的
+欄位都會在硬體 I/O 前被拒絕。明確的 CLI loop override 會在內部升級受支援的舊文件，
+但不會修改載入的文件本身。
 E3646A 使用自動啟用輸出時，Core 會先為整份清單使用的每個通道寫入其第一次出現
 Segment 的第一組安全設定值，再一次啟用全域輸出；之後仍照常執行所有 Segment writes。
+
+Ramp dry-run plan 會顯示單一 iteration 的電壓路徑，並以 `loop_count` 分別回報總
+iteration 數。Pulse actions 依執行順序運作，與 `enable_output` 無關：Ramp-complete
+接在該 iteration 的設定點檢查之後，而 Loop-complete 是最後一個 workflow action。
+每個 planned Ramp pulse 都使用與執行時相同的有效 `completion_pulse_channel`
+anchor；後面板腳位選擇仍是獨立設定。
+
+Loop-complete pulse 只有在工作流程 iterations、最終設定點／輸出驗證、workflow
+error-queue 檢查與最終 cancellation 檢查都成功後才會嘗試。其結果會區分 `requested`、
+`attempted`、`fired`、`completed`、`restored`、`restore_errors` 與
+`post_pulse_errors`。因為 `*TRG` 在 trigger 還原之前送出，restore、post-pulse
+error-queue、release 或 close 失敗可能發生在實體脈波之後；這類失敗會使命令失敗，
+但不會錯誤改變已記錄的 fired 狀態。只有 terminal Loop-complete pulse 失敗時，
+`completed_loops` 仍視為完整；per-iteration 的 Ramp-complete pulse 屬於該 iteration
+的一部分，必須成功後該 loop 才會被計入。
+
+`segment_count` 與 `step_count` 描述單一文件 iteration；`completed_loops` 計算完整
+完成的 iterations。`completed_segments` 與 `completed_steps` 描述目前或最近一次嘗試
+的 iteration，而 `completed_segment_executions` 與 `completed_step_executions` 則跨
+iterations 累計。失敗或取消項目的 context 包含 1-based `loop_index` 加上原本的
+Segment 或 Step index。單次 iteration 成功項目的形狀保持相容。
+
+Ramp 與 Ramp List 預設不改變輸出狀態。選用的 `enable_output: true` 只會在 current
+limit 與第一個 voltage setpoint 完成驗證與寫入後啟用輸出，接著要求 ON readback；
+正常完成時已啟用的輸出維持 ON，並再次讀取最終狀態。
+
+Ramp、Ramp List 與 Sequence 的取消是協作式的。目前的 VISA call 返回後，Core 會停止
+後續 workflow steps 與 pulses，使用同一個 session 對每個支援通道請求 OFF、驗證每個
+通道 OFF、以 20-read 上限清空 error queue，然後讓擁有的 session 關閉。只有清理完全
+成功才回報 cancellation；任何 OFF、readback、error queue 或 session-close 失敗都會
+回報 `cleanup_failed`。此 workflow stop 不是硬體緊急停止，並與 `trigger-abort` 分開
+——後者會中止 Trigger/LIST 執行，但不保證輸出 OFF。Sequence 文件接受 canonical 的
+`trigger-pulse` action。軟體脈波會 snapshot 並還原 trigger/digital pin 設定，除非
+明確要求 `leave_trigger_configured`。它們會送出全域 `*TRG`，可能同時觸發其他已
+armed 的 BUS 行為。

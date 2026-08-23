@@ -6,13 +6,14 @@
 ## 無硬體 simulator read-only workflow
 
 ```text
-使用 $powers-tool-cli-orchestration 搭配 <POWERS_TOOL_EXECUTABLE> 執行內附的 deterministic E36312A simulator helper。只能使用 USB0::SIM::E36312A::INSTR、simulate mode、planning_model_id keysight-e36312a 與 read-status。將 artifacts 寫到 .tmp_tests/power_skill_smoke，並只依 schema 2 machine evidence、request/result artifacts、correlation、final summary 與 Worker exit code 判定成功。不得執行 VISA discovery 或任何 output-affecting command。
+使用 $powers-tool-cli-orchestration 搭配 <POWERS_TOOL_EXECUTABLE> 執行內附的 deterministic E36312A simulator helper。此 helper 使用 Worker 預設的 files artifact mode。只能使用 USB0::SIM::E36312A::INSTR、simulate mode、planning_model_id keysight-e36312a 與 read-status。將 artifacts 寫到 .tmp_tests/power_skill_smoke，並只依 schema 2 machine evidence、request/result artifacts、correlation、final summary 與 Worker exit code 判定成功。不得執行 VISA discovery 或任何 output-affecting command。
 ```
 
-預期行為：Agent 使用固定 helper workflow，不開啟真實硬體，並回報任何
-correlation、parse、terminal result、summary 或 exit code 檢查失敗。成功判定
-必須依 terminal `result.json`、summary、correlation 與 Worker exit code；
-`ready` 或 queue acceptance 不代表 workflow 已完成。
+預期行為：Agent 使用固定的 `files`-mode helper workflow，不開啟真實硬體，並
+回報任何 correlation、parse、terminal result、summary 或 exit code 檢查失敗。
+成功判定必須依 terminal `result.json`、summary、correlation 與 Worker exit code；
+`ready` 或 queue acceptance 不代表 workflow 已完成，也不可把此 helper 的 artifact
+要求套用到 memory-mode Worker workflow。
 
 ## Contract-aware repository diff review
 
@@ -45,11 +46,11 @@ no-hardware capability、pending evidence 或其他 backend 視為 Product-open�
 ## Worker telemetry log 與 cancellation review
 
 ```text
-使用 $powers-tool-cli-orchestration 審查這個 Worker telemetry log workflow 與 cancellation handling。區分 top-level Worker log 與 host-side Sequence log note。確認 Worker log 是 read-only；Core 負責 telemetry admission、identity/support/channel validation、instrument reads、cadence 與 cooperative cancellation；CLI 負責 CSV/JSONL/append；Worker 寫入固定 job-local telemetry artifacts。確認已開始的 cycle 會完成所有 requested channels 並 flush rows 後才觀察 cancellation；cancellation 不會執行 output OFF 或 Ramp／Ramp List／Sequence safe-off／error-queue cleanup，且已收集 telemetry 會保留。只回報 findings；不要執行硬體。
+使用 $powers-tool-cli-orchestration 審查這個 Worker telemetry log workflow 與 cancellation handling。區分 top-level Worker log 與 host-side Sequence log note。確認 Worker log 是 read-only；Core 負責 telemetry admission、identity/support/channel validation、instrument reads、cadence 與 cooperative cancellation；CLI 負責 CSV/JSONL/append。files mode 下 Worker 寫入固定 job-local telemetry artifacts；memory mode 則不建立 telemetry files，並在 stdout 輸出 schema-2 sample events。確認已開始的 cycle 會完成所有 requested channels 並 flush rows 後才觀察 cancellation；cancellation 不會執行 output OFF 或 Ramp／Ramp List／Sequence safe-off／error-queue cleanup，且已收集 telemetry evidence 仍可從符合 mode 的 machine surfaces 取得。只回報 findings；不要執行硬體。
 ```
 
 預期行為：Agent 不會把 output workflow cancellation 規則套用到 telemetry，
-並在 cancellation 後保留 telemetry artifacts。
+並在 cancellation 後保留 files-mode artifacts 或 memory-mode machine evidence。
 
 ## 準備但不執行 live read-only workflow
 
@@ -68,6 +69,6 @@ guard 不會用來選 driver 或解鎖 support。
 ```
 
 預期行為：Agent 準備 config 與 request，但不執行 live I/O。兩個
-output-write gates 都保持明確；cleanup 包含 safe-off、terminal artifact
-驗證、cooperative stop、final summary 與 Worker exit code。Placeholder 必須
-替換後，計畫才可實際使用。
+output-write gates 都保持明確；cleanup 包含 safe-off、符合 mode 的 terminal
+result 驗證、cooperative stop、final summary 與 Worker exit code。Placeholder
+必須替換後，計畫才可實際使用。

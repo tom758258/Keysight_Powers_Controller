@@ -37,7 +37,9 @@ transport、backend 與 required-feature scope 限制。
 - 透過 VISA 使用 USB、LAN 或明確的 RS-232/ASRL 設定控制支援的直流電源
   供應器。
 - 可使用 `powers-tool` CLI 或本機 `powers-tool-webui` 儀表板。
-- WebUI 支援 English 與繁體中文，可在 runtime 切換語言，且不需 reload。
+- WebUI 支援 English 與繁體中文，可在 runtime 切換語言，且不需 reload；
+  語言切換只改變 presentation，machine-facing values、API payloads 與 raw
+  diagnostics 保持原值。
 - 使用 dry-run 模式在開啟 VISA 前預覽會影響硬體的命令。
 - 使用內建模擬器在沒有硬體時測試流程。
 - 設定電壓/電流限制、控制輸出狀態，並讀取即時儀器資料。
@@ -124,22 +126,22 @@ uv sync --all-extras --locked --link-mode=copy
 uv venv .venv --python 3.12
 ```
 
-`uv.lock` 用於 uv 的開發與 CI 可重現環境。`pip install .` 會讀取
-`pyproject.toml`，不會讀取 `uv.lock`。沒有 uv 的使用者需要先安裝 uv，
-才能使用 lock 環境。
-
-如果需要直接使用 pip，請使用虛擬環境中的 Python：
-
-```powershell
-.\.venv\Scripts\python.exe -m pip install .
-.\.venv\Scripts\python.exe -m pip install ".[webui]"
-.\.venv\Scripts\python.exe -m pip install -e ".[all,dev]"
-```
+lock file 將本機專案記錄為 `powers-tool`。安裝的 command wrappers 為
+`powers-tool`、`powers-tool-webui` 與 `powers-tool-webui-launcher`；舊有的
+distribution、package 與 command 名稱不是相容 alias。
 
 Windows 會建立虛擬環境 console wrapper，例如
 `.\.venv\Scripts\powers-tool.exe` 與
 `.\.venv\Scripts\powers-tool-webui.exe`。WebUI 啟動器的 wrapper 是
 `.\.venv\Scripts\powers-tool-webui-launcher.exe`。
+
+一般 setup 只需要既有 `uv sync` workflow。若 sync 成功但其中一個 wrapper
+缺失或尚未更新，請在 repository 根目錄執行以下命令，強制 uv 重新安裝
+`powers-tool` distribution 並重建 project console wrappers：
+
+```powershell
+uv sync --all-extras --link-mode=copy --reinstall-package powers-tool
+```
 
 安裝完成後，請使用 [CLI Quick Start](docs/cli/README.zh-TW.md#快速開始)
 進行安全的 no-hardware 檢查，或參閱
@@ -193,8 +195,12 @@ Product distribution inspector 會排除 repository validation scripts、private
 fixtures、candidate evidence 與 internal-only tests，並驗證 Python wheel 與
 source distribution；Desktop application 會另外組裝至 Windows ZIP。
 
-請先準備上方的 locked development environment；`dev` extra 已提供
-PyInstaller，不需要另外安裝：
+請先準備包含 PyInstaller 的 locked development environment，再建置 Windows
+application artifacts：
+
+```powershell
+uv sync --all-extras --locked --link-mode=copy
+```
 
 建置包含 CLI、WebUI 啟動器與 private Desktop Host 的 Windows shared onedir bundle：
 
@@ -280,10 +286,15 @@ shell、CLI、WebUI launcher、private WebUI Host、Electron runtime files，以
 hash。
 
 正式 release acceptance 必須從 clean、fully committed source working tree 執行。
-它會檢查 HEAD、`uv.lock`、wheel、sdist、unified Desktop ZIP、console entry
-points 與 checksums，並執行 no-hardware CLI smoke、代表性 deep preflight 與
-simulator PlanOnly。此 acceptance script 不會進行 VISA discovery、開啟 resource
-或送出 SCPI，也不會自動 publication release。可直接執行：
+腳本使用既有 `.venv`、檢查 working tree 與 committed HEAD 一致並驗證 `uv.lock`，
+完整執行一次 no-hardware 測試套件，接著呼叫一次 `build_release.ps1` 產生最終
+版本化 artifacts，檢查 wheel、sdist 與 unified Desktop ZIP，在單一乾淨環境安裝
+最終 sdist，確認所有 console entry points、驗證 checksums、對每個 Product-active
+model 執行快速 CLI smoke，對 capability 代表性 model 執行較深的 CLI workflow，
+並檢查 simulator `PlanOnly` contract。
+新的 model 只有在引入尚未被代表的 capability family 或硬體結構時，才需要另一個
+deep representative。腳本會在 ignored 的輸出根目錄下寫出 `report.json` 與
+`summary.md`：
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\release-acceptance.ps1
@@ -292,6 +303,12 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\release-accept
 每個 recorded command 都會先顯示 `[start]`，完成後顯示 `[passed]` 或
 `[failed]` 以及 `duration=<seconds>s`。child-process stdout/stderr 仍會在命令
 完成後收集並印出或寫入 acceptance output，不會逐行即時串流。
+
+若提供 `-OutputRoot`，必須解析到 repository 內的 `.tmp_tests` 或其子目錄。
+
+此 acceptance script 不會進行 VISA discovery、開啟 resource 或送出 SCPI；
+執行期間 HEAD 或 source working tree 變動會使其失敗。它不會發佈 release，
+也不會重新命名 repository。
 
 ## 測試
 
@@ -327,11 +344,9 @@ Wrapper contracts 會在獨立的 Windows job 執行。完整的
 `release-acceptance.ps1` gate、distribution inspection 與 release acceptance
 tests 仍保留給 release validation，不屬於一般 pull-request CI。
 
-Scripted no-hardware 與 live validation 工作流程記錄在
-[CLI README](docs/cli/README.zh-TW.md)。
-
-公開文件與驗證腳本請以目前英文 README、CLI README 與 contracts 為準；
-繁中文件保留操作員導覽與安全邊界，不改變 runtime 行為。
+Scripted no-hardware、live validation 與 release acceptance 工作流程記錄在
+[CLI README](docs/cli/README.zh-TW.md#scripted-validation)。Hardware validation
+屬於明確 opt-in，且需要使用者提供 VISA resource。
 
 ## Codex／Agent Skill
 
@@ -358,7 +373,10 @@ CI 中。
 
 ## 貢獻
 
-貢獻、變更規則與驗證要求請參閱 [CONTRIBUTING](docs/CONTRIBUTING.md)。
+貢獻、開發 ownership、no-hardware 測試期望、contributor validation-artifact
+workflow 與變更規則請參閱 [CONTRIBUTING](docs/CONTRIBUTING.md)。變更 live
+model、command、transport 或 backend 支援時，適用情況下需要可審閱的真機
+evidence。
 
 ## 授權條款與免責聲明
 

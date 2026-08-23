@@ -226,10 +226,10 @@ Sequence `log` 只是 message/note action；`--log-scpi` 是 SCPI traffic tracin
 .\powers-tool.exe readback --resource "$env:POWERS_TOOL_RESOURCE" --json --log-scpi
 ```
 
-僅在確認設定點安全後才啟用輸出。對 E3646A 而言，`OUTP ON/OFF` 是全域輸出啟用/停用行為；啟用輸出前請先確認實體接線與連接負載：
+在不開啟真實硬體的情況下，預覽已實作的輸出啟用計畫：
 
 ```powershell
-.\powers-tool.exe output-on --resource "$env:POWERS_TOOL_RESOURCE" --channel 1 --confirm --json --log-scpi
+.\powers-tool.exe output-on --dry-run --model keysight-e36312a --channel 1 --json
 ```
 
 檢查完成後關閉輸出：
@@ -254,28 +254,44 @@ Sequence `log` 只是 message/note action；`--log-scpi` 是 SCPI traffic tracin
 | `validate-readonly` | 執行一次唯讀診斷。 |
 | `log` | 將有界的唯讀 telemetry 寫入 CLI-owned CSV/JSONL files。 |
 | `set` | 設定電壓/電流而不啟用輸出。 |
-| `output-on` / `output-off` | 明確啟用或停用輸出。 |
+| `output-on` / `output-off` | 在接受的 exact LIVE scope 上啟用或停用輸出；dry-run 與 simulator 預覽仍可用。 |
 | `safe-off` | 使用支援的安全路徑關閉輸出。 |
 
 ## 無硬體檢查
 
-若只要確認安裝、CLI entry point 與 simulator 路徑，請使用：
+Dry-run 與 simulator 命令不會開啟真實 VISA 硬體。當命令需要 model-specific
+planning 時，請以 `--model` 傳入 canonical 的 simulation/dry-run model ID，或使用
+deterministic SIM resource，例如 `USB0::SIM::E36312A::INSTR`：
 
 ```powershell
-uv run powers-tool --version
-uv run powers-tool doctor --simulate --json
+.\powers-tool.exe set --dry-run --model keysight-e3646a --channel 1 --voltage 1 --current 0.05
+.\powers-tool.exe readback --simulate --resource USB0::SIM::E36312A::INSTR --channel all
+.\powers-tool.exe trigger-step --dry-run --model keysight-e36312a --channel 1 --source bus --fire
+.\powers-tool.exe set --dry-run --profile generic-scpi --channel 1 --voltage 1 --current 0.05
 ```
 
-這些命令不會進行 live 或 system-VISA resource discovery、不會開啟 VISA resource、
-不會送出 SCPI、不會修改實體儀器狀態，也不會啟用輸出；不需要實體儀器或 vendor
-VISA runtime。
+`--profile generic-scpi` 僅限 dry-run，且只出現在既有 support matrix 允許 Generic
+planning 的命令上。它不可與 `--model` 併用，在 simulator 或 live execution 中都是
+無效選項。
 
-`--model` 不是 feature unlock；live mode 仍以實際 `*IDN?` 偵測出的 model 選擇 driver。
-Unsupported model、command、mode、connection、backend 或 feature combinations 會 fail closed。
-Product LIVE support 是 detected model、command、transport、backend 與 required feature 的 exact
-scope；missing 或 pending scopes 也會 fail closed。No-hardware plan 或 feature family 不代表其中
-所有 commands 都是 Product-open。請參閱 [Supported Models](../core/supported-models.md#product-live-exact-scope-matrix)
-確認目前支援組合。
+在 no-hardware 模式下，不要用 fake 或看似真實的 resource 字串暗示 model。例如
+`USB0::FAKE::E36312A::INSTR` 只是 placeholder，不是 model identity。
+
+對 live commands，`--model` 接受 canonical ID（例如 `keysight-e36312a`）並作為
+expected-model guard。CLI 仍會查詢 `*IDN?`，並以偵測到的 model 選擇 driver。若指定的
+model 與連線 IDN model 不符，命令會在 setup 或 write SCPI 前失敗：
+
+```powershell
+.\powers-tool.exe set --model keysight-e36312a --resource "$env:POWER_USB_RESOURCE" --channel 1 --voltage 1 --current 0.05
+```
+
+這要求連線的 model 必須是 E36312A，但不會強制使用 E36312A driver。
+
+`--model` 不是 feature unlock。不支援的 model、command、mode、connection、backend 或
+feature 組合都會 fail closed。Product LIVE support 以偵測到的 model、command、
+transport、backend 與 required feature 為 exact scope；missing 或 pending scope 都會
+fail closed。Feature family 或 no-hardware plan 不代表該 family 中每個命令都是
+product-open。請參閱 [exact matrix](../core/supported-models.md#product-live-exact-scope-matrix)。
 
 ## 常見問題
 

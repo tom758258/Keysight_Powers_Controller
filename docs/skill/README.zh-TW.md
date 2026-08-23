@@ -43,27 +43,33 @@ Powers runtime 使用 schema 1。
 - Worker `ready` 只表示 control plane 可以接受 lifecycle operation。
 - `GET /status` 的 ready 或 idle-like 狀態不是 domain command 成功證據。
 - HTTP `202` 與 `status: "accepted"` 只表示 job 已進入 queue。
-- `request.json` 只證明 admitted request 已持久化，不代表 execution 成功。
-- 必須持續觀察 accepted artifact，直到 terminal `result.json` 存在。
-- 成功至少需要 terminal `status: "succeeded"`、`ok: true`，以及正確對應的
-  `run_id` 與 `worker_job_id` correlation。
+- `files` mode 的 `request.json` 只證明 admitted request 已持久化。必須持續
+  觀察 accepted artifact，直到 terminal `result.json` 存在。
+- `memory` mode 不會建立 job directory、`request.json` 或 `result.json`。應改為
+  觀察 terminal stdout JSONL event，及／或 `GET /status` 的
+  `last_job.result`；沒有 filesystem artifact 本身不是 failure。
+- 成功至少需要符合 artifact mode 的 terminal result，且具有正確的
+  `schema_version: 2`、`status: "succeeded"`、`ok: true`，以及 `run_id` 與
+  `worker_job_id` correlation。
 - `failed`、`cancelled` 或缺少 terminal evidence 都不是成功。
 - `POST /stop` acknowledgment 只代表 cooperative stop request 已提出並被接受，
   不代表 cleanup 完成、final summary 已產生，或 Worker process 已退出。
 
 ### Machine evidence 原則
 
-Agent 與 orchestrator 應依據 JSON／JSONL、Worker status objects、`request.json`、
-terminal `result.json`、final summary、wrapper report、process exit code，以及
-run/job correlation 做決策。Human-readable stdout、stderr 或畫面文字只能作
-diagnostic，不能取代 machine evidence。
+Agent 與 orchestrator 應依據 JSON／JSONL、Worker status objects、符合 artifact
+mode 的 terminal evidence、final summary、wrapper report、process exit code，
+以及 run/job correlation 做決策。`files` mode 的 evidence 包含 `request.json`
+與 terminal `result.json`；`memory` mode 則使用 terminal stdout JSONL result，
+及／或 `GET /status` 的 `last_job.result`。Human-readable stdout、stderr 或畫面
+文字只能作 diagnostic，不能取代 machine evidence。
 
 以下情況應視為 failure 或 incomplete convergence：
 
 - JSON parse error；
 - required field 缺少或型別錯誤；
 - run/job identity 不一致；
-- 缺少 terminal `result.json`；
+- 缺少符合 artifact mode 的 terminal result evidence；
 - `summary.ok: false`；
 - Worker exit code 非零；
 - 無法確認 cleanup 或 process shutdown。
@@ -220,7 +226,8 @@ cp docs/core/supported-models.md "$skill/references/"
 
 ## Simulator helper
 
-`scripts/run_power_sim_workflow.mjs` 只執行一個固定的 no-hardware smoke：
+`scripts/run_power_sim_workflow.mjs` 只執行一個固定的 no-hardware、`files`-mode
+smoke：
 
 - deterministic `USB0::SIM::E36312A::INSTR`；
 - simulate Worker；
@@ -251,8 +258,10 @@ power_sim_report.json
 
 Wrapper report 使用自己的 `schema_version: 1`，並以
 `runtime_schema_version: 2` 標示受檢查的 Powers runtime。Exit code 0 代表
-所有 wrapper checks 通過。此 helper 刻意不是通用 orchestrator；它拒絕 live
-或任意 resource、其他 command、output write 與 mode selection。
+所有 wrapper checks 通過。此 helper 刻意不是通用 orchestrator；它使用 Worker
+預設的 `files` artifact mode，並拒絕 live 或任意 resource、其他 command、output
+write 與 mode selection。它對 `request.json` 與 `result.json` 的檢查只適用於此
+helper workflow，不是所有 Worker artifact mode 的共同要求。
 
 範例：
 

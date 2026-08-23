@@ -46,25 +46,34 @@ Powers runtime schema 1.
 - Worker `ready` means only that the control plane can accept lifecycle operations.
 - `GET /status` readiness or idle-like lifecycle state is not evidence that a domain command succeeded.
 - HTTP `202` and `status: "accepted"` mean that a job entered the queue.
-- `request.json` proves that the admitted request was persisted; it does not prove execution success.
-- Continue observing the accepted artifact until terminal `result.json` exists.
-- Success requires terminal `status: "succeeded"`, `ok: true`, and matching `run_id` and `worker_job_id` correlation.
+- In `files` mode, `request.json` proves only that the admitted request was
+  persisted. Continue observing the accepted artifact until terminal
+  `result.json` exists.
+- In `memory` mode, no job directory, `request.json`, or `result.json` exists.
+  Observe the terminal stdout JSONL event and/or `GET /status`
+  `last_job.result` instead; missing filesystem artifacts are not failure.
+- Success requires a mode-appropriate terminal result with exact
+  `schema_version: 2`, `status: "succeeded"`, `ok: true`, and matching
+  `run_id` and `worker_job_id` correlation.
 - `failed`, `cancelled`, or missing terminal evidence is not success.
 - A `POST /stop` acknowledgment means only that cooperative stop was requested and accepted. It does not prove cleanup completion, final summary emission, or Worker process exit.
 
 ### Machine Evidence Principle
 
 Agents and orchestrators should decide from JSON/JSONL, Worker status objects,
-`request.json`, terminal `result.json`, the final summary, wrapper reports,
-process exit codes, and run/job correlation. Human-readable stdout, stderr, or
-screen text is diagnostic only and cannot replace machine evidence.
+mode-appropriate terminal evidence, the final summary, wrapper reports,
+process exit codes, and run/job correlation. In `files` mode that evidence
+includes `request.json` and terminal `result.json`; in `memory` mode it is the
+terminal stdout JSONL result and/or `GET /status` `last_job.result`.
+Human-readable stdout, stderr, or screen text is diagnostic only and cannot
+replace machine evidence.
 
 Treat the following as failure or incomplete convergence:
 
 - JSON parse errors;
 - missing or mistyped required fields;
 - inconsistent run/job identities;
-- missing terminal `result.json`;
+- missing mode-appropriate terminal result evidence;
 - `summary.ok: false`;
 - a nonzero Worker exit code;
 - unconfirmed cleanup or process shutdown.
@@ -225,7 +234,8 @@ cp docs/core/supported-models.md "$skill/references/"
 
 ## Simulator helper
 
-`scripts/run_power_sim_workflow.mjs` runs one fixed no-hardware smoke:
+`scripts/run_power_sim_workflow.mjs` runs one fixed no-hardware, `files`-mode
+smoke:
 
 - deterministic `USB0::SIM::E36312A::INSTR`;
 - simulate Worker;
@@ -256,8 +266,11 @@ power_sim_report.json
 
 The wrapper report uses its own `schema_version: 1` and records
 `runtime_schema_version: 2`. A zero exit code means all wrapper checks passed.
-The helper is intentionally not a general orchestrator: it rejects live or
-arbitrary resources, alternate commands, output writes, and mode selection.
+The helper is intentionally not a general orchestrator: it relies on the
+Worker's default `files` artifact mode and rejects live or arbitrary resources,
+alternate commands, output writes, and mode selection. Its `request.json` and
+`result.json` checks are specific to this helper workflow, not requirements for
+all Worker artifact modes.
 
 Example:
 
