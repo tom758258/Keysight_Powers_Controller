@@ -514,6 +514,16 @@ CLI `powers-tool log` 使用呼叫者指定的 CSV/JSONL 路徑。Worker `log` �
 background telemetry，也不能和另一個 active Worker job 並行。Sequence action
 `log` 仍是 host-side message，`--log-scpi` 則仍是 SCPI traffic tracing。
 
+Worker 預設為 file-backed（`--artifact-mode files`）：啟動時建立 artifact 目錄與
+`events.jsonl`，每個 accepted job 在 `jobs/<worker_job_id>/` 寫入 `request.json`
+與 `result.json`。Orchestrator 可明確選用 `--artifact-mode memory`：啟動不建立
+任何 artifact 目錄、事件檔或 request/result/telemetry 檔案；accepted 回應省略
+`artifact_path`；終端事件 `job_finished`／`job_failed` 與 `GET /status` 的
+`last_job` 直接帶入完整 result envelope；`log` 的每筆 telemetry row 改以
+schema-2 `sample` stdout JSONL 事件輸出。memory 模式會拒絕明確的
+`--events-jsonl`，因為 stdout 是唯一事件流。詳細欄位語意請參閱
+[Power Worker 契約](../contracts/power-worker-contract.md)。
+
 ## 範例
 
 ### 資源搜尋與實機資源設定

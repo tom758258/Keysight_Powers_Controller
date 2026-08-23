@@ -175,7 +175,10 @@ def _run_job_impl(state: WorkerState, job: dict[str, Any]) -> None:
         job.get("context"),
         startup_mode=config["mode"],
     )
-    job_dir: Path = job["dir"]
+    job_dir: Path | None = job["dir"]
+    # Memory-first mode keeps results in worker state and stdout events; it
+    # creates no request/result/telemetry artifacts.
+    memory_artifacts = config.get("artifact_mode") == "memory"
 
     with state.lock:
         if state.active_job is not None and state.active_job.get("worker_job_id") == worker_job_id:
@@ -262,21 +265,37 @@ def _run_job_impl(state: WorkerState, job: dict[str, Any]) -> None:
 
     def report_sample(row: dict[str, Any]) -> None:
         nonlocal telemetry_rows_written
-        if telemetry_writer is None or telemetry_csv_file is None or telemetry_jsonl_file is None:
-            raise RuntimeError("worker telemetry artifacts are not open")
-        telemetry_writer.writerow(row)
-        telemetry_csv_file.flush()
-        telemetry_jsonl_file.write(
-            json.dumps({"event": "sample", "sample": row}, sort_keys=True) + "\n"
-        )
-        telemetry_jsonl_file.flush()
+        if memory_artifacts:
+            emit_event(
+                config,
+                "sample",
+                {
+                    "run_id": state.run_id,
+                    "job_id": client_job_id,
+                    "worker_job_id": worker_job_id,
+                    "sample": row,
+                },
+            )
+        else:
+            if (
+                telemetry_writer is None
+                or telemetry_csv_file is None
+                or telemetry_jsonl_file is None
+            ):
+                raise RuntimeError("worker telemetry artifacts are not open")
+            telemetry_writer.writerow(row)
+            telemetry_csv_file.flush()
+            telemetry_jsonl_file.write(
+                json.dumps({"event": "sample", "sample": row}, sort_keys=True) + "\n"
+            )
+            telemetry_jsonl_file.flush()
         telemetry_rows_written += 1
         channel = int(row["channel"])
         if channel not in telemetry_channels_seen:
             telemetry_channels_seen.append(channel)
 
     try:
-        if cmd == "log":
+        if cmd == "log" and not memory_artifacts:
             telemetry_csv_file = (job_dir / "telemetry.csv").open(
                 "w", newline="", encoding="utf-8"
             )
@@ -437,52 +456,53 @@ def _run_job_impl(state: WorkerState, job: dict[str, Any]) -> None:
                 result_data.setdefault("trigger", exc.trigger)
 
     if cmd == "log":
-        try:
-            if telemetry_jsonl_file is not None:
-                summary_data = result_data or {}
-                telemetry_jsonl_file.write(
-                    json.dumps(
-                        {
-                            "event": "summary",
-                            "samples_written": summary_data.get("samples_written"),
-                            "channels": summary_data.get(
-                                "channels", telemetry_channels_seen
-                            ),
-                            "stopped": final_status == "cancelled",
-                            "stop_reason": summary_data.get(
-                                "stop_reason",
-                                "completed" if ok else final_status,
-                            ),
-                        },
-                        sort_keys=True,
+        if not memory_artifacts:
+            try:
+                if telemetry_jsonl_file is not None:
+                    summary_data = result_data or {}
+                    telemetry_jsonl_file.write(
+                        json.dumps(
+                            {
+                                "event": "summary",
+                                "samples_written": summary_data.get("samples_written"),
+                                "channels": summary_data.get(
+                                    "channels", telemetry_channels_seen
+                                ),
+                                "stopped": final_status == "cancelled",
+                                "stop_reason": summary_data.get(
+                                    "stop_reason",
+                                    "completed" if ok else final_status,
+                                ),
+                            },
+                            sort_keys=True,
+                        )
+                        + "\n"
                     )
-                    + "\n"
-                )
-                telemetry_jsonl_file.flush()
-        except Exception as exc:
-            ok = False
-            final_status = "failed"
-            error_payload = {
-                "type": "io",
-                "code": "artifact_error",
-                "message": f"Could not finalize telemetry artifact: {exc}",
-                "retryable": False,
-            }
-        finally:
-            for telemetry_file in (telemetry_csv_file, telemetry_jsonl_file):
-                if telemetry_file is None:
-                    continue
-                try:
-                    telemetry_file.close()
-                except Exception as exc:
-                    ok = False
-                    final_status = "failed"
-                    error_payload = {
-                        "type": "io",
-                        "code": "artifact_error",
-                        "message": f"Could not close telemetry artifact: {exc}",
-                        "retryable": False,
-                    }
+                    telemetry_jsonl_file.flush()
+            except Exception as exc:
+                ok = False
+                final_status = "failed"
+                error_payload = {
+                    "type": "io",
+                    "code": "artifact_error",
+                    "message": f"Could not finalize telemetry artifact: {exc}",
+                    "retryable": False,
+                }
+            finally:
+                for telemetry_file in (telemetry_csv_file, telemetry_jsonl_file):
+                    if telemetry_file is None:
+                        continue
+                    try:
+                        telemetry_file.close()
+                    except Exception as exc:
+                        ok = False
+                        final_status = "failed"
+                        error_payload = {
+                            "type": "io",
+                            "code": "artifact_error",
+                            "message": f"Could not close telemetry artifact: {exc}",
+                            "retryable": False,
+                        }
 
         if result_data is not None:
             result_data = {
@@ -537,28 +557,59 @@ def _run_job_impl(state: WorkerState, job: dict[str, Any]) -> None:
     }
 
     # Write result artifact. If the write fails, do not advertise an artifact path.
-    result_path = job_dir / "result.json"
-    artifact_path: str | None = str(result_path.resolve())
+    artifact_path: str | None = None
     artifact_error: dict[str, Any] | None = None
-    try:
-        _write_json_artifact_atomic(result_path, envelope)
-    except Exception as exc:
-        ok = False
-        artifact_error = {
-            "type": "io",
-            "code": "artifact_error",
-            "message": f"Could not write job result artifact: {exc}",
-            "retryable": False,
-        }
-        error_payload = artifact_error
-        envelope["ok"] = False
-        envelope["status"] = "failed"
-        envelope["error"] = error_payload
-        final_status = "failed"
+    if not memory_artifacts:
+        result_path = job_dir / "result.json"
+        artifact_path = str(result_path.resolve())
         try:
             _write_json_artifact_atomic(result_path, envelope)
-        except Exception:
-            artifact_path = None
+        except Exception as exc:
+            ok = False
+            artifact_error = {
+                "type": "io",
+                "code": "artifact_error",
+                "message": f"Could not write job result artifact: {exc}",
+                "retryable": False,
+            }
+            error_payload = artifact_error
+            envelope["ok"] = False
+            envelope["status"] = "failed"
+            envelope["error"] = error_payload
+            final_status = "failed"
+            try:
+                _write_json_artifact_atomic(result_path, envelope)
+            except Exception:
+                artifact_path = None
+
+    if memory_artifacts:
+        # Terminal events and last_job carry the full result envelope so
+        # orchestrators consume outcomes without per-job artifacts.
+        event_payload: dict[str, Any] = {
+            "job_id": client_job_id,
+            "worker_job_id": worker_job_id,
+            "command": cmd,
+            "result": envelope,
+        }
+        memory_last_job: dict[str, Any] = {
+            "job_id": client_job_id,
+            "worker_job_id": worker_job_id,
+            "command": cmd,
+            "status": final_status,
+            "result": envelope,
+        }
+        if not ok:
+            event_payload["error"] = error_payload
+            memory_last_job["error"] = error_payload
+        with state.lock:
+            state.last_job = memory_last_job
+            state.pending_terminal_event = (
+                "job_finished"
+                if ok
+                else ("job_cancelled" if final_status == "cancelled" else "job_failed"),
+                event_payload,
+            )
+        return
 
     # Emit completion events
     artifact_dir = str(job_dir.resolve())

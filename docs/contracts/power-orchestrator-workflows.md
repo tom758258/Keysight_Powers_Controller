@@ -8,6 +8,10 @@ This document extends `common-orchestrator-workflows.md` with Power-specific exa
 
 Start the Worker with `powers-tool worker`. Wait for the `ready` event and use `command_url`, `status_url`, and `stop_url`. If `ready` is missed, poll `GET /status`. Do not expect `trigger_url` or `default_action`.
 
+The Worker is file-backed by default. Orchestrators can opt into
+`powers-tool worker --artifact-mode memory` to run without artifact or event
+files; memory-mode result surfaces are defined in the Power Worker Contract.
+
 ## Read-Only Check
 
 Use `GET /status` only for Worker lifecycle state. Use `POST /command` with `command: "read-status"` for instrument output state and error queue reads.
@@ -53,6 +57,11 @@ If either output-write gate is missing, the Worker returns `409` and does not en
 ## Artifacts
 
 Use `worker_job_id` or the accepted response `artifact_path` to locate results. Do not infer artifact paths from omitted client `job_id`.
+
+In opt-in `memory` mode there are no artifacts and accepted responses omit
+`artifact_path`. Consume the terminal event `result` object or
+`GET /status` `last_job.result` instead, and stream `log` samples from stdout
+JSONL.
 
 ## Python Subprocess Example
 

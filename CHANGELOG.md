@@ -8,6 +8,10 @@
   tool identity, version, and Common Worker Protocol v2 compatibility as one
   JSON object without touching VISA resources, Workers, HTTP servers, or the
   filesystem.
+- Adds an opt-in `--artifact-mode memory` Worker mode that starts without
+  artifact or event files, publishes command results through terminal JSONL
+  events and `GET /status` `last_job`, and streams `log` telemetry samples on
+  stdout while preserving the default file-backed mode as-is.
 
 ## 3.0.0
 

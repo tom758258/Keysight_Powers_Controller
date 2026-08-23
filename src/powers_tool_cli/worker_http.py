@@ -255,43 +255,48 @@ class WorkerHTTPHandler(BaseHTTPRequestHandler):
                     )
                     return
 
-                # Save request artifact immediately (strictly block if fails)
+                # Save request artifact immediately (strictly block if fails).
+                # Memory-first mode keeps request data in state and stdout
+                # events and creates no bookkeeping files.
                 worker_job_id = f"job_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
-                job_dir = (
-                    Path(state.config["artifacts_dir"]) / "jobs" / worker_job_id
-                )
-                try:
-                    job_dir.mkdir(parents=True, exist_ok=True)
-                    artifact_request = {
-                        "schema_version": WORKER_SCHEMA_VERSION,
-                        "command": cmd,
-                        "arguments": arguments,
-                        "context": context,
-                    }
-                    (job_dir / "request.json").write_text(
-                        json.dumps(artifact_request, indent=2, sort_keys=True),
-                        encoding="utf-8",
+                job_dir: Path | None = None
+                artifact_path: str | None = None
+                if state.config.get("artifact_mode") != "memory":
+                    job_dir = (
+                        Path(state.config["artifacts_dir"]) / "jobs" / worker_job_id
                     )
-                except Exception as exc:
-                    self._send_json(
-                        500,
-                        _command_response(
-                            "error",
-                            cmd,
-                            client_job_id,
-                            error={
-                                "code": "artifact_error",
-                                "message": f"Could not create job directory or request artifact: {exc}",
-                            },
-                        ),
-                    )
-                    return
+                    try:
+                        job_dir.mkdir(parents=True, exist_ok=True)
+                        artifact_request = {
+                            "schema_version": WORKER_SCHEMA_VERSION,
+                            "command": cmd,
+                            "arguments": arguments,
+                            "context": context,
+                        }
+                        (job_dir / "request.json").write_text(
+                            json.dumps(artifact_request, indent=2, sort_keys=True),
+                            encoding="utf-8",
+                        )
+                    except Exception as exc:
+                        self._send_json(
+                            500,
+                            _command_response(
+                                "error",
+                                cmd,
+                                client_job_id,
+                                error={
+                                    "code": "artifact_error",
+                                    "message": f"Could not create job directory or request artifact: {exc}",
+                                },
+                            ),
+                        )
+                        return
+                    artifact_path = str(job_dir.resolve())
 
                 # Transition to busy
                 state.status = "busy"
                 state.job_cancel_event.clear()
                 state.pending_terminal_event = None
-                artifact_path = str(job_dir.resolve())
                 now = (
                     datetime.datetime.now(datetime.timezone.utc)
                     .isoformat()
@@ -302,7 +307,7 @@ class WorkerHTTPHandler(BaseHTTPRequestHandler):
                     "worker_job_id": worker_job_id,
                     "command": cmd,
                     "status": "queued",
-                    "artifact_path": artifact_path,
+                    **({"artifact_path": artifact_path} if artifact_path is not None else {}),
                     "accepted_at": now,
                 }
 
@@ -327,14 +332,16 @@ class WorkerHTTPHandler(BaseHTTPRequestHandler):
                     "run_id": state.run_id,
                 },
             )
+            accepted_extra: dict[str, Any] = {"worker_job_id": worker_job_id}
+            if artifact_path is not None:
+                accepted_extra["artifact_path"] = str(job_dir.resolve())
             self._send_json(
                 202,
                 _command_response(
                     "accepted",
                     cmd,
                     client_job_id,
-                    worker_job_id=worker_job_id,
-                    artifact_path=str(job_dir.resolve()),
+                    **accepted_extra,
                 ),
             )
         else:

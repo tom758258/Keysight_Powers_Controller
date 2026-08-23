@@ -28,6 +28,7 @@ from powers_tool_cli.worker_protocol import (
 from powers_tool_cli.cli import build_parser
 from powers_tool_core.command_runner import run_core_command
 from powers_tool_core.core import OperationRequest, RuntimeOptions
+from powers_tool_core.telemetry import TELEMETRY_ROW_FIELDS
 
 SIMULATE_CONTEXT = {
     "mode": "simulate",
@@ -619,6 +620,32 @@ def _last_stdout_json(capsys) -> dict:
     return json.loads(lines[-1])
 
 
+def _wait_for_terminal_last_job(port: int, worker_job_id: str, timeout: float = 3.0) -> dict:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/status") as response:
+            status = json.loads(response.read().decode("utf-8"))
+        last_job = status["last_job"]
+        if last_job is not None and last_job.get("worker_job_id") == worker_job_id:
+            return last_job
+        time.sleep(0.05)
+    raise AssertionError(f"job {worker_job_id} never reached a terminal last_job within {timeout}s")
+
+
+def _collect_memory_events(capsys, collected: list[str], *event_names: str, timeout: float = 2.0) -> list[dict]:
+    deadline = time.monotonic() + timeout
+    while True:
+        collected.extend(
+            line for line in capsys.readouterr().out.splitlines() if line.strip()
+        )
+        events = [json.loads(line) for line in collected]
+        if any(event.get("event") in event_names for event in events):
+            return events
+        if time.monotonic() > deadline:
+            raise AssertionError(f"stdout stream never contained {event_names} within {timeout}s")
+        time.sleep(0.05)
+
+
 def _run_worker_job_for_test(
     tmp_path: Path,
     *,
@@ -769,6 +796,57 @@ def test_worker_config_overrides():
     assert config["control_host"] == "127.0.0.1"
 
 
+def test_worker_parser_artifact_mode_choices():
+    parser = build_parser()
+
+    assert parser.parse_args(["worker"]).artifact_mode is None
+    assert (
+        parser.parse_args(["worker", "--artifact-mode", "memory"]).artifact_mode
+        == "memory"
+    )
+    assert (
+        parser.parse_args(["worker", "--artifact-mode", "files"]).artifact_mode
+        == "files"
+    )
+    with pytest.raises(SystemExit):
+        parser.parse_args(["worker", "--artifact-mode", "bogus"])
+
+
+def test_worker_config_artifact_mode_precedence(tmp_path):
+    config_path = tmp_path / "worker.json"
+    config_path.write_text(
+        json.dumps({"artifact_mode": "memory"}),
+        encoding="utf-8",
+    )
+    parser = build_parser()
+
+    args = parser.parse_args(["worker", "--config", str(config_path)])
+    config = load_worker_config(args)
+    assert config["artifact_mode"] == "memory"
+    assert config["events_jsonl"] is None
+
+    args = parser.parse_args(["worker"])
+    assert load_worker_config(args)["artifact_mode"] == "files"
+
+
+def test_worker_config_rejects_memory_mode_with_events_file(tmp_path):
+    config_path = tmp_path / "worker.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "artifact_mode": "memory",
+                "events_jsonl": str(tmp_path / "events.jsonl"),
+            }
+        ),
+        encoding="utf-8",
+    )
+    parser = build_parser()
+    args = parser.parse_args(["worker", "--config", str(config_path)])
+
+    with pytest.raises(ValueError, match="events.jsonl"):
+        load_worker_config(args)
+
+
 def test_worker_serial_settings_pass_through_to_runtime(tmp_path, monkeypatch):
     config = {
         "id": "power_1",
@@ -876,6 +954,64 @@ def running_worker(tmp_path):
     try:
         req = urllib.request.Request(
             f"http://127.0.0.1:{actual_port}/stop",
+            data=b"{}",
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=1.0) as res:
+            res.read()
+    except Exception:
+        pass
+    worker_thread.join(timeout=1.5)
+
+
+@pytest.fixture
+def running_memory_worker(tmp_path, capsys):
+    parser = build_parser()
+    args = parser.parse_args([
+        "worker",
+        "--id", "test_memory_worker",
+        "--mode", "simulate",
+        "--resource", "USB0::SIM::E36312A::INSTR",
+        "--control-port", "0",
+        "--artifact-mode", "memory",
+    ])
+
+    worker_thread = threading.Thread(target=run_worker, args=(args,), daemon=True)
+    worker_thread.start()
+
+    stdout_lines: list[str] = []
+    ready = None
+    deadline = time.monotonic() + 5.0
+    while time.monotonic() < deadline and ready is None:
+        stdout_lines.extend(
+            line for line in capsys.readouterr().out.splitlines() if line.strip()
+        )
+        for line in stdout_lines:
+            data = json.loads(line)
+            if data.get("event") == "ready":
+                ready = data
+                break
+        if ready is None:
+            time.sleep(0.05)
+
+    if ready is None:
+        raise RuntimeError("memory Worker failed to start or did not emit ready event within timeout")
+
+    assert ready["artifact_mode"] == "memory"
+    assert "artifacts_dir" not in ready
+    port = int(ready["status_url"].split(":")[-1].split("/")[0])
+
+    yield {
+        "port": port,
+        "tmp_path": tmp_path,
+        "run_id": ready["run_id"],
+        "stdout_lines": stdout_lines,
+    }
+
+    # Graceful stop
+    try:
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{port}/stop",
             data=b"{}",
             headers={"Content-Type": "application/json"}
         )
@@ -1004,6 +1140,95 @@ def test_worker_simulated_log_writes_worker_owned_telemetry(running_worker) -> N
         "sample",
         "summary",
     ]
+
+
+def test_memory_worker_command_keeps_result_in_state_without_files(
+    running_memory_worker, capsys
+):
+    handle = running_memory_worker
+    request = urllib.request.Request(
+        f"http://127.0.0.1:{handle['port']}/command",
+        data=json.dumps(
+            {
+                "schema_version": 2,
+                "command": "measure",
+                "arguments": {"channel": 2},
+                "context": SIMULATE_CONTEXT,
+            }
+        ).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(request) as response:
+        accepted = json.loads(response.read().decode("utf-8"))
+
+    assert accepted["schema_version"] == 2
+    assert accepted["status"] == "accepted"
+    worker_job_id = accepted["worker_job_id"]
+    assert worker_job_id
+    assert "artifact_path" not in accepted
+
+    last_job = _wait_for_terminal_last_job(handle["port"], worker_job_id)
+    assert last_job["status"] == "succeeded"
+    result = last_job["result"]
+    assert result["schema_version"] == 2
+    assert result["ok"] is True
+    assert result["status"] == "succeeded"
+    assert result["worker_job_id"] == worker_job_id
+    assert result["command"] == {"name": "measure"}
+    assert result["data"]["measurements"] == {"voltage": 2.2, "current": 0.22}
+
+    events = _collect_memory_events(capsys, handle["stdout_lines"], "job_finished")
+    finished = [event for event in events if event["event"] == "job_finished"]
+    assert len(finished) == 1
+    assert finished[0]["worker_job_id"] == worker_job_id
+    assert finished[0]["result"]["data"] == result["data"]
+
+    assert list(handle["tmp_path"].iterdir()) == []
+
+
+def test_memory_worker_log_streams_samples_without_telemetry_files(
+    running_memory_worker, capsys
+):
+    handle = running_memory_worker
+    request = urllib.request.Request(
+        f"http://127.0.0.1:{handle['port']}/command",
+        data=json.dumps(
+            {
+                "schema_version": 2,
+                "command": "log",
+                "arguments": {"channels": [1], "interval_sec": 0.01, "samples": 2},
+                "context": SIMULATE_CONTEXT,
+            }
+        ).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(request) as response:
+        accepted = json.loads(response.read().decode("utf-8"))
+
+    assert "artifact_path" not in accepted
+    worker_job_id = accepted["worker_job_id"]
+
+    last_job = _wait_for_terminal_last_job(handle["port"], worker_job_id)
+    assert last_job["status"] == "succeeded"
+    assert last_job["result"]["data"] == {
+        "channels": [1],
+        "duration_sec": None,
+        "interval_sec": 0.01,
+        "samples_requested": 2,
+        "samples_written": 2,
+        "stop_reason": "completed",
+    }
+
+    events = _collect_memory_events(
+        capsys, handle["stdout_lines"], "sample", "job_finished"
+    )
+    samples = [event for event in events if event["event"] == "sample"]
+    assert [sample["sample"]["channel"] for sample in samples] == [1, 1]
+    assert all(sample["worker_job_id"] == worker_job_id for sample in samples)
+    assert all(sample["run_id"] == handle["run_id"] for sample in samples)
+    assert all(set(sample["sample"]) == set(TELEMETRY_ROW_FIELDS) for sample in samples)
+
+    assert list(handle["tmp_path"].iterdir()) == []
 
 
 @pytest.mark.parametrize(

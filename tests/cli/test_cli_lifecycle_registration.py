@@ -150,6 +150,16 @@ EXPECTED_ACTIONS = {
         _action(("--artifacts-dir",), "artifacts_dir", help="Artifacts directory."),
         _action(("--config",), "config", help="Worker JSON config file."),
         _action(("--events-jsonl",), "events_jsonl", help="Events JSONL output file."),
+        _action(
+            ("--artifact-mode",),
+            "artifact_mode",
+            choices=("files", "memory"),
+            help=(
+                "Artifact persistence mode. files (default) keeps the existing "
+                "file-backed job artifacts; memory streams results through stdout "
+                "JSONL events and GET /status without writing artifact files."
+            ),
+        ),
     ),
     "send-command": (
         HELP_ACTION,
@@ -211,6 +221,7 @@ usage: powers-tool worker [-h] [--id ID] [--mode {simulate,live}]
                           [--resource RESOURCE] [--control-port CONTROL_PORT]
                           [--artifacts-dir ARTIFACTS_DIR] [--config CONFIG]
                           [--events-jsonl EVENTS_JSONL]
+                          [--artifact-mode {files,memory}]
 
 options:
   -h, --help            show this help message and exit
@@ -225,6 +236,11 @@ options:
   --config CONFIG       Worker JSON config file.
   --events-jsonl EVENTS_JSONL
                         Events JSONL output file.
+  --artifact-mode {files,memory}
+                        Artifact persistence mode. files (default) keeps the
+                        existing file-backed job artifacts; memory streams
+                        results through stdout JSONL events and GET /status
+                        without writing artifact files.
 """,
     "send-command": """\
 usage: powers-tool send-command [-h] [--url URL] [--host HOST] [--port PORT]
@@ -361,6 +377,7 @@ def test_lifecycle_registration_preserves_actions_order_and_runner_identity() ->
                 "artifacts_dir": None,
                 "config": None,
                 "events_jsonl": None,
+                "artifact_mode": None,
             },
             inspection._run_worker,
         ),

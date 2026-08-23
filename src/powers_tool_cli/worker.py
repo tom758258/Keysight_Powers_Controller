@@ -78,7 +78,9 @@ def run_worker(args: argparse.Namespace) -> int:
         return 1
 
     art_dir = Path(config["artifacts_dir"])
-    art_dir.mkdir(parents=True, exist_ok=True)
+    memory_artifacts = config["artifact_mode"] == "memory"
+    if not memory_artifacts:
+        art_dir.mkdir(parents=True, exist_ok=True)
 
     host = config["control_host"]
     req_port = config["control_port"]
@@ -99,21 +101,21 @@ def run_worker(args: argparse.Namespace) -> int:
     runner_thread = threading.Thread(target=job_runner, args=(state,), daemon=True)
     runner_thread.start()
 
-    emit_event(
-        config,
-        "ready",
-        {
-            "run_id": state.run_id,
-            "service": "powers-tool",
-            "host": "127.0.0.1",
-            "port": actual_port,
-            "command_url": f"http://127.0.0.1:{actual_port}/command",
-            "stop_url": f"http://127.0.0.1:{actual_port}/stop",
-            "status_url": f"http://127.0.0.1:{actual_port}/status",
-            "artifacts_dir": str(art_dir.resolve()),
-            "allowed_commands": sorted(list(ALLOWED_COMMANDS)),
-        },
-    )
+    ready_extra: dict[str, object] = {
+        "run_id": state.run_id,
+        "service": "powers-tool",
+        "host": "127.0.0.1",
+        "port": actual_port,
+        "command_url": f"http://127.0.0.1:{actual_port}/command",
+        "stop_url": f"http://127.0.0.1:{actual_port}/stop",
+        "status_url": f"http://127.0.0.1:{actual_port}/status",
+        "allowed_commands": sorted(list(ALLOWED_COMMANDS)),
+    }
+    if memory_artifacts:
+        ready_extra["artifact_mode"] = "memory"
+    else:
+        ready_extra["artifacts_dir"] = str(art_dir.resolve())
+    emit_event(config, "ready", ready_extra)
 
     try:
         server.serve_forever()

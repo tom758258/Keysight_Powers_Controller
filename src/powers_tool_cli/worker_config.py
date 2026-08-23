@@ -25,6 +25,7 @@ def load_worker_config(args: argparse.Namespace) -> dict[str, Any]:
         "control_port": 0,
         "artifacts_dir": ".tmp_tests/power_worker/power_1",
         "events_jsonl": None,
+        "artifact_mode": "files",
         "settings": {
             "resource": "USB0::SIM::E36312A::INSTR",
             "resource_alias": None,
@@ -54,6 +55,7 @@ def load_worker_config(args: argparse.Namespace) -> dict[str, Any]:
             "control_port",
             "artifacts_dir",
             "events_jsonl",
+            "artifact_mode",
         ]:
             if k in file_cfg:
                 config[k] = file_cfg[k]
@@ -74,13 +76,16 @@ def load_worker_config(args: argparse.Namespace) -> dict[str, Any]:
         if not getattr(args, "config", None):
             config["artifacts_dir"] = f".tmp_tests/power_worker/{config['id']}"
 
+    if getattr(args, "artifact_mode", None) is not None:
+        config["artifact_mode"] = args.artifact_mode
+
     if getattr(args, "events_jsonl", None) is not None:
         config["events_jsonl"] = args.events_jsonl
     else:
-        if not getattr(args, "config", None):
+        if not getattr(args, "config", None) and config["artifact_mode"] != "memory":
             config["events_jsonl"] = f"{config['artifacts_dir']}/events.jsonl"
 
-    if not config.get("events_jsonl"):
+    if config["artifact_mode"] != "memory" and not config.get("events_jsonl"):
         config["events_jsonl"] = f"{config['artifacts_dir']}/events.jsonl"
 
     if getattr(args, "resource", None) is not None:
@@ -100,6 +105,17 @@ def _validate_worker_config(config: dict[str, Any]) -> None:
 
     if config.get("mode") not in {"simulate", "live"}:
         raise ValueError(f"Worker mode must be 'simulate' or 'live', got {config.get('mode')!r}")
+
+    artifact_mode = config.get("artifact_mode", "files")
+    if artifact_mode not in {"files", "memory"}:
+        raise ValueError(
+            f"Worker artifact mode must be 'files' or 'memory', got {artifact_mode!r}"
+        )
+    if artifact_mode == "memory" and config.get("events_jsonl"):
+        raise ValueError(
+            "Worker artifact mode 'memory' streams events to stdout only and "
+            "cannot write an events.jsonl file"
+        )
 
     host = config["control_host"]
     if host not in {"127.0.0.1", "localhost"}:

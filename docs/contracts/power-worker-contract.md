@@ -98,18 +98,20 @@ Every `/command` response is a JSON object with integer `schema_version: 2`,
 `status`, `command`, and `job_id`. In the HTTP response, `command` is the
 submitted command string, for example `"read-status"`.
 
-- Accepted commands return `202` with `status: "accepted"`, a non-empty string
-  `worker_job_id`, and a non-empty string `artifact_path`.
+- Accepted commands return `202` with `status: "accepted"` and a non-empty
+  string `worker_job_id`. In `files` mode the response also contains a
+  non-empty string `artifact_path`; `memory` mode omits `artifact_path`
+  because no job artifact directory exists.
 - Validation failures return `400` with `status: "error"`.
 - Admission/safety rejections return `409` with `status: "rejected"` and one of the Power rejection reasons.
 
 Power rejection reasons are `busy`, `run_not_ready`, `output_confirmation_required`, and `output_changes_not_allowed`.
 
 `POST /command` HTTP `202` means only that the request was accepted and
-enqueued. It does not mean the Power command has succeeded. Before returning
-HTTP `202`, the Worker must create the job artifact directory and write
-`request.json` successfully. If artifact initialization fails, the request
-must not be reported as accepted.
+enqueued. It does not mean the Power command has succeeded. In `files` mode,
+before returning HTTP `202`, the Worker must create the job artifact directory
+and write `request.json` successfully. If artifact initialization fails, the
+request must not be reported as accepted.
 
 `job_id` is the optional orchestrator ID from the request. It is echoed in
 responses and runtime status but is not written into request/result artifacts
@@ -119,8 +121,8 @@ directory and is the Worker job identity.
 Power Worker job states are:
 
 - `accepted`: the HTTP handler accepted the request.
-- `queued`: the job artifact directory and `request.json` exist, and the job
-  is waiting for the background runner.
+- `queued`: in `files` mode the job artifact directory and `request.json`
+  exist; in either mode the job is waiting for the background runner.
 - `running`: the background runner is executing the command.
 - `succeeded`: terminal success.
 - `failed`: terminal failure.
@@ -140,7 +142,9 @@ or `null`. Worker status is one of `ready`, `busy`, `stopping`, or `error`.
 `active_job` and `last_job`, when present, include job correlation and status
 fields. A terminal job also includes `artifact_available`; `artifact_path` is
 present only when the result artifact is available. An artifact-write failure
-therefore reports `artifact_available: false` and omits `artifact_path`.
+therefore reports `artifact_available: false` and omits `artifact_path`. In
+`memory` mode a terminal `last_job` instead includes `result`, holding the
+complete result envelope described under Artifacts, plus `error` for failures.
 Top-level `job_id` is not used for domain job identity.
 
 ## Commands
@@ -386,7 +390,13 @@ Rejected commands do not open VISA, enqueue work, write artifacts, or issue part
 
 ## Artifacts
 
-Accepted jobs create:
+The Worker supports two startup artifact modes selected with
+`powers-tool worker --artifact-mode files|memory`. `files` is the default and
+is backward compatible. `memory` is an explicit opt-in for orchestrators that
+consume results from the stdout JSONL event stream and `GET /status` instead
+of files.
+
+In `files` mode, accepted jobs create:
 
 - `request.json`: integer `schema_version: 2`, `command`, `arguments`, and
   admitted `context`.
@@ -419,3 +429,24 @@ contains only `samples_written`, `samples_requested`, `duration_sec`,
 `interval_sec`, `channels`, and `stop_reason`. `samples_written` counts complete
 multi-channel cycles, not individual rows. Artifact/session/query/reporter
 failure is terminal `failed`, never partial success.
+
+In `memory` mode the Worker creates none of the bookkeeping or telemetry files
+above. Startup creates no artifact directory (including no placeholder) and no
+`events.jsonl`; the `ready` event omits `artifacts_dir` and reports
+`artifact_mode: "memory"`. Accepted responses omit `artifact_path`, and no
+per-job directory, `request.json`, or `result.json` is created.
+
+Memory-mode terminal events carry the final outcome. `job_finished` includes a
+`result` object with the same schema as the `files`-mode `result.json`;
+`job_failed` and `job_cancelled` keep their existing `error` semantics and also
+include that `result` object. A terminal `last_job` mirrors the same `status`,
+`error`, and `result` fields. Only `active_job` and `last_job` are retained;
+no job history collection exists.
+
+Memory-mode `log` streams each telemetry row as one schema-2 `sample` stdout
+JSONL event containing `run_id`, the optional client `job_id`, `worker_job_id`,
+and the Core telemetry row under `sample`. No `telemetry.csv` or
+`telemetry.jsonl` is created; samples are consumed live from stdout while the
+terminal result keeps only the bounded summary fields above. Memory mode
+rejects an explicit `--events-jsonl` path because stdout is the only event
+stream.

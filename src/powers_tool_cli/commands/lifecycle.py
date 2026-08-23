@@ -31,6 +31,15 @@ def register_commands(
     worker_parser.add_argument("--artifacts-dir", help="Artifacts directory.")
     worker_parser.add_argument("--config", help="Worker JSON config file.")
     worker_parser.add_argument("--events-jsonl", help="Events JSONL output file.")
+    worker_parser.add_argument(
+        "--artifact-mode",
+        choices=["files", "memory"],
+        help=(
+            "Artifact persistence mode. files (default) keeps the existing "
+            "file-backed job artifacts; memory streams results through stdout "
+            "JSONL events and GET /status without writing artifact files."
+        ),
+    )
     worker_parser.set_defaults(func=run_worker_command)
 
     send_parser = subparsers.add_parser("send-command", help="Send a Worker POST /command request.")

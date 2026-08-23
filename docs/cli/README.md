@@ -816,6 +816,16 @@ cancellation or failure. It is not background telemetry and cannot run beside
 another active Worker job. The Sequence action named `log` remains a host-side
 message, and `--log-scpi` remains SCPI traffic tracing.
 
+The Worker is file-backed by default (`--artifact-mode files`): startup creates
+the artifact directory and `events.jsonl`, and each accepted job writes
+`request.json` and `result.json` under `jobs/<worker_job_id>`. Orchestrators can
+opt into `--artifact-mode memory`, which creates no artifact directory, event
+file, request/result artifacts, or telemetry files. In memory mode the accepted
+response omits `artifact_path`, terminal `job_finished`/`job_failed` events and
+`GET /status` `last_job` carry the full result envelope, and `log` streams each
+telemetry row as a schema-2 `sample` stdout JSONL event. Memory mode rejects an
+explicit `--events-jsonl` path because stdout is the only event stream.
+
 When started, it outputs a `ready` event on stdout containing the dynamically
 assigned control endpoints.
 
