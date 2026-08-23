@@ -31,7 +31,33 @@ def test_shared_spec_has_three_onedir_executables_and_one_collect() -> None:
     assert "host_analysis = Analysis(" in text
     assert "host_pyz = PYZ(host_analysis.pure)" in text
     assert 'name="powers-tool-webui-host"' in text
-    assert text.count("datas=[*PROJECT_METADATA, *WEBUI_STATIC]") == 2
+    assert (
+        'POWERS_ICON = REPO_ROOT / "desktop" / "assets" / "powers-icon.ico"'
+        in text
+    )
+    assert (
+        'LAUNCHER_ICON_DATA = [(str(POWERS_ICON), "powers_tool_webui/assets")]'
+        in text
+    )
+    assert "datas=[*PROJECT_METADATA, *WEBUI_STATIC, *LAUNCHER_ICON_DATA]" in text
+    assert text.count("datas=[*PROJECT_METADATA, *WEBUI_STATIC]") == 1
+    assert text.count("icon=str(POWERS_ICON)") == 2
+    cli_exe = text[text.index("cli_exe = EXE(") : text.index("launcher_exe = EXE(")]
+    launcher_exe = text[
+        text.index("launcher_exe = EXE(") : text.index("host_exe = EXE(")
+    ]
+    host_exe = text[text.index("host_exe = EXE(") : text.index("\n\n\nCOLLECT(")]
+    assert "icon=str(POWERS_ICON)" in cli_exe
+    assert "icon=str(POWERS_ICON)" in launcher_exe
+    assert "icon=" not in host_exe
+    launcher_analysis = text[
+        text.index("launcher_analysis = Analysis(") : text.index("host_analysis = Analysis(")
+    ]
+    host_analysis = text[
+        text.index("host_analysis = Analysis(") : text.index("\n\n\ncli_pyz")
+    ]
+    assert "LAUNCHER_ICON_DATA" in launcher_analysis
+    assert "LAUNCHER_ICON_DATA" not in host_analysis
     assert text.count("COLLECT(") == 1
     assert "MERGE" not in text
 

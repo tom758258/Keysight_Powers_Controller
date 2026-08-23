@@ -76,6 +76,7 @@ class FakeRoot:
         self.restored = False
         self.lifted = False
         self.idle_updates = 0
+        self.icon_paths: list[str] = []
 
     def destroy(self) -> None:
         self.order.append("destroy")
@@ -84,6 +85,9 @@ class FakeRoot:
 
     def iconify(self) -> None:
         self.iconified = True
+
+    def iconbitmap(self, *, default: str) -> None:
+        self.icon_paths.append(default)
 
     def withdraw(self) -> None:
         self.withdrawn = True
@@ -246,6 +250,59 @@ def test_build_local_url_uses_loopback_default_port() -> None:
     assert launcher.DEFAULT_HOST == "127.0.0.1"
     assert launcher.DEFAULT_PORT == 7999
     assert launcher.build_local_url(launcher.DEFAULT_PORT) == "http://127.0.0.1:7999"
+
+
+def test_launcher_icon_path_uses_packaged_runtime_root(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(launcher.sys, "_MEIPASS", str(tmp_path), raising=False)
+
+    assert launcher._launcher_icon_path() == (
+        tmp_path / "powers_tool_webui" / "assets" / "powers-icon.ico"
+    )
+
+
+def test_apply_window_icon_uses_existing_icon(monkeypatch, tmp_path) -> None:
+    icon_path = tmp_path / "powers-icon.ico"
+    icon_path.write_bytes(b"icon")
+    root = FakeRoot([])
+    monkeypatch.setattr(launcher, "_launcher_icon_path", lambda: icon_path)
+
+    launcher._apply_window_icon(root)
+
+    assert root.icon_paths == [str(icon_path)]
+
+
+def test_apply_window_icon_ignores_missing_icon(monkeypatch, tmp_path) -> None:
+    root = FakeRoot([])
+    monkeypatch.setattr(
+        launcher,
+        "_launcher_icon_path",
+        lambda: tmp_path / "missing-icon.ico",
+    )
+
+    launcher._apply_window_icon(root)
+
+    assert root.icon_paths == []
+
+
+def test_apply_window_icon_ignores_filesystem_error(monkeypatch) -> None:
+    def fail_icon_path():
+        raise OSError("read denied")
+
+    monkeypatch.setattr(launcher, "_launcher_icon_path", fail_icon_path)
+
+    launcher._apply_window_icon(FakeRoot([]))
+
+
+def test_apply_window_icon_ignores_tk_error(monkeypatch, tmp_path) -> None:
+    icon_path = tmp_path / "powers-icon.ico"
+    icon_path.write_bytes(b"icon")
+    monkeypatch.setattr(launcher, "_launcher_icon_path", lambda: icon_path)
+
+    class FailingRoot:
+        def iconbitmap(self, *, default: str) -> None:
+            raise launcher.tk.TclError("bad icon")
+
+    launcher._apply_window_icon(FailingRoot())
 
 
 def test_launcher_version_prints_without_opening_gui(monkeypatch, capsys) -> None:
@@ -413,6 +470,7 @@ def test_launcher_cli_selects_expected_port_candidates(
 
     assert root.withdrawn is True
     assert root.iconified is False
+    assert root.icon_paths == [str(launcher._launcher_icon_path())]
     assert recorded_ports == [expected_ports]
 
 

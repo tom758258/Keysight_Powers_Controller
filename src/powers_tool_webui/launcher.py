@@ -6,8 +6,10 @@ import argparse
 import asyncio
 import errno
 import json
+from pathlib import Path
 from queue import Empty, Queue
 import socket
+import sys
 import threading
 import time
 import tkinter as tk
@@ -34,6 +36,23 @@ DEFAULT_PORT = 7999
 AUTO_PORT_ATTEMPTS = 100
 JOB_SHUTDOWN_TIMEOUT_S = 10.0
 SERVER_JOIN_TIMEOUT_S = 3.0
+
+
+def _launcher_icon_path() -> Path:
+    bundle_root = getattr(sys, "_MEIPASS", None)
+    if bundle_root is not None:
+        return Path(bundle_root) / "powers_tool_webui" / "assets" / "powers-icon.ico"
+    return Path(__file__).resolve().parents[2] / "desktop" / "assets" / "powers-icon.ico"
+
+
+def _apply_window_icon(root: tk.Tk) -> None:
+    try:
+        icon_path = _launcher_icon_path()
+        if not icon_path.is_file():
+            return
+        root.iconbitmap(default=str(icon_path))
+    except (OSError, tk.TclError):
+        return
 
 
 def build_local_url(port: int) -> str:
@@ -609,6 +628,7 @@ def main(argv: list[str] | None = None) -> int:
     initial_port = args.port if args.port is not None else DEFAULT_PORT
     auto_port = args.auto_port or args.port is None
     root = tk.Tk()
+    _apply_window_icon(root)
     root.withdraw()
     app = LauncherApp(root, initial_port=initial_port)
     root.after(0, lambda: app.start(auto_port=auto_port))

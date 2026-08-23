@@ -19,6 +19,9 @@
     },
     "files": [
       "main.cjs"
-    ]
+    ],
+    "win": {
+      "icon": "assets/powers-icon.ico"
+    }
   }
 }

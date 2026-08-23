@@ -7,16 +7,16 @@
 - Adds the `powers-tool manifest --json` machine introspection command for
   discovering tool identity, version, and Worker protocol compatibility
   without opening VISA resources or starting a Worker.
-
 - Adds an opt-in in-memory Worker mode for orchestrators that want command
   results and telemetry through JSONL and Worker status without creating
   filesystem artifacts, while preserving the existing file-backed mode as
   the default.
-
 - Improves the WebUI appearance and language controls with clearly labeled
   Appearance and Language settings. The language control now displays the
   current locale, and the dark theme has been refined for clearer visual
   hierarchy and control states.
+- Adds a shared Powers application icon to the user-facing Windows Desktop,
+  CLI, and WebUI Launcher, including the Launcher window and taskbar.
 
 ## 3.0.0
 

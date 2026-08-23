@@ -440,6 +440,7 @@ def test_desktop_package_matches_canonical_version_and_uses_directory_builder() 
     assert package["scripts"]["dist:win"] == "electron-builder --dir --win --x64"
     assert package["build"]["directories"]["output"] == "../dist/desktop"
     assert package["build"]["files"] == ["main.cjs"]
+    assert package["build"]["win"]["icon"] == "assets/powers-icon.ico"
     assert "electron-builder" in package["devDependencies"]
     assert "portable" not in package
 

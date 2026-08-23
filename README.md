@@ -406,6 +406,9 @@ real-instrument evidence when applicable.
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE).
 
+Application icon: The Powers Tool application icon was generated with OpenAI
+image generation in ChatGPT, then reviewed and selected by the project maintainer.
+
 This project is independent and unofficial. It is not affiliated with,
 endorsed by, or sponsored by supported instrument manufacturers or vendors.
 

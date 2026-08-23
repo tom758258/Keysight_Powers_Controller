@@ -9,9 +9,11 @@ from PyInstaller.utils.hooks import collect_data_files, copy_metadata
 
 REPO_ROOT = Path(SPECPATH).resolve().parent
 SRC_ROOT = REPO_ROOT / "src"
+POWERS_ICON = REPO_ROOT / "desktop" / "assets" / "powers-icon.ico"
 
 PROJECT_METADATA = copy_metadata("powers-tool")
 WEBUI_STATIC = collect_data_files("powers_tool_webui", includes=["static/*"])
+LAUNCHER_ICON_DATA = [(str(POWERS_ICON), "powers_tool_webui/assets")]
 
 
 cli_analysis = Analysis(
@@ -32,7 +34,7 @@ launcher_analysis = Analysis(
     [str(SRC_ROOT / "powers_tool_webui" / "launcher.py")],
     pathex=[str(SRC_ROOT)],
     binaries=[],
-    datas=[*PROJECT_METADATA, *WEBUI_STATIC],
+    datas=[*PROJECT_METADATA, *WEBUI_STATIC, *LAUNCHER_ICON_DATA],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -68,6 +70,7 @@ cli_exe = EXE(
     name="powers-tool",
     console=True,
     contents_directory="_internal",
+    icon=str(POWERS_ICON),
 )
 
 launcher_exe = EXE(
@@ -77,6 +80,7 @@ launcher_exe = EXE(
     name="powers-tool-webui-launcher",
     console=False,
     contents_directory="_internal",
+    icon=str(POWERS_ICON),
 )
 
 host_exe = EXE(

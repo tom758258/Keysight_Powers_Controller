@@ -382,6 +382,9 @@ evidence。
 
 本專案採用 MIT License。詳見 [LICENSE](LICENSE)。
 
+應用程式圖示：Powers Tool 應用程式圖示使用 ChatGPT 中的 OpenAI 圖像生成功能產生，
+並由專案維護者審閱及選定。
+
 本專案是獨立且非官方的專案，未與支援之儀器製造商或 vendor 建立從屬、
 背書或贊助關係。
 
