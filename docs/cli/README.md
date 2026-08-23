@@ -93,6 +93,8 @@ place.
   hardware-report, and logging command handlers.
 - `powers_tool_cli.commands.inspection`: `doctor`, `capabilities`, and
   `safety inspect` command handlers.
+- `powers_tool_cli.commands.manifest`: static `manifest` tool-identity and
+  Worker-protocol introspection.
 - `powers_tool_cli.commands.output_run`: output command execution, dry-run
   planning, and output result adapters.
 - `powers_tool_cli.commands.trigger_run`: shared Trigger request/configuration
@@ -217,7 +219,7 @@ This is a quick orientation index, not a replacement for
 
 | Family | Purpose | Representative commands | Details |
 | --- | --- | --- | --- |
-| Setup and diagnostics | Installation, discovery, identity, error, and safety checks. | `powers-tool --version`, `doctor`, `list-resources`, `verify`, `identify`, `error`, `clear` | [Resource Discovery And Live Resource Setup](#resource-discovery-and-live-resource-setup); `powers-tool --help` |
+| Setup and diagnostics | Installation, discovery, identity, error, and safety checks. | `powers-tool --version`, `doctor`, `manifest`, `list-resources`, `verify`, `identify`, `error`, `clear` | [Resource Discovery And Live Resource Setup](#resource-discovery-and-live-resource-setup); [Power CLI JSON / JSONL Contract](../contracts/power-cli-jsonl-contract.md); `powers-tool --help` |
 | Read-only and state | Measurements, readback, output state, capabilities, instrument status, and bounded telemetry. | `measure`, `measure-all`, `read-status`, `readback`, `output-state`, `capabilities`, `log` | [Read-Only Command Examples](#read-only-command-examples); `read-status` is the instrument command. |
 | Setpoint and output control | Setpoints, output transitions, safe-off, and guarded output actions. | `set`, `apply`, `output-on`, `output-off`, `safe-off`, `cycle-output`, `smoke-output` | [Output-Affecting Examples](#output-affecting-examples); [Safety Defaults](#safety-defaults) |
 | Output workflows | Ramps, ramp lists, and software sequences. | `ramp`, `ramp-list`, `sequence` | [Ramp And Sequence Examples](#ramp-and-sequence-examples); [Safety Defaults](#safety-defaults) |

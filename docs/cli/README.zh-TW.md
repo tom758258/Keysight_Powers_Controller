@@ -67,6 +67,9 @@ SCPI logging，以及供 orchestrator／agent 使用的本機 Power Worker daemo
   hardware-report 與 logging handler。
 - `powers_tool_cli.commands.inspection`：`doctor`、`capabilities`、
   `safety inspect` handler。
+- `powers_tool_cli.commands.manifest`：static `manifest` tool introspection，
+  回報工具身分、package version 與 Worker protocol 相容性；不接觸 VISA、
+  Worker runtime 或 HTTP，也不建立 filesystem output。
 - `powers_tool_cli.commands.output_run`：output command execution、dry-run
   planning 與 output result adapter。
 - `powers_tool_cli.commands.trigger_run`：共用 Trigger request/configuration
@@ -163,13 +166,25 @@ resource、不會送出 SCPI、不會修改實體儀器狀態，也不會啟用�
 介面請參閱 [WebUI 使用者指南](../webui/USER_GUIDE.zh-TW.md)。Exact live model
 與 connection coverage 請參閱 [Supported Models](../core/supported-models.md)。
 
+`powers-tool manifest --json` 提供純靜態的 tool introspection，供 orchestrator
+在不接觸儀器的情況下靜態確認工具本身：
+
+```powershell
+powers-tool manifest --json
+```
+
+成功時輸出單一 JSON object，回報 `tool_id`、package version（`tool_version`）
+與 Common Worker Protocol schema 相容性。此命令不列舉或開啟 VISA resource、
+不查詢 `*IDN?`、不啟動 Worker 或 HTTP server，也不會建立檔案或目錄；欄位語意
+請參閱 [Power CLI JSON / JSONL 契約](../contracts/power-cli-jsonl-contract.md)。
+
 ## 命令系列索引
 
 以下是快速導覽，不取代 `powers-tool --help` 或下方詳細範例。
 
 | Family | Purpose | Representative commands | Details |
 | --- | --- | --- | --- |
-| 安裝與診斷 | 安裝、探索、身分、錯誤與安全檢查。 | `powers-tool --version`、`doctor`、`list-resources`、`verify`、`identify`、`error`、`clear` | [資源探索與實機資源設定](README.md#resource-discovery-and-live-resource-setup)；`powers-tool --help` |
+| 安裝與診斷 | 安裝、探索、身分、錯誤與安全檢查。 | `powers-tool --version`、`doctor`、`manifest`、`list-resources`、`verify`、`identify`、`error`、`clear` | [資源探索與實機資源設定](README.md#resource-discovery-and-live-resource-setup)；[Power CLI JSON / JSONL 契約](../contracts/power-cli-jsonl-contract.md)；`powers-tool --help` |
 | 唯讀與狀態 | measurement、readback、output state、capabilities、儀器狀態與有界 telemetry。 | `measure`、`measure-all`、`read-status`、`readback`、`output-state`、`capabilities`、`log` | [唯讀指令範例](README.md#read-only-command-examples)；`read-status` 是儀器命令。 |
 | Setpoint 與 output control | 設定點、輸出切換、safe-off 與受保護的輸出操作。 | `set`、`apply`、`output-on`、`output-off`、`safe-off`、`cycle-output`、`smoke-output` | [會影響輸出的範例](README.md#output-affecting-examples)；[Safety Defaults](README.md#safety-defaults) |
 | Output workflows | ramp、ramp-list 與 software sequence。 | `ramp`、`ramp-list`、`sequence` | [Ramp、Sequence 與模擬器範例](README.md#ramp-and-sequence-examples)；[Safety Defaults](README.md#safety-defaults) |

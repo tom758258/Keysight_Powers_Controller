@@ -62,6 +62,7 @@ TOP_LEVEL_COMMAND_ORDER = (
     "capabilities",
     "safety",
     *LIFECYCLE_COMMANDS,
+    "manifest",
 )
 
 

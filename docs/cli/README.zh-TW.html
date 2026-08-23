@@ -155,6 +155,9 @@ handler（<code>list-resources</code>、<code>verify</code>、<code>clear</code>
 hardware-report 與 logging handler。</li>
 <li><code>powers_tool_cli.commands.inspection</code>：<code>doctor</code>、<code>capabilities</code>、
 <code>safety inspect</code> handler。</li>
+<li><code>powers_tool_cli.commands.manifest</code>：static <code>manifest</code> tool introspection，
+回報工具身分、package version 與 Worker protocol 相容性；不接觸 VISA、
+Worker runtime 或 HTTP，也不建立 filesystem output。</li>
 <li><code>powers_tool_cli.commands.output_run</code>：output command execution、dry-run
 planning 與 output result adapter。</li>
 <li><code>powers_tool_cli.commands.trigger_run</code>：共用 Trigger request/configuration
@@ -259,6 +262,14 @@ VISA runtime。
 一般操作員工作流程請接續閱讀 <a href="USER_GUIDE.zh-TW.html">CLI 使用者指南</a>。本機瀏覽器
 介面請參閱 <a href="../webui/USER_GUIDE.zh-TW.html">WebUI 使用者指南</a>。Exact live model
 與 connection coverage 請參閱 <a href="../core/supported-models.md" rel="noopener noreferrer" target="_blank">Supported Models</a>。</p>
+<p><code>powers-tool manifest --json</code> 提供純靜態的 tool introspection，供 orchestrator
+在不接觸儀器的情況下靜態確認工具本身：</p>
+<div class="code-wrapper"><pre><code class="language-powershell">powers-tool manifest --json
+</code></pre></div>
+<p>成功時輸出單一 JSON object，回報 <code>tool_id</code>、package version（<code>tool_version</code>）
+與 Common Worker Protocol schema 相容性。此命令不列舉或開啟 VISA resource、
+不查詢 <code>*IDN?</code>、不啟動 Worker 或 HTTP server，也不會建立檔案或目錄；欄位語意
+請參閱 <a href="../contracts/power-cli-jsonl-contract.md" rel="noopener noreferrer" target="_blank">Power CLI JSON / JSONL 契約</a>。</p>
 <h2 id="命令系列索引">命令系列索引</h2>
 <p>以下是快速導覽，不取代 <code>powers-tool --help</code> 或下方詳細範例。</p>
 <table>
@@ -274,8 +285,8 @@ VISA runtime。
 <tr>
 <td>安裝與診斷</td>
 <td>安裝、探索、身分、錯誤與安全檢查。</td>
-<td><code>powers-tool --version</code>、<code>doctor</code>、<code>list-resources</code>、<code>verify</code>、<code>identify</code>、<code>error</code>、<code>clear</code></td>
-<td><a href="README.md#resource-discovery-and-live-resource-setup" rel="noopener noreferrer" target="_blank">資源探索與實機資源設定</a>；<code>powers-tool --help</code></td>
+<td><code>powers-tool --version</code>、<code>doctor</code>、<code>manifest</code>、<code>list-resources</code>、<code>verify</code>、<code>identify</code>、<code>error</code>、<code>clear</code></td>
+<td><a href="README.md#resource-discovery-and-live-resource-setup" rel="noopener noreferrer" target="_blank">資源探索與實機資源設定</a>；<a href="../contracts/power-cli-jsonl-contract.md" rel="noopener noreferrer" target="_blank">Power CLI JSON / JSONL 契約</a>；<code>powers-tool --help</code></td>
 </tr>
 <tr>
 <td>唯讀與狀態</td>

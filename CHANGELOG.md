@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 3.1.0
+
+- Adds the static `powers-tool manifest` introspection command, which prints
+  tool identity, version, and Common Worker Protocol v2 compatibility as one
+  JSON object without touching VISA resources, Workers, HTTP servers, or the
+  filesystem.
+
 ## 3.0.0
 
 - Adds Product LIVE support for the GW Instek PSM-2010 over ASRL / RS-232 +

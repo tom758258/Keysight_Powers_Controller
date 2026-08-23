@@ -68,6 +68,26 @@ five explicit diagnostics are `list-resources`, `verify`, `identify`,
 
 The former instrument `status` command is `read-status`. `powers-tool status` is reserved for Worker `GET /status`.
 
+## Tool Manifest
+
+`powers-tool manifest --json` is static introspection of the installed
+executable for orchestrators. It never creates a VISA ResourceManager, lists
+or opens VISA resources, sends instrument queries, starts a Worker or HTTP
+server, writes files or directories, or modifies persistent configuration.
+Success prints exactly one machine-readable JSON object to stdout and exits
+`0`:
+
+- `event`: fixed `tool_manifest`.
+- `schema_version`: integer `2`, the current Common schema version.
+- `tool_id`: fixed `powers`.
+- `tool_version`: the installed single-distribution version.
+- `worker_protocol.compatibility_policy`: fixed `v2-only`.
+- `worker_protocol.schema_versions`: `[2]`.
+
+Consumers must ignore unknown fields. Usage and validation failures follow the
+shared exit-code rules. `manifest` describes the executable itself; the
+`capabilities` command describes instrument/model capabilities.
+
 ## Runtime JSONL
 
 `powers-tool worker` writes runtime JSONL to stdout by default. No

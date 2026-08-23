@@ -1085,7 +1085,10 @@ def build_parser(
     safety_inspect_parser.set_defaults(func=run_safety_inspect)
 
     from powers_tool_cli.commands import lifecycle as lifecycle_commands
+    from powers_tool_cli.commands import manifest as manifest_command
 
     lifecycle_commands.register_commands(subparsers, run_worker_command=run_worker)
+
+    manifest_command.register_commands(subparsers)
 
     return parser

@@ -137,6 +137,7 @@ COMMAND_NAMES = frozenset(
         "sequence",
         "doctor",
         "capabilities",
+        "manifest",
         "safety",
         "worker",
         "send-command",
