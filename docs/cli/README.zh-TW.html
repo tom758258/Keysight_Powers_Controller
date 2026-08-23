@@ -789,10 +789,13 @@ Ramp、Ramp List、Sequence 與有界 Worker <code>log</code>，但不會關閉 
 正常關閉 session，且不會單純因取消而送出 output OFF。<code>/stop</code> 則維持關閉整個
 Worker 的語意。</p>
 <p>CLI <code>powers-tool log</code> 使用呼叫者指定的 CSV/JSONL 路徑。Worker <code>log</code> 是有界、
-唯讀、非 output-affecting 的非同步 job，只能在自己的 job directory 寫入
-<code>telemetry.csv</code> 與 <code>telemetry.jsonl</code>；取消或失敗後會保留已寫資料。它不是
-background telemetry，也不能和另一個 active Worker job 並行。Sequence action
-<code>log</code> 仍是 host-side message，<code>--log-scpi</code> 則仍是 SCPI traffic tracing。</p>
+唯讀、非 output-affecting 的非同步 job。在 <code>files</code> mode，它會在自己的 job
+directory 寫入固定的 <code>telemetry.csv</code> 與 <code>telemetry.jsonl</code>，並在取消或失敗後
+保留已完成的 telemetry evidence。在 <code>memory</code> mode，它不建立 telemetry files；
+每筆 telemetry row 會以 schema-2 <code>sample</code> stdout JSONL event 輸出，terminal
+result 只保留 bounded summary。它不是 background telemetry，也不能和另一個
+active Worker job 並行。Sequence action <code>log</code> 仍是 host-side message，
+<code>--log-scpi</code> 則仍是 SCPI traffic tracing，而非 telemetry。</p>
 <p>Worker 預設為 file-backed（<code>--artifact-mode files</code>）：啟動時建立 artifact 目錄與
 <code>events.jsonl</code>，每個 accepted job 在 <code>jobs/&lt;worker_job_id&gt;/</code> 寫入 <code>request.json</code>
 與 <code>result.json</code>。Orchestrator 可明確選用 <code>--artifact-mode memory</code>：啟動不建立

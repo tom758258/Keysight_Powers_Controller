@@ -745,10 +745,13 @@ Ramp、Ramp List、Sequence 與有界 Worker `log`，但不會關閉 Worker。�
 Worker 的語意。
 
 CLI `powers-tool log` 使用呼叫者指定的 CSV/JSONL 路徑。Worker `log` 是有界、
-唯讀、非 output-affecting 的非同步 job，只能在自己的 job directory 寫入
-`telemetry.csv` 與 `telemetry.jsonl`；取消或失敗後會保留已寫資料。它不是
-background telemetry，也不能和另一個 active Worker job 並行。Sequence action
-`log` 仍是 host-side message，`--log-scpi` 則仍是 SCPI traffic tracing。
+唯讀、非 output-affecting 的非同步 job。在 `files` mode，它會在自己的 job
+directory 寫入固定的 `telemetry.csv` 與 `telemetry.jsonl`，並在取消或失敗後
+保留已完成的 telemetry evidence。在 `memory` mode，它不建立 telemetry files；
+每筆 telemetry row 會以 schema-2 `sample` stdout JSONL event 輸出，terminal
+result 只保留 bounded summary。它不是 background telemetry，也不能和另一個
+active Worker job 並行。Sequence action `log` 仍是 host-side message，
+`--log-scpi` 則仍是 SCPI traffic tracing，而非 telemetry。
 
 Worker 預設為 file-backed（`--artifact-mode files`）：啟動時建立 artifact 目錄與
 `events.jsonl`，每個 accepted job 在 `jobs/<worker_job_id>/` 寫入 `request.json`

@@ -810,11 +810,14 @@ meaning. Direct CLI Ctrl+C for those three workflows requests the same
 cooperative cleanup; it cannot force-interrupt blocking VISA I/O.
 
 CLI `powers-tool log` writes caller-selected CSV/JSONL paths. Worker `log` is a
-bounded, read-only asynchronous job and writes `telemetry.csv` and
-`telemetry.jsonl` only in its own job directory; partial data remains after
-cancellation or failure. It is not background telemetry and cannot run beside
-another active Worker job. The Sequence action named `log` remains a host-side
-message, and `--log-scpi` remains SCPI traffic tracing.
+bounded, read-only asynchronous job. In `files` mode it writes fixed
+`telemetry.csv` and `telemetry.jsonl` files in its own job directory and retains
+completed telemetry evidence after cancellation or failure. In `memory` mode it
+creates no telemetry files; each telemetry row is emitted as a schema-2 `sample`
+stdout JSONL event, and the terminal result retains only a bounded summary. It
+is not background telemetry and cannot run beside another active Worker job.
+The Sequence action named `log` remains a host-side message, and `--log-scpi`
+remains SCPI traffic tracing rather than telemetry.
 
 The Worker is file-backed by default (`--artifact-mode files`): startup creates
 the artifact directory and `events.jsonl`, and each accepted job writes
