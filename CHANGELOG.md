@@ -4,14 +4,19 @@
 
 ## 3.1.0
 
-- Adds the static `powers-tool manifest` introspection command, which prints
-  tool identity, version, and Common Worker Protocol v2 compatibility as one
-  JSON object without touching VISA resources, Workers, HTTP servers, or the
-  filesystem.
-- Adds an opt-in `--artifact-mode memory` Worker mode that starts without
-  artifact or event files, publishes command results through terminal JSONL
-  events and `GET /status` `last_job`, and streams `log` telemetry samples on
-  stdout while preserving the default file-backed mode as-is.
+- Adds the `powers-tool manifest --json` machine introspection command for
+  discovering tool identity, version, and Worker protocol compatibility
+  without opening VISA resources or starting a Worker.
+
+- Adds an opt-in in-memory Worker mode for orchestrators that want command
+  results and telemetry through JSONL and Worker status without creating
+  filesystem artifacts, while preserving the existing file-backed mode as
+  the default.
+
+- Improves the WebUI appearance and language controls with clearly labeled
+  Appearance and Language settings. The language control now displays the
+  current locale, and the dark theme has been refined for clearer visual
+  hierarchy and control states.
 
 ## 3.0.0
 
