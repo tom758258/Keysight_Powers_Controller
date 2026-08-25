@@ -81,6 +81,8 @@ primary display work area. Multiple Desktop instances are allowed for
 different physical instruments. Do not operate the same physical instrument
 resource from different clients at the same time.
 
+## Browser Language
+
 The upper-right of the main interface provides two labeled controls:
 Appearance and Language. The Language button displays the current locale:
 `English` for English and `繁體中文` for Traditional Chinese. Its accessible

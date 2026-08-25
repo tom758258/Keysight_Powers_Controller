@@ -5,8 +5,8 @@ already-installed `powers-tool` command to control supported DC power
 supplies. The framework is vendor-neutral, while the currently supported
 hardware is the exact Product scope in [Supported Models](../core/supported-models.md).
 It focuses on normal product operation, important limits, and safe behavior.
-Complete accepted values, ranges, and defaults for each command are provided by
-the CLI itself: run `powers-tool <command> --help`.
+For command-specific options and usage, run
+`powers-tool <command> --help`.
 
 ## Start The CLI
 
@@ -36,7 +36,7 @@ powers-tool --version
 Normal Product use leaves `--backend` unset and uses the default System VISA
 path. Specifying another backend does not unlock Product support; unsupported
 model, command, transport, backend, or feature combinations still fail closed.
-For accepted backend values, run `powers-tool <command> --help`.
+For command-specific options, run `powers-tool <command> --help`.
 
 ## First Live Check
 
@@ -277,7 +277,7 @@ workflows unattended against an unknown resource.
 | `output-on` / `output-off` | Enable or disable output on an accepted exact LIVE scope; dry-run and simulator previews remain available. |
 | `safe-off` | Turn output off using the supported safety path. |
 
-For complete accepted values, ranges, and defaults, run
+For command-specific options and usage, run
 `powers-tool <command> --help`.
 
 ## No-Hardware Checks

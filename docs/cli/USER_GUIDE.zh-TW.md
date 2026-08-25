@@ -1,6 +1,6 @@
 # Powers Tool CLI 使用者指南
 
-本指南針對取得已建置之 CLI 執行檔或已安裝 `powers-tool` 命令的操作員，說明正常產品操作、重要限制與安全行為。目前硬體支援以 [Supported Models](../core/supported-models.md) 所列 exact Product scope 為準。每個命令的完整接受值、範圍與預設值由 CLI 自身提供：請執行 `powers-tool <command> --help`。
+本指南針對取得已建置之 CLI 執行檔或已安裝 `powers-tool` 命令的操作員，說明正常產品操作、重要限制與安全行為。目前硬體支援以 [Supported Models](../core/supported-models.md) 所列 exact Product scope 為準。各命令的專屬選項與使用方式可使用 `powers-tool <command> --help` 查詢。
 
 ## 啟動 CLI
 
@@ -28,7 +28,7 @@ powers-tool --version
 
 正常 Product 使用不設定 `--backend`，並採用預設的 System VISA 路徑。指定其他
 backend 不會解鎖 Product support；不支援的 model、command、transport、backend
-或 feature 組合仍會 fail closed。接受的 backend 值請使用
+或 feature 組合仍會 fail closed。各命令的專屬選項請使用
 `powers-tool <command> --help` 查詢。
 
 ## 首次實機檢查 (First Live Check)
@@ -247,7 +247,7 @@ tracing，不是 telemetry。
 | `output-on` / `output-off` | 在接受的 exact LIVE scope 上啟用或停用輸出；dry-run 與 simulator 預覽仍可用。 |
 | `safe-off` | 使用支援的安全路徑關閉輸出。 |
 
-完整的接受值、範圍與預設值請使用 `powers-tool <command> --help` 查詢。
+各命令的專屬選項與使用方式請使用 `powers-tool <command> --help` 查詢。
 
 ## 無硬體檢查
 
