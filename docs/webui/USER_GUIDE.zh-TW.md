@@ -1,6 +1,6 @@
 # Powers Tool WebUI 使用者指南
 
-本指南供取得已建置之 WebUI 啟動器的操作員使用，說明如何檢查與控制支援的直流電源供應器。Powers Tool 的架構不綁定特定廠牌；目前硬體支援範圍以 [Supported Models](../core/supported-models.md) 所記載的 Product scopes 為準；未知或未註冊的 live hardware 會 fail closed。本指南避開了開發人員細節，專注於一般的本機 WebUI 工作流程。開發人員環境設定、API 行為、驗證以及 UI 變更邊界，皆記錄於 [WebUI README](README.zh-TW.md) 與 [Web UI 變更規則](web-ui-change-rules.md)。
+本指南供取得已建置之 WebUI 啟動器的操作員使用，說明正常產品操作、畫面工作流程與安全行為。Powers Tool 的架構不綁定特定廠牌；目前硬體支援範圍以 [Supported Models](../core/supported-models.md) 所記載的 Product scopes 為準；未知或未註冊的 live hardware 會 fail closed。
 
 ## 啟動 WebUI
 
@@ -26,14 +26,6 @@ powers-tool-<version>-windows-x64.zip
 
 解壓後的 application root 包含 CLI、WebUI launcher、private WebUI Host、
 Electron runtime files，以及共用的 `_internal` 目錄。
-
-本機 shared bundle 與已解壓的 Desktop application 都包含 GUI launcher；
-`.venv\Scripts\powers-tool-webui.exe` 是 FastAPI server wrapper，
-執行 `powers_tool_webui.server:main`；
-`.venv\Scripts\powers-tool-webui-launcher.exe` 是已安裝的 GUI launcher wrapper，
-執行 `powers_tool_webui.launcher:main`。Bundle/release 中的 GUI launcher 與已安裝的
-launcher wrapper 使用相同的 launcher implementation。
-
 
 不帶命令列選項時，啟動器會在 `127.0.0.1` 上從 port `7999` 開始，最多嘗試
 100 個候選 port，通常到 `8098`。每個候選 port 都會透過實際 bind 測試；無論
@@ -68,24 +60,15 @@ address-in-use error 才會讓 fallback 保持開啟。
 http://127.0.0.1:7999/
 ```
 
-開發人員或簽出原始碼的使用者應參閱 [WebUI README](README.zh-TW.md) 以了解終端機指令、驗證、API 與建置細節。
-
-WebUI 執行於與儀器連接的同一台 Windows 電腦上。它是一個本機工具，而非雲端服務。關閉瀏覽器分頁並不一定會停止伺服器；使用完畢後，請使用啟動器中的 `Quit` 或停止終端機程序。
+WebUI 執行於與儀器連接的同一台 Windows 電腦上。它是一個本機工具，而非雲端服務。關閉瀏覽器分頁並不一定會停止伺服器；使用完畢後，請使用啟動器中的 `Quit`。
 
 ## Desktop Shell
 
-Source checkout 使用者可以從 `desktop/` 執行 Electron Desktop shell：
-
-```powershell
-Set-Location .\desktop
-npm ci
-npm start
-```
-
-這個 shell 顯示現有 WebUI，並使用 private WebUI Host。primary display 足夠
-時，視窗初始大小為 1920x1080；否則會 clamp 到 primary display work area。
-允許多個 Desktop instance 操作不同的實體儀器，但不可同時讓不同 client
-操作同一個 physical instrument resource。
+`Powers Tool.exe` 是正式 release 中的 Desktop shell。它顯示同一套 WebUI，
+並使用 private WebUI Host。一般畫面、命令、工作流程與安全行為與 WebUI 相同。
+primary display 足夠時，視窗初始大小為 1920x1080；否則會 clamp 到 primary
+display work area。允許多個 Desktop instance 操作不同的實體儀器，但不可同時讓
+different client 操作同一個 physical instrument resource。
 
 ## 瀏覽器語言
 
@@ -307,9 +290,6 @@ manual fallback 視窗，請選擇其他 port，或停止占用所選 port 的�
 - 將觸發與 LIST 工作流程視為進階操作。
 - 在可行情況下，斷開 DUT 之前請停止或關閉輸出。
 
-## 更多 WebUI 文件
+## 更多產品文件
 
-- [WebUI README](README.zh-TW.md)：API 行為、驗證、開發環境設定與維護者邊界。
-- [Web UI 變更規則](web-ui-change-rules.md)：針對開發人員與 agent 的 UI 變更規則。
-- [Localization Contract](localization-contract.md)：瀏覽器在地化與「僅變更呈現」的執行階段契約。
--
+- [支援型號](../core/supported-models.md)：目前 Product support matrix 與型號特定限制。

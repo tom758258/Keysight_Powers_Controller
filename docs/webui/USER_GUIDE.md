@@ -3,10 +3,8 @@
 This guide is for operators who receive the built WebUI launcher and use it to
 inspect and control supported DC power supplies. The framework is
 vendor-neutral, while current hardware support is defined by the documented
-[Product scopes](../core/supported-models.md). This guide avoids developer
-details and focuses on normal local WebUI workflows. Developer setup, API behavior,
-validation, and UI change boundaries are documented in the
-[WebUI README](README.md) and [WebUI Change Rules](web-ui-change-rules.md).
+[Product scopes](../core/supported-models.md). This guide covers normal product
+operation, screen workflows, and safety behavior.
 
 ## Start The WebUI
 
@@ -69,31 +67,19 @@ is:
 http://127.0.0.1:7999/
 ```
 
-Developers or source-checkout users should use the [WebUI README](README.md)
-for terminal commands, validation, API, and build details.
-
 The WebUI runs on the same Windows computer that has access to the instrument.
 It is a local tool, not a cloud service. Closing the browser tab does not
-always stop the server; use `Quit` in the launcher or stop the terminal process
-when you are done.
+always stop the server; use `Quit` in the launcher when you are done.
 
 ## Desktop Shell
 
-Source-checkout users can run the Electron Desktop shell from `desktop/`:
-
-```powershell
-Set-Location .\desktop
-npm ci
-npm start
-```
-
-The shell displays the existing WebUI and uses the private WebUI Host. It opens
+`Powers Tool.exe` is the Desktop shell included in the formal release. It
+displays the same WebUI and uses the private WebUI Host. The normal screens,
+commands, workflows, and safety behavior are the same as in the WebUI. It opens
 at 1920x1080 when the primary display allows it, otherwise it is clamped to the
 primary display work area. Multiple Desktop instances are allowed for
 different physical instruments. Do not operate the same physical instrument
 resource from different clients at the same time.
-
-## Browser Language
 
 The upper-right of the main interface provides two labeled controls:
 Appearance and Language. The Language button displays the current locale:
@@ -454,9 +440,7 @@ Live Data does not override real command execution.
 - Treat trigger and LIST workflows as advanced operations.
 - Stop or turn output off before disconnecting the DUT when practical.
 
-## More WebUI Documentation
+## More Product Documentation
 
-- [WebUI README](README.md): API behavior, validation, development setup, and
-  maintainer boundaries.
-- [WebUI Change Rules](web-ui-change-rules.md): developer and agent rules for
-  UI changes.
+- [Supported Models](../core/supported-models.md): the current Product support
+  matrix and model-specific limits.

@@ -95,7 +95,7 @@ pre code { color: var(--text-code); background: transparent; padding: 0; }
   </aside>
   <main>
 <h1 id="powers-tool-cli-使用者指南">Powers Tool CLI 使用者指南</h1>
-<p>本指南針對取得已建置之 CLI 執行檔或已安裝 <code>powers-tool</code> 命令的操作員，說明如何控制支援的直流電源供應器。目前硬體支援以 <a href="../core/supported-models.md">Supported Models</a> 所列 exact Product scope 為準。重點涵蓋常規的實機 (live) 工作流程、資源選擇與安全優先檢查。有關開發人員環境設定、詳細指令參考與自動化細節，請參見 <a href="README.zh-TW.html">CLI README</a>。</p>
+<p>本指南針對取得已建置之 CLI 執行檔或已安裝 <code>powers-tool</code> 命令的操作員，說明正常產品操作、重要限制與安全行為。目前硬體支援以 <a href="../core/supported-models.md">Supported Models</a> 所列 exact Product scope 為準。每個命令的完整接受值、範圍與預設值由 CLI 自身提供：請執行 <code>powers-tool &lt;command&gt; --help</code>。</p>
 <h2 id="啟動-cli">啟動 CLI</h2>
 <p>在包含 CLI 執行檔的資料夾中開啟 PowerShell 並檢查：</p>
 <div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe --version
@@ -104,19 +104,14 @@ pre code { color: var(--text-code); background: transparent; padding: 0; }
 <div class="code-wrapper"><pre><code class="language-text">powers-tool-&lt;version&gt;-windows-x64.zip
 \powers-tool-&lt;version&gt;\powers-tool.exe
 </code></pre></div>
-<p>請在以下命令中使用解壓後的路徑。開發人員或簽出原始碼的使用者請參閱 <a href="README.zh-TW.html">CLI README</a> 以了解虛擬環境、模組、建置與 developer commands。</p>
+<p>請在以下命令中使用解壓後的路徑。</p>
 <p>若為已安裝的命令，請將 <code>.\powers-tool.exe</code> 替換為 <code>powers-tool</code>：</p>
 <div class="code-wrapper"><pre><code class="language-powershell">powers-tool --version
 </code></pre></div>
-<p>正常 Product 使用不設定 <code>--backend</code>，並採用預設的 System VISA 路徑。Source
-checkout 或 installed Python environment 可在對應 backend package 已安裝且可由
-PyVISA 載入時，透過現有的 <code>--backend "@py"</code> 或 <code>--backend "@bt"</code> 傳遞 optional
-PyVISA selector。<code>@bt</code> 會辨識為 <code>pyvisa_bt</code> backend identity，但目前沒有使用該
-backend 的 Powers Product-open exact live scope；因此 model-aware Product live
-command 搭配 <code>--backend "@bt"</code> 時會 fail closed。Backend 可載入不代表已取得
-Product support。</p>
-<p>封裝後的 <code>powers-tool.exe</code> 不會 bundle <code>pyvisa_bt</code>。本指南中的
-封裝 CLI commands 使用正常的 System VISA 路徑。</p>
+<p>正常 Product 使用不設定 <code>--backend</code>，並採用預設的 System VISA 路徑。指定其他
+backend 不會解鎖 Product support；不支援的 model、command、transport、backend
+或 feature 組合仍會 fail closed。接受的 backend 值請使用
+<code>powers-tool &lt;command&gt; --help</code> 查詢。</p>
 <h2 id="首次實機檢查-first-live-check">首次實機檢查 (First Live Check)</h2>
 <p>在檢查新電腦、VISA runtime、連線或電源供應器設定時，請使用此流程。</p>
 <ol>
@@ -221,13 +216,7 @@ powers-tool output-state --resource "$env:POWERS_TOOL_ASRL_RESOURCE" --channel 1
 <p>CLI <code>log</code> 執行有界的唯讀 telemetry，並寫入呼叫者選擇的路徑：</p>
 <div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe log --simulate --model keysight-e36312a --channel all --interval-sec 1 --samples 5 --csv telemetry.csv --jsonl telemetry.jsonl
 </code></pre></div>
-<p>Worker <code>log</code> 則必須提供 sample 或 duration bound。它支援 cooperative
-cancellation、不會 safe-off output、不接受呼叫者 artifact path，也不會和另一個
-Worker job 並行。<code>files</code> artifact mode 會在自己的 job directory 擁有固定的
-<code>telemetry.csv</code>／<code>telemetry.jsonl</code>，並在 cancellation 或 failure 後保留已完成的
-telemetry evidence。<code>memory</code> mode 不建立 job-directory telemetry files；每筆 row
-會透過 schema-2 <code>sample</code> stdout JSONL event 輸出，terminal result 只保留 bounded
-summary。Sequence <code>log</code> 只是 message/note action；<code>--log-scpi</code> 是 SCPI traffic
+<p>Sequence <code>log</code> 只是 message/note action；<code>--log-scpi</code> 是 SCPI traffic
 tracing，不是 telemetry。</p>
 <h2 id="影響輸出的工作流程">影響輸出的工作流程</h2>
 <p>影響輸出的命令需要明確指定。使用前，請確認儀器型號、通道、DUT 接線、電壓、電流限制與保護設定。</p>
@@ -243,7 +232,7 @@ tracing，不是 telemetry。</p>
 <p>檢查完成後關閉輸出：</p>
 <div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe output-off --resource "$env:POWERS_TOOL_RESOURCE" --channel 1 --json --log-scpi
 </code></pre></div>
-<p>若要進行簡短的快速測試動作 (smoke action)，請將電壓與電流保持在低位，並使用 CLI README 中記錄的有限度命令。請勿針對未知的資源在無人值守的情況下執行輸出工作流程。</p>
+<p>若要進行簡短的快速檢查，請將電壓與電流限制保持在低位，先設定設定點，透過 readback 確認，並在確認 DUT 可承受後才啟用輸出。完成後請關閉輸出。請勿針對未知的資源在無人值守的情況下執行輸出工作流程。</p>
 <h2 id="常用指令">常用指令</h2>
 <table>
 <thead>
@@ -303,6 +292,7 @@ tracing，不是 telemetry。</p>
 </tr>
 </tbody>
 </table>
+<p>完整的接受值、範圍與預設值請使用 <code>powers-tool &lt;command&gt; --help</code> 查詢。</p>
 <h2 id="無硬體檢查">無硬體檢查</h2>
 <p>Dry-run 與 simulator 命令不會開啟真實 VISA 硬體。當命令需要 model-specific
 planning 時，請以 <code>--model</code> 傳入 canonical 的 simulation/dry-run model ID，或使用
@@ -320,7 +310,7 @@ planning 的命令上。它不可與 <code>--model</code> 併用，在 simulator
 <p>對 live commands，<code>--model</code> 接受 canonical ID（例如 <code>keysight-e36312a</code>）並作為
 expected-model guard。CLI 仍會查詢 <code>*IDN?</code>，並以偵測到的 model 選擇 driver。若指定的
 model 與連線 IDN model 不符，命令會在 setup 或 write SCPI 前失敗：</p>
-<div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe set --model keysight-e36312a --resource "$env:POWER_USB_RESOURCE" --channel 1 --voltage 1 --current 0.05
+<div class="code-wrapper"><pre><code class="language-powershell">.\powers-tool.exe set --model keysight-e36312a --resource "$env:POWERS_TOOL_RESOURCE" --channel 1 --voltage 1 --current 0.05
 </code></pre></div>
 <p>這要求連線的 model 必須是 E36312A，但不會強制使用 E36312A driver。</p>
 <p><code>--model</code> 不是 feature unlock。不支援的 model、command、mode、connection、backend 或
@@ -335,11 +325,8 @@ product-open。請參閱 <a href="../core/supported-models.md#product-live-exact
 <p>如果單純的 <code>list-resources</code> 顯示舊項目，請在常規操作流程改用 <code>--live-only</code> 重新執行，或使用 <code>--verify</code> 來診斷過時的 VISA 快取項目。</p>
 <p>如果命令拒絕執行，請將其視為安全與 support policy 的結果；CLI 會在執行風險動作前，刻意拒絕不支援的型號、通道、不安全的設定點，以及缺少確認的操作。重試或加入 <code>--model</code> 不會啟用不支援的功能。</p>
 <p>如果日誌或自動化需要 JSON 輸出，請加上 <code>--json</code>。來自 <code>--log-scpi</code> 的診斷 SCPI 日誌會分開寫入 (stderr)，讓 JSON stdout 保持可解析狀態。</p>
-<h2 id="更多-cli-文件">更多 CLI 文件</h2>
+<h2 id="更多-cli-文件">更多產品文件</h2>
 <ul>
-<li><a href="README.zh-TW.html">CLI README</a>：工程建置、完整指令參考、JSON 行為、worker 細節與建置資訊。</li>
-<li><a href="../contracts/power-cli-jsonl-contract.md" rel="noopener noreferrer" target="_blank">Power CLI JSON / JSONL 契約</a>：結構化的命令列輸出規則。</li>
-<li><a href="../contracts/power-worker-contract.md" rel="noopener noreferrer" target="_blank">Power Worker 契約</a>：本機 worker REST、JSONL 與產物 (artifact) 契約。</li>
 <li><a href="../core/supported-models.md" rel="noopener noreferrer" target="_blank">支援型號</a>：目前 Product support matrix 與型號特定限制。</li>
 </ul>
 

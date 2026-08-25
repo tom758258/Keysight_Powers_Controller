@@ -1,6 +1,6 @@
 # Powers Tool CLI 使用者指南
 
-本指南針對取得已建置之 CLI 執行檔或已安裝 `powers-tool` 命令的操作員，說明如何控制支援的直流電源供應器。目前硬體支援以 [Supported Models](../core/supported-models.md) 所列 exact Product scope 為準。重點涵蓋常規的實機 (live) 工作流程、資源選擇與安全優先檢查。有關開發人員環境設定、詳細指令參考與自動化細節，請參見 [CLI README](README.zh-TW.md)。
+本指南針對取得已建置之 CLI 執行檔或已安裝 `powers-tool` 命令的操作員，說明正常產品操作、重要限制與安全行為。目前硬體支援以 [Supported Models](../core/supported-models.md) 所列 exact Product scope 為準。每個命令的完整接受值、範圍與預設值由 CLI 自身提供：請執行 `powers-tool <command> --help`。
 
 ## 啟動 CLI
 
@@ -18,8 +18,7 @@ powers-tool-<version>-windows-x64.zip
 \powers-tool-<version>\powers-tool.exe
 ```
 
-請在以下命令中使用解壓後的路徑。開發人員或簽出原始碼的使用者請參閱
-[CLI README](README.zh-TW.md) 以了解虛擬環境、模組、建置與 developer commands。
+請在以下命令中使用解壓後的路徑。
 
 若為已安裝的命令，請將 `.\powers-tool.exe` 替換為 `powers-tool`：
 
@@ -27,16 +26,10 @@ powers-tool-<version>-windows-x64.zip
 powers-tool --version
 ```
 
-正常 Product 使用不設定 `--backend`，並採用預設的 System VISA 路徑。Source
-checkout 或 installed Python environment 可在對應 backend package 已安裝且可由
-PyVISA 載入時，透過現有的 `--backend "@py"` 或 `--backend "@bt"` 傳遞 optional
-PyVISA selector。`@bt` 會辨識為 `pyvisa_bt` backend identity，但目前沒有使用該
-backend 的 Powers Product-open exact live scope；因此 model-aware Product live
-command 搭配 `--backend "@bt"` 時會 fail closed。Backend 可載入不代表已取得
-Product support。
-
-封裝後的 `powers-tool.exe` 不會 bundle `pyvisa_bt`。本指南中的封裝 CLI
-commands 使用正常的 System VISA 路徑。
+正常 Product 使用不設定 `--backend`，並採用預設的 System VISA 路徑。指定其他
+backend 不會解鎖 Product support；不支援的 model、command、transport、backend
+或 feature 組合仍會 fail closed。接受的 backend 值請使用
+`powers-tool <command> --help` 查詢。
 
 ## 首次實機檢查 (First Live Check)
 
@@ -204,13 +197,7 @@ CLI `log` 執行有界的唯讀 telemetry，並寫入呼叫者選擇的路徑：
 .\powers-tool.exe log --simulate --model keysight-e36312a --channel all --interval-sec 1 --samples 5 --csv telemetry.csv --jsonl telemetry.jsonl
 ```
 
-Worker `log` 則必須提供 sample 或 duration bound。它支援 cooperative
-cancellation、不會 safe-off output、不接受呼叫者 artifact path，也不會和另一個
-Worker job 並行。`files` artifact mode 會在自己的 job directory 擁有固定的
-`telemetry.csv`／`telemetry.jsonl`，並在 cancellation 或 failure 後保留已完成的
-telemetry evidence。`memory` mode 不建立 job-directory telemetry files；每筆 row
-會透過 schema-2 `sample` stdout JSONL event 輸出，terminal result 只保留 bounded
-summary。Sequence `log` 只是 message/note action；`--log-scpi` 是 SCPI traffic
+Sequence `log` 只是 message/note action；`--log-scpi` 是 SCPI traffic
 tracing，不是 telemetry。
 
 ## 影響輸出的工作流程
@@ -241,7 +228,7 @@ tracing，不是 telemetry。
 .\powers-tool.exe output-off --resource "$env:POWERS_TOOL_RESOURCE" --channel 1 --json --log-scpi
 ```
 
-若要進行簡短的快速測試動作 (smoke action)，請將電壓與電流保持在低位，並使用 CLI README 中記錄的有限度命令。請勿針對未知的資源在無人值守的情況下執行輸出工作流程。
+若要進行簡短的快速檢查，請將電壓與電流限制保持在低位，先設定設定點，透過 readback 確認，並在確認 DUT 可承受後才啟用輸出。完成後請關閉輸出。請勿針對未知的資源在無人值守的情況下執行輸出工作流程。
 
 ## 常用指令
 
@@ -259,6 +246,8 @@ tracing，不是 telemetry。
 | `set` | 設定電壓/電流而不啟用輸出。 |
 | `output-on` / `output-off` | 在接受的 exact LIVE scope 上啟用或停用輸出；dry-run 與 simulator 預覽仍可用。 |
 | `safe-off` | 使用支援的安全路徑關閉輸出。 |
+
+完整的接受值、範圍與預設值請使用 `powers-tool <command> --help` 查詢。
 
 ## 無硬體檢查
 
@@ -285,7 +274,7 @@ expected-model guard。CLI 仍會查詢 `*IDN?`，並以偵測到的 model 選�
 model 與連線 IDN model 不符，命令會在 setup 或 write SCPI 前失敗：
 
 ```powershell
-.\powers-tool.exe set --model keysight-e36312a --resource "$env:POWER_USB_RESOURCE" --channel 1 --voltage 1 --current 0.05
+.\powers-tool.exe set --model keysight-e36312a --resource "$env:POWERS_TOOL_RESOURCE" --channel 1 --voltage 1 --current 0.05
 ```
 
 這要求連線的 model 必須是 E36312A，但不會強制使用 E36312A driver。
@@ -310,9 +299,6 @@ product-open。請參閱 [exact matrix](../core/supported-models.md#product-live
 
 如果日誌或自動化需要 JSON 輸出，請加上 `--json`。來自 `--log-scpi` 的診斷 SCPI 日誌會分開寫入 (stderr)，讓 JSON stdout 保持可解析狀態。
 
-## 更多 CLI 文件
+## 更多產品文件
 
-- [CLI README](README.zh-TW.md)：工程建置、完整指令參考、JSON 行為、worker 細節與建置資訊。
-- [Power CLI JSON / JSONL 契約](../contracts/power-cli-jsonl-contract.md)：結構化的命令列輸出規則。
-- [Power Worker 契約](../contracts/power-worker-contract.md)：本機 worker REST、JSONL 與產物 (artifact) 契約。
 - [支援型號](../core/supported-models.md)：目前 Product support matrix 與型號特定限制。

@@ -4,10 +4,9 @@ This guide is for operators who receive the built CLI executable or an
 already-installed `powers-tool` command to control supported DC power
 supplies. The framework is vendor-neutral, while the currently supported
 hardware is the exact Product scope in [Supported Models](../core/supported-models.md).
-It focuses on normal live
-workflows, resource selection, and safe first checks. For developer setup,
-detailed command reference, and automation details, see the
-[CLI README](README.md).
+It focuses on normal product operation, important limits, and safe behavior.
+Complete accepted values, ranges, and defaults for each command are provided by
+the CLI itself: run `powers-tool <command> --help`.
 
 ## Start The CLI
 
@@ -25,9 +24,7 @@ powers-tool-<version>-windows-x64.zip
 \powers-tool-<version>\powers-tool.exe
 ```
 
-Use that extracted path in the commands below. Developers or source-checkout users should use the
-[CLI README](README.md) for virtual environment, module, build, and developer
-commands.
+Use that extracted path in the commands below.
 
 For an already-installed command, replace `.\powers-tool.exe` with
 `powers-tool`:
@@ -37,16 +34,9 @@ powers-tool --version
 ```
 
 Normal Product use leaves `--backend` unset and uses the default System VISA
-path. A source checkout or installed Python environment can pass an optional
-PyVISA selector such as `--backend "@py"` or `--backend "@bt"` when the
-corresponding backend package is installed and loadable. `@bt` is recognized as
-the `pyvisa_bt` backend identity, but no current Powers Product-open exact live
-scope uses that backend; model-aware Product live commands therefore fail
-closed with `--backend "@bt"`. Backend loadability does not grant Product
-support.
-
-The packaged `powers-tool.exe` does not bundle `pyvisa_bt`. The packaged CLI
-commands in this guide use the normal System VISA path.
+path. Specifying another backend does not unlock Product support; unsupported
+model, command, transport, backend, or feature combinations still fail closed.
+For accepted backend values, run `powers-tool <command> --help`.
 
 ## First Live Check
 
@@ -232,15 +222,8 @@ caller:
 .\powers-tool.exe log --simulate --model keysight-e36312a --channel all --interval-sec 1 --samples 5 --csv telemetry.csv --jsonl telemetry.jsonl
 ```
 
-Worker `log` instead requires a sample or duration bound. It is cooperatively
-cancellable, does not safe-off outputs, accepts no caller artifact paths, and
-does not run concurrently with another Worker job. In `files` artifact mode it
-owns fixed `telemetry.csv`/`telemetry.jsonl` files inside its job directory and
-retains completed telemetry evidence after cancellation or failure. In
-`memory` mode it creates no job-directory telemetry files, emits each row as a
-schema-2 `sample` stdout JSONL event, and keeps only the bounded summary in the
-terminal result. Sequence `log` is only a message/note action; `--log-scpi`
-traces SCPI traffic and is not telemetry.
+Sequence `log` is only a message/note action; `--log-scpi` traces SCPI traffic
+and is not telemetry.
 
 ## Output-Affecting Workflow
 
@@ -272,9 +255,10 @@ Turn output off when the check is complete:
 .\powers-tool.exe output-off --resource "$env:POWERS_TOOL_RESOURCE" --channel 1 --json --log-scpi
 ```
 
-For a short smoke action, keep voltage and current low and use the documented
-bounded commands in the CLI README. Do not run output workflows unattended
-against an unknown resource.
+For a short smoke check, keep voltage and current limits low, set the setpoints
+first, confirm them by readback, and only enable output after confirming that
+the DUT can tolerate it. Turn output off when finished. Do not run output
+workflows unattended against an unknown resource.
 
 ## Common Commands
 
@@ -292,6 +276,9 @@ against an unknown resource.
 | `set` | Set voltage/current without enabling output. |
 | `output-on` / `output-off` | Enable or disable output on an accepted exact LIVE scope; dry-run and simulator previews remain available. |
 | `safe-off` | Turn output off using the supported safety path. |
+
+For complete accepted values, ranges, and defaults, run
+`powers-tool <command> --help`.
 
 ## No-Hardware Checks
 
@@ -322,7 +309,7 @@ does not match the connected IDN model, the command fails before setup or write
 SCPI:
 
 ```powershell
-.\powers-tool.exe set --model keysight-e36312a --resource "$env:POWER_USB_RESOURCE" --channel 1 --voltage 1 --current 0.05
+.\powers-tool.exe set --model keysight-e36312a --resource "$env:POWERS_TOOL_RESOURCE" --channel 1 --voltage 1 --current 0.05
 ```
 
 This requires the connected model to be E36312A and does not force the E36312A
@@ -364,13 +351,7 @@ with `--model` does not enable unsupported features.
 If JSON output is needed for logs or automation, add `--json`. Diagnostic SCPI
 logs from `--log-scpi` are written separately so JSON stdout remains parseable.
 
-## More CLI Documentation
+## More Product Documentation
 
-- [CLI README](README.md): engineering setup, full command reference, JSON
-  behavior, worker details, and build information.
-- [Power CLI JSON / JSONL Contract](../contracts/power-cli-jsonl-contract.md):
-  structured command-line output rules.
-- [Power Worker Contract](../contracts/power-worker-contract.md): local worker
-  REST, JSONL, and artifact contract.
 - [Supported Models](../core/supported-models.md): the current Product support
   matrix and model-specific limits.
