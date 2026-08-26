@@ -79,7 +79,16 @@ def inspect_distribution(
         assert build_profile_name in names
         build_profile = archive.read(build_profile_name).decode("utf-8")
         assert "BuildProfile.PRODUCT" in build_profile
-        for filename in ("index.html", "styles.css", "app.js"):
+        for filename in (
+            "index.html",
+            "styles.css",
+            "app.js",
+            "help/webui.html",
+            "help/webui.zh-TW.html",
+            "help/supported-models.html",
+            "help/supported-models.zh-TW.html",
+            "help/help.css",
+        ):
             assert f"powers_tool_webui/static/{filename}" in names
 
     if sdists:
@@ -102,7 +111,16 @@ def inspect_distribution(
             for package in LEGACY_PACKAGES:
                 assert not any(name.startswith(f"{root}/src/{package}/") for name in names), package
             assert f"{root}/src/powers_tool_core/build_profile.py" in names
-            for filename in ("index.html", "styles.css", "app.js"):
+            for filename in (
+                "index.html",
+                "styles.css",
+                "app.js",
+                "help/webui.html",
+                "help/webui.zh-TW.html",
+                "help/supported-models.html",
+                "help/supported-models.zh-TW.html",
+                "help/help.css",
+            ):
                 assert f"{root}/src/powers_tool_webui/static/{filename}" in names
 
 

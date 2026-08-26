@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, Response, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from powers_tool_core.core import CommandCancelled, CoreExecutionError, CoreValidationError, OperationRequest, RuntimeOptions, SequenceRequest, StopCleanupError, TriggerRequest
 from powers_tool_core.identity import IdentityResolutionError, resolve_physical_model_identity
@@ -40,6 +40,7 @@ from .commands import (
 )
 
 STATIC_DIR = Path(__file__).parent / "static"
+HELP_DIR = STATIC_DIR / "help"
 CACHE_CONTROL_NO_STORE = "no-store"
 WEBUI_SEQUENCE_MAX_STEPS = 250
 
@@ -85,6 +86,17 @@ LEGACY_RUNTIME_IDENTITY_FIELDS = {"model_profile", "model"}
 # Mount static files if directory exists
 if STATIC_DIR.exists():
     app.mount("/static", NoStoreStaticFiles(directory=str(STATIC_DIR)), name="static")
+
+
+@app.get("/help/")
+async def help_index():
+    return FileResponse(
+        HELP_DIR / "webui.html",
+        headers={"Cache-Control": CACHE_CONTROL_NO_STORE},
+    )
+
+
+app.mount("/help", NoStoreStaticFiles(directory=str(HELP_DIR)), name="help")
 
 
 COMMAND_METADATA = {

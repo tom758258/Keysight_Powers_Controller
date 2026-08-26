@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Powers Tool WebUI 使用者指南</title>
+  <link rel="stylesheet" href="help.css">
+</head>
+<body>
+  <aside class="help-sidebar">
+    <div class="help-sidebar-title" id="toc-title">Contents</div>
+    <nav id="toc" aria-labelledby="toc-title"></nav>
+  </aside>
+
+  <main class="help-content" id="help-content">
+<h1 id="powers-tool-webui-使用者指南">Powers Tool WebUI 使用者指南</h1>
+<p>本指南供取得已建置之 WebUI 啟動器的操作員使用，說明正常產品操作、畫面工作流程與安全行為。Powers Tool 的架構不綁定特定廠牌；目前硬體支援範圍以 <a href="supported-models.zh-TW.html">支援型號</a> 所記載的 Product scopes 為準；未知或未註冊的 live hardware 會 fail closed。</p>
+<h2 id="啟動-webui">啟動 WebUI</h2>
+<p>使用本機 shared onedir build 時，請雙擊 bundle 中的 WebUI 啟動器：</p>
+<pre><code class="language-text">dist\powers-tool\powers-tool-webui-launcher.exe
+</code></pre>
+<p>若要從 PowerShell 確認本機 bundle launcher 版本：</p>
+<pre><code class="language-powershell">.\dist\powers-tool\powers-tool-webui-launcher.exe --version
+</code></pre>
+<p>正式 Windows release 請解壓縮帶版本號的 Desktop ZIP，並從 application root
+啟動 Desktop shell：</p>
+<pre><code class="language-text">powers-tool-&lt;version&gt;-windows-x64.zip
+\powers-tool-&lt;version&gt;\Powers Tool.exe
+</code></pre>
+<p>解壓後的 application root 包含 CLI、WebUI launcher、private WebUI Host、
+Electron runtime files，以及共用的 <code>_internal</code> 目錄。</p>
+<p>不帶命令列選項時，啟動器會在 <code>127.0.0.1</code> 上從 port <code>7999</code> 開始，最多嘗試
+100 個候選 port，通常到 <code>8098</code>。每個候選 port 都會透過實際 bind 測試；無論
+該 port 是被另一個 Powers Tool WebUI 或其他服務占用，都只會跳過，不會開啟
+已存在於該 port 的服務。新啟動的 WebUI 通過 <code>/api/health</code> readiness 後，才會
+開啟瀏覽器；啟動器接著顯示包含實際 URL、Running 狀態與 <code>Quit</code> 的精簡 Running
+視窗，port 設定與 <code>Start</code> 會隱藏。</p>
+<p>只有所有自動候選 port 都因 address-in-use 失敗時，才會顯示 manual fallback
+視窗。請輸入其他本機 port 並點擊 <code>Start</code>；如果手動輸入的 port 也因
+address-in-use 失敗，視窗會保留以便編輯與重試。重試成功後會回到精簡 Running
+視窗。</p>
+<p>從 PowerShell 使用 <code>--port</code> 可要求固定 port；除非同時提供 <code>--auto-port</code>，否則
+不會自動切換到其他 port：</p>
+<pre><code class="language-powershell">.\dist\powers-tool\powers-tool-webui-launcher.exe --port 9000
+.\dist\powers-tool\powers-tool-webui-launcher.exe --port 9000 --auto-port
+</code></pre>
+<p>固定 port 衝突會回報選定的 port、完成清理並以非零狀態結束，不會改用其他 port
+或開啟 manual port 視窗。其他 bind、startup、application、server exit 或
+readiness error 也會保留原始細節、完成清理並結束，不會開啟 manual fallback。
+只有自動 address-in-use exhaustion 會開啟 manual fallback，且只有另一個
+address-in-use error 才會讓 fallback 保持開啟。</p>
+<p>如果瀏覽器沒有自動開啟，請先開啟啟動器顯示的實際 URL。若實際使用預設 port，
+該 URL 會是：</p>
+<pre><code class="language-text">http://127.0.0.1:7999/
+</code></pre>
+<p>WebUI 執行於與儀器連接的同一台 Windows 電腦上。它是一個本機工具，而非雲端服務。關閉瀏覽器分頁並不一定會停止伺服器；使用完畢後，請使用啟動器中的 <code>Quit</code>。</p>
+<h2 id="desktop-shell">Desktop Shell</h2>
+<p><code>Powers Tool.exe</code> 是正式 release 中的 Desktop shell。它顯示同一套 WebUI，
+並使用 private WebUI Host。一般畫面、命令、工作流程與安全行為與 WebUI 相同。
+primary display 足夠時，視窗初始大小為 1920x1080；否則會 clamp 到 primary
+display work area。允許多個 Desktop instance 操作不同的實體儀器，但不可同時讓
+different client 操作同一個 physical instrument resource。</p>
+<h2 id="瀏覽器語言">瀏覽器語言</h2>
+<p>主介面右上方提供「外觀」與「語言」兩個標示清楚的控制項。語言按鈕會顯示
+目前 locale：English 顯示 <code>English</code>，繁體中文顯示 <code>繁體中文</code>；accessible name
+則描述點擊後要切換到的語言。</p>
+<p>切換會在 runtime 立即生效，不需要 reload page，並保留目前頁面狀態，包括：</p>
+<ul>
+<li>execution mode；</li>
+<li>resource 與 identity selection；</li>
+<li>command form；</li>
+<li>workflow editor；</li>
+<li>Job History 與 Job Result；</li>
+<li>Result Detail；</li>
+<li>Live Data 顯示狀態。</li>
+</ul>
+<p>語言切換只改變瀏覽器 presentation，不會建立 HTTP request、Job 或 workflow
+action，也不會建立、停止或以其他方式影響 EventSource。</p>
+<p>外觀控制會顯示目前的 System / Light / Dark 主題偏好，點擊後依序切換至下一個
+偏好。System 會遵循作業系統的 <code>prefers-color-scheme</code>。主題偏好會透過同一個 loopback browser 的
+<code>powers-tool.webui.theme</code> cookie 保留；Electron Desktop shell 會使用該 cookie
+同步 native window theme。選定的主題會套用至主要的 panels、cards、fields
+與 status surfaces，不只改變頁面背景。
+深色主題下，主要控制項、狀態文字，以及不可用或停用的控制項，會在深色
+surface 上維持足夠辨識度。</p>
+<p>以下 machine-facing values 保持原值且不翻譯：command IDs、model IDs、VISA
+resources、API payload/schema、SCPI、raw diagnostics 與原始錯誤內容。</p>
+<p>English 是 source/fallback locale。語言偏好會保留在相同瀏覽器中；如果 browser
+storage 不可用，WebUI 會安全 fallback，不影響正常操作。</p>
+<h2 id="畫面總覽">畫面總覽</h2>
+<p>此頁面是儀器控制主控台，主要區域包括：</p>
+<ul>
+<li><code>Execution mode</code>：頁面內的 Real、Simulate 或 Dry-run 模式選擇；重新載入頁面時一律回到 Real。</li>
+<li><code>VISA resource</code>：Real 命令工作所使用的明確儀器位址。</li>
+<li><code>Live resource</code>：由 <code>Scan Device</code> 工作流程探索到的資源。</li>
+<li><code>Scan Device</code>：搜尋目前可回應的 VISA 資源並填入選擇器。</li>
+<li><code>Live Data</code>：唯讀的通道卡片與狀態指示。</li>
+<li><code>Basic command</code>：各通道的 Voltage、Current、Set 與輸出控制。</li>
+<li><code>Show more commands</code>：開啟進階命令列與自動生成表單。</li>
+<li><code>Job Result</code>：最近提交的工作及其狀態。</li>
+<li><code>Result Detail</code>：所選工作的原始 JSON 詳細資料。</li>
+</ul>
+<p>所有會影響硬體的工作仍必須明確提出，並通過相應的授權、確認與 Core 安全檢查。</p>
+<h2 id="首次使用">首次使用</h2>
+<p>在檢查新電腦、VISA runtime、連線或電源供應器設定時，請使用此流程。</p>
+<ol>
+<li>確認電源供應器與連接的受測物 (DUT) 均可安全查詢。</li>
+<li>啟動 WebUI 並開啟本機瀏覽器頁面。</li>
+<li>點擊 <code>Scan Device</code>。</li>
+<li>選擇目標實機資源或將其複製到 <code>VISA resource</code>。</li>
+<li>啟動 <code>Live Data</code> 以確認唯讀通訊與通道狀態。</li>
+<li>在執行任何影響輸出的命令前，請先檢閱型號身分、輸出狀態、程式設定點以及保護狀態。</li>
+<li>只有在目標通道與設定點確認安全後，才使用 Basic command (基本命令) 或進階命令列。</li>
+</ol>
+<p>當可能連接多台儀器時，請勿用猜測的方式選擇資源。</p>
+<h2 id="資源掃描">資源掃描</h2>
+<p><code>Scan Device</code> 會執行啟用實機資源過濾的 WebUI 資源探索工作。它的目的是顯示目前能回應的資源，而非過時的 VISA 快取項目。</p>
+<p>第一個有效結果會自動選取並複製到 <code>VISA resource</code>，同時執行一次唯讀身分工作，以評估 exact Product live support。改選其他實機資源時會重新執行相同的評估。這個評估不會啟用輸出、不會修改儀器設定，也不需要實機寫入授權。您仍可手動輸入由操作員提供的已知 VISA 資源。</p>
+<p>Device options 包含執行模式；在 Real 模式還會顯示 <code>Expected model</code>。一般實機操作請保留 <code>Auto-detect</code>，由連線儀器的 <code>*IDN?</code> 決定實際型號。齒輪圖示左側的 <strong>Supported devices / 支援裝置</strong> 按鈕會開啟唯讀清單，顯示目前 Product-open 且 WebUI 可使用的 <code>system_visa</code> 連線（廠商、型號、連線方式）。選擇 <code>Require &lt;model&gt;</code> 時，它只用於前端 capability 規劃，並作為 expected-model guard 送出：連線儀器的 <code>*IDN?</code> model 必須相符，才會進行 setup 或 write SCPI；該選擇不會強制使用該型號的 driver。Device / Resource summary 會將偵測到的 live model 與 Expected model 選擇分開顯示，例如 <code>live E3646A / Auto-detect</code> 或 <code>live E3646A / Require E36312A</code>。</p>
+<p>一般型號選單由 Core 的 Product-active metadata 產生；目前支援的型號與 exact connection／backend scopes 以 <a href="supported-models.zh-TW.html">支援型號</a> 為準。不支援的直接 model 提交仍會被 WebUI backend 與 Core 拒絕。Auto-detect 在有可用 metadata 時仍可使用偵測到的 live model 資訊，但前端狀態永遠不會覆寫 Core 由 IDN 選出的 live driver。</p>
+<p>在 Product-open scope 上成功完成唯讀身分評估後，Device / Resource summary 會顯示偵測到的 transport/backend scope，不含命令數統計。diagnostic 可以顯示命令為 pending，但不會啟用它們。變更 <code>Expected model</code> 只更新規劃指引；它不會改寫偵測到的 model 或連線 scope。WebUI 使用正常 Product policy 與預設 system-VISA backend；沒有 backend selector 或 validation mode。Pending metadata 只在實際 runtime transport/backend 符合已註冊 pending scope 時顯示。</p>
+<p>若身分評估在未知或已移出範圍（de-scoped）的儀器上成功，WebUI 會顯示無法解析出 Product-open live scope，而不是顯示 unevaluated 狀態。一般 model-aware live commands 維持停用，且 <code>Expected model</code> 不符時 diagnostic 仍會失敗。</p>
+<p>如果未出現實機存活的資源，請檢查儀器電源、纜線、VISA 驅動程式可見度，以及是否有其他程式佔用了該儀器。</p>
+<h2 id="即時資料-live-data">即時資料 (Live Data)</h2>
+<p><code>Live Data</code> 是一個唯讀監控器。它會定期讀取所選資源，更新通道卡片，並顯示 WebUI、命令與即時監控狀態。</p>
+<p>在執行輸出命令前使用 Live Data 來確認：</p>
+<ul>
+<li>預期的型號有回應；</li>
+<li>測量到的電壓/電流看起來合理；</li>
+<li>清楚了解目前的程式設定點；</li>
+<li>確知目前的輸出狀態；</li>
+<li>支援 OVP/OCP 時可看見其觸發 (trip) 狀態。</li>
+</ul>
+<p>成功的實機硬體命令執行後，Live Data 可能會更新一次。它維持唯讀屬性，應被視為所顯示儀器狀態的來源真相。
+PSM-2010 的 CH1 卡片會額外顯示目前實際 LOW/HIGH 輸出檔位的唯讀 badge。尚未知或尚未取得資料時顯示 <code>--</code>；其他型號不顯示此 badge。</p>
+<h2 id="基本命令-basic-commands">基本命令 (Basic Commands)</h2>
+<p>Basic command 面板用於常見的各通道設定點與輸出動作。</p>
+<p>電壓 (Voltage) 與電流 (Current) 欄位允許留空。空白欄位會被省略，並由 Core 保持不變。若要同時設定兩者，請填寫這兩個欄位並點擊該通道的 <code>Set</code>。</p>
+<p>輸出控制會依最新 Live Data 顯示下一個動作：輸出為 OFF 或未知時顯示 <code>Turn on</code>，輸出為 ON 時顯示 <code>Turn off</code>。亮起仍表示最新 Live Data 判定輸出為 ON；未亮不代表已確認 OFF，除非 Live Data 仍是最新狀態。在 Real 模式，只要存在非空白 VISA 資源，<code>Enable real hardware writes for this resource</code> 預設會啟用並勾選。在 Device options 取消勾選可為目前的資源與身分 context 停用寫入。選擇或輸入其他資源、變更 Expected model、偵測到不同型號，或離開後回到 Real mode，都會建立新的 context 並重新以允許寫入為預設。沒有資源時，該選項停用且不存在寫入授權。Device / Resource 標題會顯示 <code>Real · Writes locked</code> 或 <code>Real · Writes enabled</code>；它是狀態指示，不是控制項。</p>
+<p>E3646A 不支援 CH1 與 CH2 各自切換輸出。兩個通道的輸出控制會顯示 <code>Controlled by ALL</code>；請使用 ALL 控制同時開啟或關閉兩個通道。CH1／CH2 的 Voltage、Current 與 Set 仍可分別設定。</p>
+<p>啟用輸出前：</p>
+<ol>
+<li>確認所選通道。</li>
+<li>設定安全的電流限制與電壓。</li>
+<li>透過 Live Data 或讀回 (readback) 確認數值。</li>
+<li>僅在連接的 DUT 能承受該要求時，才啟用輸出。</li>
+</ol>
+<h2 id="進階命令-advanced-commands">進階命令 (Advanced Commands)</h2>
+<p>使用 <code>Show more commands</code> 來開啟命令列與生成的命令表單。命令依用途分組，例如 Output (輸出)、Output Workflows (輸出工作流程)、Protection (保護)、Trigger (觸發)、Snapshot (快照) 以及 Advanced Diagnostics (進階診斷)。</p>
+<p>該表單由 WebUI 命令 metadata 生成。必填欄位必須在 Run (執行) 之前填寫。被停用的命令或控制項表示不支援的型號、模式或 WebUI scope。</p>
+<p>停用命令的說明是刻意的 feature-lock 指引，不是隨機的 UI 錯誤。Product LIVE support 以偵測到的 model、command、transport 與 backend 為 exact scope。read-only、output、protection 或 trigger 的 feature family 不代表該 family 中每個命令都是 product-open；missing 與 pending scopes 都會 fail closed。E3646A 的 Product LIVE 目前僅限 ASRL／RS-232 + system VISA；其軟體 <code>ramp-list</code> 與受限步驟的 <code>sequence</code> 不是 native LIST。</p>
+<p>Sequence actions 與 Trigger Step/List sources 也有 exact feature status。Product-open command 不會自動開放缺乏 metadata 的未來 action 或 source。瀏覽器可能顯示這份附加 inventory，但 Core 會驗證實際請求，並在一般 Product mode 下讓 missing 或 pending features 維持關閉。</p>
+<p>命令列會省略已可用命令的重複正向 live-support 標籤；disabled、pending、model-unsupported、unresolved、missing exact scope 與 <code>Connection scope not evaluated</code> 等原因仍會顯示。Pending commands 維持停用：pending 表示 instrument profile 認得該命令，但 exact connection/backend evidence 尚非 Product-open。這些瀏覽器狀態僅供指引。Core 會對每個提交的 live job（包括直接或過期的 API 請求）重新執行 exact policy 檢查。</p>
+<p>Offline-only utilities 不是 identity/status diagnostics，也不會顯示為 Product-open live commands。</p>
+<p>WebUI 僅提供 Product 模式：沒有 validation override，raw job 提交也無法把 pending evidence 變成正常 product support。</p>
+<p>某些編輯器支援 JSON Load/Save (載入/儲存)，包括 Sequence (序列)、Ramp List (斜坡清單) 與 Trigger List (觸發清單) 工作區。請使用這些功能來處理可重複的工作流程，並保持儲存的檔案中沒有私人的實驗室資源字串，除非您刻意要將其限制為本機專用。</p>
+<p>Ramp、Ramp List 與 Sequence 提供 <code>Enable loop</code> 核取方塊。啟用後會出現 inline Loop count，範圍 2 到 10,000；這是工作流程的總執行次數，不是額外重複次數。關閉 Loop 會隱藏欄位，代表執行一次。Ramp 與 Ramp List 只有在 Loop 啟用時才於 Pulse timing 提供 Loop complete。Ramp List 儲存 v5 文件、Sequence 儲存 v2 文件，兩者都明確寫入 <code>loop_count</code>，包含單次執行的 1。</p>
+<p>Ramp 的 Channel selector 會依所選或偵測到的型號顯示各通道、支援的通道組合，
+以及多通道型號的 All。所選通道共用相同電流與電壓設定並以 lockstep 前進；只有
+每個所選通道都成功後，該電壓步驟才算完成。
+選取通道組合或 All 時，Channel 與 Current 下方會顯示一則全寬提示，說明共用參數與
+lockstep 行為。選取單一通道時不會顯示提示，也不會在 Ramp 表單留下空白列。</p>
+<p>Ramp List 可載入 v2 至 v5，儲存時一律輸出 v5。每個 Segment 都有自己的通道組合
+selector；All 會寫成明確的 channel list。多通道 Segment 以 lockstep 前進，progress
+與脈波仍以 logical voltage step 計算，不會乘上通道數；pulse trigger channel 由 Core
+內部選擇。E3646A 使用自動啟用輸出時，Ramp List 會先為清單中會使用到的每個通道
+寫入其第一組安全設定值，再一次啟用全域輸出。</p>
+<h2 id="工作結果-job-results">工作結果 (Job Results)</h2>
+<p>送出的命令會出現在 <code>Job Result</code> 中。選擇一個工作以在 <code>Result Detail</code> 中檢查其狀態與原始 JSON。</p>
+<p>典型的工作狀態包括 accepted (已接受)、started (已啟動)、progress (進行中)、finished (已完成)、failed (失敗)、cancel requested (已請求取消) 與 cancelled (已取消)。失敗的工作應在結果 payload 中包含錯誤訊息。</p>
+<p>Device options 提供 Simulate 與 Dry-run 控制項。這兩種模式會停用 VISA resource、掃描、序列設定與 Live Data，且不會開啟或鎖定真實硬體。Simulate 只接受 physical planning model；Dry-run 可接受 physical planning model 或 planning profile。對 live raw API jobs，<code>runtime.expected_model_id</code> 是可選的 canonical safety guard，會在 manufacturer 加 model 的 IDN 解析後檢查；不符時在 setup 或 write SCPI 前失敗。瀏覽器從 scan/job IDN metadata 學習 live model 支援；fake resource 字串不代表任何 model。瀏覽器的停用或隱藏狀態不是安全邊界；當 model、command 或 mode 不受支援時，直接提交 <code>/api/jobs</code> 仍會被 WebUI backend 與 Core 拒絕。</p>
+<p>Raw runtime JSON 採嚴格型別：boolean 欄位要求 JSON boolean，諸如 <code>"false"</code> 的字串會被拒絕而不是被當成確認。Raw job 的 channel 要求正整數 JSON integer；exact <code>"all"</code> 只被支援全通道選擇的命令接受。boolean、浮點數與數字字串的 channel 值都會被拒絕。
+Model-specific dry-run/simulator 請求若沒有明確或 deterministic-SIM planning identity，會在 job 建立前被拒絕。Snapshot restore 只接受具備 <code>schema_version: 2</code>、<code>kind: "powers-tool-snapshot"</code>、且分開記錄 reported 與 canonical resolved identity 的文件。Restore request flags 與保存的 output/protection 狀態也要求 exact JSON boolean。snapshot 的 <code>outputs</code>、<code>readback</code> 與 <code>protection_settings</code> 區塊必須非空且包含完全相同的 channels；每個通道都需要一筆 protection record，即使其選用值都是 null。未知與刻意不支援的 <code>/api/jobs</code> 命令會在 job 或背景任務建立前被拒絕。</p>
+<h2 id="停止與取消">停止與取消</h2>
+<p>如果工作尚未啟動，取消動作能很快完成。如果真實的硬體工作已經在執行中，取消將採協作模式：WebUI 請求取消並等待 Core 清理完成。</p>
+<p>除非有外部安全考量，否則請勿關閉瀏覽器或強制終止程序來打斷正常的清理過程。清理與 release/local (解除遠端/轉為本機) 的行為由 Core 處理，可能需要一些時間。</p>
+<p><code>Quit</code> 會要求取消目前所有 WebUI 工作（包含 Live Data），並等待正常清理完成後才停止本機伺服器。若清理或伺服器關閉無法在逾時前完成，啟動器會保持開啟並顯示 <code>Shutdown incomplete</code>，讓您處理問題後再次嘗試。</p>
+<h2 id="常見問題">常見問題</h2>
+<h3 id="頁面無法載入">頁面無法載入</h3>
+<p>確認伺服器仍在執行，並開啟啟動器顯示的實際 URL。若實際使用預設 port，範例為：</p>
+<pre><code class="language-text">http://127.0.0.1:7999/
+</code></pre>
+<p>自動啟動可能選擇不是 <code>7999</code> 的 port，請以啟動器顯示的 URL 為準。</p>
+<h3 id="啟動器顯示-port-已被佔用">啟動器顯示 port 已被佔用</h3>
+<p>啟動器絕不會開啟已經占用候選 port 的服務。預設自動啟動會跳過 address-in-use
+候選 port；固定 <code>--port</code> 發生衝突時會直接結束，不會選擇其他 port。若已開啟
+manual fallback 視窗，請選擇其他 port，或停止占用所選 port 的服務後，再點擊
+<code>Start</code>。</p>
+<h3 id="scan-device-找不到任何東西">Scan Device 找不到任何東西</h3>
+<p>檢查下列事項：</p>
+<ul>
+<li>儀器已開機；</li>
+<li>USB、LAN 或適用的 ASRL／RS-232 連線已接妥；</li>
+<li>VISA 驅動程式可看到儀器；</li>
+<li>沒有其他程式佔用資源；</li>
+<li>此電腦已安裝正確且可載入的 VISA 後端。</li>
+</ul>
+<p>您仍可手動輸入已知的 VISA 資源。</p>
+<h3 id="執行-run-被封鎖">執行 (Run) 被封鎖</h3>
+<p>閱讀畫面上可見的驗證訊息與 Result Detail。常見原因為缺少資源、缺少必填命令欄位、不支援的型號或精確連線範圍、不安全的設定點，或實機影響輸出的命令缺少寫入授權／必要確認。
+選擇 Expected model 不會解鎖停用的命令；它只用於 no-hardware 規劃，或在 Real 模式檢查連線儀器的 <code>*IDN?</code> model。</p>
+<h3 id="輸出按鈕看起來不是最新狀態">輸出按鈕看起來不是最新狀態</h3>
+<p>啟動或重新整理 Live Data。WebUI 會避免將過時的輸出狀態當成最新的事實來顯示。</p>
+<h3 id="命令顯示忙碌中">命令顯示忙碌中</h3>
+<p>真實硬體命令由 WebUI 的硬體鎖定進行序列化。請等待目前的命令與清理完成，或僅在這是操作員刻意要做的動作時才進行取消。</p>
+<h3 id="live-data-回報過時或錯誤狀態">Live Data 回報過時或錯誤狀態</h3>
+<p>檢查資源、連線，以及是否有其他命令佔用了硬體 I/O。Live Data 不會覆蓋 (override) 真實的命令執行。</p>
+<h2 id="操作員安全注意事項">操作員安全注意事項</h2>
+<ul>
+<li>在執行影響輸出的命令前，請使用唯讀的 Live Data。</li>
+<li>首次實機檢查應保持低電壓/電流，並明確指定通道。</li>
+<li>在啟用輸出前，確認電流限制。</li>
+<li>請將 <code>channel all</code> 視為刻意的多通道動作。</li>
+<li>在理解觸發 (trip) 原因前，請勿清除保護。</li>
+<li>將觸發與 LIST 工作流程視為進階操作。</li>
+<li>在可行情況下，斷開 DUT 之前請停止或關閉輸出。</li>
+</ul>
+<h2 id="更多產品文件">更多產品文件</h2>
+<ul>
+<li><a href="supported-models.zh-TW.html">支援型號</a>：目前 Product support matrix 與型號特定限制。</li>
+</ul>
+  </main>
+
+  <script>
+    (function () {
+      var isTraditionalChinese =
+        document.documentElement.lang.toLowerCase() === "zh-tw";
+
+      var strings = isTraditionalChinese
+        ? {
+            contents: "\u7ae0\u7bc0\u5c0e\u89bd",
+            copy: "\u8907\u88fd",
+            copied: "\u5df2\u8907\u88fd",
+            copyFailed: "\u8907\u88fd\u5931\u6548"
+          }
+        : {
+            contents: "Contents",
+            copy: "Copy",
+            copied: "Copied",
+            copyFailed: "Copy failed"
+          };
+
+      document.getElementById("toc-title").textContent = strings.contents;
+
+      function buildTableOfContents() {
+        var toc = document.getElementById("toc");
+        if (!toc) return;
+
+        var headings = document.querySelectorAll(
+          "#help-content h2[id], #help-content h3[id]"
+        );
+        var fragment = document.createDocumentFragment();
+
+        headings.forEach(function (heading) {
+          var link = document.createElement("a");
+          link.href = "#" + heading.id;
+          link.textContent = heading.textContent;
+          if (heading.tagName === "H3") {
+            link.className = "level-3";
+          }
+          fragment.appendChild(link);
+        });
+
+        toc.appendChild(fragment);
+      }
+
+      function wrapCodeBlocks() {
+        document.querySelectorAll("#help-content pre").forEach(
+          function (pre) {
+            if (pre.closest(".code-wrapper")) return;
+
+            var wrapper = document.createElement("div");
+            wrapper.className = "code-wrapper";
+            pre.parentNode.insertBefore(wrapper, pre);
+            wrapper.appendChild(pre);
+
+            var button = document.createElement("button");
+            button.type = "button";
+            button.className = "copy-btn";
+            button.textContent = strings.copy;
+            button.addEventListener("click", function () {
+              if (
+                !navigator.clipboard ||
+                typeof navigator.clipboard.writeText !== "function"
+              ) {
+                button.textContent = strings.copyFailed;
+                setTimeout(function () {
+                  button.textContent = strings.copy;
+                }, 1600);
+                return;
+              }
+
+              navigator.clipboard.writeText(pre.innerText).then(
+                function () {
+                  button.textContent = strings.copied;
+                  setTimeout(function () {
+                    button.textContent = strings.copy;
+                  }, 1600);
+                },
+                function () {
+                  button.textContent = strings.copyFailed;
+                  setTimeout(function () {
+                    button.textContent = strings.copy;
+                  }, 1600);
+                }
+              );
+            });
+            wrapper.appendChild(button);
+          }
+        );
+      }
+
+      function observeActiveSection() {
+        var tocLinks = document.querySelectorAll("#toc a");
+        if (!tocLinks.length) return;
+
+        var observer = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (!entry.isIntersecting) return;
+
+              tocLinks.forEach(function (link) {
+                link.classList.toggle(
+                  "active",
+                  link.getAttribute("href") === "#" + entry.target.id
+                );
+              });
+            });
+          },
+          { rootMargin: "-10% 0px -70% 0px" }
+        );
+
+        headings.forEach(function (heading) {
+          observer.observe(heading);
+        });
+      }
+
+      var headings = document.querySelectorAll(
+        "#help-content h2[id], #help-content h3[id]"
+      );
+      buildTableOfContents();
+      wrapCodeBlocks();
+      observeActiveSection();
+    })();
+  </script>
+</body>
+</html>

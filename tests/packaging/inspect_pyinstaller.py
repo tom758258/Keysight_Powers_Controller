@@ -58,7 +58,16 @@ def inspect_executable(
     assert not any("keysight-powers" in name.lower() for name in names)
 
     if webui:
-        for filename in ("index.html", "styles.css", "app.js"):
+        for filename in (
+            "index.html",
+            "styles.css",
+            "app.js",
+            "help/webui.html",
+            "help/webui.zh-TW.html",
+            "help/supported-models.html",
+            "help/supported-models.zh-TW.html",
+            "help/help.css",
+        ):
             asset = f"powers_tool_webui/static/{filename}"
             assert asset in names, f"expected WebUI asset {asset!r}"
 

@@ -127,9 +127,11 @@ class FakeButton extends FakeElement {
 
 const button = new FakeButton();
 const label = button.label;
+const helpLink = { href: "" };
 const documentObject = {
   documentElement: { lang: "en" },
   getElementById(id) {
+    if (id === "help-link") return helpLink;
     assert.equal(id, "locale-toggle");
     return button;
   },
@@ -152,6 +154,12 @@ assert.equal(button.attributes["data-i18n-aria-label"], "accessibility.switch_la
 assert.equal(button.attributes.title, i18n.t("accessibility.switch_language_to_en"));
 assert.equal(button.attributes["data-i18n-title"], "accessibility.switch_language_to_en");
 assert.equal(button.listeners.length, 1);
+assert.equal(helpLink.href, "/help/webui.zh-TW.html");
+assert.equal(localeUi.renderHelpLink(helpLink, "en"), undefined);
+assert.equal(helpLink.href, "/help/");
+assert.equal(localeUi.renderHelpLink(helpLink, "zh-TW"), undefined);
+assert.equal(helpLink.href, "/help/webui.zh-TW.html");
+assert.equal(localeUi.renderHelpLink(null, "en"), undefined);
 
 localeUi.initializeLocaleUi({
   documentObject,
@@ -161,6 +169,7 @@ localeUi.initializeLocaleUi({
 });
 assert.equal(button.listeners.length, 1);
 assert.equal(i18n.getLocale(), "zh-TW");
+assert.equal(helpLink.href, "/help/webui.zh-TW.html");
 
 button.click();
 assert.equal(i18n.getLocale(), "en");
@@ -174,11 +183,16 @@ assert.equal(button.attributes.title, i18n.t("accessibility.switch_language_to_z
 assert.equal(button.attributes["data-i18n-title"], "accessibility.switch_language_to_zh_tw");
 assert.deepEqual(storage.writes, [[i18n.LOCALE_STORAGE_KEY, "en"]]);
 assert.equal(refreshes, 1);
+assert.equal(helpLink.href, "/help/");
 
 const failingButton = new FakeButton();
+const failingHelpLink = { href: "" };
 const failingDocument = {
   documentElement: { lang: "en" },
-  getElementById() { return failingButton; },
+  getElementById(id) {
+    if (id === "help-link") return failingHelpLink;
+    return failingButton;
+  },
 };
 localeUi.initializeLocaleUi({
   documentObject: failingDocument,
@@ -197,12 +211,14 @@ assert.equal(
   failingButton.attributes["aria-label"],
   i18n.t("accessibility.switch_language_to_zh_tw")
 );
+assert.equal(failingHelpLink.href, "/help/");
 failingButton.click();
 assert.equal(i18n.getLocale(), "zh-TW");
 assert.equal(failingDocument.documentElement.lang, "zh-TW");
 assert.equal(failingButton.label.textContent, i18n.t("locale.display_zh_tw"));
 assert.equal(failingButton.label.attributes.lang, "zh-TW");
 assert.equal(failingButton.attributes["aria-label"], i18n.t("accessibility.switch_language_to_en"));
+assert.equal(failingHelpLink.href, "/help/webui.zh-TW.html");
 assert.equal(refreshes, 2);
 """
     completed = subprocess.run(

@@ -179,6 +179,35 @@ button, input, select, textarea { font: inherit; }
 .theme-toggle-icon { font-size: 16px; line-height: 1; }
 .locale-toggle-icon { width: 16px; height: 16px; flex: none; }
 
+.help-link {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--control-h);
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(180deg, var(--surface-soft) 0%, var(--surface-soft-end) 100%);
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+}
+
+.help-link:hover {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, var(--surface-hover) 0%, var(--surface-hover-end) 100%);
+  color: var(--ink);
+}
+
+.help-link:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--shadow-focus);
+}
+
 /* ─── Device / Resource ──────────────────────────────────────────────────── */
 .device-resource-section {
   position: relative;

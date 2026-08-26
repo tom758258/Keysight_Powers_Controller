@@ -12,7 +12,10 @@ SRC_ROOT = REPO_ROOT / "src"
 POWERS_ICON = REPO_ROOT / "desktop" / "assets" / "powers-icon.ico"
 
 PROJECT_METADATA = copy_metadata("powers-tool")
-WEBUI_STATIC = collect_data_files("powers_tool_webui", includes=["static/*"])
+WEBUI_STATIC = collect_data_files(
+    "powers_tool_webui",
+    includes=["static/*", "static/help/*"],
+)
 LAUNCHER_ICON_DATA = [(str(POWERS_ICON), "powers_tool_webui/assets")]
 
 

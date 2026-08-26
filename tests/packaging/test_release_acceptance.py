@@ -67,7 +67,16 @@ def _write_distribution_fixture(
             "powers_tool_core/build_profile.py",
             "PRODUCT_BUILD_IDENTITY = ProductBuildIdentity(profile=BuildProfile.PRODUCT)\n",
         )
-        for filename in ("index.html", "styles.css", "app.js"):
+        for filename in (
+            "index.html",
+            "styles.css",
+            "app.js",
+            "help/webui.html",
+            "help/webui.zh-TW.html",
+            "help/supported-models.html",
+            "help/supported-models.zh-TW.html",
+            "help/help.css",
+        ):
             archive.writestr(f"powers_tool_webui/static/{filename}", filename)
 
     if not include_sdist:
@@ -81,7 +90,16 @@ def _write_distribution_fixture(
             f"{root}/src/powers_tool_core/build_profile.py",
             "PRODUCT_BUILD_IDENTITY = ProductBuildIdentity(profile=BuildProfile.PRODUCT)\n",
         )
-        for filename in ("index.html", "styles.css", "app.js"):
+        for filename in (
+            "index.html",
+            "styles.css",
+            "app.js",
+            "help/webui.html",
+            "help/webui.zh-TW.html",
+            "help/supported-models.html",
+            "help/supported-models.zh-TW.html",
+            "help/help.css",
+        ):
             _add_tar_text(
                 archive,
                 f"{root}/src/powers_tool_webui/static/{filename}",
@@ -135,7 +153,16 @@ class _FakeCArchive:
         if webui_assets:
             names.extend(
                 f"powers_tool_webui/static/{filename}"
-                for filename in ("index.html", "styles.css", "app.js")
+                for filename in (
+                    "index.html",
+                    "styles.css",
+                    "app.js",
+                    "help/webui.html",
+                    "help/webui.zh-TW.html",
+                    "help/supported-models.html",
+                    "help/supported-models.zh-TW.html",
+                    "help/help.css",
+                )
             )
         self.toc = {name: None for name in names}
         self.pyz_names = pyz_names or {

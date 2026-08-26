@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>支援型號</title>
+  <link rel="stylesheet" href="help.css">
+</head>
+<body>
+  <aside class="help-sidebar">
+    <div class="help-sidebar-title" id="toc-title">Contents</div>
+    <nav id="toc" aria-labelledby="toc-title"></nav>
+  </aside>
+
+  <main class="help-content" id="help-content">
+<h1 id="支援型號">支援型號</h1>
+<h2 id="product-live-支援邊界">Product LIVE 支援邊界</h2>
+<p>一般 Product LIVE 執行使用下方的精確 Product matrix。Powers Tool 會識別連線的
+model，並要求 model、command、transport、backend 與必要 feature 完全相符。
+缺少、不支援或非 Product-open 的 scope 都會 fail closed。Product-open 的
+system VISA scope 不會自動延伸到 pyvisa-py、pyvisa-bt 或 custom backend。
+目前沒有任何 Product-open exact scope 使用 pyvisa-bt。E3646A 與 PSM-2010
+僅限 ASRL / RS-232 + system VISA。</p>
+<h2 id="product-live-exact-scope-matrix">Product LIVE Exact-Scope Matrix</h2>
+<p>目前 Product-open 的 command inventories 如下：</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>精確 Product connections</th>
+<th>Product-open model-aware commands</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>keysight-e36312a</code> (Keysight E36312A)</td>
+<td>USB + system VISA; TCPIP + system VISA</td>
+<td><code>measure</code>, <code>output-state</code>, <code>read-status</code>, <code>readback</code>, <code>validate-readonly</code>, <code>capabilities</code>, <code>set</code>, <code>output-on</code>, <code>output-off</code>, <code>safe-off</code>, <code>cycle-output</code>, <code>apply</code>, <code>ramp</code>, <code>smoke-output</code>, <code>ramp-list</code>, <code>sequence</code>, <code>protection-status</code>, <code>protection-set</code>, <code>clear-protection</code>, <code>snapshot</code>, <code>restore-from-snapshot</code>, <code>measure-all</code>, <code>log</code>, <code>doctor</code>, <code>trigger-status</code>, <code>trigger-step</code>, <code>trigger-list</code>, <code>trigger-abort</code>, <code>trigger-fire</code>, <code>trigger-pulse</code></td>
+</tr>
+<tr>
+<td><code>keysight-edu36311a</code> (Keysight EDU36311A)</td>
+<td>USB + system VISA; TCPIP + system VISA</td>
+<td><code>measure</code>, <code>output-state</code>, <code>read-status</code>, <code>readback</code>, <code>validate-readonly</code>, <code>capabilities</code>, <code>set</code>, <code>output-on</code>, <code>output-off</code>, <code>safe-off</code>, <code>cycle-output</code>, <code>apply</code>, <code>ramp</code>, <code>smoke-output</code>, <code>ramp-list</code>, <code>sequence</code>, <code>protection-status</code>, <code>protection-set</code>, <code>clear-protection</code>, <code>log</code>, <code>doctor</code></td>
+</tr>
+<tr>
+<td><code>keysight-e3646a</code> (Keysight E3646A)</td>
+<td>ASRL / RS-232 + system VISA</td>
+<td><code>measure</code>, <code>output-state</code>, <code>read-status</code>, <code>readback</code>, <code>capabilities</code>, <code>set</code>, <code>output-on</code>, <code>output-off</code>, <code>safe-off</code>, <code>cycle-output</code>, <code>apply</code>, <code>ramp</code>, <code>smoke-output</code>, <code>ramp-list</code>, <code>sequence</code>, <code>log</code>, <code>doctor</code></td>
+</tr>
+<tr>
+<td><code>gw-instek-psm-2010</code> (GW Instek PSM-2010)</td>
+<td>ASRL / RS-232 + system VISA</td>
+<td><code>measure</code>, <code>output-state</code>, <code>read-status</code>, <code>readback</code>, <code>validate-readonly</code>, <code>capabilities</code>, <code>set</code>, <code>output-on</code>, <code>output-off</code>, <code>safe-off</code>, <code>cycle-output</code>, <code>apply</code>, <code>ramp</code>, <code>smoke-output</code>, <code>ramp-list</code>, <code>sequence</code>, <code>protection-status</code>, <code>protection-set</code>, <code>clear-protection</code>, <code>snapshot</code>, <code>restore-from-snapshot</code>, <code>log</code>, <code>doctor</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>list-resources</code>、<code>verify</code>、<code>identify</code>、<code>error</code> 與 <code>clear</code> 是明確的診斷豁免項目。
+它們的成功只證明該項診斷操作；不代表開啟了其他 model、feature family、
+transport/backend scope 或其他 command。</p>
+<p>上方的 Product-open command rows 是精確 scope，不是 transport/backend 繼承。
+未列出的 command 或 feature 不會由另一個 model、connection、backend 或
+command family 開啟。</p>
+<h2 id="feature-aware-精確支援範圍">Feature-Aware 精確支援範圍</h2>
+<p>上方的 Product-open command rows 不是其他 command sub-features 的萬用字元。
+Powers Tool 會逐一檢查 Sequence step actions 與 Trigger Step/List sources。
+Sequence <code>wait</code> 與 <code>log</code> 仍是 host-only actions。目前 live trigger sources
+為 <code>bus</code> 與 <code>immediate</code>（<code>imm</code> 會正規化為 <code>immediate</code>）；PIN/EXT inputs
+會被拒絕。</p>
+<p>在 Product-open connection 上，支援的 actions 與 sources 可供 Product 使用。
+pending 的 connection 或 feature 目前不受支援；缺少某個 action 或 source 的
+支援不代表該功能可用。</p>
+<h2 id="目前無法用於-product-的型號">目前無法用於 Product 的型號</h2>
+<p>以下 catalog-known model IDs 目前不是有效的 Product planning 或 live
+expected-model identities：<code>keysight-e36313a</code>、<code>keysight-e36233a</code>、
+<code>keysight-e36441a</code> 與 <code>keysight-e36155a</code>。</p>
+<p><code>keysight-e36103b</code> 與 <code>keysight-e36232a</code> 已 de-scoped。它們在 no-hardware
+planning identities、live expected-model guards、WebUI model selections 與
+live model-aware operations 中都會被拒絕，且不會退回使用 <code>generic-scpi</code>。</p>
+<p>其他 Keysight E36xxx / E36000-series models 目前沒有 Product support。
+<code>generic-scpi</code> 仍是保守的 no-hardware planning profile，不是 physical live
+model。</p>
+<h2 id="依連線範圍區分的-product-支援">依連線範圍區分的 Product 支援</h2>
+<p>Product support 以 model、connection、backend、command 與 feature 為 scope。</p>
+<p>目前的精確 Product connections 為 E36312A USB 與 LAN、EDU36311A USB 與 LAN，
+以及 E3646A 與 PSM-2010 的 ASRL / RS-232。每個 connection 僅限於 Product
+matrix 中列出的 commands 與 feature entries。E3646A 與 PSM-2010 的 USB 與
+LAN 不在目前 scope 內。</p>
+<p>E36312A 與 EDU36311A 的 TCPIP + pyvisa-py connections 目前無法用於 Product
+use。System VISA 支援不會延伸到 pyvisa-py、pyvisa-bt 或 custom backend。</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>USB</th>
+<th>LAN</th>
+<th>ASRL / RS-232</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>E36312A</td>
+<td>僅接受列出的精確 commands</td>
+<td>僅接受列出的精確 commands</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td>EDU36311A</td>
+<td>僅接受列出的精確 commands</td>
+<td>僅接受列出的精確 commands</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td>E3646A</td>
+<td>不在目前 scope</td>
+<td>不在目前 scope</td>
+<td>僅接受列出的精確 commands</td>
+</tr>
+<tr>
+<td>PSM-2010</td>
+<td>不在目前 scope</td>
+<td>不在目前 scope</td>
+<td>僅接受列出的精確 commands</td>
+</tr>
+</tbody>
+</table>
+<p>EDU36311A 的 trigger/native LIST 與 snapshot/restore 在 live、simulate 與
+dry-run 模式中仍停用。E3646A 的 protection、trigger/native LIST、
+snapshot/restore 與 completion-pulse 仍停用。E3646A 的 <code>ramp-list</code> 與
+<code>sequence</code> 仍僅為 software workflows，不是 native LIST。</p>
+<p>EDU36311A 的 USB read-only、output/write 與 protection commands 可在上方的
+精確 Product scopes 內進行 real execution。EDU36311A 的 <code>protection-set</code> 與
+<code>clear-protection</code> 需要 <code>--confirm</code> 才能進行 real execution，且支援 Product use。</p>
+<p>Trigger workflows 僅限 E36312A。EDU36311A、E3646A、PSM-2010 與
+<code>generic-scpi</code> 在 live、simulate 與 dry-run 模式都不提供 trigger workflows。
+PSM-2010 不支援 Powers trigger workflows。</p>
+<h2 id="no-hardware-planning-identity-對照表">No-Hardware Planning Identity 對照表</h2>
+<p>Dry-run 與 simulate planning 不會開啟真實 VISA hardware。Model-specific
+no-hardware commands 需要明確的 planning identity 或已知的 deterministic
+SIM resource。Fake 或看似真機的 resource strings 是 placeholder，不得暗示
+model identity。</p>
+<table>
+<thead>
+<tr>
+<th>Planning identity</th>
+<th>Deterministic SIM resource</th>
+<th>No-hardware channels</th>
+<th>Output control scope</th>
+<th>Trigger / LIST / protection notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>keysight-e36312a</code></td>
+<td><code>USB0::SIM::E36312A::INSTR</code></td>
+<td>CH1, CH2, CH3</td>
+<td>每通道獨立輸出控制；<code>all</code> 展開為 CH1–CH3</td>
+<td>Trigger workflows 與 native LIST 僅限 E36312A，且在支援的 live E36312A paths 上為 Product-open。Protection read/write paths 支援。</td>
+</tr>
+<tr>
+<td><code>keysight-edu36311a</code></td>
+<td><code>USB0::SIM::EDU36311A::INSTR</code></td>
+<td>CH1, CH2, CH3</td>
+<td>每通道獨立輸出控制；<code>all</code> 展開為 CH1–CH3</td>
+<td>Protection read/write paths 支援。Trigger workflows 與 native LIST 在 dry-run、simulate 與 real mode 中都不提供。</td>
+</tr>
+<tr>
+<td><code>keysight-e3646a</code></td>
+<td><code>ASRL1::SIM::E3646A::INSTR</code></td>
+<td>CH1, CH2</td>
+<td>全域 output enable/disable；channel selection 用於 setpoints 與 readback</td>
+<td>RS-232 / ASRL output workflows 在精確 scope 內為 Product-open。Protection writes、trigger workflows、snapshot restore、completion pulses 與 native LIST 停用。</td>
+</tr>
+<tr>
+<td><code>gw-instek-psm-2010</code></td>
+<td><code>ASRL1::SIM::PSM2010::INSTR</code></td>
+<td>CH1</td>
+<td>全域輸出控制</td>
+<td>Product LIVE 包含 matrix 中列出的精確 read-only、output、protection、snapshot/restore、ramp 與 software-sequence commands。LOW 與 HIGH ranges 保持不同。此 model profile 不支援 Powers trigger workflows。</td>
+</tr>
+<tr>
+<td><code>generic-scpi</code> planning profile</td>
+<td>無；dry-run 中請明確使用 <code>--profile generic-scpi</code></td>
+<td>CH1</td>
+<td>未知</td>
+<td>僅供保守的 no-hardware planning。Trigger workflows、native LIST 與 protection writes 都不提供。</td>
+</tr>
+</tbody>
+</table>
+<p>Live hardware 使用 manufacturer-plus-model IDN resolution。在 live mode 中，
+<code>--model</code> 作為 expected-model guard：偵測到的 canonical identity 必須相符才
+會執行 command-specific SCPI；不符時 fail closed。此 guard 不會覆寫 IDN 所選
+的 driver。<code>generic-scpi</code> 是保守的非實體 dry-run profile，不是 live expected
+model。</p>
+<p>對 model-aware live execution，Powers Tool 依偵測到的 <code>*IDN?</code> model 加上精確
+command、transport 與 VISA backend 做出最終 Product decision。缺少或非
+Product-open 的 scope 在正常 Product use 中會被拒絕；identity diagnostics
+不代表 model 或 feature support。</p>
+<h2 id="輸出設定值-programming-ranges">輸出設定值 Programming Ranges</h2>
+<p>對 output workflows 而言，<code>voltage</code> 表示 output voltage setpoint，<code>current</code>
+表示 output current limit/current setting。下列數值是來自 model manuals 的
+programming range metadata；與現有 DC output rating safety limits 不同。
+Powers Tool 目前的強制小數位規則尚未實作，也不會在使用者送出 SCPI 前
+四捨五入或截斷 setpoint。</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Channel / output</th>
+<th>Range</th>
+<th>Voltage programming range</th>
+<th>Current-limit programming range</th>
+<th>Current MIN keyword value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>E36312A</td>
+<td>CH1 / P6V</td>
+<td>fixed</td>
+<td>0 to 6.18 V</td>
+<td>0 to 5.15 A</td>
+<td>0.001 A</td>
+</tr>
+<tr>
+<td>E36312A</td>
+<td>CH2 / P25V</td>
+<td>fixed</td>
+<td>0 to 25.75 V</td>
+<td>0 to 1.03 A</td>
+<td>0.001 A</td>
+</tr>
+<tr>
+<td>E36312A</td>
+<td>CH3 / N25V</td>
+<td>fixed</td>
+<td>0 to 25.75 V</td>
+<td>0 to 1.03 A</td>
+<td>0.001 A</td>
+</tr>
+<tr>
+<td>EDU36311A</td>
+<td>CH1 / P6V</td>
+<td>fixed</td>
+<td>0 to 6.18 V</td>
+<td>0 to 5.15 A</td>
+<td>0.002 A</td>
+</tr>
+<tr>
+<td>EDU36311A</td>
+<td>CH2 / P30V</td>
+<td>fixed</td>
+<td>0 to 30.9 V</td>
+<td>0 to 1.03 A</td>
+<td>0.001 A</td>
+</tr>
+<tr>
+<td>EDU36311A</td>
+<td>CH3 / N30V</td>
+<td>fixed</td>
+<td>0 to 30.9 V</td>
+<td>0 to 1.03 A</td>
+<td>0.001 A</td>
+</tr>
+<tr>
+<td>E3646A</td>
+<td>OUT1 / CH1</td>
+<td>LOW / P8V</td>
+<td>0 to 8.24 V</td>
+<td>0 to 3.09 A</td>
+<td>0 A</td>
+</tr>
+<tr>
+<td>E3646A</td>
+<td>OUT1 / CH1</td>
+<td>HIGH / P20V</td>
+<td>0 to 20.60 V</td>
+<td>0 to 1.545 A</td>
+<td>0 A</td>
+</tr>
+<tr>
+<td>E3646A</td>
+<td>OUT2 / CH2</td>
+<td>LOW / P8V</td>
+<td>0 to 8.24 V</td>
+<td>0 to 3.09 A</td>
+<td>0 A</td>
+</tr>
+<tr>
+<td>E3646A</td>
+<td>OUT2 / CH2</td>
+<td>HIGH / P20V</td>
+<td>0 to 20.60 V</td>
+<td>0 to 1.545 A</td>
+<td>0 A</td>
+</tr>
+<tr>
+<td>PSM-2010</td>
+<td>OUT1 / CH1</td>
+<td>LOW / P8V</td>
+<td>0 to 8.24 V</td>
+<td>0 to 20.6 A</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td>PSM-2010</td>
+<td>OUT1 / CH1</td>
+<td>HIGH / P20V</td>
+<td>0 to 20.6 V</td>
+<td>0 to 10.3 A</td>
+<td>N/A</td>
+</tr>
+</tbody>
+</table>
+<p>Sources: E36300 Series Programmable DC Power Supplies Programming Guide,
+manual part number E36311-90008, printed page 16; EDU36311A Programming Guide,
+manual part number EDU36311-90013, printed pages 15 and 39; Agilent E364xA
+Dual Output DC Power Supplies User's and Service Guide, manual part number
+E3646-90001, printed pages 82, 83, 84, and 91; GW Instek PSM-Series
+Programming Manual, manual part number 82SM-60030IA, printed page 28.
+E3646A 與 PSM-2010 的 ranges 取決於所選 range，不可壓平為單一 voltage/current
+最大值。在 <em>RST 後，E3646A 會選擇低電壓 range。PSM-2010 manual 記載儀器全域
+</em>RST current value 為 20 A；這不代表在 HIGH range 下允許 20 A。HIGH 仍受限
+於 10 A rating 與 10.3 A programming maximum。</p>
+<h2 id="command-支援注意事項">Command 支援注意事項</h2>
+<p>上方 matrix 對應以下 command-level facts：</p>
+<ul>
+<li>不支援的 model、command 與 mode combinations 會刻意 fail。這些 feature-lock
+  failures 表示該 workflow 在該 model 上不受支援，而不是 <code>--model</code> 或 WebUI
+  selector 可以解鎖它。</li>
+<li>CLI <code>--model</code> 與 WebUI model selection 在 dry-run/simulate mode 中選擇
+  canonical physical planning models。Live requests 使用 IDN-driven detection；
+  driver selection 一律依循連線儀器的 identity。<code>generic-scpi</code> 仍是保守的
+  no-hardware planning profile，永遠不是 live expected model。</li>
+<li>E36312A 的 native trigger/LIST support 透過 <code>trigger-status</code>、
+  <code>trigger-step</code>、<code>trigger-list</code> 與 <code>trigger-abort</code> 提供。Trigger dry-run 與
+  simulator paths 也僅限 E36312A。Native LIST execution 上限 100 steps，
+  dwell values 為 0.01 至 3600 秒，count values 為 1 至 256。目前 real native
+  trigger sources 僅限 BUS 與 immediate；後方面板 pin 與外部 input sources
+  不屬於 Product-open。</li>
+<li>Ramp 一律使用 software setpoint steps。Native LIST execution 僅限
+  <code>trigger-list</code>。</li>
+<li>EDU36311A 的 USB 與 LAN product execution 僅限於上方 matrix 中的精確
+  commands。Feature-family 與 sequence-step support 不會擴大該 command inventory。</li>
+<li>E36312A 與 EDU36311A 的 OVP/OCP trip status 以 channel 為單位查詢。Aggregate
+  <code>protection-status</code> flags 是所選 channel results 的 OR 結果。</li>
+<li>EDU36311A 的 trigger commands 在所有模式中保持停用。</li>
+<li>EDU36311A 的 snapshot 與 restore-from-snapshot 不屬於 Product-open。</li>
+<li>EDU36311A 的 <code>sequence</code> 不得繞過已停用的 trigger/native LIST、snapshot 或
+  restore workflows；不支援的 sequence step types 在 live、simulate 與 dry-run
+  paths 中持續被拒絕。</li>
+<li>E3646A 的 product execution 僅限 ASRL / RS-232 + system VISA 以及上方
+  matrix 中的精確 commands。<code>output-on</code> 只在該 ASRL + system-VISA scope 中
+  屬於 Product-open。在任何被接受的 live E3646A output command 之前，請確認
+  實體 setup 已檢查且要求的 voltage/current limits 對連接負載安全。
+  <code>verify</code> 是 model-independent connection diagnostic，會開啟選定的 resource
+  並查詢 <code>*IDN?</code>；它不屬於 model capability matrix。E3646A 使用 <code>INST:NSEL</code>
+  進行 channels 1 與 2 的 channel preselection，不用 channel-list SCPI 做
+  output writes。E3646A 的 <code>OUTP ON/OFF</code> 是全域 output enable/disable；
+  channel selection 仍用於 setpoint writes 與 readbacks，但 output
+  enable/disable 影響的是整台儀器的 output state。Protection changes、
+  trigger workflows、snapshot、restore、completion pulses 與 native LIST
+  保持停用。E3646A 的 <code>ramp-list</code> 是 software setpoint stepping，而其
+  <code>sequence</code> 是僅限支援 output/read-only steps 的 software workflow。兩者都
+  不是 native instrument LIST support。E3646A sequence 會拒絕不支援的 step
+  types，例如 protection、trigger、snapshot、restore、native LIST 與
+  completion-pulse steps。</li>
+<li>E3646A serial settings 僅限明確設定。若未提供 serial options，程式不會覆寫
+  VISA backend、Keysight IO Libraries Suite 或 Connection Expert 的 serial
+  settings。Factory example 為 9600 baud、8 data bits、none parity、
+  2 stop bits 與 DTR/DSR handshake，但實際 front-panel settings 可能不同且
+  不會自動套用。</li>
+<li>E3646A 的 <code>SYST:REM</code> 與 <code>SYST:LOC</code> 是會改變狀態的 remote/local commands。
+  只有在針對 ASRL resource 明確要求 <code>--serial-remote</code> 或
+  <code>--serial-local-on-close</code> 時才會送出。</li>
+<li>PSM-2010 的 Product execution 僅限 ASRL / RS-232 + system VISA 以及上方
+  matrix 中的精確 commands。它使用 CH1、全域 output control，以及不同的
+  LOW/HIGH operating ranges。其 Product-open 的 <code>sequence</code> actions 為
+  <code>apply</code>、<code>cycle-output</code>、<code>measure</code>、<code>output-off</code>、<code>output-on</code>、
+  <code>output-state</code>、<code>readback</code>、<code>safe-off</code> 與 <code>set</code>；<code>wait</code> 與 <code>log</code> 仍是
+  host-only。Protection command family 支援 OVP configuration、OCP
+  enable/status/trip behavior 與 protection clear。OCP delay configuration、
+  readback 與 trigger 不受支援。Powers trigger commands、其他 transports 與
+  其他 VISA backends 保持關閉。</li>
+<li>No-hardware output-family、Ramp List、Sequence、<code>protection-set</code>、
+  <code>clear-protection</code> 與 trigger plans 使用 strict planning identity。
+  <code>--dry-run</code> 與 <code>--simulate</code> 需要明確的 physical <code>--model</code> 或已知的
+  deterministic SIM resource。Trigger no-hardware plans 只接受
+  <code>--model keysight-e36312a</code> 或已知 deterministic E36312A SIM resource，
+  例如 <code>USB0::SIM::E36312A::INSTR</code>；EDU36311A SIM resource 會被解析後因
+  trigger workflows 拒絕。E3646A no-hardware <code>--channel all</code> plans 會展開為
+  CH1 與 CH2；CH3 會被拒絕。</li>
+<li>Live trigger behavior 依 IDN 判定。<code>--model</code> 是 live expected-model guard，
+  不會覆寫連接的硬體。</li>
+<li><code>snapshot-diff</code>、<code>snapshot-diff --summary</code> 與 <code>hardware-report</code> 是
+  offline/no-hardware tools，永不開啟 VISA。<code>sequence --lint</code> 同樣在不開啟
+  VISA 的情況下驗證，並保持 syntax/document validation，除非搭配
+  <code>--dry-run</code> 或 <code>--simulate</code>。</li>
+</ul>
+  </main>
+
+  <script>
+    (function () {
+      var isTraditionalChinese =
+        document.documentElement.lang.toLowerCase() === "zh-tw";
+
+      var strings = isTraditionalChinese
+        ? {
+            contents: "\u7ae0\u7bc0\u5c0e\u89bd",
+            copy: "\u8907\u88fd",
+            copied: "\u5df2\u8907\u88fd",
+            copyFailed: "\u8907\u88fd\u5931\u6548"
+          }
+        : {
+            contents: "Contents",
+            copy: "Copy",
+            copied: "Copied",
+            copyFailed: "Copy failed"
+          };
+
+      document.getElementById("toc-title").textContent = strings.contents;
+
+      function buildTableOfContents() {
+        var toc = document.getElementById("toc");
+        if (!toc) return;
+
+        var headings = document.querySelectorAll(
+          "#help-content h2[id], #help-content h3[id]"
+        );
+        var fragment = document.createDocumentFragment();
+
+        headings.forEach(function (heading) {
+          var link = document.createElement("a");
+          link.href = "#" + heading.id;
+          link.textContent = heading.textContent;
+          if (heading.tagName === "H3") {
+            link.className = "level-3";
+          }
+          fragment.appendChild(link);
+        });
+
+        toc.appendChild(fragment);
+      }
+
+      function wrapCodeBlocks() {
+        document.querySelectorAll("#help-content pre").forEach(
+          function (pre) {
+            if (pre.closest(".code-wrapper")) return;
+
+            var wrapper = document.createElement("div");
+            wrapper.className = "code-wrapper";
+            pre.parentNode.insertBefore(wrapper, pre);
+            wrapper.appendChild(pre);
+
+            var button = document.createElement("button");
+            button.type = "button";
+            button.className = "copy-btn";
+            button.textContent = strings.copy;
+            button.addEventListener("click", function () {
+              if (
+                !navigator.clipboard ||
+                typeof navigator.clipboard.writeText !== "function"
+              ) {
+                button.textContent = strings.copyFailed;
+                setTimeout(function () {
+                  button.textContent = strings.copy;
+                }, 1600);
+                return;
+              }
+
+              navigator.clipboard.writeText(pre.innerText).then(
+                function () {
+                  button.textContent = strings.copied;
+                  setTimeout(function () {
+                    button.textContent = strings.copy;
+                  }, 1600);
+                },
+                function () {
+                  button.textContent = strings.copyFailed;
+                  setTimeout(function () {
+                    button.textContent = strings.copy;
+                  }, 1600);
+                }
+              );
+            });
+            wrapper.appendChild(button);
+          }
+        );
+      }
+
+      function observeActiveSection() {
+        var tocLinks = document.querySelectorAll("#toc a");
+        if (!tocLinks.length) return;
+
+        var observer = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (!entry.isIntersecting) return;
+
+              tocLinks.forEach(function (link) {
+                link.classList.toggle(
+                  "active",
+                  link.getAttribute("href") === "#" + entry.target.id
+                );
+              });
+            });
+          },
+          { rootMargin: "-10% 0px -70% 0px" }
+        );
+
+        headings.forEach(function (heading) {
+          observer.observe(heading);
+        });
+      }
+
+      var headings = document.querySelectorAll(
+        "#help-content h2[id], #help-content h3[id]"
+      );
+      buildTableOfContents();
+      wrapCodeBlocks();
+      observeActiveSection();
+    })();
+  </script>
+</body>
+</html>

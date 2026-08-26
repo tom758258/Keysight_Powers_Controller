@@ -105,6 +105,11 @@ export function renderLanguageButton(button, locale = getLocale()) {
   button.setAttribute("title", t(destinationKey));
 }
 
+export function renderHelpLink(link, locale = getLocale()) {
+  if (!link) return;
+  link.href = locale === "zh-TW" ? "/help/webui.zh-TW.html" : "/help/";
+}
+
 export function initializeLocaleUi({
   documentObject,
   navigatorObject,
@@ -120,8 +125,10 @@ export function initializeLocaleUi({
     }
   }
   const button = localeDocument?.getElementById?.("locale-toggle");
+  const helpLink = localeDocument?.getElementById?.("help-link") ?? null;
   if (button && initializedButtons.has(button)) {
     renderLanguageButton(button);
+    renderHelpLink(helpLink);
     return getLocale();
   }
 
@@ -129,6 +136,7 @@ export function initializeLocaleUi({
   setLocale(locale);
   if (localeDocument?.documentElement) localeDocument.documentElement.lang = locale;
   renderLanguageButton(button, locale);
+  renderHelpLink(helpLink, locale);
 
   if (button) {
     button.addEventListener("click", () => {
@@ -136,6 +144,7 @@ export function initializeLocaleUi({
       setLocale(nextLocale);
       if (localeDocument?.documentElement) localeDocument.documentElement.lang = nextLocale;
       renderLanguageButton(button, nextLocale);
+      renderHelpLink(helpLink, nextLocale);
       persistLocale(nextLocale, storage);
       refreshPresentation();
     });

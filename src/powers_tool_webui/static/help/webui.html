@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Powers Tool WebUI User Guide</title>
+  <link rel="stylesheet" href="help.css">
+</head>
+<body>
+  <aside class="help-sidebar">
+    <div class="help-sidebar-title" id="toc-title">Contents</div>
+    <nav id="toc" aria-labelledby="toc-title"></nav>
+  </aside>
+
+  <main class="help-content" id="help-content">
+<h1 id="powers-tool-webui-user-guide">Powers Tool WebUI User Guide</h1>
+<p>This guide is for operators who receive the built WebUI launcher and use it to
+inspect and control supported DC power supplies. The framework is
+vendor-neutral, while current hardware support is defined by the documented
+<a href="supported-models.html">Product scopes</a>. This guide covers normal product
+operation, screen workflows, and safety behavior.</p>
+<h2 id="start-the-webui">Start The WebUI</h2>
+<p>For a local shared onedir build, double-click the WebUI launcher in the bundle:</p>
+<pre><code class="language-text">dist\powers-tool\powers-tool-webui-launcher.exe
+</code></pre>
+<p>To confirm the launcher version from PowerShell:</p>
+<pre><code class="language-powershell">.\dist\powers-tool\powers-tool-webui-launcher.exe --version
+</code></pre>
+<p>For a formal Windows release, extract the versioned Desktop ZIP and open the
+Desktop shell from its application root:</p>
+<pre><code class="language-text">powers-tool-&lt;version&gt;-windows-x64.zip
+\powers-tool-&lt;version&gt;\Powers Tool.exe
+</code></pre>
+<p>The extracted application root contains the CLI, WebUI launcher, private WebUI
+Host, Electron runtime files, and one shared <code>_internal</code> directory.</p>
+<p>With no command-line options, the launcher remains hidden while it
+automatically tries port <code>7999</code> followed by up to 99 higher ports. Wait for the
+browser to open. After startup succeeds, the launcher shows a compact Running
+window with the actual URL, Running status, and <code>Quit</code>; the port settings and
+<code>Start</code> are hidden.</p>
+<p>Only if every automatic candidate is already in use does the launcher show the
+full port settings window. Enter another local port and click <code>Start</code>. If that
+manually entered port is also in use, the full fallback window stays open and
+lets you edit the port and try again. After a retry succeeds, the launcher
+returns to the compact Running window.</p>
+<p>From PowerShell, <code>--port</code> requests one fixed port. It never switches to another
+port unless <code>--auto-port</code> is also supplied:</p>
+<pre><code class="language-powershell">.\dist\powers-tool\powers-tool-webui-launcher.exe --port 9000
+.\dist\powers-tool\powers-tool-webui-launcher.exe --port 9000 --auto-port
+</code></pre>
+<p>A fixed-port conflict reports the selected port and exits instead of opening
+the manual port window. Other startup failures, including application startup,
+server exit, or readiness errors, also report their original details, clean up,
+and exit. Only automatic address-in-use exhaustion opens the manual fallback,
+and only another address-in-use error keeps that fallback window open.
+This window presentation does not change port selection, startup failure,
+cleanup, or exit-code behavior.</p>
+<p>If the browser does not open automatically after the launcher reports that the
+server is running, open the URL shown by the launcher. For the default port it
+is:</p>
+<pre><code class="language-text">http://127.0.0.1:7999/
+</code></pre>
+<p>The WebUI runs on the same Windows computer that has access to the instrument.
+It is a local tool, not a cloud service. Closing the browser tab does not
+always stop the server; use <code>Quit</code> in the launcher when you are done.</p>
+<h2 id="desktop-shell">Desktop Shell</h2>
+<p><code>Powers Tool.exe</code> is the Desktop shell included in the formal release. It
+displays the same WebUI and uses the private WebUI Host. The normal screens,
+commands, workflows, and safety behavior are the same as in the WebUI. It opens
+at 1920x1080 when the primary display allows it, otherwise it is clamped to the
+primary display work area. Multiple Desktop instances are allowed for
+different physical instruments. Do not operate the same physical instrument
+resource from different clients at the same time.</p>
+<h2 id="browser-language">Browser Language</h2>
+<p>The upper-right of the main interface provides two labeled controls:
+Appearance and Language. The Language button displays the current locale:
+<code>English</code> for English and <code>繁體中文</code> for Traditional Chinese. Its accessible
+name describes the language that clicking the button will switch to.</p>
+<p>Language switching takes effect at runtime without reloading the page. It keeps
+the current page state, including:</p>
+<ul>
+<li>execution mode;</li>
+<li>resource and identity selection;</li>
+<li>command form;</li>
+<li>workflow editor;</li>
+<li>Job History and Job Result;</li>
+<li>Result Detail;</li>
+<li>Live Data display state.</li>
+</ul>
+<p>The switch changes browser presentation only. It does not make an HTTP request,
+create a Job, run a workflow action, or create, stop, or otherwise affect an
+EventSource.</p>
+<p>The Appearance control displays the current System / Light / Dark preference
+and cycles to the next preference when clicked. System follows the operating
+system's <code>prefers-color-scheme</code> preference. The theme preference is retained
+in the same loopback browser through the
+<code>powers-tool.webui.theme</code> cookie; the Electron Desktop shell uses that cookie
+to keep its native window theme synchronized. The selected theme applies to the
+main panels, cards, fields, and status surfaces, not only the page background.
+Dark theme keeps primary controls, status text, and unavailable or disabled
+controls visually distinguishable against dark surfaces.</p>
+<p>Machine-facing values remain unchanged and are not translated, including
+command IDs, model IDs, VISA resources, API payloads and schemas, SCPI, raw
+diagnostics, and original error content.</p>
+<p>English is the source and fallback locale. The language preference is retained
+in the same browser. If browser storage is unavailable, the WebUI safely falls
+back without affecting normal operation.</p>
+<h2 id="screen-overview">Screen Overview</h2>
+<p>The page is an instrument control console. The main areas are:</p>
+<ul>
+<li><code>Execution mode</code>: page-local Real, Simulate, or Dry-run selection. The page
+  always opens in Real mode.</li>
+<li><code>VISA resource</code>: the explicit instrument address used by Real command jobs.</li>
+<li><code>Live resource</code>: resources discovered by the Scan Device workflow.</li>
+<li><code>Scan Device</code>: searches for live VISA resources and fills the selector.</li>
+<li><code>Live Data</code>: read-only channel cards and state indicators.</li>
+<li><code>Basic command</code>: per-channel Voltage, Current, Set, and output controls.</li>
+<li><code>Show more commands</code>: opens the advanced command rail and generated form.</li>
+<li><code>Job Result</code>: recent submitted jobs and their state.</li>
+<li><code>Result Detail</code>: raw JSON details for the selected job.</li>
+</ul>
+<p>Hardware-affecting jobs remain explicit and confirmed.</p>
+<h2 id="first-use">First Use</h2>
+<p>Use this flow when checking a new computer, VISA runtime, connection, or power
+supply setup.</p>
+<ol>
+<li>Confirm the supply and connected DUT are safe to query.</li>
+<li>Start the WebUI and open the local browser page.</li>
+<li>Click <code>Scan Device</code>.</li>
+<li>Select the intended live resource or copy it into <code>VISA resource</code>.</li>
+<li>Start <code>Live Data</code> to confirm read-only communication and channel state.</li>
+<li>Review model identity, output state, programmed setpoints, and protection
+   state before running any output-affecting command.</li>
+<li>Use Basic command or the advanced command rail only after the target channel
+   and setpoints are known safe.</li>
+</ol>
+<p>Do not guess a resource when more than one instrument may be connected.</p>
+<h2 id="resource-scanning">Resource Scanning</h2>
+<p><code>Scan Device</code> runs the WebUI resource discovery job with live-resource filtering
+enabled. It is intended to show resources that currently answer, not stale VISA
+cache entries.</p>
+<p>The first valid scan result is selected automatically and copied into the
+<code>VISA resource</code> input. That automatic selection runs one read-only identity
+job to evaluate exact Product live support. Selecting a different live
+resource runs the same evaluation again. The evaluation does not enable
+output, change instrument settings, or require real-write authorization. You
+may also type a known operator-provided VISA resource manually.</p>
+<p>Device options include execution mode and, in Real mode, <code>Expected model</code>. Leave it on <code>Auto-detect</code> for normal
+live use. The <strong>Supported devices</strong> button to the left of the gear icon opens a read-only list of
+Product-open models and WebUI-usable <code>system_visa</code> connections (Vendor, Model, Connections). Auto-detect uses the connected instrument IDN. When <code>Require
+&lt;model&gt;</code> is selected, the WebUI uses it for frontend capability planning and
+sends it as an expected-model guard: the connected <code>*IDN?</code> model must match
+before setup or write SCPI, and the selection does not force that model's
+driver. The Device / Resource summary shows the detected live model and
+expected model selection separately, for example <code>live E3646A / Auto-detect</code>
+or <code>live E3646A / Require E36312A</code>.</p>
+<p>The normal model dropdown is generated from Core Product-active metadata.
+Current supported models and exact connection/backend scopes are defined by
+<a href="supported-models.html">Supported Models</a>. Unsupported direct model
+submissions are still rejected by the WebUI backend and Core. Auto-detect may
+still use detected live model metadata when available, but frontend state
+never overrides the Core IDN-selected live driver.</p>
+<p>After the read-only identity evaluation succeeds on a Product-open scope, the
+Device / Resource summary shows the detected transport/backend scope without
+command-count statistics. The diagnostic can show that commands are pending,
+but it does not enable them. Changing <code>Expected model</code> updates
+planning guidance only; it does not rewrite the detected model or connection
+scope. The WebUI uses the normal Product policy and the default system-VISA
+backend; it does not provide a backend selector or validation mode. Pending
+metadata is shown only when the actual runtime transport/backend matches a
+registered pending scope.</p>
+<p>If identity succeeds for an unknown or de-scoped instrument, the WebUI shows
+that no Product-open live scope could be resolved instead of showing an
+unevaluated state. Normal model-aware live commands remain disabled, and an
+<code>Expected model</code> mismatch still fails the diagnostic.</p>
+<p>If no live resource appears, check instrument power, cabling, VISA driver
+visibility, and whether another program is holding the instrument.</p>
+<h2 id="live-data">Live Data</h2>
+<p><code>Live Data</code> is a read-only monitor. It reads the selected resource on an
+interval, updates channel cards, and shows WebUI, command, and live monitor
+state.</p>
+<p>Use Live Data before output commands to confirm:</p>
+<ul>
+<li>the expected model answered;</li>
+<li>measured voltage/current look plausible;</li>
+<li>programmed setpoints are understood;</li>
+<li>output state is known;</li>
+<li>OVP/OCP trip state is visible when supported.</li>
+</ul>
+<p>Live Data may refresh once after successful real hardware commands. It remains
+read-only and should be treated as the source of displayed instrument state.
+For PSM-2010, the CH1 card also shows the current actual LOW/HIGH output range
+as a read-only badge. It shows <code>--</code> when the range is unknown or not yet
+available; other models do not show this badge.</p>
+<h2 id="basic-commands">Basic Commands</h2>
+<p>The Basic command panel is for common per-channel setpoint and output actions.</p>
+<p>Voltage and Current fields are blankable. Blank fields are omitted and left
+unchanged by Core. To set both, fill both fields and click <code>Set</code> for the
+channel.</p>
+<p>Output controls show the next action from fresh Live Data: <code>Turn on</code> when the
+output is OFF or unknown, and <code>Turn off</code> when it is ON. A lit control still
+means the output is ON; an unlit control is not a confirmed OFF state unless
+Live Data is fresh. In Real mode, <code>Enable real hardware writes for this
+resource</code> is enabled and selected by default whenever a non-blank VISA resource
+is present. Clear
+the checkbox in Device options to disable writes for the current resource and
+identity context. Selecting or typing another resource, changing Expected
+model, detecting a different model, or returning to Real mode creates a new
+context with writes enabled by default. With no resource, the checkbox is
+disabled and no write authorization exists. The Device / Resource header shows
+<code>Real · Writes locked</code> or <code>Real · Writes enabled</code>; it is a status indicator,
+not a control.</p>
+<p>E3646A does not support independent CH1 or CH2 output switching. Their output
+controls show <code>Controlled by ALL</code>; use the ALL control to turn both channels on
+or off together. CH1 and CH2 Voltage, Current, and Set controls remain
+independent.</p>
+<p>Before enabling output:</p>
+<ol>
+<li>Confirm the selected channel.</li>
+<li>Set a safe current limit and voltage.</li>
+<li>Confirm the values through Live Data or readback.</li>
+<li>Enable output only when the connected DUT can tolerate the request.</li>
+</ol>
+<h2 id="advanced-commands">Advanced Commands</h2>
+<p>Use <code>Show more commands</code> for the command rail and generated command form.
+Commands are grouped by purpose, such as Output, Output Workflows, Protection,
+Trigger, Snapshot, and Advanced Diagnostics.</p>
+<p>The form is generated from WebUI command metadata. Required fields must be
+filled before Run. Disabled commands or controls indicate unsupported model,
+mode, or WebUI scope.</p>
+<p>Disabled-command explanations are intentional feature-lock guidance, not random
+UI failures. Product LIVE support is exact by detected model, command,
+transport, and backend. A read-only, output, protection, or trigger feature
+family does not mean every command in that family is product-open; missing and
+pending scopes fail closed. E3646A product LIVE remains ASRL / RS-232 + system
+VISA only, and its software <code>ramp-list</code> and step-limited <code>sequence</code> are not
+native LIST.</p>
+<p>Sequence actions and Trigger Step/List sources also have exact feature status.
+A Product-open command does not automatically open a future action
+or source that lacks metadata. The browser may display this additive inventory,
+but Core validates the actual request and keeps missing or pending features
+closed in normal Product mode.</p>
+<p>The command rail omits repeated positive live-support labels for commands that
+are available. Disabled, pending, model-unsupported, unresolved, missing exact
+scope, and <code>Connection scope not evaluated</code> reasons remain visible. Pending
+commands remain disabled; pending means the instrument profile recognizes the
+command but the exact connection/backend evidence is not Product-open. These
+browser states are guidance only. Core repeats the exact policy check for every
+submitted live job, including direct or stale API requests.</p>
+<p>Offline-only utilities are not identity/status diagnostics and are not shown
+as Product-open live commands.</p>
+<p>The WebUI is product-only. It does not offer a validation override, and raw
+job submissions cannot use one to turn pending evidence into normal product
+support.</p>
+<p>Some editors support JSON Load/Save, including Sequence, Ramp List, and Trigger
+List workspaces. Use these for repeatable workflows, and keep saved files free
+of private lab resource strings unless they are intentionally local-only.</p>
+<p>Ramp, Ramp List, and Sequence provide an <code>Enable loop</code> checkbox. When enabled,
+an inline Loop count appears with a range of 2 through 10,000; this is the total
+number of workflow executions, not additional repeats. Turning Loop off hides
+the field and means one execution. Ramp and Ramp List offer Loop complete in
+Pulse timing only while Loop is enabled. Ramp List saves v5 documents and
+Sequence saves v2 documents, both with explicit <code>loop_count</code>, including 1.</p>
+<p>Ramp's Channel selector follows the selected or detected model. It lists each
+channel, supported channel combinations, and All for multi-channel models.
+Selected channels share the same current and voltage settings and advance in
+lockstep; a voltage step completes only after every selected channel succeeds.
+For a channel combination or All, a full-width note below Channel and Current
+explains this shared lockstep behavior. The note is absent for a single channel,
+without leaving an empty row in the Ramp form.</p>
+<p>Ramp List loads v2 through v5 and always saves v5. Each Segment has its own
+channel-combination selector; All is written as an explicit channel list.
+Multi-channel Segments advance in lockstep, while progress and pulses count one
+logical voltage step rather than one action per channel. Pulse trigger channels
+are selected internally. On E3646A, Auto-enable pre-stages the first safe
+setpoint for every channel used in the list before enabling global output once.</p>
+<h2 id="job-results">Job Results</h2>
+<p>Submitted commands appear in <code>Job Result</code>. Select a job to inspect its state
+and raw JSON in <code>Result Detail</code>.</p>
+<p>Typical job states include accepted, started, progress, finished, failed,
+cancel requested, and cancelled. A failed job should include a message in the
+result payload.</p>
+<p>The browser provides Simulate and Dry-run controls in Device options. Both
+modes disable VISA resource, scanning, serial controls, and Live Data; they do
+not open or lock real hardware. Simulate accepts only a physical planning
+model. Dry-run accepts a physical planning model or a planning profile. For
+live raw API jobs, <code>runtime.expected_model_id</code> is an optional
+canonical safety guard checked after manufacturer-plus-model IDN resolution;
+mismatch fails before setup or write SCPI. The browser learns live model
+support from scan/job IDN metadata; fake resource strings do not imply a
+model. Browser disabled or hidden state is not the safety boundary; direct
+<code>/api/jobs</code> submissions are still rejected by the WebUI backend and Core when
+the model, command, or mode is unsupported.</p>
+<p>Raw runtime JSON is type-strict: boolean fields require JSON booleans, and a
+string such as <code>"false"</code> is rejected rather than treated as confirmation.
+Raw job channels require a positive JSON integer; exact <code>"all"</code> is accepted
+only by commands that support all-channel selection. Boolean, floating-point,
+and numeric-string channel values are rejected.
+Model-specific dry-run/simulator requests are rejected before job creation if
+no explicit or deterministic-SIM planning identity is available. Snapshot
+restore accepts only <code>schema_version: 2</code>, <code>kind: "powers-tool-snapshot"</code>
+documents with separate reported and canonical resolved identity. Restore
+request flags and persisted output/protection states also require exact JSON
+booleans. The snapshot <code>outputs</code>, <code>readback</code>, and <code>protection_settings</code>
+sections must be non-empty and contain exactly the same channels; every
+channel needs a protection record even when its optional values are null.
+Unknown and intentionally unsupported <code>/api/jobs</code> commands are
+rejected before a job or background task is created.</p>
+<h2 id="stop-and-cancel">Stop And Cancel</h2>
+<p>If a job has not started, cancel can finish quickly. If a real hardware job is
+already executing, cancellation is cooperative: the WebUI requests cancellation
+and waits for Core cleanup to finish.</p>
+<p>Do not close the browser or kill the process to interrupt normal cleanup unless
+there is an external safety reason. Cleanup and release/local behavior belong
+to Core and may take time.</p>
+<p><code>Quit</code> requests cancellation of active WebUI work, including Live Data, and
+waits for normal cleanup before stopping the local server. If shutdown cannot
+finish before its timeout, the launcher stays open and reports <code>Shutdown
+incomplete</code> so you can resolve the problem and try again.</p>
+<h2 id="common-problems">Common Problems</h2>
+<h3 id="the-page-does-not-load">The page does not load</h3>
+<p>Confirm the server is still running and open:</p>
+<pre><code class="language-text">http://127.0.0.1:7999/
+</code></pre>
+<p>Check the URL shown by the launcher because automatic startup may have selected
+a port other than <code>7999</code>.</p>
+<h3 id="the-launcher-says-the-port-is-already-in-use">The launcher says the port is already in use</h3>
+<p>The launcher never opens the service that already owns a candidate port.
+Default automatic startup skips address-in-use candidates. A fixed <code>--port</code>
+conflict exits without choosing another port. If the manual fallback window is
+open, choose another port or stop the service that owns the selected port, then
+click <code>Start</code> again.</p>
+<h3 id="scan-device-finds-nothing">Scan Device finds nothing</h3>
+<p>Check that:</p>
+<ul>
+<li>the instrument is powered on;</li>
+<li>USB or LAN is connected;</li>
+<li>the VISA driver can see the instrument;</li>
+<li>no other program is holding the resource;</li>
+<li>the correct backend is available on this PC.</li>
+</ul>
+<p>You can still type a known VISA resource manually.</p>
+<h3 id="run-is-blocked">Run is blocked</h3>
+<p>Read the visible validation message and Result Detail. Common causes are a
+missing resource, missing required command field, unsupported model, unsafe
+setpoint, or missing confirmation for real output-affecting commands.
+Selecting an expected model does not unlock disabled commands; it only plans
+no-hardware requests or guards a live command against the connected <code>*IDN?</code>
+model.</p>
+<h3 id="output-buttons-do-not-look-current">Output buttons do not look current</h3>
+<p>Start or refresh Live Data. The WebUI avoids displaying stale output state as
+fresh truth.</p>
+<h3 id="a-command-appears-busy">A command appears busy</h3>
+<p>Real hardware commands are serialized by the WebUI hardware lock. Wait for the
+current command and cleanup to finish, or cancel only when that is the intended
+operator action.</p>
+<h3 id="live-data-reports-stale-or-error-state">Live Data reports stale or error state</h3>
+<p>Check the resource, connection, and whether another command owns hardware I/O.
+Live Data does not override real command execution.</p>
+<h2 id="operator-safety-notes">Operator Safety Notes</h2>
+<ul>
+<li>Use read-only Live Data before output-affecting commands.</li>
+<li>Keep first live checks low voltage/current and explicit channel.</li>
+<li>Confirm current limit before enabling output.</li>
+<li>Treat <code>channel all</code> as a deliberate multi-channel action.</li>
+<li>Do not clear protection until the cause of the trip is understood.</li>
+<li>Treat trigger and LIST workflows as advanced operations.</li>
+<li>Stop or turn output off before disconnecting the DUT when practical.</li>
+</ul>
+<h2 id="more-product-documentation">More Product Documentation</h2>
+<ul>
+<li><a href="supported-models.html">Supported Models</a>: the current Product support
+  matrix and model-specific limits.</li>
+</ul>
+  </main>
+
+  <script>
+    (function () {
+      var isTraditionalChinese =
+        document.documentElement.lang.toLowerCase() === "zh-tw";
+
+      var strings = isTraditionalChinese
+        ? {
+            contents: "\u7ae0\u7bc0\u5c0e\u89bd",
+            copy: "\u8907\u88fd",
+            copied: "\u5df2\u8907\u88fd",
+            copyFailed: "\u8907\u88fd\u5931\u6548"
+          }
+        : {
+            contents: "Contents",
+            copy: "Copy",
+            copied: "Copied",
+            copyFailed: "Copy failed"
+          };
+
+      document.getElementById("toc-title").textContent = strings.contents;
+
+      function buildTableOfContents() {
+        var toc = document.getElementById("toc");
+        if (!toc) return;
+
+        var headings = document.querySelectorAll(
+          "#help-content h2[id], #help-content h3[id]"
+        );
+        var fragment = document.createDocumentFragment();
+
+        headings.forEach(function (heading) {
+          var link = document.createElement("a");
+          link.href = "#" + heading.id;
+          link.textContent = heading.textContent;
+          if (heading.tagName === "H3") {
+            link.className = "level-3";
+          }
+          fragment.appendChild(link);
+        });
+
+        toc.appendChild(fragment);
+      }
+
+      function wrapCodeBlocks() {
+        document.querySelectorAll("#help-content pre").forEach(
+          function (pre) {
+            if (pre.closest(".code-wrapper")) return;
+
+            var wrapper = document.createElement("div");
+            wrapper.className = "code-wrapper";
+            pre.parentNode.insertBefore(wrapper, pre);
+            wrapper.appendChild(pre);
+
+            var button = document.createElement("button");
+            button.type = "button";
+            button.className = "copy-btn";
+            button.textContent = strings.copy;
+            button.addEventListener("click", function () {
+              if (
+                !navigator.clipboard ||
+                typeof navigator.clipboard.writeText !== "function"
+              ) {
+                button.textContent = strings.copyFailed;
+                setTimeout(function () {
+                  button.textContent = strings.copy;
+                }, 1600);
+                return;
+              }
+
+              navigator.clipboard.writeText(pre.innerText).then(
+                function () {
+                  button.textContent = strings.copied;
+                  setTimeout(function () {
+                    button.textContent = strings.copy;
+                  }, 1600);
+                },
+                function () {
+                  button.textContent = strings.copyFailed;
+                  setTimeout(function () {
+                    button.textContent = strings.copy;
+                  }, 1600);
+                }
+              );
+            });
+            wrapper.appendChild(button);
+          }
+        );
+      }
+
+      function observeActiveSection() {
+        var tocLinks = document.querySelectorAll("#toc a");
+        if (!tocLinks.length) return;
+
+        var observer = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (!entry.isIntersecting) return;
+
+              tocLinks.forEach(function (link) {
+                link.classList.toggle(
+                  "active",
+                  link.getAttribute("href") === "#" + entry.target.id
+                );
+              });
+            });
+          },
+          { rootMargin: "-10% 0px -70% 0px" }
+        );
+
+        headings.forEach(function (heading) {
+          observer.observe(heading);
+        });
+      }
+
+      var headings = document.querySelectorAll(
+        "#help-content h2[id], #help-content h3[id]"
+      );
+      buildTableOfContents();
+      wrapCodeBlocks();
+      observeActiveSection();
+    })();
+  </script>
+</body>
+</html>

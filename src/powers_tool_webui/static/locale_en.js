@@ -18,6 +18,7 @@ export const EN_MESSAGES = Object.freeze({
   "app.appearance": "Appearance",
   "app.brand": "Powers Tool",
   "app.document_title": "Powers Tool WebUI",
+  "app.help": "Help",
   "app.language": "Language",
   "app.unofficial_tool": "Unofficial Tool",
   "command.filter": "Filter",
