@@ -29,6 +29,40 @@ def test_theme_control_and_initial_render_bootstrap_are_present() -> None:
     assert "onThemeChanged: drawTrend" in app_source
 
 
+def test_help_theme_bootstrap_and_desktop_query_contract() -> None:
+    template = (REPO_ROOT / "docs" / "help" / "template.html").read_text(encoding="utf-8")
+    help_css = (REPO_ROOT / "docs" / "help" / "help.css").read_text(encoding="utf-8")
+    desktop = (REPO_ROOT / "desktop" / "main.cjs").read_text(encoding="utf-8")
+
+    # Help bootstrap must run before help.css
+    assert template.index("powers-tool.webui.theme") < template.index('href="help.css"')
+    assert template.index("dataset.theme") < template.index('href="help.css"')
+    assert "URLSearchParams" in template
+    assert 'get("theme")' in template
+    for value in ('"system"', '"light"', '"dark"'):
+        assert value in template
+    assert 'matchMedia("(prefers-color-scheme: dark)")' in template
+    assert "addEventListener" in template and '"change"' in template
+    # Preservation of explicit Desktop theme across Help-document navigation
+    assert "preserveHelpThemeQuery" in template
+    assert "?theme=" in template
+    assert 'indexOf(".html")' in template
+    assert 'getAttribute("href")' in template
+
+    # Help CSS must use explicit data-theme dark selector, not sole media query
+    assert ':root[data-theme="dark"]' in help_css
+    assert ':root[data-theme="dark"] :not(pre) > code' in help_css
+    assert ':root[data-theme="dark"] pre code' in help_css
+    assert "@media (prefers-color-scheme: dark)" not in help_css
+
+    # Desktop must carry validated theme via query when opening Help externally
+    assert "nativeTheme.themeSource" in desktop
+    assert "THEME_PREFERENCES.has" in desktop
+    assert 'searchParams.set("theme"' in desktop
+    assert "shell.openExternal(parsed.href" in desktop
+    assert 'pathname.startsWith("/help/")' in desktop
+
+
 @pytest.mark.skipif(NODE is None, reason="Node.js is required for theme runtime tests")
 def test_theme_preference_runtime_behavior() -> None:
     script = r'''

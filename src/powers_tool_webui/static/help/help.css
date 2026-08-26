@@ -9,17 +9,15 @@
   --accent: #2563eb;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg-body: #0f172a;
-    --bg-sidebar: #1e293b;
-    --bg-code: #334155;
-    --bg-inline-code: rgba(148, 163, 184, 0.16);
-    --text-main: #f8fafc;
-    --text-muted: #94a3b8;
-    --border-color: #475569;
-    --accent: #60a5fa;
-  }
+:root[data-theme="dark"] {
+  --bg-body: #0f172a;
+  --bg-sidebar: #1e293b;
+  --bg-code: #334155;
+  --bg-inline-code: rgba(148, 163, 184, 0.16);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --border-color: #475569;
+  --accent: #60a5fa;
 }
 
 html {
@@ -181,10 +179,8 @@ code {
   overflow-wrap: anywhere;
 }
 
-@media (prefers-color-scheme: dark) {
-  :not(pre) > code {
-    color: #fda4af;
-  }
+:root[data-theme="dark"] :not(pre) > code {
+  color: #fda4af;
 }
 
 .code-wrapper {
@@ -209,10 +205,8 @@ pre code {
   padding: 0;
 }
 
-@media (prefers-color-scheme: dark) {
-  pre code {
-    color: #e2e8f0;
-  }
+:root[data-theme="dark"] pre code {
+  color: #e2e8f0;
 }
 
 .copy-btn {

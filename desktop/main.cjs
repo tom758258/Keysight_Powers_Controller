@@ -178,6 +178,10 @@ async function createMainWindow(readyUrl) {
     try {
       const parsed = new URL(url);
       if (parsed.origin === allowedOrigin && parsed.pathname.startsWith("/help/")) {
+        const preference = THEME_PREFERENCES.has(nativeTheme.themeSource)
+          ? nativeTheme.themeSource
+          : "system";
+        parsed.searchParams.set("theme", preference);
         void shell.openExternal(parsed.href).catch(() => {});
       }
     } catch {
