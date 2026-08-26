@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 
@@ -54,6 +55,22 @@ def test_webui_docs_describe_exact_support_as_product_only_ux():
         assert token in text
     assert "--validation-allow-pending-live-support" not in text
     assert "Local/" not in text
+
+
+def test_webui_user_guides_do_not_depend_on_developer_docs():
+    markdown_link = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
+
+    for path in ("USER_GUIDE.md", "USER_GUIDE.zh-TW.md"):
+        text = read_webui_doc(path)
+
+        for target in markdown_link.findall(text):
+            basename = target.rsplit("/", 1)[-1]
+            assert not basename.startswith("README"), path
+            assert "contracts/" not in target, path
+            assert "core/integration.md" not in target, path
+            assert "web-ui-change-rules.md" not in target, path
+            assert "localization-contract.md" not in target, path
+            assert "cli/USER_GUIDE" not in target, path
 
 
 def test_webui_docs_distinguish_installed_wrappers_and_standalone_artifact() -> None:

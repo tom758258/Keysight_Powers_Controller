@@ -128,6 +128,20 @@ def test_cli_user_guides_defer_e3646a_command_inventory_to_supported_models():
         assert len(inline_command.findall(intro)) < 8
 
 
+def test_cli_user_guides_do_not_depend_on_developer_docs():
+    markdown_link = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
+
+    for path in ("USER_GUIDE.md", "USER_GUIDE.zh-TW.md"):
+        text = read_cli_doc(path)
+
+        for target in markdown_link.findall(text):
+            basename = target.rsplit("/", 1)[-1]
+            assert not basename.startswith("README"), path
+            assert "contracts/" not in target, path
+            assert "core/integration.md" not in target, path
+            assert "webui/USER_GUIDE" not in target, path
+
+
 def test_cli_readme_defers_physical_planning_inventory_to_core_metadata():
     text = read_cli_doc("README.md")
     section = read_markdown_section(
