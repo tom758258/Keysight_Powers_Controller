@@ -45,7 +45,9 @@ def test_generated_help_bundle_contains_expected_files(tmp_path: Path) -> None:
     for name in EXPECTED_OUTPUTS:
         if not name.endswith(".html"):
             continue
-        html_text = (output_dir / name).read_text(encoding="utf-8")
+        html_bytes = (output_dir / name).read_bytes()
+        assert b"\r\n" not in html_bytes
+        html_text = html_bytes.decode("utf-8")
         assert "{{lang}}" not in html_text
         assert "{{title}}" not in html_text
         assert "{{content}}" not in html_text
@@ -73,7 +75,7 @@ def test_generated_help_links_and_stable_anchor(tmp_path: Path) -> None:
     for name in ("cli.zh-TW.html", "webui.zh-TW.html"):
         html_text = (output_dir / name).read_text(encoding="utf-8")
         assert 'href="supported-models.zh-TW.html' in html_text
-        assert 'href="../core/supported-models.md' not in html_text
+        assert 'href="../core/supported-models.zh-TW.md' not in html_text
 
     cli_html = (output_dir / "cli.html").read_text(encoding="utf-8")
     assert (

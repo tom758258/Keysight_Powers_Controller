@@ -97,7 +97,11 @@ def generate(output_dir: Path) -> None:
     for relative_source, output_name, lang in SOURCES:
         source_path = REPO_ROOT / relative_source
         rendered = render_document(source_path, lang, template)
-        (output_dir / output_name).write_text(rendered, encoding="utf-8")
+        (output_dir / output_name).write_text(
+            rendered,
+            encoding="utf-8",
+            newline="\n",
+        )
 
     shutil.copyfile(CSS_SOURCE_PATH, output_dir / "help.css")
 
