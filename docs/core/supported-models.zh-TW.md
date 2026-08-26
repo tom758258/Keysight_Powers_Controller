@@ -1,6 +1,6 @@
 # 支援型號
 
-## Product Live Support Boundary
+## Product LIVE 支援邊界
 
 一般 Product LIVE 執行使用下方的精確 Product matrix。Powers Tool 會識別連線的
 model，並要求 model、command、transport、backend 與必要 feature 完全相符。
@@ -28,7 +28,7 @@ transport/backend scope 或其他 command。
 未列出的 command 或 feature 不會由另一個 model、connection、backend 或
 command family 開啟。
 
-## Feature-Aware Exact Scopes
+## Feature-Aware 精確支援範圍
 
 上方的 Product-open command rows 不是其他 command sub-features 的萬用字元。
 Powers Tool 會逐一檢查 Sequence step actions 與 Trigger Step/List sources。
@@ -40,7 +40,7 @@ Sequence `wait` 與 `log` 仍是 host-only actions。目前 live trigger sources
 pending 的 connection 或 feature 目前不受支援；缺少某個 action 或 source 的
 支援不代表該功能可用。
 
-## Models Not Currently Available For Product Use
+## 目前無法用於 Product 的型號
 
 以下 catalog-known model IDs 目前不是有效的 Product planning 或 live
 expected-model identities：`keysight-e36313a`、`keysight-e36233a`、
@@ -54,7 +54,7 @@ live model-aware operations 中都會被拒絕，且不會退回使用 `generic-
 `generic-scpi` 仍是保守的 no-hardware planning profile，不是 physical live
 model。
 
-## Connection-Scoped Product Support
+## 依連線範圍區分的 Product 支援
 
 Product support 以 model、connection、backend、command 與 feature 為 scope。
 
@@ -86,7 +86,7 @@ Trigger workflows 僅限 E36312A。EDU36311A、E3646A、PSM-2010 與
 `generic-scpi` 在 live、simulate 與 dry-run 模式都不提供 trigger workflows。
 PSM-2010 不支援 Powers trigger workflows。
 
-## No-Hardware Planning Identity Matrix
+## No-Hardware Planning Identity 對照表
 
 Dry-run 與 simulate planning 不會開啟真實 VISA hardware。Model-specific
 no-hardware commands 需要明確的 planning identity 或已知的 deterministic
@@ -112,7 +112,7 @@ command、transport 與 VISA backend 做出最終 Product decision。缺少或�
 Product-open 的 scope 在正常 Product use 中會被拒絕；identity diagnostics
 不代表 model 或 feature support。
 
-## Output Setpoint Programming Ranges
+## 輸出設定值 Programming Ranges
 
 對 output workflows 而言，`voltage` 表示 output voltage setpoint，`current`
 表示 output current limit/current setting。下列數值是來自 model manuals 的
@@ -146,7 +146,7 @@ E3646A 與 PSM-2010 的 ranges 取決於所選 range，不可壓平為單一 vol
 *RST current value 為 20 A；這不代表在 HIGH range 下允許 20 A。HIGH 仍受限
 於 10 A rating 與 10.3 A programming maximum。
 
-## Command Support Notes
+## Command 支援注意事項
 
 上方 matrix 對應以下 command-level facts：
 
