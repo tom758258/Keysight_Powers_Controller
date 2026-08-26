@@ -239,7 +239,7 @@
 </aside>
 <main>
 <h1>Powers Tool WebUI 使用者指南</h1>
-<p>本指南供取得已建置之 WebUI 啟動器的操作員使用，說明正常產品操作、畫面工作流程與安全行為。Powers Tool 的架構不綁定特定廠牌；目前硬體支援範圍以 <a href="../core/supported-models.md">Supported Models</a> 所記載的 Product scopes 為準；未知或未註冊的 live hardware 會 fail closed。</p>
+<p>本指南供取得已建置之 WebUI 啟動器的操作員使用，說明正常產品操作、畫面工作流程與安全行為。Powers Tool 的架構不綁定特定廠牌；目前硬體支援範圍以 <a href="../core/supported-models.zh-TW.md">支援型號</a> 所記載的 Product scopes 為準；未知或未註冊的 live hardware 會 fail closed。</p>
 <h2 id="section-1">啟動 WebUI</h2>
 <p>使用本機 shared onedir build 時，請雙擊 bundle 中的 WebUI 啟動器：</p>
 <div class="code-wrapper"><pre><code class="language-text">dist\powers-tool\powers-tool-webui-launcher.exe</code></pre></div>
@@ -307,7 +307,7 @@
 <p><code>Scan Device</code> 會執行啟用實機篩選的資源探索，只顯示目前可回應的資源，而不是過時的 VISA 快取項目。</p>
 <p>第一個有效結果會自動選取並複製到 <code>VISA resource</code>，同時執行一次唯讀身分辨識，以評估精確的產品級實機支援範圍。改選其他資源時也會重新評估。這個流程不會啟用輸出、不會修改儀器設定，也不需要實機寫入授權。您仍可手動輸入操作員已知的 VISA 資源。</p>
 <p>Device options 包含執行模式；在 Real 模式還會顯示 <code>Expected model</code>。一般實機操作請保留 <code>Auto-detect</code>，由連線儀器的 <code>*IDN?</code> 決定實際型號。齒輪圖示左側的 <strong>Supported devices / 支援裝置</strong> 按鈕會開啟唯讀清單，顯示目前 Product-open 且 WebUI 可使用的 <code>system_visa</code> 連線（廠商、型號、連線方式）。選擇 <code>Require &lt;model&gt;</code> 時，它只用於前端規劃與預期型號安全護欄：若連線儀器不符，Core 會在設定或寫入 SCPI 前拒絕；它不會強制選用該型號的驅動程式。</p>
-<p>一般型號選單由 Core 的 Product-active metadata 產生；目前支援的型號與 exact connection／backend scopes 以 <a href="../core/supported-models.md">Supported Models</a> 為準。不支援的直接 model 提交仍會被 WebUI backend 與 Core 拒絕；Auto-detect 在有可用 metadata 時可使用偵測到的 live model 資訊，但前端狀態永遠不會覆寫 Core 由 IDN 選出的 live driver。</p>
+<p>一般型號選單由 Core 的 Product-active metadata 產生；目前支援的型號與 exact connection／backend scopes 以 <a href="../core/supported-models.zh-TW.md">支援型號</a> 為準。不支援的直接 model 提交仍會被 WebUI backend 與 Core 拒絕；Auto-detect 在有可用 metadata 時可使用偵測到的 live model 資訊，但前端狀態永遠不會覆寫 Core 由 IDN 選出的 live driver。</p>
 <p>在 Product-open scope 上成功完成唯讀身分評估後，Device / Resource summary 會顯示偵測到的 transport/backend scope，不含命令數統計；diagnostic 可以顯示命令為 pending，但不會啟用它們。變更 <code>Expected model</code> 只更新規劃指引，不會改寫偵測到的 model 或連線 scope。WebUI 使用正常 Product policy 與預設 system-VISA 後端，沒有後端選擇器或 validation mode；pending metadata 只在實際 runtime transport/backend 符合已註冊 pending scope 時顯示。若身分評估在未知或已移出範圍（de-scoped）的儀器上成功，WebUI 會顯示無法解析出 Product-open live scope；一般 model-aware live commands 維持停用，且 Expected model 不符時 diagnostic 仍會失敗。</p>
 <p>若掃描不到可用資源，請檢查儀器電源、纜線、VISA 驅動程式可見度，以及是否有其他程式占用儀器。</p>
 <h2 id="section-6">即時資料 (Live Data)</h2>
@@ -383,7 +383,7 @@
 </ul>
 <h2 id="section-13">更多產品文件</h2>
 <ul>
-<li><a href="../core/supported-models.md" rel="noopener noreferrer" target="_blank">支援型號</a>：目前 Product support matrix 與型號特定限制。</li>
+<li><a href="../core/supported-models.zh-TW.md" rel="noopener noreferrer" target="_blank">支援型號</a>：目前 Product support matrix 與型號特定限制。</li>
 </ul>
 </main>
 <script>

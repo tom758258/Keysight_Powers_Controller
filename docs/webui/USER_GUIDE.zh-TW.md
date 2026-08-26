@@ -1,6 +1,6 @@
 # Powers Tool WebUI 使用者指南
 
-本指南供取得已建置之 WebUI 啟動器的操作員使用，說明正常產品操作、畫面工作流程與安全行為。Powers Tool 的架構不綁定特定廠牌；目前硬體支援範圍以 [Supported Models](../core/supported-models.md) 所記載的 Product scopes 為準；未知或未註冊的 live hardware 會 fail closed。
+本指南供取得已建置之 WebUI 啟動器的操作員使用，說明正常產品操作、畫面工作流程與安全行為。Powers Tool 的架構不綁定特定廠牌；目前硬體支援範圍以 [支援型號](../core/supported-models.zh-TW.md) 所記載的 Product scopes 為準；未知或未註冊的 live hardware 會 fail closed。
 
 ## 啟動 WebUI
 
@@ -141,7 +141,7 @@ storage 不可用，WebUI 會安全 fallback，不影響正常操作。
 
 Device options 包含執行模式；在 Real 模式還會顯示 `Expected model`。一般實機操作請保留 `Auto-detect`，由連線儀器的 `*IDN?` 決定實際型號。齒輪圖示左側的 **Supported devices / 支援裝置** 按鈕會開啟唯讀清單，顯示目前 Product-open 且 WebUI 可使用的 `system_visa` 連線（廠商、型號、連線方式）。選擇 `Require <model>` 時，它只用於前端 capability 規劃，並作為 expected-model guard 送出：連線儀器的 `*IDN?` model 必須相符，才會進行 setup 或 write SCPI；該選擇不會強制使用該型號的 driver。Device / Resource summary 會將偵測到的 live model 與 Expected model 選擇分開顯示，例如 `live E3646A / Auto-detect` 或 `live E3646A / Require E36312A`。
 
-一般型號選單由 Core 的 Product-active metadata 產生；目前支援的型號與 exact connection／backend scopes 以 [Supported Models](../core/supported-models.md) 為準。不支援的直接 model 提交仍會被 WebUI backend 與 Core 拒絕。Auto-detect 在有可用 metadata 時仍可使用偵測到的 live model 資訊，但前端狀態永遠不會覆寫 Core 由 IDN 選出的 live driver。
+一般型號選單由 Core 的 Product-active metadata 產生；目前支援的型號與 exact connection／backend scopes 以 [支援型號](../core/supported-models.zh-TW.md) 為準。不支援的直接 model 提交仍會被 WebUI backend 與 Core 拒絕。Auto-detect 在有可用 metadata 時仍可使用偵測到的 live model 資訊，但前端狀態永遠不會覆寫 Core 由 IDN 選出的 live driver。
 
 在 Product-open scope 上成功完成唯讀身分評估後，Device / Resource summary 會顯示偵測到的 transport/backend scope，不含命令數統計。diagnostic 可以顯示命令為 pending，但不會啟用它們。變更 `Expected model` 只更新規劃指引；它不會改寫偵測到的 model 或連線 scope。WebUI 使用正常 Product policy 與預設 system-VISA backend；沒有 backend selector 或 validation mode。Pending metadata 只在實際 runtime transport/backend 符合已註冊 pending scope 時顯示。
 
@@ -292,4 +292,4 @@ manual fallback 視窗，請選擇其他 port，或停止占用所選 port 的�
 
 ## 更多產品文件
 
-- [支援型號](../core/supported-models.md)：目前 Product support matrix 與型號特定限制。
+- [支援型號](../core/supported-models.zh-TW.md)：目前 Product support matrix 與型號特定限制。

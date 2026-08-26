@@ -1,6 +1,6 @@
 # Powers Tool CLI 使用者指南
 
-本指南針對取得已建置之 CLI 執行檔或已安裝 `powers-tool` 命令的操作員，說明正常產品操作、重要限制與安全行為。目前硬體支援以 [Supported Models](../core/supported-models.md) 所列 exact Product scope 為準。各命令的專屬選項與使用方式可使用 `powers-tool <command> --help` 查詢。
+本指南針對取得已建置之 CLI 執行檔或已安裝 `powers-tool` 命令的操作員，說明正常產品操作、重要限制與安全行為。目前硬體支援以 [支援型號](../core/supported-models.zh-TW.md) 所列 exact Product scope 為準。各命令的專屬選項與使用方式可使用 `powers-tool <command> --help` 查詢。
 
 ## 啟動 CLI
 
@@ -127,7 +127,7 @@ completion pulse。Ramp List 可在每個 logical step、每個 Segment，或所
 ## E3646A RS-232 / ASRL
 
 E3646A 的 Product LIVE 支援僅限 ASRL／RS-232 transport 與 system VISA backend；目前
-可用的 command inventory 請以 [Product LIVE exact-scope matrix](../core/supported-models.md#product-live-exact-scope-matrix)
+可用的 command inventory 請以 [Product LIVE exact-scope matrix](../core/supported-models.zh-TW.md#product-live-exact-scope-matrix)
 為準。`identify` 與 `verify` 僅是 diagnostic，不會開啟其他 command。Protection、
 Trigger、Snapshot、Restore、completion pulses 與 native LIST 不屬於 E3646A 的
 Product-open scope。執行任何 E3646A 實機輸出命令前，請確認實體接線已檢查完成，且要求的
@@ -283,7 +283,7 @@ model 與連線 IDN model 不符，命令會在 setup 或 write SCPI 前失敗�
 feature 組合都會 fail closed。Product LIVE support 以偵測到的 model、command、
 transport、backend 與 required feature 為 exact scope；missing 或 pending scope 都會
 fail closed。Feature family 或 no-hardware plan 不代表該 family 中每個命令都是
-product-open。請參閱 [exact matrix](../core/supported-models.md#product-live-exact-scope-matrix)。
+product-open。請參閱 [exact matrix](../core/supported-models.zh-TW.md#product-live-exact-scope-matrix)。
 
 ## 常見問題
 
@@ -301,4 +301,4 @@ product-open。請參閱 [exact matrix](../core/supported-models.md#product-live
 
 ## 更多產品文件
 
-- [支援型號](../core/supported-models.md)：目前 Product support matrix 與型號特定限制。
+- [支援型號](../core/supported-models.zh-TW.md)：目前 Product support matrix 與型號特定限制。

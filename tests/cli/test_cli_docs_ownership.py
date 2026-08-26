@@ -110,7 +110,10 @@ def test_cli_user_guides_defer_e3646a_command_inventory_to_supported_models():
     for path, text in texts.items():
         for phrase in forbidden_inventory_phrases:
             assert phrase not in text
-        assert "supported-models.md#product-live-exact-scope-matrix" in text
+        assert re.search(
+            r"supported-models(?:\.zh-TW)?\.md#product-live-exact-scope-matrix",
+            text,
+        )
         for stable_token in ("INST:NSEL", "OUTP ON/OFF", "native LIST"):
             assert stable_token in text
 
