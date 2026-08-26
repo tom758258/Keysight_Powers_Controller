@@ -27,6 +27,7 @@ dev = [
   "build>=1.2",
   "fastapi>=0.100.0",
   "httpx2>=2.0",
+  "Markdown>=3.6",
   "pyinstaller>=6.11",
   "pytest>=8.0",
   "ruff>=0.15.20",
