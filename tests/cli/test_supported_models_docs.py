@@ -17,7 +17,6 @@ def test_supported_models_matrix_matches_cli_support(capsys):
         "keysight-edu36311a",
         "keysight-e3646a",
         "gw-instek-psm-2010",
-        "not_supported_by_model",
     ):
         assert token in matrix
 
@@ -105,7 +104,6 @@ def test_public_docs_preserve_machine_schema_and_support_tokens() -> None:
         "README.md",
         "docs/core/README.md",
         "docs/core/integration.md",
-        "docs/core/supported-models.md",
         "docs/cli/README.md",
         "docs/cli/USER_GUIDE.md",
         "docs/contracts/power-cli-jsonl-contract.md",
@@ -185,10 +183,11 @@ def test_core_support_document_ownership_is_explicit() -> None:
     ):
         assert token in integration
 
-    assert "integration.md#support-policy-contract" in supported
     assert "core/integration.md#support-policy-contract" in contributor
     assert "supported-models.md" in integration
     assert "../CONTRIBUTING.md" in integration
+    assert "(integration.md#support-policy-contract)" not in supported
+    assert "(../CONTRIBUTING.md)" not in supported
 
 
 def test_contributor_docs_preserve_safety_and_privacy_keywords() -> None:

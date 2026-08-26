@@ -2,24 +2,17 @@
 
 ## Product Live Support Boundary
 
-Normal Product LIVE execution uses the exact Product matrix below. Core
-resolves the reported manufacturer plus model to one canonical physical
-`model_id`, applies any expected-model guard, and requires an exact
-`model_id + command + transport + backend + required feature` match. Missing,
-unsupported, or non-Product-open scopes fail closed. A Product-open system VISA
-scope does not inherit to pyvisa-py, pyvisa-bt, or a custom backend. No current
-Product-open exact scope uses `pyvisa_bt`. E3646A and PSM-2010 remain ASRL /
-RS-232 + system VISA only.
-
-The `live_validated_full_suite` status identifies current Product-open exact
-command scopes in the public support projection. For the machine-readable
-policy-mode and status contract, see [Core support-policy contract](integration.md#support-policy-contract).
-Contributor validation and evidence workflow is maintained in
-[Contributing](../CONTRIBUTING.md).
+Normal Product LIVE execution uses the exact Product matrix below. Powers Tool
+identifies the connected model and requires an exact model, command,
+transport, backend, and required feature match. Missing, unsupported, or
+non-Product-open scopes fail closed. A Product-open system VISA scope does not
+inherit to pyvisa-py, pyvisa-bt, or a custom backend. No current Product-open
+exact scope uses pyvisa-bt. E3646A and PSM-2010 remain ASRL / RS-232 +
+system VISA only.
 
 ## Product LIVE Exact-Scope Matrix
 
-The current `live_validated_full_suite` command inventories are:
+The current Product-open command inventories are:
 
 | Model | Exact product connections | Product-open model-aware commands |
 | --- | --- | --- |
@@ -40,16 +33,14 @@ connection, backend, or command family.
 ## Feature-Aware Exact Scopes
 
 The Product-open command rows above are not wildcards for other command
-sub-features. Core additionally checks `sequence_action` for each normalized
-instrument-relevant Sequence step and `trigger_source` for Trigger Step/List.
-Sequence `wait` and `log` remain host-only and need no live feature entry.
-Current real trigger-source values are `bus` and `immediate` (`imm` normalizes
-to `immediate`); PIN/EXT inputs remain rejected by request/profile validation.
+sub-features. Powers Tool checks Sequence step actions and Trigger Step/List
+sources individually. Sequence `wait` and `log` remain host-only actions.
+Current live trigger sources are `bus` and `immediate` (`imm` normalizes to
+`immediate`); PIN/EXT inputs are rejected.
 
-On a Product-open connection, currently supported actions and sources are
-Product-open. A pending connection or feature is not currently supported for
-Product use; missing feature metadata does not open the scope.
-Only Product-open feature entries are available to Product callers.
+On a Product-open connection, supported actions and sources are available for
+Product use. A pending connection or feature is not currently supported;
+missing support for an action or source does not make it available.
 
 ## Models Not Currently Available For Product Use
 
@@ -60,7 +51,7 @@ expected-model identities: `keysight-e36313a`, `keysight-e36233a`,
 `keysight-e36103b` and `keysight-e36232a` are de-scoped. They are rejected as
 no-hardware planning identities, live expected-model guards, WebUI model
 selections, and live model-aware operations. They must not fall back to
-`GenericScpiPowerSupply`.
+`generic-scpi`.
 
 Other Keysight E36xxx / E36000-series models currently have no Product support.
 `generic-scpi` remains a conservative no-hardware planning profile and is not a
@@ -94,13 +85,11 @@ snapshot/restore, and completion-pulse remain disabled. E3646A `ramp-list` and
 EDU36311A USB read-only, output/write, and protection commands are enabled for
 real execution within the exact Product scopes above. EDU36311A
 `protection-set` and `clear-protection` require `--confirm` for real execution
-and report `hardware_validation=validated`.
+and are supported for Product use.
 
 Trigger workflows are E36312A-only. EDU36311A, E3646A, PSM-2010, and
-`generic-scpi` do not expose trigger dry-run or simulator behavior; their trigger commands report
-`real=false`, `simulate=false`, and `dry_run=false`.
-PSM-2010 does not support Powers trigger workflows; its trigger commands also
-report `hardware_validation=not_supported_by_model`.
+`generic-scpi` do not expose trigger workflows in live, simulate, or dry-run
+modes. PSM-2010 does not support Powers trigger workflows.
 
 ## No-Hardware Planning Identity Matrix
 
@@ -118,13 +107,14 @@ placeholders and must not imply a model.
 | `generic-scpi` planning profile | None; use explicit `--profile generic-scpi` in dry-run | CH1 | Unknown | Conservative no-hardware planning only. Trigger workflows, native LIST, and protection writes are not exposed. |
 
 Live hardware uses manufacturer-plus-model IDN resolution. In live mode,
-`--model` maps to `RuntimeOptions.expected_model_id`: Core requires the
-detected canonical identity to match and fails before command-specific SCPI on
-mismatch. The guard never overrides the IDN-selected driver. `generic-scpi`
-is a conservative nonphysical dry-run profile and is not a live expected model.
+`--model` is an expected-model guard: the detected canonical identity must
+match before command-specific SCPI, and mismatch fails closed. The guard never
+overrides the IDN-selected driver. `generic-scpi` is a conservative
+nonphysical dry-run profile and is not a live expected model.
 
-For model-aware live execution, Core makes the final Product decision using the
-detected `*IDN?` model plus the exact command, transport, and VISA backend.
+For model-aware live execution, Powers Tool makes the final Product decision
+using the detected `*IDN?` model plus the exact command, transport, and VISA
+backend.
 Missing and non-Product-open scopes reject in normal Product use; identity
 diagnostics do not imply model or feature support.
 
@@ -166,19 +156,16 @@ limited to a 10 A rating and a 10.3 A programming maximum.
 
 ## Command Support Notes
 
-`capabilities --json` includes a `command_support` map, and
-`capabilities --command COMMAND --json` also returns `data.selected_command`
-for one map entry. The matrix above must stay consistent with these
-command-level facts:
+The matrix above reflects these command-level facts:
 
 - Unsupported model, command, and mode combinations fail intentionally. These
   feature-lock failures mean the workflow is not supported for that model,
   not that `--model` or the WebUI selector can unlock it.
-- CLI `--model` and WebUI `runtime.planning_model_id` select canonical physical
-  planning models in dry-run/simulate mode. Live requests instead use
-  `expected_model_id`; driver selection always follows manufacturer-plus-model
-  IDN resolution. `generic-scpi` uses the separate dry-run planning-profile
-  field and is never a live expected model.
+- CLI `--model` and WebUI model selection choose canonical physical planning
+  models in dry-run/simulate mode. Live requests use IDN-driven detection;
+  driver selection always follows the connected instrument identity.
+  `generic-scpi` remains a conservative no-hardware planning profile and is
+  never a live expected model.
 - E36312A native trigger/LIST support is exposed through `trigger-status`,
   `trigger-step`, `trigger-list`, and `trigger-abort`. The
   trigger dry-run and simulator paths are also E36312A-only. Native LIST
@@ -193,9 +180,7 @@ command-level facts:
   command inventory.
 - E36312A and EDU36311A OVP/OCP trip status is queried per channel. Aggregate
   `protection-status` flags are the OR of the selected channel results.
-- EDU36311A trigger commands remain disabled. `capabilities --json` reports
-  all trigger commands with `hardware_validation=not_supported_by_model` and
-  does not expose trigger dry-run or simulator behavior.
+- EDU36311A trigger commands remain disabled in all modes.
 - EDU36311A snapshot and restore-from-snapshot are not Product-open for
   EDU36311A.
 - EDU36311A `sequence` must not bypass disabled trigger/native LIST,
