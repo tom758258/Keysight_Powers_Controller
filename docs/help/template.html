@@ -74,6 +74,17 @@
             button.className = "copy-btn";
             button.textContent = strings.copy;
             button.addEventListener("click", function () {
+              if (
+                !navigator.clipboard ||
+                typeof navigator.clipboard.writeText !== "function"
+              ) {
+                button.textContent = strings.copyFailed;
+                setTimeout(function () {
+                  button.textContent = strings.copy;
+                }, 1600);
+                return;
+              }
+
               navigator.clipboard.writeText(pre.innerText).then(
                 function () {
                   button.textContent = strings.copied;
