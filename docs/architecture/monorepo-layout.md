@@ -81,6 +81,8 @@ Documentation ownership is divided as follows:
   see [`docs/help/README.md`](../help/README.md).
 - `docs/skill/` contains optional Powers Tool orchestration skill
   documentation and assets.
+- `docs/architecture/` contains durable repository and component architecture
+  documentation.
 - `docs/CONTRIBUTING.md` contains contributor workflow and durable validation
   requirements; `docs/testing-guidelines.md` contains repository testing
   philosophy and durable test-boundary guidance.

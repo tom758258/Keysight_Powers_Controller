@@ -130,10 +130,10 @@ planning, simple and surgical changes, and text-file hygiene.
   `README.md` or focused contributor documentation. Include in `USER_GUIDE.md`
   only the minimum information required for normal user operation.
 - English documentation remains the default unless localized docs are
-  explicitly in scope. When a maintained USER_GUIDE or Supported Models
-  Markdown source that feeds bundled Help changes, regenerate Help using the
-  existing generator and synchronize only the generated assets owned by the
-  affected runtime surface(s). Generated Help HTML must not be manually
+  explicitly in scope. When maintained bundled Help content or shared Help
+  presentation sources change, follow `docs/help/README.md`, regenerate with
+  the existing generator, and synchronize only the generated assets owned by
+  the affected runtime surface(s). Generated Help HTML must not be manually
   maintained as a second documentation source.
 - Do not place personal filesystem paths, real VISA resources, instrument
   serial numbers, private lab addresses, or link-local/private network

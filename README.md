@@ -84,13 +84,16 @@ tests/
   cli/
   webui/
   integration/
+  packaging/
+  tooling/
 docs/
   core/                runtime and Product support documentation
   cli/                 CLI maintainer and operator documentation
   webui/               WebUI and Desktop documentation
   contracts/           public protocol and workflow contracts
-  help/                bundled Help maintenance sources
+  help/                bundled Help presentation and maintenance
   skill/               optional orchestration skill
+  architecture/
   CONTRIBUTING.md
   testing-guidelines.md
 scripts/

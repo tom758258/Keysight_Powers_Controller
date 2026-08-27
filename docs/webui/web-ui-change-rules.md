@@ -34,9 +34,10 @@ presentation-only. Changes within this directory must still preserve the API,
 execution, instrument-safety, job, Live Data, and cleanup boundaries below.
 
 Generated Help files under `src/powers_tool_webui/static/help/` are runtime
-outputs. Maintain their Markdown and shared presentation sources under
-`docs/help/`, then regenerate and synchronize owned assets when Help sources
-change; do not edit generated HTML by hand.
+outputs. Maintain canonical Markdown at its owning locations under
+`docs/webui/` and `docs/core/`, and maintain shared Help presentation sources
+under `docs/help/`. Follow [`docs/help/README.md`](../help/README.md) for
+generation and synchronization; do not edit generated HTML by hand.
 
 Optional, only when a stable UI contract changes or a new public behavior needs
 coverage:

@@ -74,13 +74,16 @@ tests/
   cli/
   webui/
   integration/
+  packaging/
+  tooling/
 docs/
   core/                runtime 與 Product 支援文件
   cli/                 CLI 維護者與操作員文件
   webui/               WebUI 與 Desktop 文件
   contracts/           公開 protocol 與 workflow contracts
-  help/                bundled Help 維護來源
+  help/                bundled Help presentation 與維護
   skill/               選用的 orchestration skill
+  architecture/
   CONTRIBUTING.md
   testing-guidelines.md
 scripts/

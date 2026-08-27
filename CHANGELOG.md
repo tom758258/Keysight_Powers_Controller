@@ -2,9 +2,6 @@
 
 ## Unreleased
 
-- Adds local, version-matched built-in Help for the CLI, browser WebUI, and
-  Electron Desktop, with English and Traditional Chinese operator content.
-
 ## 3.1.0
 
 - Adds the `powers-tool manifest --json` machine introspection command for
@@ -20,6 +17,8 @@
   hierarchy and control states.
 - Adds a shared Powers application icon to the user-facing Windows Desktop,
   CLI, and WebUI Launcher, including the Launcher window and taskbar.
+- Adds local, version-matched built-in Help for the CLI, browser WebUI, and
+  Electron Desktop, with English and Traditional Chinese operator content.
 
 ## 3.0.0
 
