@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supported Models</title>
+  <script>
+    (function () {
+      var VALID = { system: 1, light: 1, dark: 1 };
+      var preference = "system";
+      try {
+        var query = new URLSearchParams(location.search).get("theme");
+        if (query && VALID[query]) {
+          preference = query;
+        } else {
+          var prefix = "powers-tool.webui.theme=";
+          var saved = document.cookie
+            .split(";")
+            .map(function (part) { return part.trim(); })
+            .find(function (part) { return part.indexOf(prefix) === 0; });
+          var cookieValue = saved ? saved.slice(prefix.length) : "";
+          try { cookieValue = decodeURIComponent(cookieValue); } catch (_e) {}
+          if (VALID[cookieValue]) preference = cookieValue;
+        }
+      } catch (_error) {}
+      var effective = "light";
+      if (preference === "dark") {
+        effective = "dark";
+      } else if (preference === "light") {
+        effective = "light";
+      } else {
+        try {
+          effective = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        } catch (_error) {
+          effective = "light";
+        }
+      }
+      try {
+        document.documentElement.dataset.theme = effective;
+      } catch (_error) {}
+      if (preference === "system") {
+        try {
+          var mq = matchMedia("(prefers-color-scheme: dark)");
+          var handler = function (event) {
+            try {
+              document.documentElement.dataset.theme = event.matches ? "dark" : "light";
+            } catch (_e) {}
+          };
+          if (mq.addEventListener) mq.addEventListener("change", handler);
+          else if (mq.addListener) mq.addListener(handler);
+        } catch (_error) {}
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="help.css">
+</head>
+<body>
+  <aside class="help-sidebar">
+    <div class="help-sidebar-title" id="toc-title">Contents</div>
+    <nav id="toc" aria-labelledby="toc-title"></nav>
+  </aside>
+
+  <main class="help-content" id="help-content">
+<h1 id="supported-models">Supported Models</h1>
+<h2 id="product-live-support-boundary">Product Live Support Boundary</h2>
+<p>Normal Product LIVE execution uses the exact Product matrix below. Powers Tool
+identifies the connected model and requires an exact model, command,
+transport, backend, and required feature match. Missing, unsupported, or
+non-Product-open scopes fail closed. A Product-open system VISA scope does not
+inherit to pyvisa-py, pyvisa-bt, or a custom backend. No current Product-open
+exact scope uses pyvisa-bt. E3646A and PSM-2010 remain ASRL / RS-232 +
+system VISA only.</p>
+<h2 id="product-live-exact-scope-matrix">Product LIVE Exact-Scope Matrix</h2>
+<p>The current Product-open command inventories are:</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Exact product connections</th>
+<th>Product-open model-aware commands</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>keysight-e36312a</code> (Keysight E36312A)</td>
+<td>USB + system VISA; TCPIP + system VISA</td>
+<td><code>measure</code>, <code>output-state</code>, <code>read-status</code>, <code>readback</code>, <code>validate-readonly</code>, <code>capabilities</code>, <code>set</code>, <code>output-on</code>, <code>output-off</code>, <code>safe-off</code>, <code>cycle-output</code>, <code>apply</code>, <code>ramp</code>, <code>smoke-output</code>, <code>ramp-list</code>, <code>sequence</code>, <code>protection-status</code>, <code>protection-set</code>, <code>clear-protection</code>, <code>snapshot</code>, <code>restore-from-snapshot</code>, <code>measure-all</code>, <code>log</code>, <code>doctor</code>, <code>trigger-status</code>, <code>trigger-step</code>, <code>trigger-list</code>, <code>trigger-abort</code>, <code>trigger-fire</code>, <code>trigger-pulse</code></td>
+</tr>
+<tr>
+<td><code>keysight-edu36311a</code> (Keysight EDU36311A)</td>
+<td>USB + system VISA; TCPIP + system VISA</td>
+<td><code>measure</code>, <code>output-state</code>, <code>read-status</code>, <code>readback</code>, <code>validate-readonly</code>, <code>capabilities</code>, <code>set</code>, <code>output-on</code>, <code>output-off</code>, <code>safe-off</code>, <code>cycle-output</code>, <code>apply</code>, <code>ramp</code>, <code>smoke-output</code>, <code>ramp-list</code>, <code>sequence</code>, <code>protection-status</code>, <code>protection-set</code>, <code>clear-protection</code>, <code>log</code>, <code>doctor</code></td>
+</tr>
+<tr>
+<td><code>keysight-e3646a</code> (Keysight E3646A)</td>
+<td>ASRL / RS-232 + system VISA</td>
+<td><code>measure</code>, <code>output-state</code>, <code>read-status</code>, <code>readback</code>, <code>capabilities</code>, <code>set</code>, <code>output-on</code>, <code>output-off</code>, <code>safe-off</code>, <code>cycle-output</code>, <code>apply</code>, <code>ramp</code>, <code>smoke-output</code>, <code>ramp-list</code>, <code>sequence</code>, <code>log</code>, <code>doctor</code></td>
+</tr>
+<tr>
+<td><code>gw-instek-psm-2010</code> (GW Instek PSM-2010)</td>
+<td>ASRL / RS-232 + system VISA</td>
+<td><code>measure</code>, <code>output-state</code>, <code>read-status</code>, <code>readback</code>, <code>validate-readonly</code>, <code>capabilities</code>, <code>set</code>, <code>output-on</code>, <code>output-off</code>, <code>safe-off</code>, <code>cycle-output</code>, <code>apply</code>, <code>ramp</code>, <code>smoke-output</code>, <code>ramp-list</code>, <code>sequence</code>, <code>protection-status</code>, <code>protection-set</code>, <code>clear-protection</code>, <code>snapshot</code>, <code>restore-from-snapshot</code>, <code>log</code>, <code>doctor</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>list-resources</code>, <code>verify</code>, <code>identify</code>, <code>error</code>, and <code>clear</code> are explicit
+diagnostic exemptions. Their success proves only that diagnostic operation; it
+does not open a model, feature family, transport/backend scope, or another
+command.</p>
+<p>The Product-open command rows above are exact scopes, not transport/backend
+inheritance. A command or feature not listed is not opened by another model,
+connection, backend, or command family.</p>
+<h2 id="feature-aware-exact-scopes">Feature-Aware Exact Scopes</h2>
+<p>The Product-open command rows above are not wildcards for other command
+sub-features. Powers Tool checks Sequence step actions and Trigger Step/List
+sources individually. Sequence <code>wait</code> and <code>log</code> remain host-only actions.
+Current live trigger sources are <code>bus</code> and <code>immediate</code> (<code>imm</code> normalizes to
+<code>immediate</code>); PIN/EXT inputs are rejected.</p>
+<p>On a Product-open connection, supported actions and sources are available for
+Product use. A pending connection or feature is not currently supported;
+missing support for an action or source does not make it available.</p>
+<h2 id="models-not-currently-available-for-product-use">Models Not Currently Available For Product Use</h2>
+<p>The following catalog-known model IDs are not active Product planning or live
+expected-model identities: <code>keysight-e36313a</code>, <code>keysight-e36233a</code>,
+<code>keysight-e36441a</code>, and <code>keysight-e36155a</code>.</p>
+<p><code>keysight-e36103b</code> and <code>keysight-e36232a</code> are de-scoped. They are rejected as
+no-hardware planning identities, live expected-model guards, WebUI model
+selections, and live model-aware operations. They must not fall back to
+<code>generic-scpi</code>.</p>
+<p>Other Keysight E36xxx / E36000-series models currently have no Product support.
+<code>generic-scpi</code> remains a conservative no-hardware planning profile and is not a
+physical live model.</p>
+<h2 id="connection-scoped-product-support">Connection-Scoped Product Support</h2>
+<p>Product support is scoped by model, connection, backend, command, and feature.</p>
+<p>The current exact Product connections are E36312A USB and LAN, EDU36311A USB
+and LAN, and E3646A and PSM-2010 ASRL / RS-232. Each connection remains limited
+to the commands and feature entries listed in the Product matrix. E3646A and
+PSM-2010 USB and LAN are outside the current scope.</p>
+<p>The E36312A and EDU36311A TCPIP + pyvisa-py connections are not currently
+available for Product use. System VISA support does not extend to pyvisa-py or
+pyvisa-bt or a custom backend.</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>USB</th>
+<th>LAN</th>
+<th>ASRL / RS-232</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>E36312A</td>
+<td>accepted exact commands only</td>
+<td>accepted exact commands only</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td>EDU36311A</td>
+<td>accepted exact commands only</td>
+<td>accepted exact commands only</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td>E3646A</td>
+<td>not current scope</td>
+<td>not current scope</td>
+<td>accepted exact commands only</td>
+</tr>
+<tr>
+<td>PSM-2010</td>
+<td>not current scope</td>
+<td>not current scope</td>
+<td>accepted exact commands only</td>
+</tr>
+</tbody>
+</table>
+<p>EDU36311A trigger/native LIST and snapshot/restore remain disabled in live,
+simulate, and dry-run. E3646A protection, trigger/native LIST,
+snapshot/restore, and completion-pulse remain disabled. E3646A <code>ramp-list</code> and
+<code>sequence</code> remain software workflows only, not native LIST.</p>
+<p>EDU36311A USB read-only, output/write, and protection commands are enabled for
+real execution within the exact Product scopes above. EDU36311A
+<code>protection-set</code> and <code>clear-protection</code> require <code>--confirm</code> for real execution
+and are supported for Product use.</p>
+<p>Trigger workflows are E36312A-only. EDU36311A, E3646A, PSM-2010, and
+<code>generic-scpi</code> do not expose trigger workflows in live, simulate, or dry-run
+modes. PSM-2010 does not support Powers trigger workflows.</p>
+<h2 id="no-hardware-planning-identity-matrix">No-Hardware Planning Identity Matrix</h2>
+<p>Dry-run and simulate planning do not open real VISA hardware. Model-specific
+no-hardware commands require an explicit planning identity or a known
+deterministic SIM resource. Fake or live-looking resource strings are
+placeholders and must not imply a model.</p>
+<table>
+<thead>
+<tr>
+<th>Planning identity</th>
+<th>Deterministic SIM resource</th>
+<th>No-hardware channels</th>
+<th>Output control scope</th>
+<th>Trigger / LIST / protection notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>keysight-e36312a</code></td>
+<td><code>USB0::SIM::E36312A::INSTR</code></td>
+<td>CH1, CH2, CH3</td>
+<td>Per-channel output control; <code>all</code> expands to CH1-CH3</td>
+<td>Trigger workflows and native LIST are E36312A-only and Product-open on supported live E36312A paths. Protection read/write paths are supported.</td>
+</tr>
+<tr>
+<td><code>keysight-edu36311a</code></td>
+<td><code>USB0::SIM::EDU36311A::INSTR</code></td>
+<td>CH1, CH2, CH3</td>
+<td>Per-channel output control; <code>all</code> expands to CH1-CH3</td>
+<td>Protection read/write paths are supported. Trigger workflows and native LIST are not exposed in dry-run, simulate, or real mode.</td>
+</tr>
+<tr>
+<td><code>keysight-e3646a</code></td>
+<td><code>ASRL1::SIM::E3646A::INSTR</code></td>
+<td>CH1, CH2</td>
+<td>Global output enable/disable; channel selection is used for setpoints and readback</td>
+<td>RS-232 / ASRL output workflows are Product-open within the exact scope. Protection writes, trigger workflows, snapshot restore, completion pulses, and native LIST are disabled.</td>
+</tr>
+<tr>
+<td><code>gw-instek-psm-2010</code></td>
+<td><code>ASRL1::SIM::PSM2010::INSTR</code></td>
+<td>CH1</td>
+<td>Global output control</td>
+<td>Product LIVE includes the exact read-only, output, protection, snapshot/restore, ramp, and software-sequence commands in the matrix. LOW and HIGH ranges remain distinct. Powers trigger workflows are not supported by the model profile.</td>
+</tr>
+<tr>
+<td><code>generic-scpi</code> planning profile</td>
+<td>None; use explicit <code>--profile generic-scpi</code> in dry-run</td>
+<td>CH1</td>
+<td>Unknown</td>
+<td>Conservative no-hardware planning only. Trigger workflows, native LIST, and protection writes are not exposed.</td>
+</tr>
+</tbody>
+</table>
+<p>Live hardware uses manufacturer-plus-model IDN resolution. In live mode,
+<code>--model</code> is an expected-model guard: the detected canonical identity must
+match before command-specific SCPI, and mismatch fails closed. The guard never
+overrides the IDN-selected driver. <code>generic-scpi</code> is a conservative
+nonphysical dry-run profile and is not a live expected model.</p>
+<p>For model-aware live execution, Powers Tool makes the final Product decision
+using the detected <code>*IDN?</code> model plus the exact command, transport, and VISA
+backend.
+Missing and non-Product-open scopes reject in normal Product use; identity
+diagnostics do not imply model or feature support.</p>
+<h2 id="output-setpoint-programming-ranges">Output Setpoint Programming Ranges</h2>
+<p>For output workflows, <code>voltage</code> means output voltage setpoint and <code>current</code>
+means output current limit/current setting. The values below are programming
+range metadata from the model manuals; they are separate from the existing DC
+output rating safety limits. Powers Tool does not currently enforce a hard
+manual-derived decimal-place rule and does not round or truncate user
+setpoints before SCPI.</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Channel / output</th>
+<th>Range</th>
+<th>Voltage programming range</th>
+<th>Current-limit programming range</th>
+<th>Current MIN keyword value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>E36312A</td>
+<td>CH1 / P6V</td>
+<td>fixed</td>
+<td>0 to 6.18 V</td>
+<td>0 to 5.15 A</td>
+<td>0.001 A</td>
+</tr>
+<tr>
+<td>E36312A</td>
+<td>CH2 / P25V</td>
+<td>fixed</td>
+<td>0 to 25.75 V</td>
+<td>0 to 1.03 A</td>
+<td>0.001 A</td>
+</tr>
+<tr>
+<td>E36312A</td>
+<td>CH3 / N25V</td>
+<td>fixed</td>
+<td>0 to 25.75 V</td>
+<td>0 to 1.03 A</td>
+<td>0.001 A</td>
+</tr>
+<tr>
+<td>EDU36311A</td>
+<td>CH1 / P6V</td>
+<td>fixed</td>
+<td>0 to 6.18 V</td>
+<td>0 to 5.15 A</td>
+<td>0.002 A</td>
+</tr>
+<tr>
+<td>EDU36311A</td>
+<td>CH2 / P30V</td>
+<td>fixed</td>
+<td>0 to 30.9 V</td>
+<td>0 to 1.03 A</td>
+<td>0.001 A</td>
+</tr>
+<tr>
+<td>EDU36311A</td>
+<td>CH3 / N30V</td>
+<td>fixed</td>
+<td>0 to 30.9 V</td>
+<td>0 to 1.03 A</td>
+<td>0.001 A</td>
+</tr>
+<tr>
+<td>E3646A</td>
+<td>OUT1 / CH1</td>
+<td>LOW / P8V</td>
+<td>0 to 8.24 V</td>
+<td>0 to 3.09 A</td>
+<td>0 A</td>
+</tr>
+<tr>
+<td>E3646A</td>
+<td>OUT1 / CH1</td>
+<td>HIGH / P20V</td>
+<td>0 to 20.60 V</td>
+<td>0 to 1.545 A</td>
+<td>0 A</td>
+</tr>
+<tr>
+<td>E3646A</td>
+<td>OUT2 / CH2</td>
+<td>LOW / P8V</td>
+<td>0 to 8.24 V</td>
+<td>0 to 3.09 A</td>
+<td>0 A</td>
+</tr>
+<tr>
+<td>E3646A</td>
+<td>OUT2 / CH2</td>
+<td>HIGH / P20V</td>
+<td>0 to 20.60 V</td>
+<td>0 to 1.545 A</td>
+<td>0 A</td>
+</tr>
+<tr>
+<td>PSM-2010</td>
+<td>OUT1 / CH1</td>
+<td>LOW / P8V</td>
+<td>0 to 8.24 V</td>
+<td>0 to 20.6 A</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td>PSM-2010</td>
+<td>OUT1 / CH1</td>
+<td>HIGH / P20V</td>
+<td>0 to 20.6 V</td>
+<td>0 to 10.3 A</td>
+<td>N/A</td>
+</tr>
+</tbody>
+</table>
+<p>Sources: E36300 Series Programmable DC Power Supplies Programming Guide,
+manual part number E36311-90008, printed page 16; EDU36311A Programming Guide,
+manual part number EDU36311-90013, printed pages 15 and 39; Agilent E364xA
+Dual Output DC Power Supplies User's and Service Guide, manual part number
+E3646-90001, printed pages 82, 83, 84, and 91; GW Instek PSM-Series
+Programming Manual, manual part number 82SM-60030IA, printed page 28. E3646A
+and PSM-2010 ranges are range-dependent and are not flattened into a single
+voltage/current maximum. At <em>RST, the E3646A low voltage range is selected.
+The PSM-2010 manual documents an instrument-wide </em>RST current value of 20 A;
+this does not mean 20 A is valid while HIGH range is retained. HIGH remains
+limited to a 10 A rating and a 10.3 A programming maximum.</p>
+<h2 id="command-support-notes">Command Support Notes</h2>
+<p>The matrix above reflects these command-level facts:</p>
+<ul>
+<li>Unsupported model, command, and mode combinations fail intentionally. These
+  feature-lock failures mean the workflow is not supported for that model,
+  not that <code>--model</code> or the WebUI selector can unlock it.</li>
+<li>CLI <code>--model</code> and WebUI model selection choose canonical physical planning
+  models in dry-run/simulate mode. Live requests use IDN-driven detection;
+  driver selection always follows the connected instrument identity.
+  <code>generic-scpi</code> remains a conservative no-hardware planning profile and is
+  never a live expected model.</li>
+<li>E36312A native trigger/LIST support is exposed through <code>trigger-status</code>,
+  <code>trigger-step</code>, <code>trigger-list</code>, and <code>trigger-abort</code>. The
+  trigger dry-run and simulator paths are also E36312A-only. Native LIST
+  execution is limited to 100 steps, dwell values from 0.01 to 3600 seconds,
+  and count values from 1 to 256. Real native trigger sources are currently
+  limited to BUS and immediate; rear pin and external input sources are not
+  Product-open.</li>
+<li>Ramp always uses software setpoint steps. Native LIST execution is confined
+  to <code>trigger-list</code>.</li>
+<li>EDU36311A USB and LAN product execution is limited to the exact commands in
+  the matrix above. Feature-family and sequence-step support do not widen that
+  command inventory.</li>
+<li>E36312A and EDU36311A OVP/OCP trip status is queried per channel. Aggregate
+  <code>protection-status</code> flags are the OR of the selected channel results.</li>
+<li>EDU36311A trigger commands remain disabled in all modes.</li>
+<li>EDU36311A snapshot and restore-from-snapshot are not Product-open for
+  EDU36311A.</li>
+<li>EDU36311A <code>sequence</code> must not bypass disabled trigger/native LIST,
+  snapshot, or restore workflows; unsupported sequence step types stay
+  rejected in live, simulate, and dry-run paths.</li>
+<li>E3646A product execution is limited to ASRL / RS-232 + system VISA and the
+  exact commands in the matrix above. <code>output-on</code> is Product-open only in that
+  ASRL + system-VISA scope. Before any accepted live E3646A output command, confirm
+  the physical setup has been checked and the requested voltage/current limits
+  are safe for the connected load.
+  <code>verify</code> is a model-independent connection diagnostic that opens the
+  selected resource and queries <code>*IDN?</code>; it is not part of the model
+  capability matrix. E3646A uses <code>INST:NSEL</code> channel preselection for channels
+  1 and 2 and does not use channel-list SCPI for output writes. E3646A
+  <code>OUTP ON/OFF</code> is a global output enable/disable; channel selection is still
+  used for setpoint writes and readbacks, but output enable/disable affects the
+  instrument output state globally. Protection changes, trigger workflows,
+  snapshot, restore, completion pulses, and native LIST remain disabled.
+  E3646A <code>ramp-list</code> is software setpoint stepping, and E3646A <code>sequence</code> is a
+  software workflow limited to supported output/read-only steps. Neither is
+  native instrument LIST support. E3646A sequence rejects unsupported step
+  types such as protection, trigger, snapshot, restore, native LIST, and
+  completion-pulse steps.</li>
+<li>E3646A serial settings are explicit only. If no serial options are provided,
+  the program does not overwrite VISA backend, Keysight IO Libraries Suite, or
+  Connection Expert serial settings. The factory example is 9600 baud, 8 data
+  bits, none parity, 2 stop bits, and DTR/DSR handshake, but the actual
+  front-panel settings may differ and are not auto-applied.</li>
+<li>E3646A <code>SYST:REM</code> and <code>SYST:LOC</code> are state-changing remote/local commands.
+  They are sent only when <code>--serial-remote</code> or <code>--serial-local-on-close</code> is
+  explicitly requested for an ASRL resource.</li>
+<li>PSM-2010 Product execution is limited to ASRL / RS-232 + system VISA and the
+  exact commands in the matrix above. It uses CH1, global output control, and
+  distinct LOW/HIGH operating ranges. Its Product-open <code>sequence</code> actions are
+  <code>apply</code>, <code>cycle-output</code>, <code>measure</code>, <code>output-off</code>, <code>output-on</code>,
+  <code>output-state</code>, <code>readback</code>, <code>safe-off</code>, and <code>set</code>; <code>wait</code> and <code>log</code>
+  remain host-only. The protection command family supports OVP configuration,
+  OCP enable/status/trip behavior, and protection clear. OCP delay
+  configuration, readback, and trigger remain unsupported. Powers trigger
+  commands, all other transports, and all other VISA backends remain closed.</li>
+<li>No-hardware output-family, Ramp List, Sequence, <code>protection-set</code>,
+  <code>clear-protection</code>, and trigger plans use strict planning identity.
+  <code>--dry-run</code> and <code>--simulate</code> require either an explicit physical <code>--model</code>
+  or a known
+  deterministic SIM resource. Trigger no-hardware plans accept only
+  <code>--model keysight-e36312a</code> or a known deterministic E36312A SIM resource such as
+  <code>USB0::SIM::E36312A::INSTR</code>; an EDU36311A SIM resource is resolved and then
+  rejected for trigger workflows. E3646A no-hardware <code>--channel all</code> plans
+  expand to CH1 and CH2; CH3 is rejected.</li>
+<li>Live trigger behavior remains IDN-driven. <code>--model</code> is a live
+  expected-model guard and does not override connected hardware.</li>
+<li><code>snapshot-diff</code>, <code>snapshot-diff --summary</code>, and <code>hardware-report</code> are
+  offline/no-hardware tools and never open VISA. <code>sequence --lint</code> also
+  validates without opening VISA and remains syntax/document validation unless
+  combined with <code>--dry-run</code> or <code>--simulate</code>.</li>
+</ul>
+  </main>
+
+  <script>
+    (function () {
+      var isTraditionalChinese =
+        document.documentElement.lang.toLowerCase() === "zh-tw";
+
+      var strings = isTraditionalChinese
+        ? {
+            contents: "\u7ae0\u7bc0\u5c0e\u89bd",
+            copy: "\u8907\u88fd",
+            copied: "\u5df2\u8907\u88fd",
+            copyFailed: "\u8907\u88fd\u5931\u6548"
+          }
+        : {
+            contents: "Contents",
+            copy: "Copy",
+            copied: "Copied",
+            copyFailed: "Copy failed"
+          };
+
+      document.getElementById("toc-title").textContent = strings.contents;
+
+      function buildTableOfContents() {
+        var toc = document.getElementById("toc");
+        if (!toc) return;
+
+        var headings = document.querySelectorAll(
+          "#help-content h2[id], #help-content h3[id]"
+        );
+        var fragment = document.createDocumentFragment();
+
+        headings.forEach(function (heading) {
+          var link = document.createElement("a");
+          link.href = "#" + heading.id;
+          link.textContent = heading.textContent;
+          if (heading.tagName === "H3") {
+            link.className = "level-3";
+          }
+          fragment.appendChild(link);
+        });
+
+        toc.appendChild(fragment);
+      }
+
+      function wrapCodeBlocks() {
+        document.querySelectorAll("#help-content pre").forEach(
+          function (pre) {
+            if (pre.closest(".code-wrapper")) return;
+
+            var wrapper = document.createElement("div");
+            wrapper.className = "code-wrapper";
+            pre.parentNode.insertBefore(wrapper, pre);
+            wrapper.appendChild(pre);
+
+            var button = document.createElement("button");
+            button.type = "button";
+            button.className = "copy-btn";
+            button.textContent = strings.copy;
+            button.addEventListener("click", function () {
+              if (
+                !navigator.clipboard ||
+                typeof navigator.clipboard.writeText !== "function"
+              ) {
+                button.textContent = strings.copyFailed;
+                setTimeout(function () {
+                  button.textContent = strings.copy;
+                }, 1600);
+                return;
+              }
+
+              navigator.clipboard.writeText(pre.innerText).then(
+                function () {
+                  button.textContent = strings.copied;
+                  setTimeout(function () {
+                    button.textContent = strings.copy;
+                  }, 1600);
+                },
+                function () {
+                  button.textContent = strings.copyFailed;
+                  setTimeout(function () {
+                    button.textContent = strings.copy;
+                  }, 1600);
+                }
+              );
+            });
+            wrapper.appendChild(button);
+          }
+        );
+      }
+
+      function observeActiveSection() {
+        var tocLinks = document.querySelectorAll("#toc a");
+        if (!tocLinks.length) return;
+
+        var observer = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (!entry.isIntersecting) return;
+
+              tocLinks.forEach(function (link) {
+                link.classList.toggle(
+                  "active",
+                  link.getAttribute("href") === "#" + entry.target.id
+                );
+              });
+            });
+          },
+          { rootMargin: "-10% 0px -70% 0px" }
+        );
+
+        headings.forEach(function (heading) {
+          observer.observe(heading);
+        });
+      }
+
+      function preserveHelpThemeQuery() {
+        var override = null;
+        try {
+          var q = new URLSearchParams(location.search).get("theme");
+          if (q === "system" || q === "light" || q === "dark") override = q;
+        } catch (_error) {}
+        if (!override) return;
+        document.querySelectorAll('a[href]').forEach(function (anchor) {
+          var href = anchor.getAttribute("href");
+          if (!href || href.charAt(0) === "#" || href.indexOf(":") !== -1) return;
+          if (href.indexOf(".html") === -1) return;
+          if (href.indexOf("?theme=") !== -1) return;
+          var hashIndex = href.indexOf("#");
+          var base = hashIndex === -1 ? href : href.slice(0, hashIndex);
+          var hash = hashIndex === -1 ? "" : href.slice(hashIndex);
+          anchor.setAttribute("href", base + "?theme=" + override + hash);
+        });
+      }
+
+      var headings = document.querySelectorAll(
+        "#help-content h2[id], #help-content h3[id]"
+      );
+      buildTableOfContents();
+      wrapCodeBlocks();
+      observeActiveSection();
+      preserveHelpThemeQuery();
+    })();
+  </script>
+</body>
+</html>

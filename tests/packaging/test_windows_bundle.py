@@ -41,6 +41,10 @@ def test_shared_spec_has_three_onedir_executables_and_one_collect() -> None:
     )
     assert "datas=[*PROJECT_METADATA, *WEBUI_STATIC, *LAUNCHER_ICON_DATA]" in text
     assert text.count("datas=[*PROJECT_METADATA, *WEBUI_STATIC]") == 1
+    assert "CLI_HELP = collect_data_files(" in text
+    assert '"powers_tool_cli"' in text
+    assert 'includes=["help/*"]' in text
+    assert "datas=[*PROJECT_METADATA, *CLI_HELP]" in text
     assert text.count("icon=str(POWERS_ICON)") == 2
     cli_exe = text[text.index("cli_exe = EXE(") : text.index("launcher_exe = EXE(")]
     launcher_exe = text[
@@ -92,6 +96,18 @@ def test_bundle_inspector_compares_the_complete_static_tree(tmp_path: Path) -> N
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(source.read_bytes())
 
+    source_cli_help = tmp_path / "source-cli-help"
+    bundled_cli_help = tmp_path / "bundle" / "_internal" / "powers_tool_cli" / "help"
+    source_cli_help.mkdir(parents=True)
+    source_cli_help.joinpath("cli.html").write_text("cli", encoding="utf-8")
+    source_cli_help.joinpath("help.css").write_text("css", encoding="utf-8")
+    bundled_cli_help.mkdir(parents=True)
+    for source in source_cli_help.rglob("*"):
+        if source.is_file():
+            target = bundled_cli_help / source.relative_to(source_cli_help)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(source.read_bytes())
+
     bundle = tmp_path / "bundle"
     (bundle / "powers-tool.exe").write_bytes(b"")
     (bundle / "powers-tool-webui-launcher.exe").write_bytes(b"")
@@ -105,5 +121,6 @@ def test_bundle_inspector_compares_the_complete_static_tree(tmp_path: Path) -> N
     inspector.inspect_bundle(
         bundle,
         source_static=source_static,
+        source_cli_help=source_cli_help,
         expected_version="2.0.0",
     )

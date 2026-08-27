@@ -78,6 +78,14 @@ def _write_distribution_fixture(
             "help/help.css",
         ):
             archive.writestr(f"powers_tool_webui/static/{filename}", filename)
+        for filename in (
+            "cli.html",
+            "cli.zh-TW.html",
+            "supported-models.html",
+            "supported-models.zh-TW.html",
+            "help.css",
+        ):
+            archive.writestr(f"powers_tool_cli/help/{filename}", filename)
 
     if not include_sdist:
         return
@@ -103,6 +111,18 @@ def _write_distribution_fixture(
             _add_tar_text(
                 archive,
                 f"{root}/src/powers_tool_webui/static/{filename}",
+                filename,
+            )
+        for filename in (
+            "cli.html",
+            "cli.zh-TW.html",
+            "supported-models.html",
+            "supported-models.zh-TW.html",
+            "help.css",
+        ):
+            _add_tar_text(
+                archive,
+                f"{root}/src/powers_tool_cli/help/{filename}",
                 filename,
             )
 
@@ -142,6 +162,7 @@ class _FakeCArchive:
         extra_metadata_versions: tuple[str, ...] = (),
         pyz_names: set[str] | None = None,
         webui_assets: bool = True,
+        cli_help_assets: bool = True,
     ) -> None:
         self.metadata = {
             f"powers_tool-{item}.dist-info/METADATA": (
@@ -162,6 +183,17 @@ class _FakeCArchive:
                     "help/supported-models.html",
                     "help/supported-models.zh-TW.html",
                     "help/help.css",
+                )
+            )
+        if cli_help_assets:
+            names.extend(
+                f"powers_tool_cli/help/{filename}"
+                for filename in (
+                    "cli.html",
+                    "cli.zh-TW.html",
+                    "supported-models.html",
+                    "supported-models.zh-TW.html",
+                    "help.css",
                 )
             )
         self.toc = {name: None for name in names}
@@ -728,6 +760,19 @@ def test_pyinstaller_inspector_retains_package_webui_and_legacy_checks(
             Path("missing-assets.exe"),
             ("powers_tool_core", "powers_tool_webui"),
             webui=True,
+            expected_version="3.4.5",
+        )
+
+    missing_cli_help = _FakeCArchive(version="3.4.5", cli_help_assets=False)
+    monkeypatch.setattr(
+        inspect_pyinstaller, "CArchiveReader", lambda path: missing_cli_help
+    )
+    with pytest.raises(AssertionError, match="cli.html"):
+        inspect_pyinstaller.inspect_executable(
+            Path("missing-cli-help.exe"),
+            ("powers_tool_core", "powers_tool_cli"),
+            webui=False,
+            cli_help=True,
             expected_version="3.4.5",
         )
 

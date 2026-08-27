@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Powers Tool CLI 使用者指南</title>
+  <script>
+    (function () {
+      var VALID = { system: 1, light: 1, dark: 1 };
+      var preference = "system";
+      try {
+        var query = new URLSearchParams(location.search).get("theme");
+        if (query && VALID[query]) {
+          preference = query;
+        } else {
+          var prefix = "powers-tool.webui.theme=";
+          var saved = document.cookie
+            .split(";")
+            .map(function (part) { return part.trim(); })
+            .find(function (part) { return part.indexOf(prefix) === 0; });
+          var cookieValue = saved ? saved.slice(prefix.length) : "";
+          try { cookieValue = decodeURIComponent(cookieValue); } catch (_e) {}
+          if (VALID[cookieValue]) preference = cookieValue;
+        }
+      } catch (_error) {}
+      var effective = "light";
+      if (preference === "dark") {
+        effective = "dark";
+      } else if (preference === "light") {
+        effective = "light";
+      } else {
+        try {
+          effective = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        } catch (_error) {
+          effective = "light";
+        }
+      }
+      try {
+        document.documentElement.dataset.theme = effective;
+      } catch (_error) {}
+      if (preference === "system") {
+        try {
+          var mq = matchMedia("(prefers-color-scheme: dark)");
+          var handler = function (event) {
+            try {
+              document.documentElement.dataset.theme = event.matches ? "dark" : "light";
+            } catch (_e) {}
+          };
+          if (mq.addEventListener) mq.addEventListener("change", handler);
+          else if (mq.addListener) mq.addListener(handler);
+        } catch (_error) {}
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="help.css">
+</head>
+<body>
+  <aside class="help-sidebar">
+    <div class="help-sidebar-title" id="toc-title">Contents</div>
+    <nav id="toc" aria-labelledby="toc-title"></nav>
+  </aside>
+
+  <main class="help-content" id="help-content">
+<h1 id="powers-tool-cli-使用者指南">Powers Tool CLI 使用者指南</h1>
+<p>本指南針對取得已建置之 CLI 執行檔或已安裝 <code>powers-tool</code> 命令的操作員，說明正常產品操作、重要限制與安全行為。目前硬體支援以 <a href="supported-models.zh-TW.html">支援型號</a> 所列 exact Product scope 為準。各命令的專屬選項與使用方式可使用 <code>powers-tool &lt;command&gt; --help</code> 查詢。</p>
+<h2 id="啟動-cli">啟動 CLI</h2>
+<p>在包含 CLI 執行檔的資料夾中開啟 PowerShell 並檢查：</p>
+<pre><code class="language-powershell">.\powers-tool.exe --version
+</code></pre>
+<p>正式 Windows release 請解壓縮帶版本號的 Desktop ZIP，並從 application root
+使用 CLI 執行檔：</p>
+<pre><code class="language-text">powers-tool-&lt;version&gt;-windows-x64.zip
+\powers-tool-&lt;version&gt;\powers-tool.exe
+</code></pre>
+<p>請在以下命令中使用解壓後的路徑。</p>
+<p>若為已安裝的命令，請將 <code>.\powers-tool.exe</code> 替換為 <code>powers-tool</code>：</p>
+<pre><code class="language-powershell">powers-tool --version
+</code></pre>
+<p>正常 Product 使用不設定 <code>--backend</code>，並採用預設的 System VISA 路徑。指定其他
+backend 不會解鎖 Product support；不支援的 model、command、transport、backend
+或 feature 組合仍會 fail closed。各命令的專屬選項請使用
+<code>powers-tool &lt;command&gt; --help</code> 查詢。</p>
+<h2 id="首次實機檢查-first-live-check">首次實機檢查 (First Live Check)</h2>
+<p>在檢查新電腦、VISA runtime、連線或電源供應器設定時，請使用此流程。</p>
+<ol>
+<li>確認該儀器可安全地進行查詢，且任何連接的受測物 (DUT) 均能承受現有的輸出狀態。</li>
+<li>僅列出目前能回應 <code>*IDN?</code> 的 VISA 資源：</li>
+</ol>
+<pre><code class="language-powershell">.\powers-tool.exe list-resources --live-only
+</code></pre>
+<ol start="3">
+<li>複製目標儀器確切的資源字串，並設定工作階段變數：</li>
+</ol>
+<pre><code class="language-powershell">$env:POWERS_TOOL_RESOURCE = &quot;USB0::...::INSTR&quot;
+</code></pre>
+<ol start="4">
+<li>執行唯讀的身分檢查：</li>
+</ol>
+<pre><code class="language-powershell">.\powers-tool.exe verify --resource &quot;$env:POWERS_TOOL_RESOURCE&quot; --log-scpi
+</code></pre>
+<ol start="5">
+<li>在執行任何輸出動作前，進行唯讀的測量或狀態檢查：</li>
+</ol>
+<pre><code class="language-powershell">.\powers-tool.exe measure --resource &quot;$env:POWERS_TOOL_RESOURCE&quot; --channel 1 --log-scpi
+.\powers-tool.exe read-status --resource &quot;$env:POWERS_TOOL_RESOURCE&quot; --json --log-scpi
+</code></pre>
+<p>對於實機命令，請使用明確的資源字串。請勿依賴腳本或無人值守的工作流程來猜測應使用哪台儀器。</p>
+<p><code>list-resources</code> 與 <code>list-resources --live-only</code> 是 discovery commands，可以在
+沒有預先提供 resource 時列舉 backend 發現的 resources。Resource-specific live
+commands 則必須由 operator 明確選定並傳入 VISA resource。</p>
+<h2 id="資源列表">資源列表</h2>
+<p>對於正常的實機使用，建議使用：</p>
+<pre><code class="language-powershell">.\powers-tool.exe list-resources --live-only
+</code></pre>
+<p>單純的 <code>list-resources</code> 是被動的 VISA 探索。當裝置斷線或無法使用時，它可能會顯示過時的快取資源。<code>--live-only</code> 會開啟每個找到的資源，查詢 <code>*IDN?</code>，並只印出有回應的資源。</p>
+<p>診斷過時項目時請使用 <code>--verify</code>，因為它會同時回報實機存活與連線失敗的資源：</p>
+<pre><code class="language-powershell">.\powers-tool.exe list-resources --verify
+</code></pre>
+<p>將結果複製到自動化流程時，請加上 <code>--json</code>：</p>
+<pre><code class="language-powershell">.\powers-tool.exe list-resources --live-only --json
+</code></pre>
+<h2 id="資源環境變數">資源環境變數</h2>
+<p>使用環境變數可以簡化在同一個工作階段中複製與執行多個命令的操作：</p>
+<pre><code class="language-powershell">$env:POWERS_TOOL_RESOURCE = &quot;USB0::...::INSTR&quot;
+$env:POWERS_TOOL_ASRL_RESOURCE = &quot;ASRL1::INSTR&quot;
+</code></pre>
+<p>請注意：
+* <code>$env:POWERS_TOOL_RESOURCE</code> 用於通用的實機 USB/LAN 範例。
+* <code>$env:POWERS_TOOL_ASRL_RESOURCE</code> 用於 E3646A RS-232 / ASRL 範例。
+* 這些是為了文件方便而提供的變數，並非隱藏的 CLI 預設值。
+* 實機命令仍需要明確提供 <code>--resource</code> 參數。</p>
+<h2 id="有限工作流程迴圈">有限工作流程迴圈</h2>
+<p>Ramp 接受 <code>--channel N</code> 或 <code>--channels N,N</code>，但不可同時使用。多通道 Ramp 會依
+型號通道順序，將相同電流與電壓路徑套用到所有所選通道；progress 與 completion
+pulse 會在所有通道完成後，以 logical voltage step 計算。既有單通道命令保持相容。</p>
+<p>Ramp、Ramp List 與 Sequence 接受 <code>--loop-count N</code>。這個值代表完整執行次數：
+<code>1</code> 是一般單次執行，<code>2</code> 代表重新執行一次，最大值為 <code>10,000</code>。小於 <code>1</code>、
+大於 <code>10,000</code> 或不是嚴格整數的值都會被拒絕。對 Ramp List 與 Sequence 文件，
+明確提供的 CLI 值優先；否則使用文件值，再以舊版支援文件的預設值 <code>1</code> 收尾。</p>
+<p>Ramp List v5 是目前的文件格式。每個 Segment 使用 <code>channels</code>，而且可選擇不同的通道
+組合；所選通道共用該 Segment 的電流與電壓路徑，並以 lockstep 前進。使用單一
+<code>channel</code> 的 v2/v3/v4 文件仍可載入與執行。</p>
+<p>Ramp 可在每個 logical step、每個完整 Ramp iteration，或所有 loops 完成後發送
+completion pulse。Ramp List 可在每個 logical step、每個 Segment，或所有 loops 完成後
+發送 pulse；loop-complete timing 至少需要兩次執行。Sequence 維持既有的 per-Step
+<code>trigger-pulse</code> action，沒有 top-level completion pulse。</p>
+<h2 id="e3646a-rs-232-asrl">E3646A RS-232 / ASRL</h2>
+<p>E3646A 的 Product LIVE 支援僅限 ASRL／RS-232 transport 與 system VISA backend；目前
+可用的 command inventory 請以 <a href="supported-models.zh-TW.html#product-live-exact-scope-matrix">Product LIVE exact-scope matrix</a>
+為準。<code>identify</code> 與 <code>verify</code> 僅是 diagnostic，不會開啟其他 command。Protection、
+Trigger、Snapshot、Restore、completion pulses 與 native LIST 不屬於 E3646A 的
+Product-open scope。執行任何 E3646A 實機輸出命令前，請確認實體接線已檢查完成，且要求的
+電壓/電流限制對連接負載是安全的。E3646A 使用 <code>INST:NSEL</code> 做通道預選；<code>OUTP ON/OFF</code>
+是全域輸出啟用/停用行為，即使命令接受通道參數，啟用或停用輸出仍可能影響
+儀器整體輸出狀態。</p>
+<p>E3646A 的 <code>ramp-list</code> 與 <code>sequence</code> 是 software workflows，不是 native LIST。
+Sequence 只允許目前支援的 read-only/output steps；Protection、Trigger、
+Snapshot、Restore、native LIST 與 completion-pulse steps 不支援。</p>
+<p>每個 PowerShell 工作階段設定一次 ASRL 資源：</p>
+<pre><code class="language-powershell">$env:POWERS_TOOL_ASRL_RESOURCE = &quot;ASRL1::INSTR&quot;
+</code></pre>
+<p>單純的 <code>list-resources</code> 通常不需要序列設定：</p>
+<pre><code class="language-powershell">powers-tool list-resources
+</code></pre>
+<p>如果 Keysight IO Libraries Suite / Connection Expert 已經設定好 ASRL 資源，請嘗試進行唯讀檢查而不覆寫這些設定：</p>
+<pre><code class="language-powershell">powers-tool verify --resource &quot;$env:POWERS_TOOL_ASRL_RESOURCE&quot;
+</code></pre>
+<p>若要為單一命令明確套用序列設定，請僅傳遞您要覆寫的欄位。E3646A 的出廠預設範例為 9600 baud、8 data bits、none parity、2 stop bits 與 DTR/DSR 握手，但儀器前控制板的設定可能已被修改：</p>
+<pre><code class="language-powershell">powers-tool verify --resource &quot;$env:POWERS_TOOL_ASRL_RESOURCE&quot; --serial-baud-rate 9600 --serial-data-bits 8 --serial-parity none --serial-stop-bits 2 --serial-flow-control dtr_dsr --serial-remote --serial-local-on-close
+</code></pre>
+<p><code>--serial-remote</code> 會發送 <code>SYST:REM</code>。<code>--serial-local-on-close</code> 會在清理時盡最大努力發送 <code>SYST:LOC</code>。這些設定會影響遠端/本機狀態，且僅在明確要求時才會發送。</p>
+<p>實用的唯讀/狀態範例：</p>
+<pre><code class="language-powershell">powers-tool identify --resource &quot;$env:POWERS_TOOL_ASRL_RESOURCE&quot; --serial-remote --serial-local-on-close
+powers-tool readback --resource &quot;$env:POWERS_TOOL_ASRL_RESOURCE&quot; --channel 1 --serial-remote --serial-local-on-close
+powers-tool measure --resource &quot;$env:POWERS_TOOL_ASRL_RESOURCE&quot; --channel 2 --serial-remote --serial-local-on-close
+powers-tool output-state --resource &quot;$env:POWERS_TOOL_ASRL_RESOURCE&quot; --channel 1 --serial-remote --serial-local-on-close
+</code></pre>
+<p>對於 PowerShell 中的序列讀取/寫入終止字元，請儘量使用別名：<code>CR</code>、<code>LF</code>、<code>CRLF</code> 或 <code>NONE</code>。<code>NONE</code>、省略或空白終止字元表示不覆寫 VISA 設定。</p>
+<h2 id="唯讀工作流程">唯讀工作流程</h2>
+<p>驗證儀器時，請先使用唯讀命令：</p>
+<pre><code class="language-powershell">.\powers-tool.exe identify --resource &quot;$env:POWERS_TOOL_RESOURCE&quot; --json --log-scpi
+.\powers-tool.exe readback --resource &quot;$env:POWERS_TOOL_RESOURCE&quot; --json --log-scpi
+.\powers-tool.exe protection-status --resource &quot;$env:POWERS_TOOL_RESOURCE&quot; --json --log-scpi
+.\powers-tool.exe validate-readonly --resource &quot;$env:POWERS_TOOL_RESOURCE&quot; --json --log-scpi
+</code></pre>
+<p>這些命令會查詢身分、程式設定點、測量值、狀態或保護狀態。它們不會刻意啟用輸出。</p>
+<h2 id="telemetry-logging">Telemetry Logging</h2>
+<p>CLI <code>log</code> 執行有界的唯讀 telemetry，並寫入呼叫者選擇的路徑：</p>
+<pre><code class="language-powershell">.\powers-tool.exe log --simulate --model keysight-e36312a --channel all --interval-sec 1 --samples 5 --csv telemetry.csv --jsonl telemetry.jsonl
+</code></pre>
+<p>Sequence <code>log</code> 只是 message/note action；<code>--log-scpi</code> 是 SCPI traffic
+tracing，不是 telemetry。</p>
+<h2 id="影響輸出的工作流程">影響輸出的工作流程</h2>
+<p>影響輸出的命令需要明確指定。使用前，請確認儀器型號、通道、DUT 接線、電壓、電流限制與保護設定。</p>
+<p>在不啟用輸出的情況下設定較低的設定點：</p>
+<pre><code class="language-powershell">.\powers-tool.exe set --resource &quot;$env:POWERS_TOOL_RESOURCE&quot; --channel 1 --voltage 1 --current 0.05 --json --log-scpi
+</code></pre>
+<p>讀回已設定的狀態：</p>
+<pre><code class="language-powershell">.\powers-tool.exe readback --resource &quot;$env:POWERS_TOOL_RESOURCE&quot; --json --log-scpi
+</code></pre>
+<p>在不開啟真實硬體的情況下，預覽已實作的輸出啟用計畫：</p>
+<pre><code class="language-powershell">.\powers-tool.exe output-on --dry-run --model keysight-e36312a --channel 1 --json
+</code></pre>
+<p>檢查完成後關閉輸出：</p>
+<pre><code class="language-powershell">.\powers-tool.exe output-off --resource &quot;$env:POWERS_TOOL_RESOURCE&quot; --channel 1 --json --log-scpi
+</code></pre>
+<p>若要進行簡短的快速檢查，請將電壓與電流限制保持在低位，先設定設定點，透過 readback 確認，並在確認 DUT 可承受後才啟用輸出。完成後請關閉輸出。請勿針對未知的資源在無人值守的情況下執行輸出工作流程。</p>
+<h2 id="常用指令">常用指令</h2>
+<table>
+<thead>
+<tr>
+<th>指令</th>
+<th>典型用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list-resources --live-only</code></td>
+<td>尋找目前能回應 <code>*IDN?</code> 的資源。</td>
+</tr>
+<tr>
+<td><code>verify</code></td>
+<td>確認單一明確資源可被開啟並回應。</td>
+</tr>
+<tr>
+<td><code>identify</code></td>
+<td>讀取型號身分。</td>
+</tr>
+<tr>
+<td><code>measure</code></td>
+<td>讀取單一通道的電壓/電流。</td>
+</tr>
+<tr>
+<td><code>read-status</code></td>
+<td>讀取輸出狀態。</td>
+</tr>
+<tr>
+<td><code>readback</code></td>
+<td>讀取程式設定點與測量值。</td>
+</tr>
+<tr>
+<td><code>protection-status</code></td>
+<td>讀取保護狀態。</td>
+</tr>
+<tr>
+<td><code>validate-readonly</code></td>
+<td>執行一次唯讀診斷。</td>
+</tr>
+<tr>
+<td><code>log</code></td>
+<td>將有界的唯讀 telemetry 寫入 CLI-owned CSV/JSONL files。</td>
+</tr>
+<tr>
+<td><code>set</code></td>
+<td>設定電壓/電流而不啟用輸出。</td>
+</tr>
+<tr>
+<td><code>output-on</code> / <code>output-off</code></td>
+<td>在接受的 exact LIVE scope 上啟用或停用輸出；dry-run 與 simulator 預覽仍可用。</td>
+</tr>
+<tr>
+<td><code>safe-off</code></td>
+<td>使用支援的安全路徑關閉輸出。</td>
+</tr>
+</tbody>
+</table>
+<p>各命令的專屬選項與使用方式請使用 <code>powers-tool &lt;command&gt; --help</code> 查詢。</p>
+<h2 id="無硬體檢查">無硬體檢查</h2>
+<p>Dry-run 與 simulator 命令不會開啟真實 VISA 硬體。當命令需要 model-specific
+planning 時，請以 <code>--model</code> 傳入 canonical 的 simulation/dry-run model ID，或使用
+deterministic SIM resource，例如 <code>USB0::SIM::E36312A::INSTR</code>：</p>
+<pre><code class="language-powershell">.\powers-tool.exe set --dry-run --model keysight-e3646a --channel 1 --voltage 1 --current 0.05
+.\powers-tool.exe readback --simulate --resource USB0::SIM::E36312A::INSTR --channel all
+.\powers-tool.exe trigger-step --dry-run --model keysight-e36312a --channel 1 --source bus --fire
+.\powers-tool.exe set --dry-run --profile generic-scpi --channel 1 --voltage 1 --current 0.05
+</code></pre>
+<p><code>--profile generic-scpi</code> 僅限 dry-run，且只出現在既有 support matrix 允許 Generic
+planning 的命令上。它不可與 <code>--model</code> 併用，在 simulator 或 live execution 中都是
+無效選項。</p>
+<p>在 no-hardware 模式下，不要用 fake 或看似真實的 resource 字串暗示 model。例如
+<code>USB0::FAKE::E36312A::INSTR</code> 只是 placeholder，不是 model identity。</p>
+<p>對 live commands，<code>--model</code> 接受 canonical ID（例如 <code>keysight-e36312a</code>）並作為
+expected-model guard。CLI 仍會查詢 <code>*IDN?</code>，並以偵測到的 model 選擇 driver。若指定的
+model 與連線 IDN model 不符，命令會在 setup 或 write SCPI 前失敗：</p>
+<pre><code class="language-powershell">.\powers-tool.exe set --model keysight-e36312a --resource &quot;$env:POWERS_TOOL_RESOURCE&quot; --channel 1 --voltage 1 --current 0.05
+</code></pre>
+<p>這要求連線的 model 必須是 E36312A，但不會強制使用 E36312A driver。</p>
+<p><code>--model</code> 不是 feature unlock。不支援的 model、command、mode、connection、backend 或
+feature 組合都會 fail closed。Product LIVE support 以偵測到的 model、command、
+transport、backend 與 required feature 為 exact scope；missing 或 pending scope 都會
+fail closed。Feature family 或 no-hardware plan 不代表該 family 中每個命令都是
+product-open。請參閱 <a href="supported-models.zh-TW.html#product-live-exact-scope-matrix">exact matrix</a>。</p>
+<h2 id="常見問題">常見問題</h2>
+<p>如果找不到 <code>powers-tool.exe</code>，請確認您位於包含 CLI 執行檔的資料夾中，並使用該資料夾中實際的檔名。</p>
+<p>如果找不到實機存活的資源，請檢查儀器電源、USB/LAN 纜線、VISA 驅動程式可見度，以及是否有其他程式佔用了該儀器。</p>
+<p>若 numeric/query response 意外包含類似 identity 的資料、不同命令之間的回應看起來錯位或不一致，或 instrument state 意外改變，請先確認是否有另一個獨立 client 正在與同一台 physical instrument 通訊。同一台儀器上的獨立 client 可能互相干擾 SCPI request/response ordering；獨立的 writer 也可能在彼此不知情下改變 instrument state。請先停止其他 client，或選擇可獨占的 validation 時段後再重試。</p>
+<p>如果單純的 <code>list-resources</code> 顯示舊項目，請在常規操作流程改用 <code>--live-only</code> 重新執行，或使用 <code>--verify</code> 來診斷過時的 VISA 快取項目。</p>
+<p>如果命令拒絕執行，請將其視為安全與 support policy 的結果；CLI 會在執行風險動作前，刻意拒絕不支援的型號、通道、不安全的設定點，以及缺少確認的操作。重試或加入 <code>--model</code> 不會啟用不支援的功能。</p>
+<p>如果日誌或自動化需要 JSON 輸出，請加上 <code>--json</code>。來自 <code>--log-scpi</code> 的診斷 SCPI 日誌會分開寫入 (stderr)，讓 JSON stdout 保持可解析狀態。</p>
+<h2 id="更多產品文件">更多產品文件</h2>
+<ul>
+<li><a href="supported-models.zh-TW.html">支援型號</a>：目前 Product support matrix 與型號特定限制。</li>
+</ul>
+  </main>
+
+  <script>
+    (function () {
+      var isTraditionalChinese =
+        document.documentElement.lang.toLowerCase() === "zh-tw";
+
+      var strings = isTraditionalChinese
+        ? {
+            contents: "\u7ae0\u7bc0\u5c0e\u89bd",
+            copy: "\u8907\u88fd",
+            copied: "\u5df2\u8907\u88fd",
+            copyFailed: "\u8907\u88fd\u5931\u6548"
+          }
+        : {
+            contents: "Contents",
+            copy: "Copy",
+            copied: "Copied",
+            copyFailed: "Copy failed"
+          };
+
+      document.getElementById("toc-title").textContent = strings.contents;
+
+      function buildTableOfContents() {
+        var toc = document.getElementById("toc");
+        if (!toc) return;
+
+        var headings = document.querySelectorAll(
+          "#help-content h2[id], #help-content h3[id]"
+        );
+        var fragment = document.createDocumentFragment();
+
+        headings.forEach(function (heading) {
+          var link = document.createElement("a");
+          link.href = "#" + heading.id;
+          link.textContent = heading.textContent;
+          if (heading.tagName === "H3") {
+            link.className = "level-3";
+          }
+          fragment.appendChild(link);
+        });
+
+        toc.appendChild(fragment);
+      }
+
+      function wrapCodeBlocks() {
+        document.querySelectorAll("#help-content pre").forEach(
+          function (pre) {
+            if (pre.closest(".code-wrapper")) return;
+
+            var wrapper = document.createElement("div");
+            wrapper.className = "code-wrapper";
+            pre.parentNode.insertBefore(wrapper, pre);
+            wrapper.appendChild(pre);
+
+            var button = document.createElement("button");
+            button.type = "button";
+            button.className = "copy-btn";
+            button.textContent = strings.copy;
+            button.addEventListener("click", function () {
+              if (
+                !navigator.clipboard ||
+                typeof navigator.clipboard.writeText !== "function"
+              ) {
+                button.textContent = strings.copyFailed;
+                setTimeout(function () {
+                  button.textContent = strings.copy;
+                }, 1600);
+                return;
+              }
+
+              navigator.clipboard.writeText(pre.innerText).then(
+                function () {
+                  button.textContent = strings.copied;
+                  setTimeout(function () {
+                    button.textContent = strings.copy;
+                  }, 1600);
+                },
+                function () {
+                  button.textContent = strings.copyFailed;
+                  setTimeout(function () {
+                    button.textContent = strings.copy;
+                  }, 1600);
+                }
+              );
+            });
+            wrapper.appendChild(button);
+          }
+        );
+      }
+
+      function observeActiveSection() {
+        var tocLinks = document.querySelectorAll("#toc a");
+        if (!tocLinks.length) return;
+
+        var observer = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (!entry.isIntersecting) return;
+
+              tocLinks.forEach(function (link) {
+                link.classList.toggle(
+                  "active",
+                  link.getAttribute("href") === "#" + entry.target.id
+                );
+              });
+            });
+          },
+          { rootMargin: "-10% 0px -70% 0px" }
+        );
+
+        headings.forEach(function (heading) {
+          observer.observe(heading);
+        });
+      }
+
+      function preserveHelpThemeQuery() {
+        var override = null;
+        try {
+          var q = new URLSearchParams(location.search).get("theme");
+          if (q === "system" || q === "light" || q === "dark") override = q;
+        } catch (_error) {}
+        if (!override) return;
+        document.querySelectorAll('a[href]').forEach(function (anchor) {
+          var href = anchor.getAttribute("href");
+          if (!href || href.charAt(0) === "#" || href.indexOf(":") !== -1) return;
+          if (href.indexOf(".html") === -1) return;
+          if (href.indexOf("?theme=") !== -1) return;
+          var hashIndex = href.indexOf("#");
+          var base = hashIndex === -1 ? href : href.slice(0, hashIndex);
+          var hash = hashIndex === -1 ? "" : href.slice(hashIndex);
+          anchor.setAttribute("href", base + "?theme=" + override + hash);
+        });
+      }
+
+      var headings = document.querySelectorAll(
+        "#help-content h2[id], #help-content h3[id]"
+      );
+      buildTableOfContents();
+      wrapCodeBlocks();
+      observeActiveSection();
+      preserveHelpThemeQuery();
+    })();
+  </script>
+</body>
+</html>

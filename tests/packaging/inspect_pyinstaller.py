@@ -41,6 +41,7 @@ def inspect_executable(
     required_packages: tuple[str, ...],
     *,
     webui: bool,
+    cli_help: bool = False,
     expected_version: str,
 ) -> None:
     archive = CArchiveReader(str(path))
@@ -71,6 +72,17 @@ def inspect_executable(
             asset = f"powers_tool_webui/static/{filename}"
             assert asset in names, f"expected WebUI asset {asset!r}"
 
+    if cli_help:
+        for filename in (
+            "cli.html",
+            "cli.zh-TW.html",
+            "supported-models.html",
+            "supported-models.zh-TW.html",
+            "help.css",
+        ):
+            asset = f"powers_tool_cli/help/{filename}"
+            assert asset in names, f"expected CLI Help asset {asset!r}"
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
@@ -88,12 +100,14 @@ def main(argv: list[str] | None = None) -> int:
         args.cli_exe,
         ("powers_tool_core", "powers_tool_cli"),
         webui=False,
+        cli_help=True,
         expected_version=expected_version,
     )
     inspect_executable(
         args.webui_exe,
         ("powers_tool_core", "powers_tool_webui"),
         webui=True,
+        cli_help=False,
         expected_version=expected_version,
     )
     print("Powers Tool PyInstaller archive inspection passed")

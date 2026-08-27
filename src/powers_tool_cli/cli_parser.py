@@ -532,6 +532,7 @@ def build_parser(
     run_core_trigger: _CommandRunner,
     run_sequence_command: _CommandRunner,
     run_ramp_list_command: _CommandRunner,
+    run_user_guide: _CommandRunner,
 ) -> argparse.ArgumentParser:
     parser = JsonCliArgumentParser(
         prog="powers-tool",
@@ -1090,5 +1091,17 @@ def build_parser(
     lifecycle_commands.register_commands(subparsers, run_worker_command=run_worker)
 
     manifest_command.register_commands(subparsers)
+
+    user_guide_parser = subparsers.add_parser(
+        "user-guide",
+        help="Open the bundled CLI user guide in the default browser.",
+    )
+    user_guide_parser.add_argument(
+        "--language",
+        choices=("en", "zh-TW"),
+        default="en",
+        help="Help language. Defaults to en.",
+    )
+    user_guide_parser.set_defaults(func=run_user_guide)
 
     return parser

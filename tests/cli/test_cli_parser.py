@@ -98,6 +98,7 @@ ROOT_RUNNER_BINDINGS = {
     "run_capabilities": "_run_capabilities",
     "run_safety_inspect": "_run_safety_inspect",
     "run_worker": "_run_worker",
+    "run_user_guide": "_run_user_guide",
 }
 
 
@@ -139,6 +140,7 @@ PARSER_RUNNER_EXPRESSIONS = {
     "run_core_trigger": "_run_core_trigger",
     "run_sequence_command": "_run_sequence",
     "run_ramp_list_command": "sequence_run._run_ramp_list",
+    "run_user_guide": "_run_user_guide",
 }
 
 
@@ -165,6 +167,7 @@ ROOT_COMMAND_HANDLERS = {
     ("capabilities",): inspection._run_capabilities,
     ("safety", "inspect"): inspection._run_safety_inspect,
     ("worker",): inspection._run_worker,
+    ("user-guide",): cli._run_user_guide,
 }
 
 

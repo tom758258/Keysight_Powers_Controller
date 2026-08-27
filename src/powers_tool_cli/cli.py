@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import sys
 import time
+import webbrowser
 from collections.abc import Sequence
 from pathlib import Path
 from powers_tool_cli import cli_rendering
@@ -144,10 +145,37 @@ COMMAND_NAMES = frozenset(
         "status",
         "stop",
         "wait-ready",
+        "user-guide",
     }
 )
 
 LOG_CSV_FIELDS = TELEMETRY_ROW_FIELDS
+
+CLI_HELP_DIR = Path(__file__).resolve().parent / "help"
+
+
+def _run_user_guide(args: argparse.Namespace) -> int:
+    language = getattr(args, "language", "en")
+    filename = {"en": "cli.html", "zh-TW": "cli.zh-TW.html"}[language]
+    help_path = (CLI_HELP_DIR / filename).resolve()
+    if not help_path.is_file():
+        print(
+            f"Could not open the bundled CLI user guide automatically. Open this file manually: {help_path}",
+            file=sys.stderr,
+        )
+        return 1
+    uri = help_path.as_uri()
+    try:
+        opened = webbrowser.open(uri)
+    except Exception:
+        opened = False
+    if not opened:
+        print(
+            f"Could not open the bundled CLI user guide automatically. Open this file manually: {help_path} ({uri})",
+            file=sys.stderr,
+        )
+        return 1
+    return 0
 
 
 OUTPUT_WRITE_POWER_SUPPLY_TYPES = (E36312APowerSupply, EDU36311APowerSupply)
@@ -185,6 +213,7 @@ def build_parser() -> argparse.ArgumentParser:
         run_core_trigger=_run_core_trigger,
         run_sequence_command=_run_sequence,
         run_ramp_list_command=sequence_run._run_ramp_list,
+        run_user_guide=_run_user_guide,
     )
 
 def main(argv: Sequence[str] | None = None) -> int:

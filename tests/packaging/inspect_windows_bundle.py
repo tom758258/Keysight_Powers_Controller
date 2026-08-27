@@ -25,6 +25,7 @@ def inspect_bundle(
     bundle: Path,
     *,
     source_static: Path,
+    source_cli_help: Path,
     expected_version: str,
 ) -> None:
     if not bundle.is_dir():
@@ -55,6 +56,10 @@ def inspect_bundle(
     assert bundled_static.is_dir(), bundled_static
     assert _relative_files(source_static) == _relative_files(bundled_static)
 
+    bundled_cli_help = internal / "powers_tool_cli" / "help"
+    assert bundled_cli_help.is_dir(), bundled_cli_help
+    assert _relative_files(source_cli_help) == _relative_files(bundled_cli_help)
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
@@ -72,6 +77,7 @@ def main(argv: list[str] | None = None) -> int:
     inspect_bundle(
         args.bundle,
         source_static=repository_root / "src" / "powers_tool_webui" / "static",
+        source_cli_help=repository_root / "src" / "powers_tool_cli" / "help",
         expected_version=expected_version,
     )
     print("Powers Tool shared Windows onedir inspection passed")

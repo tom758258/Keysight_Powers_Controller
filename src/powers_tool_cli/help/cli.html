@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Powers Tool CLI User Guide</title>
+  <script>
+    (function () {
+      var VALID = { system: 1, light: 1, dark: 1 };
+      var preference = "system";
+      try {
+        var query = new URLSearchParams(location.search).get("theme");
+        if (query && VALID[query]) {
+          preference = query;
+        } else {
+          var prefix = "powers-tool.webui.theme=";
+          var saved = document.cookie
+            .split(";")
+            .map(function (part) { return part.trim(); })
+            .find(function (part) { return part.indexOf(prefix) === 0; });
+          var cookieValue = saved ? saved.slice(prefix.length) : "";
+          try { cookieValue = decodeURIComponent(cookieValue); } catch (_e) {}
+          if (VALID[cookieValue]) preference = cookieValue;
+        }
+      } catch (_error) {}
+      var effective = "light";
+      if (preference === "dark") {
+        effective = "dark";
+      } else if (preference === "light") {
+        effective = "light";
+      } else {
+        try {
+          effective = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        } catch (_error) {
+          effective = "light";
+        }
+      }
+      try {
+        document.documentElement.dataset.theme = effective;
+      } catch (_error) {}
+      if (preference === "system") {
+        try {
+          var mq = matchMedia("(prefers-color-scheme: dark)");
+          var handler = function (event) {
+            try {
+              document.documentElement.dataset.theme = event.matches ? "dark" : "light";
+            } catch (_e) {}
+          };
+          if (mq.addEventListener) mq.addEventListener("change", handler);
+          else if (mq.addListener) mq.addListener(handler);
+        } catch (_error) {}
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="help.css">
+</head>
+<body>
+  <aside class="help-sidebar">
+    <div class="help-sidebar-title" id="toc-title">Contents</div>
+    <nav id="toc" aria-labelledby="toc-title"></nav>
+  </aside>
+
+  <main class="help-content" id="help-content">
+<h1 id="powers-tool-cli-user-guide">Powers Tool CLI User Guide</h1>
+<p>This guide is for operators who receive the built CLI executable or an
+already-installed <code>powers-tool</code> command to control supported DC power
+supplies. The framework is vendor-neutral, while the currently supported
+hardware is the exact Product scope in <a href="supported-models.html">Supported Models</a>.
+It focuses on normal product operation, important limits, and safe behavior.
+For command-specific options and usage, run
+<code>powers-tool &lt;command&gt; --help</code>.</p>
+<h2 id="start-the-cli">Start The CLI</h2>
+<p>Open PowerShell in the folder that contains the CLI executable and check it:</p>
+<pre><code class="language-powershell">.\powers-tool.exe --version
+</code></pre>
+<p>For a formal Windows release, extract the versioned Desktop ZIP and use the CLI
+executable from its application root:</p>
+<pre><code class="language-text">powers-tool-&lt;version&gt;-windows-x64.zip
+\powers-tool-&lt;version&gt;\powers-tool.exe
+</code></pre>
+<p>Use that extracted path in the commands below.</p>
+<p>For an already-installed command, replace <code>.\powers-tool.exe</code> with
+<code>powers-tool</code>:</p>
+<pre><code class="language-powershell">powers-tool --version
+</code></pre>
+<p>Normal Product use leaves <code>--backend</code> unset and uses the default System VISA
+path. Specifying another backend does not unlock Product support; unsupported
+model, command, transport, backend, or feature combinations still fail closed.
+For command-specific options, run <code>powers-tool &lt;command&gt; --help</code>.</p>
+<h2 id="first-live-check">First Live Check</h2>
+<p>Use this flow when checking a new computer, VISA runtime, connection, or power
+supply setup.</p>
+<ol>
+<li>Confirm the instrument is safe to query and any connected DUT can tolerate
+   the existing output state.</li>
+<li>List only VISA resources that currently answer <code>*IDN?</code>:</li>
+</ol>
+<pre><code class="language-powershell">.\powers-tool.exe list-resources --live-only
+</code></pre>
+<ol start="3">
+<li>Copy the exact resource string and set a session variable:</li>
+</ol>
+<pre><code class="language-powershell">$env:POWERS_TOOL_RESOURCE = &quot;USB0::...::INSTR&quot;
+</code></pre>
+<ol start="4">
+<li>Run a read-only identity check:</li>
+</ol>
+<pre><code class="language-powershell">.\powers-tool.exe verify --resource &quot;$env:POWERS_TOOL_RESOURCE&quot; --log-scpi
+</code></pre>
+<ol start="5">
+<li>Run a read-only measurement or status check before any output action:</li>
+</ol>
+<pre><code class="language-powershell">.\powers-tool.exe measure --resource &quot;$env:POWERS_TOOL_RESOURCE&quot; --channel 1 --log-scpi
+.\powers-tool.exe read-status --resource &quot;$env:POWERS_TOOL_RESOURCE&quot; --json --log-scpi
+</code></pre>
+<p>Use an explicit resource string for live commands. Do not rely on a script or
+unattended workflow to guess which instrument should be used.</p>
+<h2 id="resource-listing">Resource Listing</h2>
+<p>For normal live use, prefer:</p>
+<pre><code class="language-powershell">.\powers-tool.exe list-resources --live-only
+</code></pre>
+<p>Plain <code>list-resources</code> is passive VISA discovery. It can show stale cached
+resources after a device is disconnected or unavailable. <code>--live-only</code> opens
+each discovered resource, queries <code>*IDN?</code>, and prints only resources that
+answered.</p>
+<p>Use <code>--verify</code> when diagnosing stale entries because it reports both live and
+failed resources:</p>
+<pre><code class="language-powershell">.\powers-tool.exe list-resources --verify
+</code></pre>
+<p>Add <code>--json</code> when copying results into automation:</p>
+<pre><code class="language-powershell">.\powers-tool.exe list-resources --live-only --json
+</code></pre>
+<h2 id="resource-variables">Resource Variables</h2>
+<p>Use environment variables to simplify copying and running multiple commands in a session:</p>
+<pre><code class="language-powershell">$env:POWERS_TOOL_RESOURCE = &quot;USB0::...::INSTR&quot;
+$env:POWERS_TOOL_ASRL_RESOURCE = &quot;ASRL1::INSTR&quot;
+</code></pre>
+<p>Please note:
+* <code>$env:POWERS_TOOL_RESOURCE</code> is for generic live USB/LAN examples.
+* <code>$env:POWERS_TOOL_ASRL_RESOURCE</code> is for E3646A RS-232 / ASRL examples.
+* These are documentation convenience variables, not hidden CLI defaults.
+* Live commands still require an explicit <code>--resource</code> argument.</p>
+<h2 id="finite-workflow-loops">Finite Workflow Loops</h2>
+<p>Ramp accepts either <code>--channel N</code> or <code>--channels N,N</code>, but not both. A
+multi-channel Ramp applies the same current and voltage path to every selected
+channel in model channel order. Progress and completion pulses count logical
+voltage steps, after all selected channels finish; the existing single-channel
+command remains compatible.</p>
+<p>Ramp, Ramp List, and Sequence accept <code>--loop-count N</code>. The value is the total
+number of complete executions: 1 is the normal single run, 2 restarts once,
+and 10,000 is the maximum. Values outside the strict integer range 1 through 10,000
+are rejected. For Ramp List and Sequence files, an explicit CLI value wins;
+otherwise the file value is used, then 1 for older supported file versions.</p>
+<p>Ramp List v5 is the current file format. Each Segment uses <code>channels</code> and may
+select a different channel combination. Selected channels share that Segment's
+current and voltage path and advance in lockstep; v2/v3/v4 files with one
+<code>channel</code> per Segment remain supported.</p>
+<p>Ramp can pulse after every step, after each complete Ramp iteration, or once
+after all loops. Ramp List can pulse after every step, after each Segment, or
+once after all loops. Loop-complete pulse timing requires at least two total
+executions. Sequence keeps its existing per-Step <code>trigger-pulse</code> action and
+does not add a top-level completion pulse.</p>
+<h2 id="e3646a-rs-232-asrl">E3646A RS-232 / ASRL</h2>
+<p>E3646A Product LIVE support is limited to ASRL / RS-232 with a system VISA
+backend. Consult the <a href="supported-models.html#product-live-exact-scope-matrix">Product LIVE exact-scope matrix</a>
+for the current command inventory. <code>identify</code> and <code>verify</code> are diagnostics only
+and do not open another command. Protection, trigger, snapshot/restore,
+completion pulses, and native LIST are not Product-open for E3646A.</p>
+<p>E3646A uses <code>INST:NSEL</code> channel preselection for setpoint writes and readbacks.
+<code>OUTP ON/OFF</code> is a global output enable/disable on this model, so output
+enable/disable actions can affect the instrument output state globally.
+E3646A <code>ramp-list</code> and <code>sequence</code> are software workflows, not native LIST.
+Sequence accepts only supported read-only/output steps; protection, trigger,
+snapshot, restore, native LIST, and completion-pulse steps are rejected.</p>
+<p>Set the ASRL resource once per PowerShell session:</p>
+<pre><code class="language-powershell">$env:POWERS_TOOL_ASRL_RESOURCE = &quot;ASRL1::INSTR&quot;
+</code></pre>
+<p>Plain <code>list-resources</code> normally does not need serial settings:</p>
+<pre><code class="language-powershell">powers-tool list-resources
+</code></pre>
+<p>If Keysight IO Libraries Suite / Connection Expert already has the ASRL
+resource configured, try a read-only check without overriding those settings:</p>
+<pre><code class="language-powershell">powers-tool verify --resource &quot;$env:POWERS_TOOL_ASRL_RESOURCE&quot;
+</code></pre>
+<p>To explicitly apply serial settings for one command, pass only the fields you
+want to override. The E3646A factory example is 9600 baud, 8 data bits, none
+parity, 2 stop bits, and DTR/DSR handshake, but the instrument front-panel
+settings may have been changed:</p>
+<pre><code class="language-powershell">powers-tool verify --resource &quot;$env:POWERS_TOOL_ASRL_RESOURCE&quot; --serial-baud-rate 9600 --serial-data-bits 8 --serial-parity none --serial-stop-bits 2 --serial-flow-control dtr_dsr --serial-remote --serial-local-on-close
+</code></pre>
+<p><code>--serial-remote</code> sends <code>SYST:REM</code>. <code>--serial-local-on-close</code> best-effort
+sends <code>SYST:LOC</code> during cleanup. These affect remote/local state and are sent
+only when explicitly requested.</p>
+<p>Useful read/status examples:</p>
+<pre><code class="language-powershell">powers-tool identify --resource &quot;$env:POWERS_TOOL_ASRL_RESOURCE&quot; --serial-remote --serial-local-on-close
+powers-tool readback --resource &quot;$env:POWERS_TOOL_ASRL_RESOURCE&quot; --channel 1 --serial-remote --serial-local-on-close
+powers-tool measure --resource &quot;$env:POWERS_TOOL_ASRL_RESOURCE&quot; --channel 2 --serial-remote --serial-local-on-close
+powers-tool output-state --resource &quot;$env:POWERS_TOOL_ASRL_RESOURCE&quot; --channel 1 --serial-remote --serial-local-on-close
+</code></pre>
+<p>For serial read/write termination in PowerShell, use aliases when possible:
+<code>CR</code>, <code>LF</code>, <code>CRLF</code>, or <code>NONE</code>. <code>NONE</code>, omitted, or blank termination means do
+not override the VISA setting.</p>
+<h2 id="read-only-workflow">Read-Only Workflow</h2>
+<p>Use read-only commands first when validating an instrument:</p>
+<pre><code class="language-powershell">.\powers-tool.exe identify --resource &quot;$env:POWERS_TOOL_RESOURCE&quot; --json --log-scpi
+.\powers-tool.exe readback --resource &quot;$env:POWERS_TOOL_RESOURCE&quot; --json --log-scpi
+.\powers-tool.exe protection-status --resource &quot;$env:POWERS_TOOL_RESOURCE&quot; --json --log-scpi
+.\powers-tool.exe validate-readonly --resource &quot;$env:POWERS_TOOL_RESOURCE&quot; --json --log-scpi
+</code></pre>
+<p>These commands query identity, programmed setpoints, measured values, status,
+or protection state. They do not intentionally enable outputs.</p>
+<h2 id="telemetry-logging">Telemetry Logging</h2>
+<p>CLI <code>log</code> performs bounded read-only telemetry and writes paths selected by the
+caller:</p>
+<pre><code class="language-powershell">.\powers-tool.exe log --simulate --model keysight-e36312a --channel all --interval-sec 1 --samples 5 --csv telemetry.csv --jsonl telemetry.jsonl
+</code></pre>
+<p>Sequence <code>log</code> is only a message/note action; <code>--log-scpi</code> traces SCPI traffic
+and is not telemetry.</p>
+<h2 id="output-affecting-workflow">Output-Affecting Workflow</h2>
+<p>Output-affecting commands are explicit. Before using them, confirm the
+instrument model, channel, DUT wiring, voltage, current limit, and protection
+settings.</p>
+<p>Set low setpoints without enabling output:</p>
+<pre><code class="language-powershell">.\powers-tool.exe set --resource &quot;$env:POWERS_TOOL_RESOURCE&quot; --channel 1 --voltage 1 --current 0.05 --json --log-scpi
+</code></pre>
+<p>Read back the programmed state:</p>
+<pre><code class="language-powershell">.\powers-tool.exe readback --resource &quot;$env:POWERS_TOOL_RESOURCE&quot; --json --log-scpi
+</code></pre>
+<p>Preview the implemented output-enable plan without opening real hardware:</p>
+<pre><code class="language-powershell">.\powers-tool.exe output-on --dry-run --model keysight-e36312a --channel 1 --json
+</code></pre>
+<p>Turn output off when the check is complete:</p>
+<pre><code class="language-powershell">.\powers-tool.exe output-off --resource &quot;$env:POWERS_TOOL_RESOURCE&quot; --channel 1 --json --log-scpi
+</code></pre>
+<p>For a short smoke check, keep voltage and current limits low, set the setpoints
+first, confirm them by readback, and only enable output after confirming that
+the DUT can tolerate it. Turn output off when finished. Do not run output
+workflows unattended against an unknown resource.</p>
+<h2 id="common-commands">Common Commands</h2>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Typical use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list-resources --live-only</code></td>
+<td>Find resources that currently answer <code>*IDN?</code>.</td>
+</tr>
+<tr>
+<td><code>verify</code></td>
+<td>Confirm one explicit resource opens and responds.</td>
+</tr>
+<tr>
+<td><code>identify</code></td>
+<td>Read the model identity.</td>
+</tr>
+<tr>
+<td><code>measure</code></td>
+<td>Read voltage/current for one channel.</td>
+</tr>
+<tr>
+<td><code>read-status</code></td>
+<td>Read output status.</td>
+</tr>
+<tr>
+<td><code>readback</code></td>
+<td>Read programmed setpoints and measured values.</td>
+</tr>
+<tr>
+<td><code>protection-status</code></td>
+<td>Read protection state.</td>
+</tr>
+<tr>
+<td><code>validate-readonly</code></td>
+<td>Run a read-only diagnostic pass.</td>
+</tr>
+<tr>
+<td><code>log</code></td>
+<td>Collect bounded read-only telemetry into CLI-owned CSV/JSONL files.</td>
+</tr>
+<tr>
+<td><code>set</code></td>
+<td>Set voltage/current without enabling output.</td>
+</tr>
+<tr>
+<td><code>output-on</code> / <code>output-off</code></td>
+<td>Enable or disable output on an accepted exact LIVE scope; dry-run and simulator previews remain available.</td>
+</tr>
+<tr>
+<td><code>safe-off</code></td>
+<td>Turn output off using the supported safety path.</td>
+</tr>
+</tbody>
+</table>
+<p>For command-specific options and usage, run
+<code>powers-tool &lt;command&gt; --help</code>.</p>
+<h2 id="no-hardware-checks">No-Hardware Checks</h2>
+<p>Dry-run and simulator commands do not open real VISA hardware. When a command
+needs model-specific planning, pass a canonical simulation/dry-run model ID with
+<code>--model</code>, or use a deterministic SIM resource such as
+<code>USB0::SIM::E36312A::INSTR</code>.</p>
+<pre><code class="language-powershell">.\powers-tool.exe set --dry-run --model keysight-e3646a --channel 1 --voltage 1 --current 0.05
+.\powers-tool.exe readback --simulate --resource USB0::SIM::E36312A::INSTR --channel all
+.\powers-tool.exe trigger-step --dry-run --model keysight-e36312a --channel 1 --source bus --fire
+.\powers-tool.exe set --dry-run --profile generic-scpi --channel 1 --voltage 1 --current 0.05
+</code></pre>
+<p><code>--profile generic-scpi</code> is dry-run-only and is exposed only on commands whose
+existing support matrix permits Generic planning. It cannot be combined with
+<code>--model</code> and is invalid in simulator or live execution.</p>
+<p>Do not use fake or live-looking resource strings to imply a model in
+no-hardware mode. For example, <code>USB0::FAKE::E36312A::INSTR</code> is a placeholder,
+not a model identity.</p>
+<p>For live commands, <code>--model</code> accepts a canonical ID such as
+<code>keysight-e36312a</code> and is an expected-model guard. The CLI still queries
+<code>*IDN?</code> and uses the detected model for driver selection. If the selected model
+does not match the connected IDN model, the command fails before setup or write
+SCPI:</p>
+<pre><code class="language-powershell">.\powers-tool.exe set --model keysight-e36312a --resource &quot;$env:POWERS_TOOL_RESOURCE&quot; --channel 1 --voltage 1 --current 0.05
+</code></pre>
+<p>This requires the connected model to be E36312A and does not force the E36312A
+driver.</p>
+<p><code>--model</code> is not a feature unlock. Unsupported model, command, mode, connection,
+backend, or feature combinations fail closed. Product LIVE support is exact by
+detected model, command, transport, backend, and required feature; missing or
+pending scopes fail closed. A feature family or no-hardware plan does not imply
+that every command in that family is product-open. See the
+<a href="supported-models.html#product-live-exact-scope-matrix">exact matrix</a>.</p>
+<h2 id="common-problems">Common Problems</h2>
+<p>If <code>powers-tool.exe</code> is missing, confirm you are in the folder that contains
+the CLI executable and use the actual filename from that folder.</p>
+<p>If no live resources are found, check instrument power, USB/LAN cabling, VISA
+driver visibility, and whether another program is holding the instrument.</p>
+<p>If a numeric or query response unexpectedly contains identity-like data,
+responses appear shifted or mismatched between commands, or instrument state
+changes unexpectedly, first check whether another independent client is
+communicating with the same physical instrument. Independent clients on the
+same instrument may interfere with SCPI request/response ordering; independent
+writers may also change instrument state underneath each other. Stop the other
+client or choose an exclusive validation window before retrying.</p>
+<p>If plain <code>list-resources</code> shows old entries, rerun with <code>--live-only</code> for the
+normal operator path or <code>--verify</code> to diagnose stale VISA cache entries.</p>
+<p>If a command refuses to run, read the validation message before retrying. The
+CLI intentionally rejects unsupported models, channels, unsafe setpoints, and
+missing confirmations before performing risky actions.
+If the message says a workflow is disabled for a model, choose a supported
+command for that model or use hardware that supports that workflow. Retrying
+with <code>--model</code> does not enable unsupported features.</p>
+<p>If JSON output is needed for logs or automation, add <code>--json</code>. Diagnostic SCPI
+logs from <code>--log-scpi</code> are written separately so JSON stdout remains parseable.</p>
+<h2 id="more-product-documentation">More Product Documentation</h2>
+<ul>
+<li><a href="supported-models.html">Supported Models</a>: the current Product support
+  matrix and model-specific limits.</li>
+</ul>
+  </main>
+
+  <script>
+    (function () {
+      var isTraditionalChinese =
+        document.documentElement.lang.toLowerCase() === "zh-tw";
+
+      var strings = isTraditionalChinese
+        ? {
+            contents: "\u7ae0\u7bc0\u5c0e\u89bd",
+            copy: "\u8907\u88fd",
+            copied: "\u5df2\u8907\u88fd",
+            copyFailed: "\u8907\u88fd\u5931\u6548"
+          }
+        : {
+            contents: "Contents",
+            copy: "Copy",
+            copied: "Copied",
+            copyFailed: "Copy failed"
+          };
+
+      document.getElementById("toc-title").textContent = strings.contents;
+
+      function buildTableOfContents() {
+        var toc = document.getElementById("toc");
+        if (!toc) return;
+
+        var headings = document.querySelectorAll(
+          "#help-content h2[id], #help-content h3[id]"
+        );
+        var fragment = document.createDocumentFragment();
+
+        headings.forEach(function (heading) {
+          var link = document.createElement("a");
+          link.href = "#" + heading.id;
+          link.textContent = heading.textContent;
+          if (heading.tagName === "H3") {
+            link.className = "level-3";
+          }
+          fragment.appendChild(link);
+        });
+
+        toc.appendChild(fragment);
+      }
+
+      function wrapCodeBlocks() {
+        document.querySelectorAll("#help-content pre").forEach(
+          function (pre) {
+            if (pre.closest(".code-wrapper")) return;
+
+            var wrapper = document.createElement("div");
+            wrapper.className = "code-wrapper";
+            pre.parentNode.insertBefore(wrapper, pre);
+            wrapper.appendChild(pre);
+
+            var button = document.createElement("button");
+            button.type = "button";
+            button.className = "copy-btn";
+            button.textContent = strings.copy;
+            button.addEventListener("click", function () {
+              if (
+                !navigator.clipboard ||
+                typeof navigator.clipboard.writeText !== "function"
+              ) {
+                button.textContent = strings.copyFailed;
+                setTimeout(function () {
+                  button.textContent = strings.copy;
+                }, 1600);
+                return;
+              }
+
+              navigator.clipboard.writeText(pre.innerText).then(
+                function () {
+                  button.textContent = strings.copied;
+                  setTimeout(function () {
+                    button.textContent = strings.copy;
+                  }, 1600);
+                },
+                function () {
+                  button.textContent = strings.copyFailed;
+                  setTimeout(function () {
+                    button.textContent = strings.copy;
+                  }, 1600);
+                }
+              );
+            });
+            wrapper.appendChild(button);
+          }
+        );
+      }
+
+      function observeActiveSection() {
+        var tocLinks = document.querySelectorAll("#toc a");
+        if (!tocLinks.length) return;
+
+        var observer = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (!entry.isIntersecting) return;
+
+              tocLinks.forEach(function (link) {
+                link.classList.toggle(
+                  "active",
+                  link.getAttribute("href") === "#" + entry.target.id
+                );
+              });
+            });
+          },
+          { rootMargin: "-10% 0px -70% 0px" }
+        );
+
+        headings.forEach(function (heading) {
+          observer.observe(heading);
+        });
+      }
+
+      function preserveHelpThemeQuery() {
+        var override = null;
+        try {
+          var q = new URLSearchParams(location.search).get("theme");
+          if (q === "system" || q === "light" || q === "dark") override = q;
+        } catch (_error) {}
+        if (!override) return;
+        document.querySelectorAll('a[href]').forEach(function (anchor) {
+          var href = anchor.getAttribute("href");
+          if (!href || href.charAt(0) === "#" || href.indexOf(":") !== -1) return;
+          if (href.indexOf(".html") === -1) return;
+          if (href.indexOf("?theme=") !== -1) return;
+          var hashIndex = href.indexOf("#");
+          var base = hashIndex === -1 ? href : href.slice(0, hashIndex);
+          var hash = hashIndex === -1 ? "" : href.slice(hashIndex);
+          anchor.setAttribute("href", base + "?theme=" + override + hash);
+        });
+      }
+
+      var headings = document.querySelectorAll(
+        "#help-content h2[id], #help-content h3[id]"
+      );
+      buildTableOfContents();
+      wrapCodeBlocks();
+      observeActiveSection();
+      preserveHelpThemeQuery();
+    })();
+  </script>
+</body>
+</html>

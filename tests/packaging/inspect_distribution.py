@@ -90,6 +90,14 @@ def inspect_distribution(
             "help/help.css",
         ):
             assert f"powers_tool_webui/static/{filename}" in names
+        for filename in (
+            "cli.html",
+            "cli.zh-TW.html",
+            "supported-models.html",
+            "supported-models.zh-TW.html",
+            "help.css",
+        ):
+            assert f"powers_tool_cli/help/{filename}" in names
 
     if sdists:
         expected_sdist = f"powers_tool-{expected_version}.tar.gz"
@@ -122,6 +130,14 @@ def inspect_distribution(
                 "help/help.css",
             ):
                 assert f"{root}/src/powers_tool_webui/static/{filename}" in names
+            for filename in (
+                "cli.html",
+                "cli.zh-TW.html",
+                "supported-models.html",
+                "supported-models.zh-TW.html",
+                "help.css",
+            ):
+                assert f"{root}/src/powers_tool_cli/help/{filename}" in names
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -12,6 +12,10 @@ SRC_ROOT = REPO_ROOT / "src"
 POWERS_ICON = REPO_ROOT / "desktop" / "assets" / "powers-icon.ico"
 
 PROJECT_METADATA = copy_metadata("powers-tool")
+CLI_HELP = collect_data_files(
+    "powers_tool_cli",
+    includes=["help/*"],
+)
 WEBUI_STATIC = collect_data_files(
     "powers_tool_webui",
     includes=["static/*", "static/help/*"],
@@ -23,7 +27,7 @@ cli_analysis = Analysis(
     [str(SRC_ROOT / "powers_tool_cli" / "cli.py")],
     pathex=[str(SRC_ROOT)],
     binaries=[],
-    datas=PROJECT_METADATA,
+    datas=[*PROJECT_METADATA, *CLI_HELP],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
