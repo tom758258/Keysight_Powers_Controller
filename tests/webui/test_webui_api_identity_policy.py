@@ -615,8 +615,8 @@ def test_webui_live_job_blocks_descoped_idn_before_generic_fallback(
     job_data = wait_for_job(client, response.json()["job_id"])
     assert job_data["status"] == "failed"
     assert model in job_data["error"]
-    assert "de-scoped and not active supported" in job_data["error"]
-    assert "blocked from generic fallback" in job_data["error"]
+    assert "de-scoped and not currently supported" in job_data["error"]
+    assert "Generic fallback is blocked" in job_data["error"]
     assert session.queries == ["*IDN?"]
     assert session.writes == []
 

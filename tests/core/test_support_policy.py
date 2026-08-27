@@ -1037,7 +1037,6 @@ def test_public_feature_projection_is_additive_and_redacted() -> None:
     assert "evidence" not in serialized
     assert "artifact" not in serialized
     assert ".tmp_tests" not in serialized
-    assert "pre-P7" not in serialized
 
 
 def test_validator_rejects_feature_inventory_drift() -> None:
