@@ -241,7 +241,7 @@
 <h1>Powers Tool WebUI</h1>
 <p>Powers Tool 的 FastAPI 與靜態資源 WebUI adapter。</p>
 <p>WebUI 是不綁定特定廠牌的產品介面；目前 Product support 僅限 <a href="../core/supported-models.md">Supported Models</a> 所記載的 Product-active exact scopes；未知或未註冊的 live hardware 會在 Core 中 fail closed。</p>
-<p>本 README 說明 WebUI 行為、API、驗證與維護者邊界。一般操作員工作流程請參閱 <a href="USER_GUIDE.zh-TW.html">WebUI 使用者指南</a>；開發人員與 agent 的 UI 變更規則請參閱 <a href="web-ui-change-rules.md" rel="noopener noreferrer" target="_blank">WebUI 變更規則</a>。</p>
+<p>本 README 說明 WebUI 行為、API、驗證與維護者邊界。一般操作員工作流程請參閱 <a href="USER_GUIDE.zh-TW.md">WebUI 使用者指南</a>；開發人員與 agent 的 UI 變更規則請參閱 <a href="web-ui-change-rules.md" rel="noopener noreferrer" target="_blank">WebUI 變更規則</a>。</p>
 <p>WebUI 與 CLI 是建立在共用 Core runtime 之上的平行產品介面。</p>
 <h2 id="product-支援邊界">Product 支援邊界</h2>
 <p>Product model selector 僅包含 Product-active 型號。GW Instek PSM-2010 的
@@ -412,7 +412,7 @@ node --check src\powers_tool_webui\static\app.js</code></pre></div>
 <p>數字欄位限制來自共用的 <a href="../contracts/commands-parameter-contract.md" rel="noopener noreferrer" target="_blank">Commands parameter contract</a>。辨識資源型號後，UI 會套用已驗證的官方獨立通道直流輸出額定值；未知型號不會被套用臆測限制，Core 仍是最終權威。</p>
 <h2 id="section-12">文件導覽</h2>
 <ul>
-<li><a href="USER_GUIDE.zh-TW.html">WebUI 使用者指南</a>：面向操作員的 WebUI 使用指南。</li>
+<li><a href="USER_GUIDE.zh-TW.md">WebUI 使用者指南</a>：面向操作員的 WebUI 使用指南。</li>
 <li><a href="README.zh-TW.html">WebUI README</a>：本文件，涵蓋 WebUI 行為、API、驗證與維護者邊界。</li>
 <li><a href="web-ui-change-rules.md" rel="noopener noreferrer" target="_blank">WebUI 變更規則</a>：面向維護者與 agent 的 UI 變更規則。</li>
 <li><a href="localization-contract.md" rel="noopener noreferrer" target="_blank">Localization Contract</a>：維護中的瀏覽器在地化與 presentation-only runtime contract。</li>

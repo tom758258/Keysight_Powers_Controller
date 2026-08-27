@@ -23,13 +23,6 @@ def read_markdown_section(text: str, heading: str) -> str:
     return section.split("\n## ", 1)[0]
 
 
-def read_html_section(text: str, heading_id: str) -> str:
-    marker = f'<h2 id="{heading_id}">'
-    assert marker in text
-    section = text.split(marker, 1)[1]
-    return section.split("\n<h2 ", 1)[0]
-
-
 def test_cli_docs_are_root_local_and_contracts_are_root_level():
     assert (DOC_ROOT / "README.md").exists()
     assert (REPO_ROOT / "CHANGELOG.md").exists()
@@ -93,17 +86,15 @@ def test_cli_user_guides_defer_e3646a_command_inventory_to_supported_models():
     paths = (
         "USER_GUIDE.md",
         "USER_GUIDE.zh-TW.md",
-        "USER_GUIDE.zh-TW.html",
     )
     texts = {path: read_cli_doc(path) for path in paths}
 
     forbidden_inventory_phrases = (
         "product-open model-aware commands are `measure`",
         "Product-open model-aware commands 是 `measure`",
-        "Product-open model-aware commands 是 <code>measure</code>",
     )
     inline_command = re.compile(
-        r"`[a-z][a-z0-9-]*`|<code>[a-z][a-z0-9-]*</code>",
+        r"`[a-z][a-z0-9-]*`",
         re.IGNORECASE,
     )
 
@@ -117,14 +108,9 @@ def test_cli_user_guides_defer_e3646a_command_inventory_to_supported_models():
         for stable_token in ("INST:NSEL", "OUTP ON/OFF", "native LIST"):
             assert stable_token in text
 
-        if path.endswith(".html"):
-            intro = read_html_section(text, "e3646a-rs-232-asrl").split(
-                '<div class="code-wrapper">', 1
-            )[0]
-        else:
-            intro = read_markdown_section(text, "E3646A RS-232 / ASRL").split(
-                "```", 1
-            )[0]
+        intro = read_markdown_section(text, "E3646A RS-232 / ASRL").split(
+            "```", 1
+        )[0]
 
         # Stable operator prose may name a few commands, but a dense inventory
         # belongs only in the canonical Product LIVE exact-scope matrix.

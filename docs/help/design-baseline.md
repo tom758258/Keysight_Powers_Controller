@@ -7,9 +7,11 @@ boundary-writing patterns, terminology style, and existing presentation traits
 observed in the current Powers Tool user guides. It is a developer and
 maintainer reference for designing a shared Help presentation layer.
 
-Markdown USER_GUIDE files are the content source. Legacy Traditional Chinese
-HTML mirrors are presentation references only. This baseline does not decide
-the next template implementation, CSS specification, or generator design.
+Markdown USER_GUIDE files are the content source. At the time this baseline
+was recorded, legacy Traditional Chinese HTML mirrors were used as
+presentation references. Those mirrors have since been retired after the
+shared Help presentation replaced them. This baseline does not decide the
+next template implementation, CSS specification, or generator design.
 
 ## 2. Source Material
 
@@ -17,11 +19,11 @@ the next template implementation, CSS specification, or generator design.
 - `docs/cli/USER_GUIDE.zh-TW.md`
 - `docs/webui/USER_GUIDE.md`
 - `docs/webui/USER_GUIDE.zh-TW.md`
-- `docs/cli/USER_GUIDE.zh-TW.html`
-- `docs/webui/USER_GUIDE.zh-TW.html`
 - `docs/core/supported-models.md`
 - `docs/core/supported-models.zh-TW.md`
 
+The visual and interaction observations later in this baseline were captured
+from legacy Traditional Chinese HTML mirrors that have since been removed.
 Supported Models is evidence of the shared user-facing support dependency. It
 is not the source of USER_GUIDE editorial or visual style.
 
@@ -123,13 +125,13 @@ identifiers.
 
 ## 9. Existing Visual Baseline
 
-Both legacy HTML mirrors currently use a light-oriented reading layout with a
+Both legacy HTML mirrors previously used a light-oriented reading layout with a
 left sticky table of contents on desktop, bounded main reading columns, a
 system UI font stack, a blue primary accent, neutral slate surfaces, clear
 H1/H2/H3 hierarchy, an H2 separator rule, bordered tables, inline code styling,
 dark code blocks, and copy buttons.
 
-Current implementation references differ by surface:
+Implementation references at baseline time differed by surface:
 
 - Sidebar width: CLI about 290 px; WebUI about 280 px.
 - Main column max-width: CLI about 1080 px; WebUI about 900 px.
@@ -159,19 +161,19 @@ Current implementation differences include:
 These differences are current implementation evidence, not requirements that
 the shared Help template preserve them.
 
-## 11. Current Gaps / Future Decisions
+## 11. Baseline Gaps / Future Decisions
 
-The following items are gaps or decisions for the next stage, not current
-shared behavior:
+At the time this baseline was recorded, the following items were gaps or
+decisions for the next stage, not current shared behavior:
 
-- The legacy Help stylesheet is primarily light-oriented. This is separate from
+- The legacy Help stylesheet was primarily light-oriented. This is separate from
   the WebUI product theme controls described in its user guide.
-- No shared Help template currently exists.
-- No Markdown-to-Help-HTML pipeline currently exists.
-- The CLI and WebUI legacy HTML bodies are separately maintained.
-- Help-level language navigation is not currently a shared presentation
+- No shared Help template existed.
+- No Markdown-to-Help-HTML pipeline existed.
+- The CLI and WebUI legacy HTML bodies were separately maintained.
+- Help-level language navigation was not currently a shared presentation
   primitive.
-- Help version, footer, and branding structure are not currently standardized.
+- Help version, footer, and branding structure were not currently standardized.
 
 Dark mode, language switching UI, header/footer layout, icons, and JavaScript
 architecture require separate future decisions.
@@ -199,4 +201,4 @@ architecture require separate future decisions.
 - Current color hex values.
 - Current HTML markup.
 - Current JavaScript implementation.
-- Current legacy HTML file structure.
+- Legacy HTML file structure observed at baseline time.

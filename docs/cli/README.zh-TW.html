@@ -107,10 +107,10 @@ model scopes 為準；未知 live hardware 會 fail closed。</p>
 <p>CLI 包含在單一 <code>powers-tool</code> distribution 中，保留 <code>powers_tool_cli</code> import
 boundary，並透過 <code>powers-tool</code> console command 將操作員命令轉接到共用
 <code>powers_tool_core</code> runtime。</p>
-<p>操作員工作流程請參閱 <a href="USER_GUIDE.zh-TW.html">CLI 使用者指南</a>。</p>
+<p>操作員工作流程請參閱 <a href="USER_GUIDE.zh-TW.md">CLI 使用者指南</a>。</p>
 <h2 id="文件集">文件集</h2>
 <ul>
-<li><a href="USER_GUIDE.zh-TW.html">CLI 使用者指南</a> - 操作員工作流程、即時資源選擇與安全優先檢查。</li>
+<li><a href="USER_GUIDE.zh-TW.md">CLI 使用者指南</a> - 操作員工作流程、即時資源選擇與安全優先檢查。</li>
 <li><a href="README.zh-TW.html">CLI README</a> - 工程建置、驗證腳本、詳細指令參考、自動化與維護者邊界。</li>
 <li><a href="../contracts/power-cli-jsonl-contract.md" rel="noopener noreferrer" target="_blank">Power CLI JSON / JSONL 契約</a> - 命令列 JSON 封裝與 JSONL 規則。</li>
 <li><a href="../contracts/power-worker-contract.md" rel="noopener noreferrer" target="_blank">Power Worker 契約</a> - 本機 worker REST、JSONL 與 artifact 契約。</li>
@@ -270,8 +270,8 @@ uv run powers-tool doctor --simulate --json
 </code></pre></div>
 <p>此 Quick Start 不會進行 live 或 system-VISA resource discovery、不會開啟 VISA resource、不會送出 SCPI、不會修改實體儀器狀態，也不會啟用輸出；不需要實體儀器或 vendor
 VISA runtime。
-一般操作員工作流程請接續閱讀 <a href="USER_GUIDE.zh-TW.html">CLI 使用者指南</a>。本機瀏覽器
-介面請參閱 <a href="../webui/USER_GUIDE.zh-TW.html">WebUI 使用者指南</a>。Exact live model
+一般操作員工作流程請接續閱讀 <a href="USER_GUIDE.zh-TW.md">CLI 使用者指南</a>。本機瀏覽器
+介面請參閱 <a href="../webui/USER_GUIDE.zh-TW.md">WebUI 使用者指南</a>。Exact live model
 與 connection coverage 請參閱 <a href="../core/supported-models.md" rel="noopener noreferrer" target="_blank">Supported Models</a>。</p>
 <p><code>powers-tool manifest --json</code> 提供純靜態的 tool introspection，供 orchestrator
 在不接觸儀器的情況下靜態確認工具本身：</p>
