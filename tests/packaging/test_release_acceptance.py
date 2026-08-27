@@ -31,7 +31,6 @@ if str(PACKAGING_DIR) not in sys.path:
     sys.path.insert(0, str(PACKAGING_DIR))
 
 inspect_pyinstaller = importlib.import_module("inspect_pyinstaller")
-inspector_utils = importlib.import_module("_inspector_utils")
 
 
 def _write_distribution_fixture(
