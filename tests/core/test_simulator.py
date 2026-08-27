@@ -12,7 +12,7 @@ from powers_tool_core.testing.simulator import (
 )
 
 
-def test_simulator_lists_first_target_resources() -> None:
+def test_simulator_lists_product_active_resources() -> None:
     assert SIMULATED_RESOURCES == (
         "USB0::SIM::E36312A::INSTR",
         "USB0::SIM::EDU36311A::INSTR",
@@ -79,7 +79,7 @@ def test_psm2010_simulator_supports_product_read_and_safe_state_commands() -> No
         ("USB0::SIM::EDU36311A::INSTR", 3, "3.030", "0.303"),
     ],
 )
-def test_first_target_simulator_supports_channel_list_measurements(
+def test_channel_list_simulators_support_measurement_queries(
     resource,
     channel,
     expected_voltage,
@@ -105,7 +105,7 @@ def test_descoped_simulator_resources_are_not_available(resource: str) -> None:
         ("USB0::SIM::E36312A::INSTR", 3),
     ],
 )
-def test_first_target_simulator_supports_output_state_queries(resource, channel) -> None:
+def test_e36312a_simulator_supports_per_channel_output_state_queries(resource, channel) -> None:
     session = SimulatedResourceManager().open_resource(resource)
 
     assert session.query(f"OUTP? (@{channel})") == "OFF"

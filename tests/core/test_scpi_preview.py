@@ -11,7 +11,7 @@ from powers_tool_core._scpi_preview import preview_measure_scpi
     ],
 )
 @pytest.mark.parametrize("channel", [1, 2, 3])
-def test_preview_measure_scpi_uses_first_target_channel_list_queries(idn, channel) -> None:
+def test_preview_measure_scpi_uses_channel_list_queries_for_e36312a_and_edu36311a(idn, channel) -> None:
     assert preview_measure_scpi(idn, channel=channel) == (
         f"MEAS:VOLT? (@{channel})",
         f"MEAS:CURR? (@{channel})",

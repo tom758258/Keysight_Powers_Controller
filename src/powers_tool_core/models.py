@@ -41,9 +41,7 @@ class ModelInfo:
     """Known model metadata without unverified electrical ratings."""
 
     identity: PhysicalModelInfo
-    target_group: str
     enablement_stage: str
-    first_hardware_target: bool = False
 
     @property
     def model_id(self) -> str:
@@ -69,44 +67,34 @@ class ModelInfo:
 REGISTERED_MODELS: dict[str, ModelInfo] = {
     "keysight-e36312a": ModelInfo(
         identity=IDENTITY_INDEXES.models_by_id["keysight-e36312a"],
-        target_group="initial",
         enablement_stage=MODEL_ENABLEMENT_PRODUCT_ACTIVE,
-        first_hardware_target=True,
     ),
     "keysight-edu36311a": ModelInfo(
         identity=IDENTITY_INDEXES.models_by_id["keysight-edu36311a"],
-        target_group="initial",
         enablement_stage=MODEL_ENABLEMENT_PRODUCT_ACTIVE,
-        first_hardware_target=True,
     ),
     "keysight-e36313a": ModelInfo(
         identity=IDENTITY_INDEXES.models_by_id["keysight-e36313a"],
-        target_group="near-term",
         enablement_stage=MODEL_ENABLEMENT_CATALOG_ONLY,
     ),
     "keysight-e3646a": ModelInfo(
         identity=IDENTITY_INDEXES.models_by_id["keysight-e3646a"],
-        target_group="read-only-serial",
         enablement_stage=MODEL_ENABLEMENT_PRODUCT_ACTIVE,
     ),
     "keysight-e36233a": ModelInfo(
         identity=IDENTITY_INDEXES.models_by_id["keysight-e36233a"],
-        target_group="near-term",
         enablement_stage=MODEL_ENABLEMENT_CATALOG_ONLY,
     ),
     "keysight-e36441a": ModelInfo(
         identity=IDENTITY_INDEXES.models_by_id["keysight-e36441a"],
-        target_group="near-term",
         enablement_stage=MODEL_ENABLEMENT_CATALOG_ONLY,
     ),
     "keysight-e36155a": ModelInfo(
         identity=IDENTITY_INDEXES.models_by_id["keysight-e36155a"],
-        target_group="later",
         enablement_stage=MODEL_ENABLEMENT_CATALOG_ONLY,
     ),
     "gw-instek-psm-2010": ModelInfo(
         identity=IDENTITY_INDEXES.models_by_id["gw-instek-psm-2010"],
-        target_group="psm-series",
         enablement_stage=MODEL_ENABLEMENT_PRODUCT_ACTIVE,
     ),
 }
@@ -134,13 +122,7 @@ def de_scoped_model_message(model_id: str) -> str:
 
     identity = IDENTITY_INDEXES.models_by_id.get(model_id)
     model = identity.canonical_model if identity is not None else model_id
-    return (
-        f"{model} is de-scoped and not active supported. It was previously "
-        "considered as an unvalidated planning model, but is now blocked from "
-        "generic fallback. Future reintroduction requires a new "
-        "model-enablement plan, programming-guide review, simulator/fake "
-        "coverage, explicit feature matrix, and real hardware validation."
-    )
+    return f"{model} is de-scoped and not currently supported. Generic fallback is blocked."
 
 
 def parse_idn(raw: str) -> IdnInfo:

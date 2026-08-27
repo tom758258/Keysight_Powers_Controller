@@ -246,7 +246,7 @@ def test_format_inspection_results_preserve_exact_lines_and_inputs() -> None:
     assert (validate_data, snapshot_data, diff_data, doctor_data, capabilities_data, safety_data) == before
 
 
-def test_p2_direct_formatters_do_not_write_streams(capsys) -> None:
+def test_direct_formatters_do_not_write_streams(capsys) -> None:
     cli_rendering.format_list_resources([], live_only=False)
     cli_rendering.format_verify("IDN")
     cli_rendering.format_error_queue([])
@@ -308,7 +308,7 @@ def test_p2_direct_formatters_do_not_write_streams(capsys) -> None:
         ),
     ],
 )
-def test_p2_runners_delegate_text_success_and_skip_rendering_for_json(
+def test_readonly_runners_delegate_text_success_and_skip_rendering_for_json(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
     formatter_name: str,
@@ -374,7 +374,7 @@ def test_snapshot_diff_delegates_text_success_and_skips_rendering_for_json(
     assert captured.err == ""
 
 
-def test_p2_success_renderers_are_not_used_for_validation_errors(
+def test_success_renderers_are_not_used_for_validation_errors(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:

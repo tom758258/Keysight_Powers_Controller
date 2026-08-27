@@ -313,7 +313,7 @@ def test_measure_simulate_json_does_not_create_real_resource_manager(monkeypatch
         ),
     ],
 )
-def test_measure_simulate_uses_model_driver_for_first_target_channels(
+def test_measure_simulate_uses_model_driver_for_e36312a_and_edu36311a_channels(
     monkeypatch,
     capsys,
     resource,
@@ -563,8 +563,8 @@ def test_model_aware_live_command_blocks_descoped_idn_before_generic_fallback(
     assert session.writes == []
     assert payload["error"]["code"] == "unsupported_model_for_status"
     assert model in payload["error"]["message"]
-    assert "de-scoped and not active supported" in payload["error"]["message"]
-    assert "blocked from generic fallback" in payload["error"]["message"]
+    assert "de-scoped and not currently supported" in payload["error"]["message"]
+    assert "Generic fallback is blocked" in payload["error"]["message"]
     assert captured.err == ""
 
 def test_safe_off_real_all_reads_back_each_channel(monkeypatch, capsys) -> None:

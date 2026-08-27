@@ -88,8 +88,6 @@ def test_known_model_registry_lookup() -> None:
     assert model is not None
     assert model.manufacturer == "KEYSIGHT"
     assert model.model == "E36312A"
-    assert model.target_group == "initial"
-    assert model.first_hardware_target is True
     assert model.model_id == "keysight-e36312a"
     assert model.vendor_id == "keysight"
     assert model.display_name == "Keysight E36312A"
@@ -98,7 +96,6 @@ def test_known_model_registry_lookup() -> None:
     assert psm is not None
     assert psm.manufacturer == "GW.Inc"
     assert psm.model == "PSM-2010"
-    assert psm.target_group == "psm-series"
     assert psm.enablement_stage == "product_active"
     assert psm.vendor_id == "gw-instek"
     assert psm.display_name == "GW Instek PSM-2010"

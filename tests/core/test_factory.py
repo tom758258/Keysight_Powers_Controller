@@ -28,18 +28,16 @@ class FakeSession:
         self.closed = True
 
 
-def test_first_target_models_are_recognized() -> None:
+def test_keysight_model_specific_drivers_are_recognized() -> None:
     e36312a = select_driver("KEYSIGHT,E36312A,SERIAL0000,1.0")
     edu36311a = select_driver("KEYSIGHT,EDU36311A,SERIAL0000,1.0")
 
     assert e36312a.model_info is not None
-    assert e36312a.model_info.first_hardware_target is True
     assert e36312a.physical_identity is not None
     assert e36312a.physical_identity.model_id == "keysight-e36312a"
     assert e36312a.driver_class is E36312APowerSupply
     assert e36312a.reason == "model_specific_driver"
     assert edu36311a.model_info is not None
-    assert edu36311a.model_info.first_hardware_target is True
     assert edu36311a.driver_class is EDU36311APowerSupply
     assert edu36311a.reason == "model_specific_driver"
 
@@ -60,7 +58,7 @@ def test_driver_selection_requires_resolved_manufacturer_plus_model_identity() -
         assert selection.reason == "unknown_model_generic_fallback"
 
 
-def test_narrow_p1_manufacturer_alias_selects_only_its_registered_model() -> None:
+def test_e3646a_agilent_alias_does_not_match_other_keysight_models() -> None:
     e3646a = select_driver("Agilent Technologies,E3646A,SERIAL0000,1.0")
     e36312a = select_driver("Agilent Technologies,E36312A,SERIAL0000,1.0")
 
@@ -71,7 +69,7 @@ def test_narrow_p1_manufacturer_alias_selects_only_its_registered_model() -> Non
     assert e36312a.driver_class is GenericScpiPowerSupply
 
 
-def test_first_target_drivers_expose_conservative_capabilities() -> None:
+def test_keysight_model_specific_drivers_expose_conservative_capabilities() -> None:
     e36312a_expected = DriverCapabilities(
         channels=(1, 2, 3),
         simulated_measure_channels=(1, 2, 3),
@@ -105,8 +103,8 @@ def test_descoped_models_are_blocked_from_generic_fallback() -> None:
 
         message = str(excinfo.value)
         assert model in message
-        assert "de-scoped and not active supported" in message
-        assert "blocked from generic fallback" in message
+        assert "de-scoped and not currently supported" in message
+        assert "Generic fallback is blocked" in message
 
 
 def test_descoped_model_create_power_supply_does_not_wrap_session() -> None:
@@ -118,7 +116,7 @@ def test_descoped_model_create_power_supply_does_not_wrap_session() -> None:
     assert session.commands == []
 
 
-def test_near_term_and_later_models_are_recognized() -> None:
+def test_catalog_only_models_are_recognized() -> None:
     for model in (
         "E36313A",
         "E36233A",

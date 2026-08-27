@@ -22,7 +22,7 @@ def _value_to_text(value: object) -> str:
     return str(value)
 
 
-def test_p3_formatters_preserve_exact_lines_and_inputs(capsys: pytest.CaptureFixture[str]) -> None:
+def test_workflow_formatters_preserve_exact_lines_and_inputs(capsys: pytest.CaptureFixture[str]) -> None:
     protection_channels = [
         {
             "channel": 2,
@@ -124,7 +124,7 @@ def test_p3_formatters_preserve_exact_lines_and_inputs(capsys: pytest.CaptureFix
                 "--samples",
                 "1",
                 "--csv",
-                ".tmp_tests/cli_rendering_p3/log.csv",
+                ".tmp_tests/cli_workflow_text_rendering/log.csv",
             ],
         ),
         (
@@ -155,7 +155,7 @@ def test_p3_formatters_preserve_exact_lines_and_inputs(capsys: pytest.CaptureFix
         ),
     ],
 )
-def test_p3_no_hardware_runners_delegate_text_success(
+def test_no_hardware_runners_delegate_text_success(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
     formatter_name: str,
@@ -175,7 +175,7 @@ def test_p3_no_hardware_runners_delegate_text_success(
     assert calls
 
 
-def test_p3_core_backed_runners_delegate_text_success(
+def test_core_backed_runners_delegate_text_success(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
     tmp_path: Path,
@@ -233,7 +233,7 @@ def test_p3_core_backed_runners_delegate_text_success(
     assert calls == ["formatter", "formatter", "formatter", "formatter"]
 
 
-def test_p3_json_and_error_paths_skip_success_formatters(
+def test_json_and_error_paths_skip_success_formatters(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
     tmp_path: Path,
@@ -279,7 +279,7 @@ def test_p3_json_and_error_paths_skip_success_formatters(
     assert "write failed" in capsys.readouterr().err
 
 
-def test_p3_core_io_and_workflow_interruption_skip_success_formatters(
+def test_core_io_and_workflow_interruption_skip_success_formatters(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
     tmp_path: Path,
@@ -310,7 +310,7 @@ def test_p3_core_io_and_workflow_interruption_skip_success_formatters(
     assert "sequence stopped" in capsys.readouterr().err
 
 
-def test_p3_artifact_success_precedes_rendering_and_failed_artifacts_do_not_render(
+def test_artifact_success_precedes_rendering_and_failed_artifacts_do_not_render(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
     tmp_path: Path,
@@ -329,7 +329,7 @@ def test_p3_artifact_success_precedes_rendering_and_failed_artifacts_do_not_rend
     assert capsys.readouterr().out == ""
 
 
-def test_p3_log_collection_precedes_rendering(
+def test_log_collection_precedes_rendering(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
     tmp_path: Path,

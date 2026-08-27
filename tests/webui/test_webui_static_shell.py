@@ -34,7 +34,7 @@ def test_guard_no_cli_import():
         assert not any(name == "powers_tool_cli" or name.startswith("powers_tool_cli.") for name in imported)
 
 
-def test_p5_localized_refresh_composes_only_presentation_paths_and_preserves_state():
+def test_localized_refresh_composes_only_presentation_paths_and_preserves_state():
     assertions = r"""
 const strictAssert = require("node:assert/strict");
 const calls = [];

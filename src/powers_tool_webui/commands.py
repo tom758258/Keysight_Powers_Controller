@@ -220,7 +220,7 @@ def build_runtime_options(runtime_dict: dict[str, Any]) -> RuntimeOptions:
         serial_local_on_close=_optional_runtime_bool(
             runtime_dict, "serial_local_on_close", False
         ),
-        # WebUI is deliberately product-only; P4 mode selection is CLI-only.
+        # WebUI is deliberately product-only; support-policy mode selection is CLI-only.
         support_policy_mode="product",
     )
 

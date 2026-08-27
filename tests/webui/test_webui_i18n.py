@@ -870,7 +870,7 @@ process.stdout.write(JSON.stringify({ ok: true }));
     assert completed.stdout == '{"ok":true}'
 
 
-def test_static_html_p2_bindings_have_catalog_parity_and_preserve_contracts() -> None:
+def test_static_html_i18n_bindings_have_catalog_parity_and_preserve_contracts() -> None:
     html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
     en_source = (STATIC_DIR / "locale_en.js").read_text(encoding="utf-8")
     zh_tw_source = (STATIC_DIR / "locale_zh_tw.js").read_text(encoding="utf-8")
@@ -911,7 +911,7 @@ def test_static_html_p2_bindings_have_catalog_parity_and_preserve_contracts() ->
     assert 'aria-expanded="false"' in html
 
 
-def test_p3_maintained_catalog_messages_are_complete() -> None:
+def test_maintained_catalog_messages_are_complete() -> None:
     en_source = (STATIC_DIR / "locale_en.js").read_text(encoding="utf-8")
     zh_tw_source = (STATIC_DIR / "locale_zh_tw.js").read_text(encoding="utf-8")
     en_keys = set(re.findall(r'^  "([a-z][a-z0-9_.]+)":', en_source, re.MULTILINE))

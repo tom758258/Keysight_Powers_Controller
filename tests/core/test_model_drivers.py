@@ -313,7 +313,7 @@ def test_psm2010_driver_rejects_non_channel_one_before_io(channel) -> None:
     [E36312APowerSupply, EDU36311APowerSupply],
 )
 @pytest.mark.parametrize("channel", [1, 2, 3])
-def test_first_target_drivers_use_channel_list_scpi(driver_class, channel) -> None:
+def test_e36312a_and_edu36311a_drivers_use_channel_list_scpi(driver_class, channel) -> None:
     session = FakeSession(
         {
             f"MEAS:VOLT? (@{channel})": "1.234",
@@ -343,7 +343,7 @@ def test_first_target_drivers_use_channel_list_scpi(driver_class, channel) -> No
     "driver_class",
     [E36312APowerSupply, EDU36311APowerSupply],
 )
-def test_first_target_drivers_allow_channel_strategy_override(driver_class) -> None:
+def test_e36312a_and_edu36311a_drivers_allow_channel_strategy_override(driver_class) -> None:
     session = FakeSession()
     power_supply = driver_class(session, channel_strategy=NoChannelStrategy())
 
@@ -352,7 +352,7 @@ def test_first_target_drivers_allow_channel_strategy_override(driver_class) -> N
     assert session.commands == ["OUTP OFF"]
 
 
-def test_first_target_driver_safety_validation_runs_before_scpi_write() -> None:
+def test_e36312a_driver_safety_validation_runs_before_scpi_write() -> None:
     session = FakeSession()
     power_supply = E36312APowerSupply(
         session,
@@ -392,7 +392,7 @@ def test_e36312a_driver_sets_protection_with_channel_list_scpi() -> None:
     "driver_class",
     [E36312APowerSupply, EDU36311APowerSupply],
 )
-def test_first_target_drivers_read_channel_protection_trip_flags(driver_class) -> None:
+def test_e36312a_and_edu36311a_drivers_read_channel_protection_trip_flags(driver_class) -> None:
     session = FakeSession(
         {
             "VOLT:PROT:TRIP? (@2)": "1",
