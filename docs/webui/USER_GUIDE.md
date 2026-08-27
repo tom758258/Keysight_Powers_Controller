@@ -1,9 +1,9 @@
 # Powers Tool WebUI User Guide
 
-This guide is for operators who receive the built WebUI launcher and use it to
-inspect and control supported DC power supplies. The framework is
-vendor-neutral, while current hardware support is defined by the documented
-[Product scopes](../core/supported-models.md). This guide covers normal product
+This guide is for operators who use the built WebUI launcher or the Electron
+Desktop application to inspect and control supported DC power supplies. The
+framework is vendor-neutral, while current hardware support is defined by the
+documented [Product scopes](../core/supported-models.md). This guide covers normal product
 operation, screen workflows, and safety behavior.
 
 ## Start The WebUI
@@ -220,7 +220,8 @@ Use this flow when checking a new computer, VISA runtime, connection, or power
 supply setup.
 
 1. Confirm the supply and connected DUT are safe to query.
-2. Start the WebUI and open the local browser page.
+2. Open the Powers Tool interface using either the browser WebUI launcher or
+   `Powers Tool.exe`. You do not need to run both.
 3. Click `Scan Device`.
 4. Select the intended live resource or copy it into `VISA resource`.
 5. Start `Live Data` to confirm read-only communication and channel state.

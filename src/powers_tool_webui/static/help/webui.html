@@ -62,10 +62,10 @@
 
   <main class="help-content" id="help-content">
 <h1 id="powers-tool-webui-user-guide">Powers Tool WebUI User Guide</h1>
-<p>This guide is for operators who receive the built WebUI launcher and use it to
-inspect and control supported DC power supplies. The framework is
-vendor-neutral, while current hardware support is defined by the documented
-<a href="supported-models.html">Product scopes</a>. This guide covers normal product
+<p>This guide is for operators who use the built WebUI launcher or the Electron
+Desktop application to inspect and control supported DC power supplies. The
+framework is vendor-neutral, while current hardware support is defined by the
+documented <a href="supported-models.html">Product scopes</a>. This guide covers normal product
 operation, screen workflows, and safety behavior.</p>
 <h2 id="start-the-webui">Start The WebUI</h2>
 <p>For a local shared onedir build, double-click the WebUI launcher in the bundle:</p>
@@ -234,7 +234,8 @@ back without affecting normal operation.</p>
 supply setup.</p>
 <ol>
 <li>Confirm the supply and connected DUT are safe to query.</li>
-<li>Start the WebUI and open the local browser page.</li>
+<li>Open the Powers Tool interface using either the browser WebUI launcher or
+   <code>Powers Tool.exe</code>. You do not need to run both.</li>
 <li>Click <code>Scan Device</code>.</li>
 <li>Select the intended live resource or copy it into <code>VISA resource</code>.</li>
 <li>Start <code>Live Data</code> to confirm read-only communication and channel state.</li>

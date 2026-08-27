@@ -1,6 +1,9 @@
 # Powers Tool WebUI 使用者指南
 
-本指南供取得已建置之 WebUI 啟動器的操作員使用，說明正常產品操作、畫面工作流程與安全行為。Powers Tool 的架構不綁定特定廠牌；目前硬體支援範圍以 [支援型號](../core/supported-models.zh-TW.md) 所記載的 Product scopes 為準；未知或未註冊的 live hardware 會 fail closed。
+本指南供使用已建置 WebUI 啟動器或 Electron Desktop 應用程式的操作員使用，
+說明支援之直流電源供應器的正常產品操作、畫面工作流程與安全行為。Powers Tool
+的架構不綁定特定廠牌；目前硬體支援範圍以 [支援型號](../core/supported-models.zh-TW.md)
+所記載的 Product scopes 為準；未知或未註冊的 live hardware 會 fail closed。
 
 ## 啟動 WebUI
 
@@ -183,7 +186,8 @@ storage 不可用，WebUI 會安全 fallback，不影響正常操作。
 在檢查新電腦、VISA runtime、連線或電源供應器設定時，請使用此流程。
 
 1. 確認電源供應器與連接的受測物 (DUT) 均可安全查詢。
-2. 啟動 WebUI 並開啟本機瀏覽器頁面。
+2. 使用瀏覽器 WebUI 啟動器或 `Powers Tool.exe` 開啟 Powers Tool 主介面；兩者擇一，
+   不需要同時啟動。
 3. 點擊 `Scan Device`。
 4. 選擇目標實機資源或將其複製到 `VISA resource`。
 5. 啟動 `Live Data` 以確認唯讀通訊與通道狀態。
