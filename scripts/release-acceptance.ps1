@@ -425,22 +425,14 @@ try {
     $packagedCli = Join-Path $extractedBundleDir "powers-tool.exe"
     $packagedLauncher = Join-Path $extractedBundleDir "powers-tool-webui-launcher.exe"
 
-    $script:CurrentStep = "clean sdist install"
-    $sdist = Join-Path $versionDir "$normalizedDistribution-$projectVersion.tar.gz"
-    $artifactEnvironment = Join-Path $script:RunRoot "envs\sdist"
-    Invoke-Recorded -Name "create-sdist-environment" -FilePath "uv" `
-        -Arguments @("venv", $artifactEnvironment, "--python", $python) `
-        -WorkingDirectory $script:RunRoot | Out-Null
-    $artifactPython = Join-Path $artifactEnvironment "Scripts\python.exe"
-    Assert-File -Path $artifactPython
-    Invoke-Recorded -Name "install-final-sdist" -FilePath "uv" `
-        -Arguments @("pip", "install", "--python", $artifactPython, $sdist) `
-        -WorkingDirectory $script:RunRoot | Out-Null
-
-    $identityCode = @'
+    $installedRuntimeCode = @'
 import importlib.metadata as metadata
-import importlib.resources as resources
+import sys
+from pathlib import Path
+from unittest.mock import patch
+
 import powers_tool_cli
+import powers_tool_cli.cli as cli
 import powers_tool_core
 import powers_tool_webui
 
@@ -449,18 +441,108 @@ assert metadata.version("powers-tool") == expected_version
 assert powers_tool_core.__version__ == expected_version
 assert powers_tool_cli.__version__ == expected_version
 assert powers_tool_webui.__version__ == expected_version
-static = resources.files("powers_tool_webui").joinpath("static")
+
+environment = Path(sys.prefix).resolve()
+package_directories = {
+    "powers_tool_cli": Path(powers_tool_cli.__file__).resolve().parent,
+    "powers_tool_core": Path(powers_tool_core.__file__).resolve().parent,
+    "powers_tool_webui": Path(powers_tool_webui.__file__).resolve().parent,
+}
+for package_name, package_directory in package_directories.items():
+    assert package_directory.is_relative_to(environment), (
+        package_name,
+        package_directory,
+        environment,
+    )
+
+cli_help = package_directories["powers_tool_cli"].joinpath("help")
+for filename in (
+    "cli.html",
+    "cli.zh-TW.html",
+    "supported-models.html",
+    "supported-models.zh-TW.html",
+    "help.css",
+):
+    assert cli_help.joinpath(filename).is_file(), filename
+
+webui_static = package_directories["powers_tool_webui"].joinpath("static")
 for filename in ("index.html", "styles.css", "app.js"):
-    assert static.joinpath(filename).is_file(), filename
+    assert webui_static.joinpath(filename).is_file(), filename
+webui_help = webui_static.joinpath("help")
+for filename in (
+    "webui.html",
+    "webui.zh-TW.html",
+    "supported-models.html",
+    "supported-models.zh-TW.html",
+    "help.css",
+):
+    assert webui_help.joinpath(filename).is_file(), filename
+
+opened = []
+
+
+def capture_open(uri):
+    opened.append(uri)
+    return True
+
+
+with patch("webbrowser.open", capture_open):
+    assert cli.main(["user-guide"]) == 0
+expected_uri = cli_help.joinpath("cli.html").resolve().as_uri()
+assert opened == [expected_uri], opened
+assert opened[0].startswith("file:")
 '@
-    $identityScript = Join-Path $script:RunRoot "identity_check.py"
-    Write-Utf8NoBomText -LiteralPath $identityScript `
-        -Text $identityCode.Replace("__PROJECT_VERSION__", $projectVersion)
-    Run-Python -Name "inspect-sdist-install" -Python $artifactPython `
-        -WorkingDirectory $script:RunRoot -Arguments @($identityScript) | Out-Null
-    Add-Check -Target $script:InstallChecks -Name "sdist package identity and contents" `
-        -Passed $true -Detail "Installed final sdist and verified package metadata, imports, and WebUI assets"
-    Test-InstalledEntryPoints -Python $artifactPython
+    $installedRuntimeScript = Join-Path $script:RunRoot "installed_runtime_check.py"
+    Write-Utf8NoBomText -LiteralPath $installedRuntimeScript `
+        -Text $installedRuntimeCode.Replace("__PROJECT_VERSION__", $projectVersion)
+
+    $wheel = Join-Path $versionDir "$normalizedDistribution-$projectVersion-py3-none-any.whl"
+    $sdist = Join-Path $versionDir "$normalizedDistribution-$projectVersion.tar.gz"
+    $installArtifacts = @(
+        [pscustomobject]@{
+            Kind = "wheel"
+            Path = $wheel
+            Step = "clean wheel install"
+            CreateCommand = "create-wheel-environment"
+            InstallCommand = "install-final-wheel"
+            InspectCommand = "inspect-wheel-install"
+        },
+        [pscustomobject]@{
+            Kind = "sdist"
+            Path = $sdist
+            Step = "clean sdist install"
+            CreateCommand = "create-sdist-environment"
+            InstallCommand = "install-final-sdist"
+            InspectCommand = "inspect-sdist-install"
+        }
+    )
+    $sdistPython = $null
+    foreach ($installArtifact in $installArtifacts) {
+        $script:CurrentStep = $installArtifact.Step
+        $artifactEnvironment = Join-Path $script:RunRoot ("envs\" + $installArtifact.Kind)
+        Invoke-Recorded -Name $installArtifact.CreateCommand -FilePath "uv" `
+            -Arguments @("venv", $artifactEnvironment, "--python", $python) `
+            -WorkingDirectory $script:RunRoot | Out-Null
+        $artifactPython = Join-Path $artifactEnvironment "Scripts\python.exe"
+        Assert-File -Path $artifactPython
+        Invoke-Recorded -Name $installArtifact.InstallCommand -FilePath "uv" `
+            -Arguments @("pip", "install", "--python", $artifactPython, $installArtifact.Path) `
+            -WorkingDirectory $script:RunRoot | Out-Null
+        Run-Python -Name $installArtifact.InspectCommand -Python $artifactPython `
+            -WorkingDirectory $script:RunRoot -Arguments @($installedRuntimeScript) | Out-Null
+        Add-Check -Target $script:InstallChecks `
+            -Name ($installArtifact.Kind + " package identity, contents, and bundled Help") `
+            -Passed $true `
+            -Detail ("Installed final " + $installArtifact.Kind +
+                " and verified package metadata, imports, and runtime assets")
+        if ($installArtifact.Kind -eq "sdist") {
+            $sdistPython = $artifactPython
+        }
+    }
+    if (-not $sdistPython) {
+        throw "The final sdist environment was not created"
+    }
+    Test-InstalledEntryPoints -Python $sdistPython
 
     $script:CurrentStep = "final packaged smoke"
     $cliVersion = Invoke-Recorded -Name "packaged-cli-version" -FilePath $packagedCli `

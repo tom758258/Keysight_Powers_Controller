@@ -325,6 +325,7 @@ def test_release_acceptance_preserves_required_no_hardware_release_flow() -> Non
         '"extract unified Windows bundle"',
         '"resources\\backend"',
         '"lock", "--check"',
+        '"install-final-wheel"',
         '"install-final-sdist"',
         '"live-cli-plan-only"',
         '"-PlanOnly"',
@@ -351,6 +352,51 @@ def test_release_acceptance_preserves_required_no_hardware_release_flow() -> Non
     plan_only_position = text.index('"live-cli-plan-only"')
     skip_position = text.index('"-SkipExternalPreflight"')
     assert smoke_position < deep_position < plan_only_position < skip_position
+
+
+def test_release_acceptance_validates_installed_help_from_final_distributions() -> None:
+    text = SCRIPT.read_text(encoding="utf-8")
+
+    for required in (
+        'Kind = "wheel"',
+        'Path = $wheel',
+        'Kind = "sdist"',
+        'Path = $sdist',
+        '"create-wheel-environment"',
+        '"create-sdist-environment"',
+        '"install-final-wheel"',
+        '"install-final-sdist"',
+        '"inspect-wheel-install"',
+        '"inspect-sdist-install"',
+        'foreach ($installArtifact in $installArtifacts)',
+        "-Arguments @($installedRuntimeScript)",
+        'Path(powers_tool_cli.__file__).resolve().parent',
+        'Path(powers_tool_webui.__file__).resolve().parent',
+        'package_directory.is_relative_to(environment)',
+        'with patch("webbrowser.open", capture_open):',
+        'cli.main(["user-guide"])',
+        'assert opened == [expected_uri]',
+        'assert opened[0].startswith("file:")',
+    ):
+        assert required in text
+
+    for filename in (
+        "cli.html",
+        "cli.zh-TW.html",
+        "webui.html",
+        "webui.zh-TW.html",
+        "supported-models.html",
+        "supported-models.zh-TW.html",
+        "help.css",
+    ):
+        assert f'"{filename}"' in text
+
+    install_flow = text.split("$installArtifacts = @(", 1)[1].split(
+        "Test-InstalledEntryPoints -Python $sdistPython", 1
+    )[0]
+    assert install_flow.index('Kind = "wheel"') < install_flow.index(
+        'Kind = "sdist"'
+    ) < install_flow.index("foreach ($installArtifact in $installArtifacts)")
 
 
 def test_release_acceptance_reports_recorded_command_status() -> None:

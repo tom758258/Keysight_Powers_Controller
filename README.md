@@ -329,8 +329,9 @@ source working tree. The script uses the existing `.venv`, checks that the
 working tree matches committed HEAD, verifies `uv.lock`, and runs the complete
 no-hardware test suite once. It then calls `build_release.ps1` once to produce
 the final versioned artifacts, inspects the wheel, sdist, and unified Desktop
-ZIP, installs the final sdist in one clean environment, checks all
-console entry points, verifies checksums, runs fast CLI smoke for every
+ZIP, installs the final wheel and sdist in separate clean environments,
+verifies bundled Help in both, checks all console entry points from the sdist,
+verifies checksums, runs fast CLI smoke for every
 Product-active model, runs deeper CLI workflows for capability-representative
 models, and checks a simulator `PlanOnly` contract. A new model needs another
 deep representative only when it introduces a capability family or hardware
