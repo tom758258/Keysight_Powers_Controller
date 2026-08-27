@@ -25,6 +25,10 @@ integration layer. `api.js` owns the shared JSON HTTP request/response boundary;
 owns initial page-local state. `device-resource.js` owns Device/Resource and
 execution-mode controls. `command-form.js` owns command catalog/form rendering,
 payload construction, guidance, accessibility help, and parameter constraints.
+`command-params.js` owns the command parameter descriptor definitions used to
+construct forms. `dom_i18n.js` applies catalog translations to static DOM
+bindings. `theme_ui.js` owns theme preference persistence, effective-theme
+selection, and theme-control presentation.
 `results.js` owns job-result summaries and Workspace Result presentation.
 `jobs.js` owns Job HTTP submission, SSE transport, and Job History state and
 presentation. `live-data.js` owns Live Data sampling, lifecycle, and channel
@@ -73,9 +77,11 @@ Windows GUI launcher. The local shared PyInstaller onedir bundle contains
 `dist\powers-tool\powers-tool.exe`,
 `dist\powers-tool\powers-tool-webui-launcher.exe`, and the private
 `dist\powers-tool\powers-tool-webui-host.exe`, all using the shared
-`dist\powers-tool\_internal\` directory. The Desktop Host is a private
-executable used by the source-mode Electron Desktop shell; it is not a new
-public CLI entry point.
+`dist\powers-tool\_internal\` directory. The packaged Electron Desktop uses
+the private `powers-tool-webui-host.exe`. Source-mode Electron launches the
+same private host implementation through the Python module
+`powers_tool_webui._desktop_host`. `powers-tool-webui-host.exe` remains private
+and is not a public console entry point.
 
 The source-mode Desktop shell is the existing WebUI in an Electron window. From
 the repository root, run:

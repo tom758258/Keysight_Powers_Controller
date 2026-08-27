@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Adds local, version-matched built-in Help for the CLI, browser WebUI, and
+  Electron Desktop, with English and Traditional Chinese operator content.
+
 ## 3.1.0
 
 - Adds the `powers-tool manifest --json` machine introspection command for

@@ -17,6 +17,7 @@ commands 仍不支援；其他 transport 與 backend 仍會 fail closed。完整
 
 WebUI 內建於單一 `powers-tool` 發行套件中，同時保留了 `powers_tool_webui` 的 import 邊界。它依賴共用的 `powers_tool_core` runtime 與發行套件的 `webui` extra。其前端由靜態的 `index.html`、`styles.css`，以及以 `app.js` 為 bootstrap／composition root 的原生 JavaScript modules 組成；執行或建置 WebUI frontend 不需要 bundler／npm build pipeline 或 Node toolchain。`app.js` 是 bootstrap 與整合層。`api.js` 擁有共用的 JSON HTTP request/response 邊界；`execution-context.js` 擁有純 execution/workspace context；`state.js` 擁有初始 page-local state。`device-resource.js` 擁有 Device/Resource 與 execution-mode 控制項。`command-form.js` 擁有命令目錄／表單渲染、payload 建構、guidance、accessibility help 與參數限制。`results.js` 擁有 job-result summary 與 Workspace Result 呈現。`jobs.js` 擁有 Job HTTP 提交、SSE transport 與 Job History 狀態及呈現。`live-data.js` 擁有 Live Data 取樣、lifecycle 與通道呈現。
 `json-files.js` 擁有共用的瀏覽器 JSON file picker 與下載 helper。
+`command-params.js` 擁有用於建構表單的 command parameter descriptor definitions。`dom_i18n.js` 負責將 catalog translation 套用至 static DOM bindings。`theme_ui.js` 負責 theme preference 儲存、effective theme 選擇與 theme control 呈現。
 `ramp-list.js` 擁有純 Ramp List 文件 materialization 與驗證。
 `trigger-list.js` 擁有純 Trigger List workspace 文件 materialization 與驗證。
 `sequence.js` 透過明確的 action-schema 相依性，擁有純 Sequence 文件正規化與編輯器序列化。
@@ -50,12 +51,14 @@ WebUI 提供了用於本機 FastAPI 伺服器的 `powers-tool-webui` console wra
 `powers-tool-webui-launcher` console wrapper，執行 `powers_tool_webui.launcher:main`。
 本機 shared PyInstaller onedir bundle 包含
 `dist\powers-tool\powers-tool.exe`、
-`dist\powers-tool\powers-tool-webui-launcher.exe`，以及供後續 desktop
-integration 使用的 private `dist\powers-tool\powers-tool-webui-host.exe`；
-三者共用 `dist\powers-tool\_internal\` 目錄。Desktop Host 是供 source-mode
-Electron Desktop shell 使用的 private executable，不是新的公開 CLI entry
-point。Shared bundle artifacts 與已安裝的 console wrappers 分開，不會重新
-命名或取代任何 installed entry point。
+`dist\powers-tool\powers-tool-webui-launcher.exe`，以及 private
+`dist\powers-tool\powers-tool-webui-host.exe`；三者共用
+`dist\powers-tool\_internal\` 目錄。Packaged Electron Desktop 使用 private
+`powers-tool-webui-host.exe`。Source-mode Electron 透過 Python module
+`powers_tool_webui._desktop_host` 啟動相同的 private host implementation。
+`powers-tool-webui-host.exe` 維持 private，不是公開的 console entry point。
+Shared bundle artifacts 與已安裝的 console wrappers 分開，不會重新命名或
+取代任何 installed entry point。
 
 Source-mode Desktop shell 是以 Electron 顯示現有 WebUI，不建立第二套 WebUI。
 從 repository root 執行：

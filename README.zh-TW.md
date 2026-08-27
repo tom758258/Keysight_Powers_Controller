@@ -75,9 +75,14 @@ tests/
   webui/
   integration/
 docs/
-  core/
-  cli/
-  webui/
+  core/                runtime 與 Product 支援文件
+  cli/                 CLI 維護者與操作員文件
+  webui/               WebUI 與 Desktop 文件
+  contracts/           公開 protocol 與 workflow contracts
+  help/                bundled Help 維護來源
+  skill/               選用的 orchestration skill
+  CONTRIBUTING.md
+  testing-guidelines.md
 scripts/
 ```
 
@@ -375,7 +380,8 @@ CI 中。
 - [WebUI README](docs/webui/README.zh-TW.md)
 - [WebUI 使用者指南](docs/webui/USER_GUIDE.zh-TW.md)
 - [Web UI Change Rules](docs/webui/web-ui-change-rules.md)
-- [Repository 架構](docs/architecture/monorepo-layout.md)
+- [Help 維護](docs/help/README.md)
+- [Repository Layout](docs/architecture/monorepo-layout.md)
 - [測試指南](docs/testing-guidelines.md)
 - [Public Contracts](docs/contracts)
 - [Power CLI JSONL Contract](docs/contracts/power-cli-jsonl-contract.md)

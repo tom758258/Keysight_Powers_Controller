@@ -50,6 +50,14 @@ available. Storage read or write failures must not make the WebUI unusable.
 The Appearance control displays the current System, Light, or Dark preference;
 its accessible name and title describe the next preference in the cycle.
 
+## Desktop and Help
+
+The Electron Desktop shell presents the same localized WebUI and does not define
+a separate Desktop locale system. The WebUI Help target follows the selected
+locale. Help document localization comes from the maintained localized Markdown
+Help sources, not from the WebUI JavaScript message catalog. Machine-facing
+values and contracts remain unchanged.
+
 ## Ownership and Architecture Boundary
 
 The browser owns presentation such as headings, labels, help text, option

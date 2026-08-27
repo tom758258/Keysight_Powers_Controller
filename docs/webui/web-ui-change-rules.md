@@ -25,29 +25,18 @@ high risk.
 
 ## Files You May Change For UI Polish
 
-Preferred editable frontend files:
+Normal WebUI frontend work is contained under
+`src/powers_tool_webui/static/`. This includes the maintained static HTML, CSS,
+and browser JavaScript presentation modules, including modules such as
+`command-params.js`, `dom_i18n.js`, and `theme_ui.js` when their presentation
+responsibilities are in scope. File location does not make a behavioral change
+presentation-only. Changes within this directory must still preserve the API,
+execution, instrument-safety, job, Live Data, and cleanup boundaries below.
 
-- `src/powers_tool_webui/static/index.html`
-- `src/powers_tool_webui/static/styles.css`
-- `src/powers_tool_webui/static/app.js`
-- `src/powers_tool_webui/static/execution-context.js`
-- `src/powers_tool_webui/static/electrical.js`
-- `src/powers_tool_webui/static/api.js`
-- `src/powers_tool_webui/static/state.js`
-- `src/powers_tool_webui/static/device-resource.js`
-- `src/powers_tool_webui/static/command-catalog.js`
-- `src/powers_tool_webui/static/command-form.js`
-- `src/powers_tool_webui/static/results.js`
-- `src/powers_tool_webui/static/jobs.js`
-- `src/powers_tool_webui/static/live-data.js`
-- `src/powers_tool_webui/static/json-files.js`
-- `src/powers_tool_webui/static/ramp-list.js`
-- `src/powers_tool_webui/static/trigger-list.js`
-- `src/powers_tool_webui/static/sequence.js`
-- `src/powers_tool_webui/static/snapshot-restore.js`
-- `src/powers_tool_webui/static/basic-controls.js`
-- `src/powers_tool_webui/static/command-support.js`
-- `src/powers_tool_webui/static/workflows.js`
+Generated Help files under `src/powers_tool_webui/static/help/` are runtime
+outputs. Maintain their Markdown and shared presentation sources under
+`docs/help/`, then regenerate and synchronize owned assets when Help sources
+change; do not edit generated HTML by hand.
 
 Optional, only when a stable UI contract changes or a new public behavior needs
 coverage:
@@ -332,6 +321,12 @@ must not access the DOM, fetch, EventSource, or mutable application state.
 shared command-form DOM primitives, guidance, accessibility help, and
 parameter notes. It receives command metadata and guard functions explicitly
 from `app.js`.
+`command-params.js` owns command parameter descriptor definitions used to
+construct forms; it does not define backend command admission or Product policy.
+`dom_i18n.js` owns applying catalog translations to static DOM bindings; locale
+selection and catalog lookup remain owned by the localization modules.
+`theme_ui.js` owns theme preference validation/persistence, effective-theme
+calculation, and theme-control presentation; it does not own locale selection.
 `results.js` owns job-result and status summary text plus Workspace Result DOM
 presentation. It receives
 the current execution context and support-label helpers explicitly from `app.js`.

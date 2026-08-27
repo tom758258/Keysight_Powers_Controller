@@ -129,10 +129,12 @@ planning, simple and surgical changes, and text-file hygiene.
   validation workflow and requirements, and detailed engineering material in
   `README.md` or focused contributor documentation. Include in `USER_GUIDE.md`
   only the minimum information required for normal user operation.
-- English documentation is the default. Modify localized documentation only
-  when the task explicitly includes it. If a modified localized Markdown file
-  already has a corresponding HTML mirror, update that mirror in the same
-  change.
+- English documentation remains the default unless localized docs are
+  explicitly in scope. When a maintained USER_GUIDE or Supported Models
+  Markdown source that feeds bundled Help changes, regenerate Help using the
+  existing generator and synchronize only the generated assets owned by the
+  affected runtime surface(s). Generated Help HTML must not be manually
+  maintained as a second documentation source.
 - Do not place personal filesystem paths, real VISA resources, instrument
   serial numbers, private lab addresses, or link-local/private network
   addresses in tracked public documentation.

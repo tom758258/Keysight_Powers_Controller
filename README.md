@@ -85,9 +85,14 @@ tests/
   webui/
   integration/
 docs/
-  core/
-  cli/
-  webui/
+  core/                runtime and Product support documentation
+  cli/                 CLI maintainer and operator documentation
+  webui/               WebUI and Desktop documentation
+  contracts/           public protocol and workflow contracts
+  help/                bundled Help maintenance sources
+  skill/               optional orchestration skill
+  CONTRIBUTING.md
+  testing-guidelines.md
 scripts/
 ```
 
@@ -401,6 +406,7 @@ executables, builds, releases, or CI.
 - [WebUI README](docs/webui/README.md)
 - [WebUI User Guide](docs/webui/USER_GUIDE.md)
 - [WebUI Change Rules](docs/webui/web-ui-change-rules.md)
+- [Help Maintenance](docs/help/README.md)
 - [Repository Layout](docs/architecture/monorepo-layout.md)
 - [Testing Guidelines](docs/testing-guidelines.md)
 - [Public Contracts](docs/contracts)
