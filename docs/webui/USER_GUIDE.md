@@ -20,16 +20,8 @@ To confirm the launcher version from PowerShell:
 .\dist\powers-tool\powers-tool-webui-launcher.exe --version
 ```
 
-For a formal Windows release, extract the versioned Desktop ZIP and open the
-Desktop shell from its application root:
-
-```text
-powers-tool-<version>-windows-x64.zip
-\powers-tool-<version>\Powers Tool.exe
-```
-
-The extracted application root contains the CLI, WebUI launcher, private WebUI
-Host, Electron runtime files, and one shared `_internal` directory.
+For the Electron Desktop application included in the formal Windows release,
+see [Desktop Application](#desktop-application) below.
 
 With no command-line options, the launcher remains hidden while it
 automatically tries port `7999` followed by up to 99 higher ports. Wait for the
@@ -80,15 +72,91 @@ require an external documentation website. English WebUI opens English Help;
 Traditional Chinese WebUI opens Traditional Chinese Help. Both use the same
 local built-in Help served by Powers Tool.
 
-## Desktop Shell
+## Desktop Application
 
-`Powers Tool.exe` is the Desktop shell included in the formal release. It
-displays the same WebUI and uses the private WebUI Host. The normal screens,
-commands, workflows, and safety behavior are the same as in the WebUI. It opens
-at 1920x1080 when the primary display allows it, otherwise it is clamped to the
-primary display work area. Multiple Desktop instances are allowed for
-different physical instruments. Do not operate the same physical instrument
-resource from different clients at the same time.
+### Start The Desktop Application
+
+The formal Windows release includes the Electron Desktop application. To start
+it:
+
+1. Extract the versioned Windows release ZIP.
+2. Open the extracted application directory.
+3. Start `Powers Tool.exe`.
+
+Desktop automatically starts and manages its private local WebUI Host. It waits
+for the local WebUI to become ready before showing the Desktop window. You do
+not need to choose a port, start the browser-oriented WebUI launcher, start the
+private host, or open a browser for the main Desktop interface.
+
+The release contains several related executables:
+
+- `Powers Tool.exe` is the Desktop application and the normal Desktop user
+  entry point.
+- `powers-tool-webui-launcher.exe` starts the browser-oriented WebUI launcher.
+- `powers-tool-webui-host.exe` is the private host managed by Desktop. Do not
+  start it manually.
+
+### Desktop And WebUI
+
+Desktop displays the same Powers Tool WebUI. The normal screens, commands,
+workflows, language behavior, safety rules, live-support behavior, and
+instrument restrictions are the same. After Desktop starts, use the common
+WebUI guidance in the rest of this guide, including [First Use](#first-use),
+[Resource Scanning](#resource-scanning), [Live Data](#live-data), and
+[Basic Commands](#basic-commands).
+
+The Desktop window targets 1920x1080 when the primary display work area permits
+it. If the available work area is smaller, the window is clamped to that area;
+1920x1080 is not a guaranteed fixed size.
+
+### Help, Language, And Appearance
+
+Use the upper-right `Help` control when you need the built-in Help. Browser
+WebUI opens Help in a browser context. Desktop opens the local Help externally
+in the system default browser. Both use the same local built-in Help served by
+Powers Tool.
+
+Desktop uses the same WebUI `Language` control and localized interface as the
+browser WebUI. Choose `English` or `繁體中文` using that control; there is no
+separate Desktop language setting.
+
+Desktop also uses the same `System`, `Light`, and `Dark` appearance preference.
+The Electron window theme follows the selected WebUI preference, including the
+operating system choice when `System` is selected. There is no separate
+Desktop appearance setting.
+
+### Multiple Desktop Instances
+
+Multiple Desktop instances may be used for different physical instruments.
+Different clients or instances must not operate the same physical instrument
+resource concurrently. Before starting a command, confirm that the selected
+resource belongs to the intended instrument and is not being used by another
+client.
+
+### Closing The Desktop Application
+
+When you finish, close the Desktop window normally. Desktop requests a graceful
+shutdown of its private WebUI Host and allows active cleanup to finish; closing
+does not promise an immediate exit.
+
+If Desktop reports `Cleanup is not complete.`, leave the application open and
+review the reported detail. Retry closing the application after cleanup can
+complete. Avoid repeatedly force-terminating Desktop or the private host while
+instrument cleanup may still be in progress.
+
+### Desktop Startup And Shutdown Problems
+
+If Desktop reports that the private host cannot be started, confirm that the
+release was fully extracted and that you started `Powers Tool.exe` from the
+extracted application directory. Do not start the private host or the browser
+launcher as a workaround.
+
+If Desktop reports an invalid local connection, cannot load the local WebUI, or
+the backend exits unexpectedly, the Desktop application could not establish or
+keep its local WebUI running. Note the message, close or retry Desktop only
+after any cleanup has completed, and start `Powers Tool.exe` again. If the
+problem continues with a complete release directory, provide the reported
+message to your support contact.
 
 ## Browser Language
 
@@ -114,11 +182,10 @@ EventSource.
 
 The Appearance control displays the current System / Light / Dark preference
 and cycles to the next preference when clicked. System follows the operating
-system's `prefers-color-scheme` preference. The theme preference is retained
-in the same loopback browser through the
-`powers-tool.webui.theme` cookie; the Electron Desktop shell uses that cookie
-to keep its native window theme synchronized. The selected theme applies to the
-main panels, cards, fields, and status surfaces, not only the page background.
+system's appearance preference. The selected preference is retained for normal
+reuse of the WebUI, and the Electron Desktop window follows the same preference.
+The selected theme applies to the main panels, cards, fields, and status
+surfaces, not only the page background.
 Dark theme keeps primary controls, status text, and unavailable or disabled
 controls visually distinguishable against dark surfaces.
 

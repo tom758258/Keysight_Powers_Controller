@@ -16,16 +16,8 @@ dist\powers-tool\powers-tool-webui-launcher.exe
 .\dist\powers-tool\powers-tool-webui-launcher.exe --version
 ```
 
-正式 Windows release 請解壓縮帶版本號的 Desktop ZIP，並從 application root
-啟動 Desktop shell：
-
-```text
-powers-tool-<version>-windows-x64.zip
-\powers-tool-<version>\Powers Tool.exe
-```
-
-解壓後的 application root 包含 CLI、WebUI launcher、private WebUI Host、
-Electron runtime files，以及共用的 `_internal` 目錄。
+正式 Windows release 內含的 Electron Desktop 應用程式，請參閱下方的
+「Desktop 應用程式」章節。
 
 不帶命令列選項時，啟動器會在 `127.0.0.1` 上從 port `7999` 開始，最多嘗試
 100 個候選 port，通常到 `8098`。每個候選 port 都會透過實際 bind 測試；無論
@@ -70,13 +62,73 @@ WebUI 執行於與儀器連接的同一台 Windows 電腦上。它是一個本�
 WebUI 會開啟 Traditional Chinese Help。兩者使用的都是 Powers Tool 本機提供的
 同一套內建 Help。
 
-## Desktop Shell
+## Desktop 應用程式
 
-`Powers Tool.exe` 是正式 release 中的 Desktop shell。它顯示同一套 WebUI，
-並使用 private WebUI Host。一般畫面、命令、工作流程與安全行為與 WebUI 相同。
-primary display 足夠時，視窗初始大小為 1920x1080；否則會 clamp 到 primary
-display work area。允許多個 Desktop instance 操作不同的實體儀器，但不可同時讓
-different client 操作同一個 physical instrument resource。
+### 啟動 Desktop 應用程式
+
+正式 Windows release 包含 Electron Desktop 應用程式。啟動方式如下：
+
+1. 解壓縮帶版本號的 Windows release ZIP。
+2. 開啟解壓後的 application directory。
+3. 啟動 `Powers Tool.exe`。
+
+Desktop 會自動啟動並管理 private local WebUI Host，等候 local WebUI ready
+後才顯示 Desktop 視窗。您不需要選擇 port、先啟動 browser-oriented WebUI
+launcher、手動啟動 private host，或使用 browser 開啟主要 Desktop 介面。
+
+Release 中包含幾個相關的 executable：
+
+- `Powers Tool.exe` 是 Desktop 應用程式，也是 Desktop 使用者的正常入口。
+- `powers-tool-webui-launcher.exe` 啟動 browser-oriented WebUI launcher。
+- `powers-tool-webui-host.exe` 是由 Desktop 管理的 private host，請勿手動啟動。
+
+### Desktop 與 WebUI
+
+Desktop 顯示相同的 Powers Tool WebUI。一般畫面、命令、工作流程、語言行為、
+安全規則、live 支援行為與儀器限制都相同。Desktop 啟動後，請使用本指南後面的
+共用 WebUI 說明，例如「首次使用」、「資源掃描」、「即時資料」與「基本命令」。
+
+Desktop 視窗會在 primary display work area 足夠時以 1920x1080 為目標大小；
+如果可用 work area 較小，視窗會限制在該範圍內，因此 1920x1080 不是保證的固定大小。
+
+### Help、語言與外觀
+
+需要內建 Help 時，請使用右上角的 `Help` 控制項。瀏覽器 WebUI 會在 browser
+context 中開啟 Help；Desktop 會將本機 Help 從外部交由系統預設瀏覽器開啟。兩者
+使用的都是 Powers Tool 提供的同一套本機 built-in Help。
+
+Desktop 使用與瀏覽器 WebUI 相同的 `Language` 控制項與 localized interface。
+請使用該控制項選擇 `English` 或 `繁體中文`；Desktop 沒有獨立的語言設定。
+
+Desktop 也使用相同的 `System`、`Light` 與 `Dark` 外觀偏好。Electron 視窗主題
+會遵循所選的 WebUI 偏好；選擇 `System` 時則遵循作業系統的外觀設定。Desktop
+沒有獨立的外觀設定。
+
+### 多個 Desktop instance
+
+可以使用多個 Desktop instance 操作不同的實體儀器。不同 client 或 instance
+不得同時操作同一個 physical instrument resource。執行命令前，請確認所選資源
+屬於預期的儀器，且沒有被其他 client 使用。
+
+### 關閉 Desktop 應用程式
+
+完成操作後，請正常關閉 Desktop 視窗。Desktop 會要求 private WebUI Host 進行
+graceful shutdown，並讓進行中的清理作業完成；關閉不保證會立即結束。
+
+如果 Desktop 顯示 `Cleanup is not complete.`，請先保持應用程式開啟並查看顯示的
+詳細資訊。待清理作業可以完成後，再重新關閉應用程式。儀器清理可能仍在進行時，
+不要反覆強制終止 Desktop 或 private host。
+
+### Desktop 啟動與關閉問題
+
+如果 Desktop 顯示 private host 無法啟動，請確認 release 已完整解壓縮，並且是從
+解壓後的 application directory 啟動 `Powers Tool.exe`。請勿將手動啟動 private
+host 或 browser launcher 當作 workaround。
+
+如果 Desktop 顯示 local connection 無效、無法載入本機 WebUI，或 backend 意外
+結束，表示 Desktop 無法建立或維持本機 WebUI。請記下訊息，等候任何清理作業完成
+後再關閉或重試 Desktop，然後重新啟動 `Powers Tool.exe`。如果在完整的 release
+directory 中仍持續發生，請將顯示的訊息提供給支援窗口。
 
 ## 瀏覽器語言
 
@@ -98,10 +150,9 @@ different client 操作同一個 physical instrument resource。
 action，也不會建立、停止或以其他方式影響 EventSource。
 
 外觀控制會顯示目前的 System / Light / Dark 主題偏好，點擊後依序切換至下一個
-偏好。System 會遵循作業系統的 `prefers-color-scheme`。主題偏好會透過同一個 loopback browser 的
-`powers-tool.webui.theme` cookie 保留；Electron Desktop shell 會使用該 cookie
-同步 native window theme。選定的主題會套用至主要的 panels、cards、fields
-與 status surfaces，不只改變頁面背景。
+偏好。System 會遵循作業系統的外觀偏好。選定的偏好會保留供日後正常使用 WebUI，
+Electron Desktop 視窗也會遵循相同偏好。選定的主題會套用至主要的 panels、cards、
+fields 與 status surfaces，不只改變頁面背景。
 深色主題下，主要控制項、狀態文字，以及不可用或停用的控制項，會在深色
 surface 上維持足夠辨識度。
 

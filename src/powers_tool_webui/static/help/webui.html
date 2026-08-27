@@ -74,13 +74,8 @@ operation, screen workflows, and safety behavior.</p>
 <p>To confirm the launcher version from PowerShell:</p>
 <pre><code class="language-powershell">.\dist\powers-tool\powers-tool-webui-launcher.exe --version
 </code></pre>
-<p>For a formal Windows release, extract the versioned Desktop ZIP and open the
-Desktop shell from its application root:</p>
-<pre><code class="language-text">powers-tool-&lt;version&gt;-windows-x64.zip
-\powers-tool-&lt;version&gt;\Powers Tool.exe
-</code></pre>
-<p>The extracted application root contains the CLI, WebUI launcher, private WebUI
-Host, Electron runtime files, and one shared <code>_internal</code> directory.</p>
+<p>For the Electron Desktop application included in the formal Windows release,
+see <a href="#desktop-application">Desktop Application</a> below.</p>
 <p>With no command-line options, the launcher remains hidden while it
 automatically tries port <code>7999</code> followed by up to 99 higher ports. Wait for the
 browser to open. After startup succeeds, the launcher shows a compact Running
@@ -118,14 +113,74 @@ browser. Help is served locally by the same Powers Tool WebUI and does not
 require an external documentation website. English WebUI opens English Help;
 Traditional Chinese WebUI opens Traditional Chinese Help. Both use the same
 local built-in Help served by Powers Tool.</p>
-<h2 id="desktop-shell">Desktop Shell</h2>
-<p><code>Powers Tool.exe</code> is the Desktop shell included in the formal release. It
-displays the same WebUI and uses the private WebUI Host. The normal screens,
-commands, workflows, and safety behavior are the same as in the WebUI. It opens
-at 1920x1080 when the primary display allows it, otherwise it is clamped to the
-primary display work area. Multiple Desktop instances are allowed for
-different physical instruments. Do not operate the same physical instrument
-resource from different clients at the same time.</p>
+<h2 id="desktop-application">Desktop Application</h2>
+<h3 id="start-the-desktop-application">Start The Desktop Application</h3>
+<p>The formal Windows release includes the Electron Desktop application. To start
+it:</p>
+<ol>
+<li>Extract the versioned Windows release ZIP.</li>
+<li>Open the extracted application directory.</li>
+<li>Start <code>Powers Tool.exe</code>.</li>
+</ol>
+<p>Desktop automatically starts and manages its private local WebUI Host. It waits
+for the local WebUI to become ready before showing the Desktop window. You do
+not need to choose a port, start the browser-oriented WebUI launcher, start the
+private host, or open a browser for the main Desktop interface.</p>
+<p>The release contains several related executables:</p>
+<ul>
+<li><code>Powers Tool.exe</code> is the Desktop application and the normal Desktop user
+  entry point.</li>
+<li><code>powers-tool-webui-launcher.exe</code> starts the browser-oriented WebUI launcher.</li>
+<li><code>powers-tool-webui-host.exe</code> is the private host managed by Desktop. Do not
+  start it manually.</li>
+</ul>
+<h3 id="desktop-and-webui">Desktop And WebUI</h3>
+<p>Desktop displays the same Powers Tool WebUI. The normal screens, commands,
+workflows, language behavior, safety rules, live-support behavior, and
+instrument restrictions are the same. After Desktop starts, use the common
+WebUI guidance in the rest of this guide, including <a href="#first-use">First Use</a>,
+<a href="#resource-scanning">Resource Scanning</a>, <a href="#live-data">Live Data</a>, and
+<a href="#basic-commands">Basic Commands</a>.</p>
+<p>The Desktop window targets 1920x1080 when the primary display work area permits
+it. If the available work area is smaller, the window is clamped to that area;
+1920x1080 is not a guaranteed fixed size.</p>
+<h3 id="help-language-and-appearance">Help, Language, And Appearance</h3>
+<p>Use the upper-right <code>Help</code> control when you need the built-in Help. Browser
+WebUI opens Help in a browser context. Desktop opens the local Help externally
+in the system default browser. Both use the same local built-in Help served by
+Powers Tool.</p>
+<p>Desktop uses the same WebUI <code>Language</code> control and localized interface as the
+browser WebUI. Choose <code>English</code> or <code>繁體中文</code> using that control; there is no
+separate Desktop language setting.</p>
+<p>Desktop also uses the same <code>System</code>, <code>Light</code>, and <code>Dark</code> appearance preference.
+The Electron window theme follows the selected WebUI preference, including the
+operating system choice when <code>System</code> is selected. There is no separate
+Desktop appearance setting.</p>
+<h3 id="multiple-desktop-instances">Multiple Desktop Instances</h3>
+<p>Multiple Desktop instances may be used for different physical instruments.
+Different clients or instances must not operate the same physical instrument
+resource concurrently. Before starting a command, confirm that the selected
+resource belongs to the intended instrument and is not being used by another
+client.</p>
+<h3 id="closing-the-desktop-application">Closing The Desktop Application</h3>
+<p>When you finish, close the Desktop window normally. Desktop requests a graceful
+shutdown of its private WebUI Host and allows active cleanup to finish; closing
+does not promise an immediate exit.</p>
+<p>If Desktop reports <code>Cleanup is not complete.</code>, leave the application open and
+review the reported detail. Retry closing the application after cleanup can
+complete. Avoid repeatedly force-terminating Desktop or the private host while
+instrument cleanup may still be in progress.</p>
+<h3 id="desktop-startup-and-shutdown-problems">Desktop Startup And Shutdown Problems</h3>
+<p>If Desktop reports that the private host cannot be started, confirm that the
+release was fully extracted and that you started <code>Powers Tool.exe</code> from the
+extracted application directory. Do not start the private host or the browser
+launcher as a workaround.</p>
+<p>If Desktop reports an invalid local connection, cannot load the local WebUI, or
+the backend exits unexpectedly, the Desktop application could not establish or
+keep its local WebUI running. Note the message, close or retry Desktop only
+after any cleanup has completed, and start <code>Powers Tool.exe</code> again. If the
+problem continues with a complete release directory, provide the reported
+message to your support contact.</p>
 <h2 id="browser-language">Browser Language</h2>
 <p>The upper-right of the main interface provides two labeled controls:
 Appearance and Language. The Language button displays the current locale:
@@ -147,11 +202,10 @@ create a Job, run a workflow action, or create, stop, or otherwise affect an
 EventSource.</p>
 <p>The Appearance control displays the current System / Light / Dark preference
 and cycles to the next preference when clicked. System follows the operating
-system's <code>prefers-color-scheme</code> preference. The theme preference is retained
-in the same loopback browser through the
-<code>powers-tool.webui.theme</code> cookie; the Electron Desktop shell uses that cookie
-to keep its native window theme synchronized. The selected theme applies to the
-main panels, cards, fields, and status surfaces, not only the page background.
+system's appearance preference. The selected preference is retained for normal
+reuse of the WebUI, and the Electron Desktop window follows the same preference.
+The selected theme applies to the main panels, cards, fields, and status
+surfaces, not only the page background.
 Dark theme keeps primary controls, status text, and unavailable or disabled
 controls visually distinguishable against dark surfaces.</p>
 <p>Machine-facing values remain unchanged and are not translated, including
