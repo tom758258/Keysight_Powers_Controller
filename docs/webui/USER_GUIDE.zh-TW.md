@@ -62,6 +62,13 @@ http://127.0.0.1:7999/
 
 WebUI 執行於與儀器連接的同一台 Windows 電腦上。它是一個本機工具，而非雲端服務。關閉瀏覽器分頁並不一定會停止伺服器；使用完畢後，請使用啟動器中的 `Quit`。
 
+## 內建說明
+
+請點擊右上角的 `Help` 連結，在新的瀏覽器分頁開啟內建 Help。Help 由同一套
+Powers Tool WebUI 在本機提供，不需要外部文件網站。English WebUI 會開啟
+English Help；Traditional Chinese WebUI 會開啟 Traditional Chinese Help。
+Desktop shell 顯示同一套 WebUI，因此使用相同的內建 Help。
+
 ## Desktop Shell
 
 `Powers Tool.exe` 是正式 release 中的 Desktop shell。它顯示同一套 WebUI，

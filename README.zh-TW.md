@@ -175,6 +175,16 @@ npm start
 詳細 CLI 操作請參閱 [CLI README](docs/cli/README.zh-TW.md)；瀏覽器與 Desktop
 操作請參閱 [WebUI 使用者指南](docs/webui/USER_GUIDE.zh-TW.md)。
 
+## 內建說明
+
+Powers Tool 內建產品 Help，不需要另外開啟 repository 文件：
+
+- CLI：`powers-tool user-guide`
+- Traditional Chinese CLI Help：`powers-tool user-guide --language zh-TW`
+- WebUI/Desktop：使用右上角的 `Help`。
+
+Bundled Help 由本機提供，並與已安裝或已發行的產品版本相匹配。
+
 ## 建置
 
 建置 wheel 與 source distribution。這會使用前面安裝的 `dev` extra 中的

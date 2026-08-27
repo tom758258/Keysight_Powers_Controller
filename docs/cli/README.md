@@ -33,6 +33,15 @@ preserving the `powers_tool_cli` import boundary. It exposes the
 - [Commands Parameter Contract](../contracts/commands-parameter-contract.md)
   - stable command parameter boundaries.
 
+### Built-in CLI Help
+
+`powers-tool user-guide` opens the bundled CLI Help in the default browser;
+`powers-tool user-guide --language zh-TW` opens the Traditional Chinese Help.
+The bundled pages are generated from the maintained CLI `USER_GUIDE` Markdown
+and [Supported Models](../core/supported-models.md) documentation. Generated
+HTML is presentation output for the runtime bundle, not a separately maintained
+documentation source.
+
 ## Purpose
 
 This package provides the `powers-tool` console script, command argument

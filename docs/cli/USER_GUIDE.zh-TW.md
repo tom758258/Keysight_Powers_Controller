@@ -31,6 +31,26 @@ backend 不會解鎖 Product support；不支援的 model、command、transport�
 或 feature 組合仍會 fail closed。各命令的專屬選項請使用
 `powers-tool <command> --help` 查詢。
 
+## 內建說明
+
+CLI 包含完整的 bundled operator Help。若使用已安裝的命令：
+
+```powershell
+powers-tool user-guide
+powers-tool user-guide --language zh-TW
+```
+
+若使用已建置的 Windows 執行檔：
+
+```powershell
+.\powers-tool.exe user-guide
+.\powers-tool.exe user-guide --language zh-TW
+```
+
+這些命令會在預設瀏覽器開啟 bundled CLI User Guide。Help 是隨已安裝或已發行
+產品提供的本機／離線內容，因此會與該產品版本相匹配。若只需要單一命令的
+參數與選項，請改用 `powers-tool <command> --help`。
+
 ## 首次實機檢查 (First Live Check)
 
 在檢查新電腦、VISA runtime、連線或電源供應器設定時，請使用此流程。

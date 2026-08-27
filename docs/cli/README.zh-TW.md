@@ -27,6 +27,14 @@ boundary，並透過 `powers-tool` console command 將操作員命令轉接到�
 - [Power Orchestrator 工作流程](../contracts/power-orchestrator-workflows.md) - 子行程交接與結果輪詢指南。
 - [命令參數契約](../contracts/commands-parameter-contract.md) - 穩定的命令參數邊界。
 
+### 內建 CLI Help
+
+`powers-tool user-guide` 會在預設瀏覽器開啟 bundled CLI Help；
+`powers-tool user-guide --language zh-TW` 會開啟 Traditional Chinese Help。
+Bundled pages 是由維護中的 CLI `USER_GUIDE` Markdown 與
+[Supported Models](../core/supported-models.zh-TW.md) 文件生成。Generated HTML
+是 runtime bundle 的 presentation output，不是另一份需要分開維護的文件來源。
+
 ## 用途
 
 此套件提供 `powers-tool` console script、命令參數解析、JSON envelope 處理、

@@ -71,6 +71,14 @@ The WebUI runs on the same Windows computer that has access to the instrument.
 It is a local tool, not a cloud service. Closing the browser tab does not
 always stop the server; use `Quit` in the launcher when you are done.
 
+## Built-in Help
+
+Click `Help` in the upper-right corner to open the built-in Help in a new
+browser tab. Help is served locally by the same Powers Tool WebUI and does not
+require an external documentation website. English WebUI opens English Help;
+Traditional Chinese WebUI opens Traditional Chinese Help. The Desktop shell
+displays the same WebUI, so it uses the same built-in Help.
+
 ## Desktop Shell
 
 `Powers Tool.exe` is the Desktop shell included in the formal release. It

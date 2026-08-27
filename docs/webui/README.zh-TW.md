@@ -71,6 +71,17 @@ npm start
 Desktop instance 供不同實體儀器使用，但不同 client 不可同時操作同一個
 physical instrument resource。
 
+## 內建說明
+
+WebUI 會從本機 `/help/` route 提供內建 Help。Header 的 `Help` link 會在新的
+瀏覽器分頁開啟目前 locale：English 使用 `/help/`，Traditional Chinese 使用
+`/help/webui.zh-TW.html`。Desktop shell 顯示同一套 WebUI，因此使用相同的內建
+Help。
+
+Help HTML 是由維護中的 WebUI `USER_GUIDE` Markdown 與
+[Supported Models](../core/supported-models.zh-TW.md) 文件生成。Generated HTML
+只是 presentation output，不得視為另一份獨立維護的文件來源。
+
 ## Environment
 
 根目錄的 [README 安裝指南](../../README.zh-TW.md#安裝) 是 canonical setup

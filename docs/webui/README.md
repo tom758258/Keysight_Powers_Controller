@@ -92,6 +92,17 @@ preference. Multiple Desktop instances are allowed for different physical
 instruments, but different clients must not operate the same physical
 instrument resource concurrently.
 
+## Built-in Help
+
+The WebUI serves built-in Help from the local `/help/` route. The header
+`Help` link opens the current locale in a new browser tab: English uses `/help/`,
+and Traditional Chinese uses `/help/webui.zh-TW.html`. The Desktop shell displays
+the same WebUI and uses the same built-in Help.
+
+Help HTML is generated from the maintained WebUI `USER_GUIDE` Markdown and
+[Supported Models](../core/supported-models.md) documentation. The generated HTML
+is presentation output and must not be treated as a separate maintained source.
+
 ## Environment
 
 The root [README Install guide](../../README.md#install) is the canonical

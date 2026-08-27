@@ -189,6 +189,18 @@ npm start
 For detailed CLI operation, see the [CLI README](docs/cli/README.md). For
 browser and Desktop usage, see the [WebUI User Guide](docs/webui/USER_GUIDE.md).
 
+## Built-in Help
+
+Powers Tool includes built-in product Help without requiring repository
+documentation:
+
+- CLI: `powers-tool user-guide`
+- Traditional Chinese CLI Help: `powers-tool user-guide --language zh-TW`
+- WebUI/Desktop: use `Help` in the upper-right corner.
+
+The bundled Help is local and version-matched to the installed or released
+product.
+
 ## Build
 
 Build the wheel and source distribution. This uses the `build` package from

@@ -38,6 +38,27 @@ path. Specifying another backend does not unlock Product support; unsupported
 model, command, transport, backend, or feature combinations still fail closed.
 For command-specific options, run `powers-tool <command> --help`.
 
+## Built-in Help
+
+The CLI includes the complete bundled operator Help. For an installed command:
+
+```powershell
+powers-tool user-guide
+powers-tool user-guide --language zh-TW
+```
+
+For the built Windows executable, use:
+
+```powershell
+.\powers-tool.exe user-guide
+.\powers-tool.exe user-guide --language zh-TW
+```
+
+These commands open the bundled CLI User Guide in the default browser. The Help
+is local/offline content bundled with the installed or released product, so it
+matches that product version. For one command's arguments and options, use
+`powers-tool <command> --help` instead.
+
 ## First Live Check
 
 Use this flow when checking a new computer, VISA runtime, connection, or power
