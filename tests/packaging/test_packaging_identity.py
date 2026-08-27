@@ -48,7 +48,6 @@ NEGATIVE_REGRESSION_EXEMPTIONS = {
         "keysight_power_cli",
         "keysight_power_webui",
     },
-    "tests/packaging/inspect_pyinstaller.py": {"keysight-powers", "keysight-power"},
 }
 
 

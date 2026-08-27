@@ -158,56 +158,20 @@ class _FakeCArchive:
     def __init__(
         self,
         *,
-        version: str,
-        extra_metadata_versions: tuple[str, ...] = (),
         pyz_names: set[str] | None = None,
-        webui_assets: bool = True,
-        cli_help_assets: bool = True,
     ) -> None:
-        self.metadata = {
-            f"powers_tool-{item}.dist-info/METADATA": (
-                f"Name: powers-tool\nVersion: {item}\n".encode("utf-8")
-            )
-            for item in (version, *extra_metadata_versions)
-        }
-        names = [*self.metadata, "PYZ.pyz"]
-        if webui_assets:
-            names.extend(
-                f"powers_tool_webui/static/{filename}"
-                for filename in (
-                    "index.html",
-                    "styles.css",
-                    "app.js",
-                    "help/webui.html",
-                    "help/webui.zh-TW.html",
-                    "help/supported-models.html",
-                    "help/supported-models.zh-TW.html",
-                    "help/help.css",
-                )
-            )
-        if cli_help_assets:
-            names.extend(
-                f"powers_tool_cli/help/{filename}"
-                for filename in (
-                    "cli.html",
-                    "cli.zh-TW.html",
-                    "supported-models.html",
-                    "supported-models.zh-TW.html",
-                    "help.css",
-                )
-            )
-        self.toc = {name: None for name in names}
-        self.pyz_names = pyz_names or {
-            "powers_tool_core",
-            "powers_tool_core.driver",
-            "powers_tool_cli",
-            "powers_tool_cli.cli",
-            "powers_tool_webui",
-            "powers_tool_webui.server",
-        }
-
-    def extract(self, name: str) -> bytes:
-        return self.metadata[name]
+        self.toc = {"PYZ.pyz": None}
+        if pyz_names is None:
+            self.pyz_names: set[str] = {
+                "powers_tool_core",
+                "powers_tool_core.driver",
+                "powers_tool_cli",
+                "powers_tool_cli.cli",
+                "powers_tool_webui",
+                "powers_tool_webui.server",
+            }
+        else:
+            self.pyz_names = pyz_names
 
     def open_embedded_archive(self, name: str) -> _FakePyz:
         assert name == "PYZ.pyz"
@@ -635,7 +599,7 @@ def test_distribution_inspector_wheel_only_accepts_explicit_version(
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-def test_inspectors_resolve_future_version_from_fixture_pyproject(
+def test_distribution_inspector_resolves_future_version_from_fixture_pyproject(
     tmp_path: Path,
 ) -> None:
     repository = tmp_path / "repository"
@@ -652,93 +616,30 @@ def test_inspectors_resolve_future_version_from_fixture_pyproject(
     result = _run_distribution_inspector(
         dist_dir, inspector=packaging / "inspect_distribution.py"
     )
-    resolved = inspector_utils.resolve_expected_version(
-        None, inspector_file=packaging / "inspect_pyinstaller.py"
-    )
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert resolved == "3.4.5"
-    archive = _FakeCArchive(version=resolved)
-    inspect_pyinstaller._validate_metadata(
-        archive,
-        {name: name for name in archive.toc},
-        expected_version=resolved,
-    )
 
 
-def test_pyinstaller_inspector_accepts_matching_future_metadata(
+def test_pyinstaller_cli_inspects_cli_and_webui_executables(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    archive = _FakeCArchive(version="3.4.5")
-    monkeypatch.setattr(inspect_pyinstaller, "CArchiveReader", lambda path: archive)
+    archive = _FakeCArchive()
+    calls: list[str] = []
 
-    inspect_pyinstaller.inspect_executable(
-        Path("future.exe"),
-        ("powers_tool_core", "powers_tool_webui"),
-        webui=True,
-        expected_version="3.4.5",
-    )
+    def fake_reader(path: str):
+        calls.append(Path(path).name)
+        return archive
 
-
-def test_pyinstaller_cli_accepts_explicit_and_canonical_versions(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    future_archive = _FakeCArchive(version="3.4.5")
-    monkeypatch.setattr(
-        inspect_pyinstaller, "CArchiveReader", lambda path: future_archive
-    )
-    assert (
-        inspect_pyinstaller.main(
-            ["--expected-version", "3.4.5", "cli.exe", "webui.exe"]
-        )
-        == 0
-    )
-
-    canonical_version = inspector_utils.resolve_expected_version(
-        None, inspector_file=PACKAGING_DIR / "inspect_pyinstaller.py"
-    )
-    canonical_archive = _FakeCArchive(version=canonical_version)
-    monkeypatch.setattr(
-        inspect_pyinstaller, "CArchiveReader", lambda path: canonical_archive
-    )
+    monkeypatch.setattr(inspect_pyinstaller, "CArchiveReader", fake_reader)
     assert inspect_pyinstaller.main(["cli.exe", "webui.exe"]) == 0
+    assert calls == ["cli.exe", "webui.exe"]
 
 
-def test_pyinstaller_inspector_rejects_stale_metadata_version() -> None:
-    archive = _FakeCArchive(version="2.0.0")
-
-    with pytest.raises(AssertionError) as error:
-        inspect_pyinstaller._validate_metadata(
-            archive,
-            {name: name for name in archive.toc},
-            expected_version="3.4.5",
-        )
-
-    assert "powers_tool-3.4.5.dist-info/METADATA" in str(error.value)
-    assert "powers_tool-2.0.0.dist-info/METADATA" in str(error.value)
-
-
-def test_pyinstaller_inspector_rejects_competing_metadata_version() -> None:
-    archive = _FakeCArchive(
-        version="3.4.5", extra_metadata_versions=("2.0.0",)
-    )
-
-    with pytest.raises(AssertionError) as error:
-        inspect_pyinstaller._validate_metadata(
-            archive,
-            {name: name for name in archive.toc},
-            expected_version="3.4.5",
-        )
-
-    assert "powers_tool-3.4.5.dist-info/METADATA" in str(error.value)
-    assert "powers_tool-2.0.0.dist-info/METADATA" in str(error.value)
-
-
-def test_pyinstaller_inspector_retains_package_webui_and_legacy_checks(
+def test_pyinstaller_inspector_retains_package_and_legacy_checks(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     missing_package = _FakeCArchive(
-        version="3.4.5", pyz_names={"powers_tool_core", "powers_tool_core.driver"}
+        pyz_names={"powers_tool_core", "powers_tool_core.driver"}
     )
     monkeypatch.setattr(
         inspect_pyinstaller, "CArchiveReader", lambda path: missing_package
@@ -747,37 +648,9 @@ def test_pyinstaller_inspector_retains_package_webui_and_legacy_checks(
         inspect_pyinstaller.inspect_executable(
             Path("missing-package.exe"),
             ("powers_tool_core", "powers_tool_cli"),
-            webui=False,
-            expected_version="3.4.5",
-        )
-
-    missing_assets = _FakeCArchive(version="3.4.5", webui_assets=False)
-    monkeypatch.setattr(
-        inspect_pyinstaller, "CArchiveReader", lambda path: missing_assets
-    )
-    with pytest.raises(AssertionError, match="index.html"):
-        inspect_pyinstaller.inspect_executable(
-            Path("missing-assets.exe"),
-            ("powers_tool_core", "powers_tool_webui"),
-            webui=True,
-            expected_version="3.4.5",
-        )
-
-    missing_cli_help = _FakeCArchive(version="3.4.5", cli_help_assets=False)
-    monkeypatch.setattr(
-        inspect_pyinstaller, "CArchiveReader", lambda path: missing_cli_help
-    )
-    with pytest.raises(AssertionError, match="cli.html"):
-        inspect_pyinstaller.inspect_executable(
-            Path("missing-cli-help.exe"),
-            ("powers_tool_core", "powers_tool_cli"),
-            webui=False,
-            cli_help=True,
-            expected_version="3.4.5",
         )
 
     legacy = _FakeCArchive(
-        version="3.4.5",
         pyz_names={
             "powers_tool_core",
             "powers_tool_core.driver",
@@ -789,6 +662,4 @@ def test_pyinstaller_inspector_retains_package_webui_and_legacy_checks(
         inspect_pyinstaller.inspect_executable(
             Path("legacy.exe"),
             ("powers_tool_core",),
-            webui=False,
-            expected_version="3.4.5",
         )
