@@ -139,8 +139,9 @@ Implementation references at baseline time differed by surface:
   table overflow. Do not claim that behavior as shared WebUI legacy behavior.
 - Responsive breakpoints: CLI about 820 px; WebUI about 768 px.
 
-These values are current implementation references, not immutable design tokens
-or test contracts. Unifying them is a future Help presentation decision.
+These values were implementation references observed at baseline time,
+not immutable design tokens or test contracts. Unifying them was a later
+Help presentation decision.
 
 ## 10. Existing Interaction Baseline
 
@@ -149,7 +150,7 @@ document headings, anchor navigation, active-section indication using
 IntersectionObserver, copy buttons on code blocks, and responsive navigation
 that moves out of the fixed desktop sidebar layout.
 
-Current implementation differences include:
+Implementation differences at baseline time included:
 
 - The CLI TOC includes H2/H3 entries; the WebUI legacy TOC uses H2 entries.
 - The CLI provides visible localized copy success/failure states.
@@ -158,8 +159,8 @@ Current implementation differences include:
 - The CLI explicitly enables smooth scrolling; do not claim this as shared
   behavior.
 
-These differences are current implementation evidence, not requirements that
-the shared Help template preserve them.
+These differences were implementation evidence at baseline time,
+not requirements that the shared Help template preserve them.
 
 ## 11. Baseline Gaps / Future Decisions
 
@@ -176,7 +177,7 @@ decisions for the next stage, not current shared behavior:
 - Help version, footer, and branding structure were not currently standardized.
 
 Dark mode, language switching UI, header/footer layout, icons, and JavaScript
-architecture require separate future decisions.
+architecture required separate later decisions.
 
 ## 12. Preserve vs. Do Not Freeze
 
