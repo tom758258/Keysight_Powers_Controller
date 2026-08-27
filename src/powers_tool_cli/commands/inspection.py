@@ -41,11 +41,13 @@ from powers_tool_cli.cli_runtime import (
 from powers_tool_cli.runtime_mapping import execution_for_args as _execution_for_args
 from powers_tool_core.core import CoreValidationError
 from powers_tool_core.errors import VisaConnectionError
+from powers_tool_core.factory import MODEL_DRIVERS
 from powers_tool_core.identity import (
     IDENTITY_INDEXES,
     IdentityResolutionError,
     canonical_physical_model_id,
 )
+from powers_tool_core.models import PRODUCT_ACTIVE_MODEL_IDS
 from powers_tool_core.safety import SafetyConfigError, resolve_safety_config
 from powers_tool_core.testing.simulator import SimulatedResourceManager
 
@@ -140,7 +142,6 @@ def _run_doctor(args: argparse.Namespace) -> int:
 
 def _run_capabilities(args: argparse.Namespace) -> int:
     request = _request_for_args(args)
-    execution = _execution_for_args(args, hardware_intent=True)
     selected_command = getattr(args, "selected_command", None)
     if selected_command and selected_command not in capabilities.known_capability_commands():
         return _emit_cli_error(
@@ -151,6 +152,69 @@ def _run_capabilities(args: argparse.Namespace) -> int:
             message=f"unknown command: {selected_command}",
             retryable=False,
         )
+
+    if args.model is not None:
+        execution = _execution_for_args(args, hardware_intent=False)
+        try:
+            model_id = canonical_physical_model_id(args.model)
+        except IdentityResolutionError as exc:
+            return _emit_cli_error(
+                args,
+                request=request,
+                error_type="validation",
+                code="argument_error",
+                message=str(exc),
+                retryable=False,
+            )
+        assert model_id is not None
+        if model_id not in PRODUCT_ACTIVE_MODEL_IDS:
+            return _emit_cli_error(
+                args,
+                request=request,
+                error_type="validation",
+                code="argument_error",
+                message=f"unsupported physical model_id {model_id!r}",
+                retryable=False,
+            )
+
+        identity = IDENTITY_INDEXES.models_by_id[model_id]
+        vendor = IDENTITY_INDEXES.vendors_by_id[identity.vendor_id]
+        driver_class = MODEL_DRIVERS[model_id]
+        caps = driver_class.capabilities
+        data = {
+            "model_id": identity.model_id,
+            "vendor_id": identity.vendor_id,
+            "vendor_display_name": vendor.display_name,
+            "model_name": identity.canonical_model,
+            "display_name": identity.display_name,
+            "driver": {"class": driver_class.__name__},
+            "channels": list(caps.channels),
+            "measure_channels": {
+                "simulate": list(caps.simulated_measure_channels),
+                "real": list(caps.real_measure_channels),
+            },
+            **capabilities.capabilities_static_groups(),
+            "hardware_validation": capabilities.hardware_validation_status(model_id),
+            "command_support": capabilities.command_support(model_id),
+            "electrical_ratings": (
+                caps.electrical_ratings.to_dict() if caps.electrical_ratings else None
+            ),
+        }
+        if selected_command:
+            support = data["command_support"]
+            data["selected_command"] = {"name": selected_command, **support[selected_command]}
+        if args.json:
+            emit_json_success(
+                command=args.command,
+                execution=execution,
+                request=request,
+                data=data,
+            )
+        else:
+            _emit_text_lines(cli_rendering.format_capabilities(data))
+        return 0
+
+    execution = _execution_for_args(args, hardware_intent=True)
     manager = _resource_manager_for_args(args)
     try:
         _resolve_optional_resource_alias(args)
@@ -280,4 +344,3 @@ def _run_safety_inspect(args: argparse.Namespace) -> int:
     else:
         _emit_text_lines(cli_rendering.format_safety_inspect(data))
     return 0
-

@@ -271,6 +271,7 @@ def _request_for_args(args: argparse.Namespace) -> dict[str, Any]:
         return {
             "resource": args.resource,
             "resource_alias": getattr(args, "resource_alias", None),
+            "model": getattr(args, "model", None),
             "command": getattr(args, "selected_command", None),
             "backend": getattr(args, "backend", None),
             "timeout_ms": getattr(args, "timeout_ms", DEFAULT_TIMEOUT_MS),
@@ -475,6 +476,7 @@ def _request_from_argv(command: str, argv: Sequence[str]) -> dict[str, Any]:
         return {
             "resource": _option_value(argv, "--resource"),
             "resource_alias": _option_value(argv, "--resource-alias"),
+            "model": _option_value(argv, "--model"),
             "command": _option_value(argv, "--command"),
             "backend": _option_value(argv, "--backend"),
             "timeout_ms": _timeout_from_argv(argv),
@@ -688,4 +690,3 @@ def _core_command_parameters(command: str, values: dict[str, Any]) -> dict[str, 
         )
         and not (name == "completion_pulse_pins" and not value)
     }
-

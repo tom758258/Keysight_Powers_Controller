@@ -1,13 +1,93 @@
 import json
 
+import pytest
+
 import powers_tool_cli.cli as cli
 import powers_tool_cli.cli_runtime as cli_runtime
+import powers_tool_cli.commands.inspection as inspection
 
 from tests.cli.cli_test_helpers import (
     OUTPUT_RESOURCE,
     FakeSession,
     assert_live_scope_rejected,
 )
+
+
+def test_offline_model_capabilities_uses_core_metadata_without_hardware(
+    monkeypatch,
+    capsys,
+) -> None:
+    def fail_hardware(*args, **kwargs):
+        raise AssertionError("offline model capabilities must not touch hardware")
+
+    monkeypatch.setattr(inspection, "_resource_manager_for_args", fail_hardware)
+    monkeypatch.setattr(inspection, "_list_resources", fail_hardware)
+    monkeypatch.setattr(inspection, "_open_resource", fail_hardware)
+    monkeypatch.setattr(inspection, "_patchable_select_driver", fail_hardware)
+
+    assert (
+        cli.main(
+            [
+                "capabilities",
+                "--model",
+                "keysight-e36312a",
+                "--json",
+            ]
+        )
+        == 0
+    )
+
+    payload = json.loads(capsys.readouterr().out)
+    data = payload["data"]
+    assert payload["schema_version"] == 2
+    assert payload["ok"] is True
+    assert payload["command"] == {"name": "capabilities"}
+    assert payload["execution"]["hardware_touched"] is False
+    assert payload["request"]["model"] == "keysight-e36312a"
+    assert data["model_id"] == "keysight-e36312a"
+    assert data["model_name"] == "E36312A"
+    assert data["driver"] == {"class": "E36312APowerSupply"}
+    assert data["channels"] == [1, 2, 3]
+    assert data["measure_channels"] == {"simulate": [1, 2, 3], "real": [1, 2, 3]}
+    assert data["hardware_validation"]["read_only"] == "validated"
+    assert data["command_support"]["capabilities"]["real"] is True
+    assert data["electrical_ratings"]["model"] == "E36312A"
+    assert "resource" not in data
+    assert "reason" not in data["driver"]
+
+
+@pytest.mark.parametrize("model_id", ["not-a-model", "keysight-e36313a"])
+def test_offline_model_capabilities_rejects_invalid_targets(model_id, capsys) -> None:
+    assert cli.main(["capabilities", "--model", model_id, "--json"]) == 2
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error"]["type"] == "validation"
+    assert payload["error"]["code"] == "argument_error"
+    assert payload["request"]["model"] == model_id
+    assert payload["execution"]["hardware_touched"] is False
+
+
+def test_capabilities_model_and_resource_are_mutually_exclusive(capsys) -> None:
+    assert (
+        cli.main(
+            [
+                "capabilities",
+                "--model",
+                "keysight-e36312a",
+                "--resource",
+                OUTPUT_RESOURCE,
+                "--json",
+            ]
+        )
+        == 2
+    )
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error"]["type"] == "validation"
+    assert payload["error"]["code"] == "argument_error"
+    assert payload["request"]["model"] == "keysight-e36312a"
+
+
 def test_e3646a_cli_capabilities_reports_validated_output(capsys) -> None:
     assert (
         cli.main(

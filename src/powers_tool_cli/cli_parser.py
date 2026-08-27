@@ -1049,9 +1049,19 @@ def build_parser(
 
     capabilities_parser = subparsers.add_parser(
         "capabilities",
-        help="Report selected driver capabilities for a resource.",
+        help="Report capabilities for an offline model or selected resource.",
     )
-    _add_output_resource_arguments(capabilities_parser)
+    capabilities_target = capabilities_parser.add_mutually_exclusive_group()
+    capabilities_target.add_argument("--resource", help="VISA resource string.")
+    capabilities_target.add_argument(
+        "--resource-alias",
+        help="Alias from an explicit --safety-config [[resources]] entry.",
+    )
+    capabilities_target.add_argument(
+        "--model",
+        help="Canonical Product-active model ID to inspect without VISA access.",
+    )
+    _add_validation_support_policy_argument(capabilities_parser)
     _add_json_argument(capabilities_parser)
     _add_simulate_argument(capabilities_parser)
     _add_backend_argument(capabilities_parser)
