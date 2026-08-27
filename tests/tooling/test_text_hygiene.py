@@ -71,7 +71,7 @@ def test_selected_text_paths_includes_control_files_and_webui_source_html() -> N
         Path(".gitattributes"),
         Path(".gitignore"),
         Path("docs/generated-reference.html"),
-        Path("docs/webui/README.zh-TW.html"),
+        Path("docs/webui/README.zh-TW.md"),
         Path("Local/private.md"),
         Path("assets/logo.png"),
         Path("tools/repository-control"),
