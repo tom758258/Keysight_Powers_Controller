@@ -330,7 +330,18 @@ options:
 def _lifecycle_subparsers() -> dict[str, argparse.ArgumentParser]:
     parser = cli.build_parser()
     action = next(action for action in parser._actions if isinstance(action, argparse._SubParsersAction))
-    assert tuple(action.choices) == TOP_LEVEL_COMMAND_ORDER
+    choices = tuple(action.choices)
+    # Lifecycle helper must not couple to unrelated future root commands (e.g., `user-guide`).
+    # Validate that the known top-level ordering is preserved as a subsequence, allowing
+    # additional CLI-only commands after `manifest` without breaking lifecycle contracts.
+    idx = 0
+    for expected in TOP_LEVEL_COMMAND_ORDER:
+        try:
+            pos = choices.index(expected, idx)
+        except ValueError:
+            assert False, f"Expected command {expected!r} missing or out of order in {choices!r}"
+        idx = pos + 1
+    assert set(LIFECYCLE_COMMANDS) <= set(choices)
     return {command: action.choices[command] for command in LIFECYCLE_COMMANDS}
 
 
