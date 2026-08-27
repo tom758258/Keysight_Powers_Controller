@@ -64,10 +64,11 @@ WebUI 執行於與儀器連接的同一台 Windows 電腦上。它是一個本�
 
 ## 內建說明
 
-請點擊右上角的 `Help` 連結，在新的瀏覽器分頁開啟內建 Help。Help 由同一套
-Powers Tool WebUI 在本機提供，不需要外部文件網站。English WebUI 會開啟
-English Help；Traditional Chinese WebUI 會開啟 Traditional Chinese Help。
-Desktop shell 顯示同一套 WebUI，因此使用相同的內建 Help。
+請點擊右上角的 `Help` 連結，在瀏覽器中開啟內建 Help。在 Desktop shell 中，Help
+會從外部交由系統預設瀏覽器開啟。Help 由同一套 Powers Tool WebUI 在本機提供，
+不需要外部文件網站。English WebUI 會開啟 English Help；Traditional Chinese
+WebUI 會開啟 Traditional Chinese Help。兩者使用的都是 Powers Tool 本機提供的
+同一套內建 Help。
 
 ## Desktop Shell
 

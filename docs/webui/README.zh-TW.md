@@ -73,10 +73,10 @@ physical instrument resource。
 
 ## 內建說明
 
-WebUI 會從本機 `/help/` route 提供內建 Help。Header 的 `Help` link 會在新的
-瀏覽器分頁開啟目前 locale：English 使用 `/help/`，Traditional Chinese 使用
-`/help/webui.zh-TW.html`。Desktop shell 顯示同一套 WebUI，因此使用相同的內建
-Help。
+WebUI 會從本機 `/help/` route 提供內建 Help。Header 的 `Help` link 會在瀏覽器
+中開啟目前 locale：English 使用 `/help/`，Traditional Chinese 使用
+`/help/webui.zh-TW.html`。在 Desktop shell 中，Help 會從外部交由系統預設瀏覽器
+開啟。兩者使用的都是 Powers Tool 本機提供的同一套內建 Help。
 
 Help HTML 是由維護中的 WebUI `USER_GUIDE` Markdown 與
 [Supported Models](../core/supported-models.zh-TW.md) 文件生成。Generated HTML

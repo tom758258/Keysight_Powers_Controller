@@ -95,9 +95,10 @@ instrument resource concurrently.
 ## Built-in Help
 
 The WebUI serves built-in Help from the local `/help/` route. The header
-`Help` link opens the current locale in a new browser tab: English uses `/help/`,
-and Traditional Chinese uses `/help/webui.zh-TW.html`. The Desktop shell displays
-the same WebUI and uses the same built-in Help.
+`Help` link opens the current locale in a browser context: English uses `/help/`,
+and Traditional Chinese uses `/help/webui.zh-TW.html`. In the Desktop shell,
+Help opens externally in the system default browser. Both use the same local
+built-in Help served by Powers Tool.
 
 Help HTML is generated from the maintained WebUI `USER_GUIDE` Markdown and
 [Supported Models](../core/supported-models.md) documentation. The generated HTML
