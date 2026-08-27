@@ -1066,7 +1066,7 @@ _NO_EXACT_EVIDENCE_NOTE = (
     "an exact transport/backend scope for this command."
 )
 _FEATURE_BASELINE_MIGRATION_NOTE = (
-    "Preserves the accepted pre-P7 command-level Product-open baseline; this is not new hardware evidence."
+    "Preserves the accepted command-level Product-open baseline; this is not new hardware evidence."
 )
 _FEATURE_PENDING_NOTE = (
     "The implemented feature remains pending with its exact TCPIP/pyvisa-py parent scope."

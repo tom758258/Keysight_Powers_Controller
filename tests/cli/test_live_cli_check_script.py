@@ -1210,7 +1210,7 @@ import os
 import sys
 from pathlib import Path
 
-failed = os.environ.get("P5_FIXTURE_PREFLIGHT_FAIL") == "1"
+failed = os.environ.get("VALIDATION_FIXTURE_PREFLIGHT_FAIL") == "1"
 payload = {
     "ok": not failed,
     "error": None if not failed else {"code": "fixture_preflight_failed", "message": "fixture preflight failed"},
