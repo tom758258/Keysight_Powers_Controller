@@ -19,6 +19,10 @@
   CLI, and WebUI Launcher, including the Launcher window and taskbar.
 - Adds local, version-matched built-in Help for the CLI, browser WebUI, and
   Electron Desktop, with English and Traditional Chinese operator content.
+- Adds offline model capability inspection through `powers-tool capabilities
+  --model ...`, allowing Product-active model metadata, command support,
+  electrical ratings, and hardware-validation status to be queried without
+  opening VISA resources.  
 
 ## 3.0.0
 
